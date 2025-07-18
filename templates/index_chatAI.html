@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>MeOS Online Results</title>
+    <style>
+        body { font-family: verdana, arial, sans-serif; font-size: 9pt; background-color: #FFFFFF; }
+        a.button { border-style: ridge; border-color: #b0c4de; background-color:#b0c4de; color: #900000; text-decoration: none; padding: 0.1em 0.3em; margin: 1em; }
+        h1 { text-shadow: 3px 3px 3px #AAAAAA; }
+        th { text-align:left; }
+        td { padding-right:1em; }
+    </style>
+</head>
+<body>
+    <h1>{{ competition.name }} &ndash; {{ competition.date }}</h1>
+    {% if competition.organizer %}
+        {% if competition.homepage %}
+            <a href="{{ competition.homepage }}">{{ competition.organizer }}</a><br>
+        {% else %}
+            {{ competition.organizer }}<br>
+        {% endif %}
+    {% endif %}
+
+    <br>
+    <div style="clear:both;">
+        <a href="?select=1" class="button">Select Competition</a>
+    </div>
+
+    <div style="float:left;margin:2em;">
+        {% for cls in classes %}
+            <a href="?cls={{ cls.id }}">{{ cls.name }}</a><br/>
+        {% endfor %}
+    </div>
+
+    <div style="float:left;">
+        {% if class %}
+            <h2>{{ class.name }}</h2>
+            {% if num_legs > 1 %}
+                {% for k in range(1, num_legs|add:1) %}
+                    {{ k }}:
+                    <!-- Add logic for selectLegRadio here -->
+                {% endfor %}
+                {% if radio %}
+                    <h3>Leg {{ leg }}, {{ rname }}</h3>
+                    <!-- Add logic for formatResult here -->
+                {% endif %}
+            {% else %}
+                <!-- Add logic for single leg here -->
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <div style="clear:both;padding-top:3em;color: grey;">
+        Results provided by <a href="http://www.melin.nu/meos" target="_blank">MeOS Online Results</a>.
+    </div>
+</body>
+</html>
+

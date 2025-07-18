@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>{{ markdown_content.title }}</h1>
+    <p>{{ markdown_content.content|safe }}</p>
+{% endblock %}
