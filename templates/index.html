@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1 class="text-body-emphasis">Compétitions organisées en SAVOIE</h1>
+<div class="table-responsive">
+<table class="table table-striped table-dark table-hover">
+<caption>Liste des compétitions</caption>
+<thead>
+    <tr>
+		<!-- <th>cid</th> -->
+        <th>Compétitions</th>
+        <th>Date</th>
+        <th>Club Organisateur</th>
+    </tr>
+</thead>
+<tbody>
+    {% for comp in object_list %}
+    <tr>
+		<!-- <td>{{ comp.cid }}</td> -->
+		<td><a href="{% url 'results:category' comp_id=comp.cid %}"
+			   class="link-warning">{{ comp.name }}</a></td>
+        <td>{{ comp.date }}</td>
+		<td><a href="{{ comp.homepage }}" class="link-light">
+				{{ comp.organizer }}</a></td>
+    </tr>
+    {% endfor %}
+</tbody>
+</table>
+</div>
+
+{% endblock %}

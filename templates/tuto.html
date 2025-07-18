@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1 class="text-body-emphasis">Tutoriels pour MeOS</h1>
+<ul class="list-group">
+    {% for tuto in object_list %}
+	<li class="list-group-item">
+		<a href="{% url 'results:markdown' tuto.id %}">
+			{{ tuto.title }}</a>
+	</li>
+    {% endfor %}
+</ul>
+
+{% endblock %}
