@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="fr" data-bs-theme="auto">
+  <head><script src="../js/color-modes.js"></script>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="generator" content="">
+    <title>Tuto 1</title>
+    <link rel="icon" href="../img/favicon.ico" />
+    <link rel="stylesheet" href="../css/bootstrap.min.css">
+  </head>
+  <body>
+
+<!-- Navbar -->
+  <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="https://jolatomme.helioho.st">Live Results</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+    </div>
+  </nav>
+<!-- Navbar -->
+
+<div class="col-lg-8 mx-auto p-4 py-md-5">
+  <main>
+    <h1 class="text-body-emphasis">Course individuelle simple</h1>
+	<p class="fs-5 col-md-8"><b>Tutoriel Titouan Savart</b><br>
+	<b><a href="mailto:titouan.savart@gmail.com?subject=Meos">
+		titouan.savart@gmail.com</a></b><br>
+	Le type de course décrit ici est le plus simple qui soit, il correspond aux
+	courses régionales classiques en une seule partie. Chaque coureur est inscrit
+	dans une catégorie (H12, D21, etc ou selon les couleurs), chaque catégorie à
+	un circuit associé. Les départs peuvent être libres ou définis par
+	l'organisateur. MeOS est un logiciel libre de GEC développé par Erik Melin,
+	il est open source et téléchargeable gratuitement :
+	<a href="http://www.melin.nu/meos/en/index.php">Ici</a>. Une documentation
+	en anglais est disponible sur le site de MeOS, celle en français est dans
+	le dossier d’installation de MeOS</p>
+    <hr class="col-3 col-md-2 mb-5">
+	<h2 class="text-body-emphasis">1 En Amont</h2>
+	<h3 class="text-body-emphasis">1.1 Créer la compétition</h3>
+	<p>Plusieurs fichiers à rassembler (avant ou pendant la création de la
+	course):
+        <ul class="list-bullets">
+          <li class="mb-2">
+			  Export des circuits depuis OCAD en XML 2.0.3 ou XML 3.0 (à
+			  demander au traceur).
+          </li>
+          <li class="mb-2">
+			  Export de l'archive fédérale du jour de la course (ou du dernier
+			  jour des inscriptions selon le règlement) au format CSV OE 2003 ou
+			  en IOF-XML, téléchargeable:
+			  <a href="http://licences.ffcorientation.fr/">Ici</a>
+          </li>
+          <li class="mb-2">Export des inscrits en CSV OE 2003 (demander au
+			  responsable des inscriptions après la clôture).
+        </ul>
+	De la page d'accueil, cliquez sur <b>Nouvelle
+	compétition</b>. Nommez la compétition, choisissez sa date et l'heure du
+	premier départ. Cliquez sur <b>Aucune
+	inscription</b> (vous les importerez plus tard), puis sur
+	<b>Compétition individuelle</b> (prépare les
+	fonctionnalités essentielles). La course est créée.
+	</p>
+	<h3 class="text-body-emphasis">1.2 Importer l'archive</h3>
+	<p>Dans MeOS, l'archive est appelée Base de données coureurs. Cliquez sur
+	<b>Base de données coureurs</b> dans l'onglet principal, puis sur
+	<b>Importer</b>. Sélectionner l'archive dans "Fichier CSV ou XML avec
+	coureurs", puis validez. La base de données coureurs s'affiche en cliquant
+	sur <b>Personnes</b>, celle des clubs en cliquant sur <b>Clubs</b>.
+	Assurez-vous que les clubs représentés soient nommés correctement (du type
+	"HVO" dans Nom, et "8809GE" dans Nom court)
+	</p>
+	<h3 class="text-body-emphasis">1.3 Importer les circuits</h3>
+	<p>
+	Dans l'onglet principal, cliquez sur <b>Importer les circuits</b>, puis
+	sélectionnez le fichier XML des circuits. Si les catégories ont été
+	correctement renseignées dans OCAD, cochez la case "Ajout/modification des
+	catégories". Les circuits sont visibles et modifiables dans l'onglet
+	<i>Circuits</i>.
+	</p>
+	<h3 class="text-body-emphasis">1.4 Créer/Vérifier les catégories</h3>
+	<p>
+	Dans l'onglet <i>Catégories</i>, vous pouvez créer les catégories et
+	associer les circuits. Si les catégories n'ont pas été créées
+	automatiquement, cliquez sur <b>Nouvelle catégorie</b>. Nommez la catégorie
+	et associez-lui son circuit dans la liste proposée. <br>
+	Si plusieurs départs physiques sont prévus, nommez le dans le champ
+	<b>Départ</b>.<br>
+	Vous pouvez renseigner le nombre de cartes disponibles dans
+	le champ <b>Nombre de cartes</b>. Un message d'alerte s'affichera quand il y
+	aura plus de coureurs que de cartes disponibles.
+	</p>
+	<h3 class="text-body-emphasis">1.5 Importer et modifier les coureurs</h3>
+	<p>
+	Dans l'onglet principal, cliquez sur <b>Inscriptions</b> puis sélectionnez
+	le fichier CSV des inscrits dans le champ <b>Inscriptions</b>. Les coureurs
+	sont importés, on les retrouve dans l'onglet <i>Coureurs</i>.<br>
+	Les coureurs sont inscrits dans la catégorie qui était renseignée sur le
+	site des inscriptions. Si les catégories renseignées par le traceur et par
+	le responsable des inscriptions sont identiques, les coureurs seront
+	automatiquement affectés dans les bonnes catégories. Si par contre les noms
+	diffèrent, de nouvelles catégories seront créées lors de l'import des
+	inscrits. Vous devrez donc modifier leur nom ou les fusionner à l'aide du
+	bouton <b>Fusionner les catégories</b> dans l'onglet Catégories.<br>
+	Si vous devez modifier des données sur un coureur (changement de puce, de
+	catégorie, absence le jour de la course, etc…), allez dans l'onglet
+	<b>Coureurs</b>, sélectionnez le coureur dans la liste et éditez ses
+	données. Si le coureur est absent, modifiez son statut en <i>Non partant</i>.
+	</p>
+	<h3 class="text-body-emphasis">1.6 Créer les listes des inscrits</h3>
+	<p>
+	Dans l'onglet <b>Listes</b>, toutes les listes de la course sont affichées.
+	Configurez d'abord la liste que vous souhaitez afficher dans l'encart
+	<b>Configuration</b> (affichage du titre, saut de page entre les catégories,
+	nombre de coureurs à afficher, etc…) puis cliquez sur la liste souhaitée,
+	par exemple <b>Horaires de départ par catégories</b>. La liste s'affiche à
+	l'écran. Vous pouvez choisir les catégories à afficher en cliquant sur
+	<b>Sélection de catégories</b> sur la droite. D'autres boutons vous
+	permettent de l'imprimer, de l'enregistrer en PDF ou au format HTML.<br>
+	Vous pouvez alors diffuser les inscrits par catégorie, par clubs ou même par
+	circuits (en cliquant sur <b>Personnalisation</b> et en choisissant la liste
+	et les 	catégories à afficher).
+	</p>
+	<h3 class="text-body-emphasis">1.7 Sauvegarde et déplacement de la compétition</h3>
+	<p>
+	Vous pouvez sauvegarder la compétition complète en XML en cliquant sur
+	<b>Enregistrer le fichier</b> sous dans l'onglet <b>Compétition</b>. Pour
+	l'ouvrir depuis un autre PC, cliquez sur <b>Importer</b> une compétition
+	dans la page d'accueil de MeOS.
+	</p>
+	<h2 class="text-body-emphasis">2 Le jour de la course</h2>
+	<h3 class="text-body-emphasis">2.1 Mise en réseau</h3>
+	<p>
+	Pour une régionale, la mise en réseau n'est pas obligatoire, mais permet de
+	travailler plus confortablement. Voir la fiche explicative ou la
+	documentation de MeOS.
+	</p>
+	<h3 class="text-body-emphasis">2.2 Inscriptions tardives</h3>
+	<p>
+	Plusieurs solutions pour inscrire les retardataires :<br>
+	<ul class="list-bullets">
+		<li class="mb-2">Depuis l'onglet <b>Coureurs</b>, cliquez sur
+		<b>Nouveau coureur</b> et renseignez son nom. Une liste s'affiche avec
+		les licenciés. S'il en fait partie, cliquez dessus et ses données sont
+		importées. Vérifiez sa catégorie et son numéro de puce. Si son club
+		n'existe pas (club étranger ou premier non licencié), vous pouvez nommer
+		directement le club en le tapant dans le champ <b>Club</b>.
+		</li>
+		<li class="mb-2"> Depuis la base de données coureurs, recherchez le
+			coureur concerné en utilisant "Filtrer" en haut des colonnes, puis
+			cliquez sur le <b>"+"</b> et choisissez sa catégorie.
+		</li>
+		<li class="mb-2"> Depuis l'onglet SPORTident, branchez une base maître
+			paramétrée en "Lecture des puces" et sans le "protocole ancien".
+			Sélectionnez le port COM correspondant puis cliquez sur
+			<b>Activer la lecture</b>. Cochez l'option <b>Utiliser la base de
+			données coureurs</b> et sélectionnez ensuite l'option <b>Inscription
+			rapide</b> dans la liste. Choisissez la catégorie du coureur (le
+		nombre de cartes restantes est affiché s'il a été renseigné) et lisez sa
+		puce. S'il est licencié, ses infos seront affichées, sinon vous devrez
+		les compléter vous-même. Validez pour finir.<br>
+		<b>ATTENTION : </b>Pour utiliser cette fonctionnalité, il faut que la
+		catégorie autorise la <b>Saisie rapide</b> (case à cocher dans l'onglet
+		Catégories).
+		</li>
+	</ul>
+	</p>
+	<h3 class="text-body-emphasis">2.3 Paramétrer l'impression</h3>
+	<p>
+	Dans l'onglet SPORTident, cliquez sur <b>Configuration de l'impression</b>.
+	Choisissez l'imprimante (définissez dans ses propriétés le bon format
+	d'impression). Vous pouvez ajouter un texte personnalisé à la fin du ticket.
+	Si vous imprimez les tickets sur une imprimant A4, Cochez l'option
+	<b>Temps en colonne</b> et définissez les paramètres.
+	</p>
+	<h3 class="text-body-emphasis">2.4 Lecture des puces</h3>
+	<p>
+	Dans l'onglet <b>SPORTident</b>, branchez la base maître et activez sa
+	lecture. Si la base maître n'apparaît pas, cliquez sur <b>Recherche
+	automatique</b>. Choisissez ensuite l'option <i>Lecture des
+	puces/radios</i> et cliquez sur <b>Verrouiller</b> pour éviter de changer de
+	mode et ainsi de perdre des données… Il est possible de brancher plusieurs bases
+	maîtres sur un même PC.<br>
+	Différentes cases à cocher :
+	<ul class="list-bullets">
+		<li class="mb-2"><b>Lecture interactive</b> : Lorsque la puce n'est pas
+			reconnue, un encart s'affiche permettant d'associer directement la
+			puce au coureur (si un ordinateur est réservé aux cas particuliers,
+			souvent dans les grosses organisations, il est recommandé de
+			décocher la case). MeOS détecte automatiquement le circuit du
+			coureur.
+		</li>
+		<li class="mb-2"><b>Utiliser la base de donnée coureurs</b> permet de
+			rechercher une puce inconnue dans l'archive dans le cadre de la
+			lecture interactive, ce qui présente souvent un gain de temps.
+		</li>
+		<li class="mb-2"><b>Imprimer les temps intermédiaires automatiquement</b>
+			pour avoir les temps intermédiares sur le ticket.
+		</li>
+	</ul>
+	</p>
+	<h3 class="text-body-emphasis">2.5 Cas particuliers</h3>
+	<p>
+	<ul class="list-bullets">
+		<li class="mb-2"><b>Coureur PM</b>: Si un coureur est OK, un cadre vert
+		s'affiche. S'il est PM, un cadre rouge s'affiche, et les postes
+		manquants sont inscrits. Il est possible de voir ses poinçons dans
+		l'onglet <i>Coureurs</i>. La liste de droite représente son circuit,
+		celle de gauche sa puce. Pour ajouter manuellement un poste
+		manquant, cliquez sur le poste en question dans la liste de droite
+		puis sur <b>Ajouter le poinçon</b>. Il apparaît dans la liste de gauche.
+		Vous pouvez indiquer l'heure de poinçonnage dans le champ sous la liste,
+		puis l'enregistrer en cliquant sur <b>Enregistrer</b>. Le statut du
+		coureur est modifié en conséquence. Vous pouvez réimprimer le ticket du
+		coureur en cliquant sur <b>Temps intermédiaires</b>.<br>
+		NOTE : Le nombre de modifications pour chaque coureur est inscrit dans
+		l'export CSV de la course dans le champ Evaluation.
+		</li>
+		<li class="mb-2"><b>Pas de puce</b>: Si un coureur n'est pas reconnu à la
+		lecture des puces, soit il n'est pas inscrit, soit il n'est pas
+		enregistré avec la bonne puce. Utiliser le cadre affiché dans l'onglet
+		<b>SPORTident</b> et la liste pour retrouver le coureur. S'il n'est pas
+		inscrit, en appliquant cette procédure, il le sera (en choisissant son
+		identité et sa catégorie).
+		</li>
+		<li class="mb-2"><b>Abandon ou pas d'heure d'arrivée</b>: Si un coureur
+		abandonne, modifiez son statut dans l'onglet <b>Coureurs</b>. Si ce
+		coureur a pointé l'arrivée et a vidé, il ne peut avoir le statut
+		Abandon, mais il sera PM. Si au contraire un coureur n'a pas d'heure
+		d'arrivée, vous pouvez l'ajouter manuellement dans le champ
+		<b>Arrivée</b> (en accord avec l'arbitre).
+		</li>
+		<li class="mb-2"><b>Absence</b>: Si un coureur est absent, lui mettre le
+		statut Non partant
+		</li>
+		<li class="mb-2"><b>Coureurs non classés</b>: Si certaines catégories
+		ont des coureurs qui ne doivent pas être classés (type initiation),
+		leur mettre le statut NC. Quand ils vident, leur temps n'est pas
+		affiché, mais seulement une indication OK ou PM.
+	</ul>
+	</p>
+	<h3 class="text-body-emphasis">2.5 Affichage des résultats</h3>
+	<p>
+	Plusieurs listes préinstallées permettent d'afficher les résultats. La plus
+	pertinente est <b>Résultats par catégories</b>. Sélectionnez les catégories
+	à afficher dans <b>Sélection des catégories</b>. Vous pouvez l'imprimer ou
+	l'exporter, mais vous avez la possibilité d'automatiser ces tâches
+	régulièrement en cliquant sur <b>Automatiser</b>. L'option <b>Imprimer
+		uniquement les pages modifiées </b> permet de faire des économies de
+	papier.<br>
+	NOTE : Veillez à choisir les paramètres d'affichage à la base de l'onglet
+	Listes, dans le cadre <i>Configuration</i>.<br>
+	Vous pouvez également afficher les résultats sur un écran très facilement.
+	Pour cela, vous pouvez relier une TV à un ordinateur en tant que 2ème écran
+	et y glisser la liste concernée en cliquant sur <b>Nouvelle fenêtre</b> puis
+	<b>Affichage</b>. Vous pouvez alors faire défiler la liste, ou l'afficher
+	page par page. La liste est mise à jour automatiquement dès qu'il y a des
+	modifications.<br>
+	Il est possible de créer ou d'importer des listes de résultats
+	personnalisées afin d'optimiser leur affichage. Vous en trouverez un certain
+	nombre avec cette documentation sur le site de HVO. Pour les importer, allez
+	dans l'onglet <b>Listes</b>, puis en bas dans <b>Editer la liste</b>.
+	Cliquez ensuite sur <b>Importer depuis un fichier</b> et sélectionnez la
+	liste en XML. Cliquez ensuite sur Enregistrer dans la compétition, puis sur
+	Fermer. La liste est affichée dans l'onglet <b>Listes</b>, dans la rubrique
+	<i>Listes personnalisées</i>. Elle fonctionne exactement comme une liste
+	préinstallée.<br>
+	La liste "Résultats intermédiaires" est plus lisible que celle par défaut,
+	il est conseillé de l'importer.
+	</p>
+	<h2 class="text-body-emphasis">3 Enregistrement de la compétition</h2>
+	<p>
+	MeOS fonctionne de façon assez stable, mais vous pouvez effectuer une
+	sauvegarde automatique de la course depuis l'onglet <i>Services</i> en cliquant sur
+	<b>Sauvegarde périodique</b>.
+	</p>
+	<h2 class="text-body-emphasis">4 Export des résultats au CN</h2>
+	<p>Le fichier CSV à transmettre à l'arbitre se crée depuis l'onglet
+	<i>Compétition</i> en cliquant sur <b>Résultats / temps interm.</b> sous
+	<i>Export des données</i>. Choisissez l'export CSV en français, toutes les
+	catégories, puis exportez à l'emplacement de votre choix.
+	</p>
+  </main>
+  <footer class="pt-5 my-5 text-body-secondary border-top">
+	  <a href="http://cocs73.com/">Cocs 73</a> &copy; 2024
+  </footer>
+  </div>
+    <!-- Bootstrap JavaScript -->
+    <script src="./js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

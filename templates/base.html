@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr" data-bs-theme="auto">
+{% load static %}
+<head><script src={% static 'results/js/color-modes.js' %}></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="generator" content="">
+    <title>CO Résultats en direct</title>
+	<link rel="icon" href={% static 'results/img/favicon.ico' %} />
+	<link rel="stylesheet" href={% static '/results/css/bootstrap.min.css' %}>
+</head>
+   <style>
+    body{
+        padding-top:20px;
+        background:#E6E6FA;
+    }
+   {% block style %}
+   {% endblock %}
+   </style>
+<body>
+
+<!-- Navbar -->
+  <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand"
+		 href="{% url 'results:home' %}">Live Results</a> -->
+      <button class="navbar-toggler"
+			  type="button"
+			  data-bs-toggle="collapse"
+			  data-bs-target="#navbarNavDropdown"
+			  aria-controls="navbarNavDropdown"
+			  aria-expanded="false"
+			  aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+        <div class="collapse navbar-collapse" id="navbarNavDropdown">
+        <ul class="navbar-nav me-auto mb-2 mb-md-0">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle"
+			   href="#"
+			   data-bs-toggle="dropdown" aria-expanded="false">
+				Ressources GEC</a>
+            <ul class="dropdown-menu">
+			  <li><a class="dropdown-item"
+					 href={% static '/results/html/etiquettes.htm' %}>
+					       Etiquettes pour boitiers</a></li>
+			  <li><a class="dropdown-item"
+					 href={% static '/results/html/drivers.htm' %}>
+					       Drivers</a></li>
+			  <li><a class="dropdown-item"
+					 href="{% url 'results:tuto' %}">
+					       Tutoriels MeOS</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+<!-- Navbar -->
+<div class="col-lg-10 mx-auto p-2 py-md-5">
+   {% block content %}
+   {% endblock%}
+</div>
+<div style="clear:both;padding-top:1em;color:grey;padding-left:2em">
+Results provided by <a href="http://www.melin.nu/meos" target="_blank">
+	MeOS Online Results</a>.
+</div>
+    <!-- Bootstrap JavaScript -->
+	<script src={% static '/results/js/bootstrap.bundle.min.js' %}></script>
+</body>
+</html>
