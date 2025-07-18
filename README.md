@@ -1,2 +1,2 @@
 # MeOSDjango
-Django development for Orienteering results with MeOS
+Django development for MeOS Orienteering results display.
