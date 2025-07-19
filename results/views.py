@@ -148,6 +148,13 @@ def test2(request):
 
 def test3(request):
     return render(request, "test_template3.html", None)
+
+def etiquettes(request):
+    return render(request, "etiquettes.html", None)
+
+def drivers(request):
+    return render(request, "drivers.html", None)
+
 # Functions based views ENDS ***************
 
 #def index(request):
