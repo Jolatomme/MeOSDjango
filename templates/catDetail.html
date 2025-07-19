@@ -29,12 +29,12 @@
     </tr>
 </thead>
 <tbody>
-    {% for r,t,d in results %}
+    {% for r,t,d,c in results %}
     <tr>
         <td>{{ forloop.counter }}</td>
 		<td><a class="link-light"
 				href="{% url 'results:run' comp_id=competition.cid cls_id=selectedCat.id run_id=r.id%}">{{ r.name }}&raquo;</a></td>
-        <td>{{ r.org }}</td>
+        <td>{{ c }}</td>
         <td>{{ t }}</td>
         <td>{{ d }}</td>
     </tr>
