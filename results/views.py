@@ -10,7 +10,7 @@ import markdown
 # Models imports
 from .models          import (Mopcompetition, Mopclass, Mopteammember,
                               Mopcompetitor, Mopradio, Mopclasscontrol,
-                              MeosTutorial)
+                              MeosTutorial, Moporganization)
 
 
 # Helper functions ************************
@@ -72,7 +72,8 @@ def MarkdownView(request, article_id):
         context=context)
 
 def DisplayCategory(request, comp_id, cls_id):
-    """ Display category details
+    """
+    Display category details
     """
     num_legs = Mopteammember.objects.filter(cid=comp_id).\
             aggregate(Max('leg'))['leg__max']
@@ -83,29 +84,31 @@ def DisplayCategory(request, comp_id, cls_id):
         TimeDiff = []
     else:
         # NO Relais
-        results = Mopcompetitor.objects.filter(cls=cls_id, cid=comp_id,
-                                            stat__gt=0).order_by('stat',
-                                                                 'rt',
-                                                                 'id')
+        results = Mopcompetitor.objects.filter(cls=cls_id, cid=comp_id, stat__gt=0)\
+        		.order_by('stat', 'rt', 'id')
         runTime = [rt/10 for rt in results.values_list("rt", flat=True)]
         tDiff = [rt - runTime[0] for rt in runTime]
         runStatus = [runnerStatus[stat] for stat in
                      results.values_list("stat", flat=True)]
         Time = formatTimeList(runTime, runStatus)
         TimeDiff = formatTimeList(tDiff, runStatus)
+        Club = [Moporganization.objects.get(id=org, cid=comp_id).name for org in results.values_list("org", flat=True)]
     categories = Mopclass.objects.filter(cid=comp_id).order_by('name')
     selectedCat = Mopclass.objects.filter(cid=comp_id).get(id=cls_id)
     competition = Mopcompetition.objects.get(cid=comp_id)
     context = {"selectedCat": selectedCat,
                "categories" : categories,
                "competition": competition,
-               "results": zip(results, Time, TimeDiff)}
+               "results": zip(results, Time, TimeDiff, Club)}
     return render(request, "catDetail.html", context)
 
 def DisplayRunDetails(request, comp_id, cls_id, run_id, leg_id=None):
-    """ Display control point and time for a runner
+    """
+    Display control point and time for a runner
     """
     runner = Mopcompetitor.objects.get(cid=comp_id, cls=cls_id, id=run_id)
+    club = Moporganization.objects.get(id=runner.org, cid=comp_id).name
+    
     if leg_id == None:
         # get control points for a runner
         ctrlPointѕList = [str(c) for c in Mopclasscontrol.objects.\
@@ -135,6 +138,7 @@ def DisplayRunDetails(request, comp_id, cls_id, run_id, leg_id=None):
              "categories": categories,
              "category": selectedCat,
              "runner_name": runner.name.replace(','," "),
+             "runner_club": club,
              "runner_status": runnerStatus[runner.stat],
              "ctrlPointѕ": zip(ctrlPointѕList, ctrlPointѕTime)
             }
