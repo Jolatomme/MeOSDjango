@@ -13,7 +13,7 @@
 </div><!-- /.row -->
 </div><!-- /.container -->
 <h2 class="text-body-emphasis">{{ runner_name }} ({{ category.name }})</h2>
-<h3 class="text-body-emphasis">Club:  {{ runner_club }}</h3>
+<h3 class="text-body-emphasis">Club: {{ runner_club }}</h3>
 <h4 class="text-body-emphasis">Status: {{ runner_status }}</h4>
 <div class="table-responsive">
 <table class="table table-striped table-dark table-hover">
@@ -33,6 +33,7 @@
     {% endfor %}
 </tbody>
 </table>
+<a class="btn btn-primary link-light" href="{% url 'results:catDet' comp_id=competition.cid cls_id=category.id %}">retour</a>
 </div>
 
 {% endblock %}
