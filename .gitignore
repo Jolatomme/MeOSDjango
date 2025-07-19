@@ -71,3 +71,5 @@ docs/_build/
 .pybuilder/
 target/
 
+# fichiers macos
+*.DS_Store
