@@ -1,7 +1,8 @@
 from django.urls import path
+
 from .views import (IndexView, ShowCategories, DisplayCategory,
                     DisplayRunDetails, TutoView, MarkdownView, test1, test2,
-                    test3)
+                    test3, etiquettes, drivers)
 
 app_name = 'results'
 urlpatterns = [
@@ -16,4 +17,6 @@ urlpatterns = [
     path('test1/', test1, name='test1'),
     path('test2/', test2, name='test2'),
     path('test3/', test3, name='test3'),
+    path('etiquettes/', etiquettes, name='etiquettes'),
+    path('drivers/', drivers, name='drivers'),
 ]
