@@ -8,9 +8,9 @@ from django.db.models     import Max
 import markdown
 
 # Models imports
-from .models          import (Mopcompetition, Mopclass, Mopteammember,
-                              Mopcompetitor, Mopradio, Mopclasscontrol,
-                              MeosTutorial, Moporganization)
+from .models import (Mopcompetition, Mopclass, Mopteammember, Mopteam, Mopcontrol,
+                    Mopcompetitor, Mopradio, Mopclasscontrol, Moporganization,
+                    MeosTutorial)
 
 
 # Helper functions ************************
@@ -25,16 +25,18 @@ runnerStatus = {0:  "UKNWN",
                 99: "NC"}
 
 def formatTime(time:int):
-    """ Format time from seconds
-    """
-    return "{0:d}:{1:02d}:{2:02d}".format(int(time/3600), int((time/60)%60),
-                                          int(time%60))
+    """ Format time from seconds """
+    return "{0:d}:{1:02d}:{2:02d}".format(int(time/3600), int((time/60)%60), int(time%60))
+
+def formatTimeWithMs(timeWithMs:int):
+    """ Format time from seconds with 1/10 precision """
+    time = timeWithMs/10
+    return "{0:d}:{1:02d}:{2:02d}.{3:d}".format(time/3600, (time/60)%60, time%60, timeWithMs%10)
 
 def formatTimeList(timeList:list, statusList:list = None):
-    """ Format time from seconds
-    """
+    """ Format time from seconds """
     return [formatTime(rt) if statusList[n] == 'OK' else statusList[n]
-                for n,rt in enumerate(timeList)]
+        for n,rt in enumerate(timeList)] #???
 
 # Helper functions ENDS *******************
 
@@ -72,27 +74,32 @@ def MarkdownView(request, article_id):
         context=context)
 
 def DisplayCategory(request, comp_id, cls_id):
-    """
-    Display category details
-    """
-    num_legs = Mopteammember.objects.filter(cid=comp_id).\
-            aggregate(Max('leg'))['leg__max']
+    """ Display category details """
+    num_legs = Mopteammember.objects.filter(cid=comp_id).aggregate(Max('leg'))['leg__max']
     if (num_legs != None and num_legs > 1):
         # Relais
-        results = []
-        Time = []
-        TimeDiff = []
+        results = Mopteam.objects.filter(cid=comp_id, cls=cls_id, stat__gt=0)\
+        	.order_by('stat', 'rt', 'id')
+        runTime = [rt/10 for rt in results.values_list("rt", flat=True)]
+        tDiff = [rt - runTime[0] for rt in runTime]
+        runStatus = [runnerStatus[stat] for stat in results.values_list("stat", flat=True)]
+        Time = formatTimeList(runTime, runStatus)
+        TimeDiff = formatTimeList(tDiff, runStatus)
+        Club = [Moporganization.objects.get(id=org, cid=comp_id).name if org != 0 else ''\
+        	for org in results.values_list("org", flat=True)]
+
     else:
         # NO Relais
         results = Mopcompetitor.objects.filter(cls=cls_id, cid=comp_id, stat__gt=0)\
         		.order_by('stat', 'rt', 'id')
         runTime = [rt/10 for rt in results.values_list("rt", flat=True)]
         tDiff = [rt - runTime[0] for rt in runTime]
-        runStatus = [runnerStatus[stat] for stat in
-                     results.values_list("stat", flat=True)]
+        runStatus = [runnerStatus[stat] for stat in results.values_list("stat", flat=True)]
         Time = formatTimeList(runTime, runStatus)
         TimeDiff = formatTimeList(tDiff, runStatus)
-        Club = [Moporganization.objects.get(id=org, cid=comp_id).name for org in results.values_list("org", flat=True)]
+        Club = [Moporganization.objects.get(id=org, cid=comp_id).name if org != 0 else ''\
+        	for org in results.values_list("org", flat=True)]
+
     categories = Mopclass.objects.filter(cid=comp_id).order_by('name')
     selectedCat = Mopclass.objects.filter(cid=comp_id).get(id=cls_id)
     competition = Mopcompetition.objects.get(cid=comp_id)
@@ -103,45 +110,77 @@ def DisplayCategory(request, comp_id, cls_id):
     return render(request, "catDetail.html", context)
 
 def DisplayRunDetails(request, comp_id, cls_id, run_id, leg_id=None):
-    """
-    Display control point and time for a runner
-    """
-    runner = Mopcompetitor.objects.get(cid=comp_id, cls=cls_id, id=run_id)
-    club = Moporganization.objects.get(id=runner.org, cid=comp_id).name
-    
-    if leg_id == None:
-        # get control points for a runner
-        ctrlPointѕList = [str(c) for c in Mopclasscontrol.objects.\
-                           filter(cid=comp_id, id=cls_id).\
-                           order_by('ord').values_list("ctrl", flat=True)]
-        ctrlPointѕList.append("Finish")
-        # DEBUG Prints
-        #print("{0} {1} -> Status: {2} ".format(runner.name.replace(','," "),
-        #                              runner.org,
-        #                              runnerStatus[runner.stat]))
-        #print(ctrlPointѕList)
-    else:
-        # get control points for a runner in relay
-        pass
-    runRace = Mopradio.objects.filter(cid=comp_id, id=run_id).order_by('rt')
-    runTime = {str(key): formatTime(value/10) for key, value
-               in zip(runRace.values_list("ctrl", flat=True),
-                      runRace.values_list("rt", flat=True))}
-    runTime["Finish"]=formatTime(runner.rt/10)
-    #print(runTime)
-    ctrlPointѕTime = [runTime[key] if key in runTime else "---" for key in ctrlPointѕList]
-    #print(ctrlPointѕTime)
+    """ Display control point and time for a runner or a team """
+
     competition = Mopcompetition.objects.get(cid=comp_id)
     categories = Mopclass.objects.filter(cid=comp_id).order_by('name')
-    selectedCat = Mopclass.objects.filter(cid=comp_id).get(id=cls_id)
-    context={"competition": competition,
+    selectedCat = Mopclass.objects.filter(cid=comp_id).get(id=cls_id) # categories.get(id=cls_id) ?
+    num_legs = Mopteammember.objects.filter(cid=comp_id).aggregate(Max('leg'))['leg__max']
+
+    if (num_legs != None and num_legs > 1):
+        # pb : meos se prend les pieds dans le tapis avec la liste des controles pour les relais
+        # cette version fonctionne mais ne montre pas les postes manquants quand il y a un PM
+
+        team = Mopteam.objects.get(cid=comp_id, cls=cls_id, id=run_id)
+        # get runner list for this team
+        teamMember = Mopteammember.objects.filter(cid=comp_id, id=team.id).order_by('leg')
+        members = [ Mopcompetitor.objects.get(cid=comp_id, id=tm.rid) for tm in teamMember ]
+
+        # control points for each runner in a global list
+        ctrlPointѕList = []
+        ctrlPointѕTime = []
+        runNum = 1
+        previousLegTime = 0
+        for tm, run in zip(teamMember, members):
+            # probleme avec les boucles ou les variations !
+            runRaceLeg = Mopradio.objects.filter(cid=comp_id, id=tm.rid).order_by('rt')
+            ctrlPointѕLeg = [ str(rrl.ctrl) for rrl in runRaceLeg ]
+            ctrlPointѕTimeLeg = [ formatTime((rrl.rt+previousLegTime)/10) for rrl in runRaceLeg ]
+            ctrlPointѕLeg.append("Finish leg "+str(runNum))
+            ctrlPointѕTimeLeg.append(formatTime((run.rt+previousLegTime)/10)) # unique utilisation de members
+            previousLegTime += run.rt
+
+            ctrlPointѕList.extend(ctrlPointѕLeg) # ce n'est pas le nom du contrôle mais son id
+            ctrlPointѕTime.extend(ctrlPointѕTimeLeg) # defaut : ce n'est pas le temps cumulé mais juste le temps dans le leg
+
+            runNum += 1
+
+        ctrlPointsName = [(Mopcontrol.objects.get(cid=comp_id, id=int(ctrl_id)).name).split('-')[0]\
+             if (ctrl_id.isnumeric()) else ctrl_id for ctrl_id in ctrlPointѕList ]
+
+        context={"competition": competition,
+             "categories": categories,
+             "category": selectedCat,
+             "runner_name": team.name,
+             "runner_club": Moporganization.objects.get(id=team.org, cid=comp_id).name if team.org != 0 else '',
+             "runner_status": runnerStatus[team.stat],
+             "ctrlPointѕ": zip(ctrlPointsName, ctrlPointѕTime)
+        }
+
+    else: # il reste à corriger les mêmes défauts : numéros ou noms des controles, ordre si boucles
+        runner = Mopcompetitor.objects.get(cid=comp_id, cls=cls_id, id=run_id)
+        club = Moporganization.objects.get(id=runner.org, cid=comp_id).name
+        # get control points for a runner
+        ctrlPointѕList = [str(c) for c in Mopclasscontrol.objects.\
+                        filter(cid=comp_id, id=cls_id).\
+                        order_by('ord').values_list("ctrl", flat=True)]
+        ctrlPointѕList.append("Finish")
+
+        runRace = Mopradio.objects.filter(cid=comp_id, id=run_id).order_by('rt')
+        runTime = {str(key): formatTime(value/10) for key, value
+               in zip(runRace.values_list("ctrl", flat=True),
+                      runRace.values_list("rt", flat=True))}
+        runTime["Finish"]=formatTime(runner.rt/10)
+        ctrlPointѕTime = [runTime[key] if key in runTime else "---" for key in ctrlPointѕList]
+        context={"competition": competition,
              "categories": categories,
              "category": selectedCat,
              "runner_name": runner.name.replace(','," "),
              "runner_club": club,
              "runner_status": runnerStatus[runner.stat],
              "ctrlPointѕ": zip(ctrlPointѕList, ctrlPointѕTime)
-            }
+        }
+
     return render(request, "circuitDetail.html", context)
 
 def test1(request):
@@ -161,69 +200,3 @@ def drivers(request):
 
 # Functions based views ENDS ***************
 
-#def index(request):
-#    if 'competition' in request.GET:
-#        request.session['competition'] = int(request.GET['competition'])
-#
-#    cmp_id = request.session.get('competition', 0)
-#
-#    if 'select' in request.GET or cmp_id == 0:
-#        competitions = Mopcompetition.objects.all().order_by('-date')
-#        return render(request, 'results/select_competition.html', {'competitions': competitions})
-#
-#    competition = get_object_or_404(Mopcompetition, id=cmp_id)
-#    classes = Mopclass.objects.filter(cid=cmp_id).order_by('ord')
-#
-#    context = {
-#        'competition': competition,
-#        'classes': classes,
-#    }
-#
-#    if 'cls' in request.GET:
-#        cls_id = int(request.GET['cls'])
-#        cls = get_object_or_404(Class, id=cls_id)
-#        context['class'] = cls
-#
-#        num_legs = TeamMember.objects.filter(cid=cmp_id, id__cls=cls_id).aggregate(Max('leg'))['leg__max']
-#        context['num_legs'] = num_legs
-#
-#        if num_legs > 1:
-#            leg = int(request.GET.get('leg', 1))
-#            ord = int(request.GET.get('ord', 1))
-#            radio = request.GET.get('radio')
-#
-#            if radio:
-#                if radio == 'finish':
-#                    results = Competitor.objects.filter(
-#                        tm__cid=cmp_id, tm__id__cls=cls_id, tm__leg=leg, tm__ord=ord, stat__gt=0
-#                    ).order_by('stat', 'rt', 'id')
-#                    context['rname'] = 'Finish'
-#                else:
-#                    rid = int(radio)
-#                    control = get_object_or_404(Control, id=rid)
-#                    context['rname'] = control.name
-#                    results = Radio.objects.filter(
-#                        ctrl=rid, id__tm__cid=cmp_id, id__tm__id__cls=cls_id, id__tm__leg=leg, id__tm__ord=ord, id__stat__lte=1
-#                    ).order_by('rt')
-#
-#                context['results'] = results
-#
-#        else:
-#            radio = request.GET.get('radio')
-#            if radio:
-#                if radio == 'finish':
-#                    results = Competitor.objects.filter(
-#                        cls=cls_id, cid=cmp_id, stat__gt=0
-#                    ).order_by('stat', 'rt', 'id')
-#                    context['rname'] = 'Finish'
-#                else:
-#                    rid = int(radio)
-#                    control = get_object_or_404(Control, id=rid)
-#                    context['rname'] = control.name
-#                    results = Radio.objects.filter(
-#                        ctrl=rid, id__cls=cls_id, id__cid=cmp_id, id__stat__lte=1
-#                    ).order_by('rt')
-#
-#                context['results'] = results
-#
-#    return render(request, 'results/index.html', context)
