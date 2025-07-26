@@ -3,40 +3,23 @@ from django.shortcuts     import render, get_object_or_404
 from django.http          import HttpResponse
 from django.views.generic import ListView
 from django.db.models     import Max
+from django.views.decorators.csrf import csrf_exempt
+# Settings
+from MeOSDjango.dev_settings import MEOS_PASSWORD
 
 # Other imports
 import markdown
+import xml.etree.ElementTree as ET
 
 # Models imports
 from .models          import (Mopcompetition, Mopclass, Mopteammember,
                               Mopcompetitor, Mopradio, Mopclasscontrol,
                               MeosTutorial)
 
+#  Utility functions imports
+from results.utils.database_utils import *
+from results.utils.view_utils import *
 
-# Helper functions ************************
-runnerStatus = {0:  "UKNWN",
-                1:  "OK",
-                3:  "MP",
-                4:  "DNF",
-                5:  "DSQ",
-                6:  "OT",
-                20: "DNS",
-                21: "CANCEL",
-                99: "NC"}
-
-def formatTime(time:int):
-    """ Format time from seconds
-    """
-    return "{0:d}:{1:02d}:{2:02d}".format(int(time/3600), int((time/60)%60),
-                                          int(time%60))
-
-def formatTimeList(timeList:list, statusList:list = None):
-    """ Format time from seconds
-    """
-    return [formatTime(rt) if statusList[n] == 'OK' else statusList[n]
-                for n,rt in enumerate(timeList)]
-
-# Helper functions ENDS *******************
 
 # Class based views ***********************
 class IndexView(ListView):
@@ -112,11 +95,6 @@ def DisplayRunDetails(request, comp_id, cls_id, run_id, leg_id=None):
                            filter(cid=comp_id, id=cls_id).\
                            order_by('ord').values_list("ctrl", flat=True)]
         ctrlPointѕList.append("Finish")
-        # DEBUG Prints
-        #print("{0} {1} -> Status: {2} ".format(runner.name.replace(','," "),
-        #                              runner.org,
-        #                              runnerStatus[runner.stat]))
-        #print(ctrlPointѕList)
     else:
         # get control points for a runner in relay
         pass
@@ -125,9 +103,8 @@ def DisplayRunDetails(request, comp_id, cls_id, run_id, leg_id=None):
                in zip(runRace.values_list("ctrl", flat=True),
                       runRace.values_list("rt", flat=True))}
     runTime["Finish"]=formatTime(runner.rt/10)
-    #print(runTime)
-    ctrlPointѕTime = [runTime[key] if key in runTime else "---" for key in ctrlPointѕList]
-    #print(ctrlPointѕTime)
+    ctrlPointѕTime = [runTime[key] if key in runTime else "---"
+                       for key in ctrlPointѕList]
     competition = Mopcompetition.objects.get(cid=comp_id)
     categories = Mopclass.objects.filter(cid=comp_id).order_by('name')
     selectedCat = Mopclass.objects.filter(cid=comp_id).get(id=cls_id)
@@ -148,71 +125,47 @@ def test2(request):
 
 def test3(request):
     return render(request, "test_template3.html", None)
-# Functions based views ENDS ***************
 
-#def index(request):
-#    if 'competition' in request.GET:
-#        request.session['competition'] = int(request.GET['competition'])
-#
-#    cmp_id = request.session.get('competition', 0)
-#
-#    if 'select' in request.GET or cmp_id == 0:
-#        competitions = Mopcompetition.objects.all().order_by('-date')
-#        return render(request, 'results/select_competition.html', {'competitions': competitions})
-#
-#    competition = get_object_or_404(Mopcompetition, id=cmp_id)
-#    classes = Mopclass.objects.filter(cid=cmp_id).order_by('ord')
-#
-#    context = {
-#        'competition': competition,
-#        'classes': classes,
-#    }
-#
-#    if 'cls' in request.GET:
-#        cls_id = int(request.GET['cls'])
-#        cls = get_object_or_404(Class, id=cls_id)
-#        context['class'] = cls
-#
-#        num_legs = TeamMember.objects.filter(cid=cmp_id, id__cls=cls_id).aggregate(Max('leg'))['leg__max']
-#        context['num_legs'] = num_legs
-#
-#        if num_legs > 1:
-#            leg = int(request.GET.get('leg', 1))
-#            ord = int(request.GET.get('ord', 1))
-#            radio = request.GET.get('radio')
-#
-#            if radio:
-#                if radio == 'finish':
-#                    results = Competitor.objects.filter(
-#                        tm__cid=cmp_id, tm__id__cls=cls_id, tm__leg=leg, tm__ord=ord, stat__gt=0
-#                    ).order_by('stat', 'rt', 'id')
-#                    context['rname'] = 'Finish'
-#                else:
-#                    rid = int(radio)
-#                    control = get_object_or_404(Control, id=rid)
-#                    context['rname'] = control.name
-#                    results = Radio.objects.filter(
-#                        ctrl=rid, id__tm__cid=cmp_id, id__tm__id__cls=cls_id, id__tm__leg=leg, id__tm__ord=ord, id__stat__lte=1
-#                    ).order_by('rt')
-#
-#                context['results'] = results
-#
-#        else:
-#            radio = request.GET.get('radio')
-#            if radio:
-#                if radio == 'finish':
-#                    results = Competitor.objects.filter(
-#                        cls=cls_id, cid=cmp_id, stat__gt=0
-#                    ).order_by('stat', 'rt', 'id')
-#                    context['rname'] = 'Finish'
-#                else:
-#                    rid = int(radio)
-#                    control = get_object_or_404(Control, id=rid)
-#                    context['rname'] = control.name
-#                    results = Radio.objects.filter(
-#                        ctrl=rid, id__cls=cls_id, id__cid=cmp_id, id__stat__lte=1
-#                    ).order_by('rt')
-#
-#                context['results'] = results
-#
-#    return render(request, 'results/index.html', context)
+# Update Race database with MeOS Online Protocol
+@csrf_exempt
+def update_database(request):
+    password = request.headers.get('HTTP_PWD')
+    cmp_id = request.headers.get('HTTP_COMPETITION')
+
+    if not cmp_id or int(cmp_id) <= 0:
+        return HttpResponse('BADCMP', status=400)
+
+    if password != MEOS_PASSWORD:
+        return HttpResponse('BADPWD', status=401)
+
+    data = request.body
+    if data.startswith(b'PK'):
+        return HttpResponse('NOZIP', status=400)
+
+    try:
+        update = ET.fromstring(data)
+    except ET.ParseError:
+        return HttpResponse('Invalid XML', status=400)
+
+    if update.tag == "MOPComplete":
+        clear_competition(cmp_id)
+    elif update.tag != "MOPDiff":
+        return HttpResponse('Unknown data', status=400)
+
+    for element in update:
+        if element.tag == "cmp":
+            process_competitor(cmp_id, element)
+        elif element.tag == "tm":
+            process_team(cmp_id, element)
+        elif element.tag == "cls":
+            process_class(cmp_id, element)
+        elif element.tag == "org":
+            process_organization(cmp_id, element)
+        elif element.tag == "ctrl":
+            process_control(cmp_id, element)
+        elif element.tag == "competition":
+            process_competition(cmp_id, element)
+
+    return HttpResponse('OK')
+
+# Functions based views ENDS ***************
