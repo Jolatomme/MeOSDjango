@@ -82,8 +82,9 @@ def DisplayCategory(request, comp_id, cls_id):
     context = {"selectedCat": selectedCat,
                "categories" : categories,
                "competition": competition,
-               "results": zip(results, Time, TimeDiff)}
-    return render(request, "catDetail.html", context)
+               "results": zip(results, Time, TimeDiff, runStatus)}
+    return render(request, "catDetail2.html", context)
+    #return render(request, "catDetail.html", context)
 
 def DisplayRunDetails(request, comp_id, cls_id, run_id, leg_id=None):
     """ Display control point and time for a runner
