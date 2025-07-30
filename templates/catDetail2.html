@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 
+{% block titre %}
+<title>{{ competition.name }} - liste des catégories</title>
+{% endblock %}
+
 {% block style %}
 .card {
     box-shadow: 0 20px 27px 0 rgb(0 0 0 / 5%);
@@ -55,15 +59,8 @@ a {
 
 {% block content %}
 <h1 class="text-body-emphasis">{{ competition.name }}</h1>
-<div class="container mb-3">
-    <div class="row gy-3">
-        {% for cat in categories %}
-        <div class="col">
-            <a class="btn btn-primary link-light" href="{% url 'results:catDet' comp_id=competition.cid cls_id=cat.id %}">{{ cat.name }} &raquo;</a>
-        </div>
-        {% endfor %}
-    </div>
-</div>
+
+{% include "categoryListComponent.html" %}
 
 <section class="section">
     <div class="row">

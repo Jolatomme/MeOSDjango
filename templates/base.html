@@ -7,7 +7,9 @@
     <meta name="description" content="">
     <meta name="author" content="">
     <meta name="generator" content="">
+    {% block titre %}
     <title>CO Résultats en direct</title>
+    {% endblock %}
 	<link rel="icon" href={% static 'results/img/favicon.ico' %} />
 	<link rel="stylesheet" href={% static '/results/css/bootstrap.min.css' %}>
 </head>
@@ -45,10 +47,10 @@
 				Ressources GEC</a>
             <ul class="dropdown-menu">
 			  <li><a class="dropdown-item"
-					 href={% static '/results/html/etiquettes.htm' %}>
+					 href={% url 'results:etiquettes' %}>
 					       Etiquettes pour boitiers</a></li>
 			  <li><a class="dropdown-item"
-					 href={% static '/results/html/drivers.htm' %}>
+					 href={% url 'results:drivers' %}>
 					       Drivers</a></li>
 			  <li><a class="dropdown-item"
 					 href="{% url 'results:tuto' %}">
