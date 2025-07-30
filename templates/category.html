@@ -1,16 +1,13 @@
 {% extends "base.html" %}
 
+{% block titre %}
+<title>{{ competition.name }} - liste des catégories</title>
+{% endblock %}
+
 {% block content %}
+
 <h1 class="text-body-emphasis">{{ competition.name }}</h1>
-<div class="container mb-3">
-<div class="row gy-3">
-	{% for cat in categories %}
-		<div class="col">
-			<a class="btn btn-primary link-light"
-			   href="{% url 'results:catDet' comp_id=competition.cid cls_id=cat.id %}">{{ cat.name }}&raquo;</a>
-		</div><!-- /.col-sm -->
-	{% endfor %}
-</div><!-- /.row -->
-</div><!-- /.container -->
+
+{% include "categoryListComponent.html" %}
 
 {% endblock %}
