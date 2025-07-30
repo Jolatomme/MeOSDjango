@@ -1,3 +1,6 @@
+from django.http          import Http404
+from results.models import (Mopcompetition, Mopclass, Mopclasscontrol)
+
 runnerStatus = {0:  "UKNWN",
                 1:  "OK",
                 3:  "MP",
