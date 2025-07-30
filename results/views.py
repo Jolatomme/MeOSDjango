@@ -61,7 +61,7 @@ def DisplayCategory(request, comp_id, cls_id):
     competition = getCompetition(comp_id)
     categories = categoriesList(comp_id)
     try:
-        categorie = Mopclass.objects.get(cid=comp_id, id=cls_id)
+        category = Mopclass.objects.get(cid=comp_id, id=cls_id)
     except:
         raise Http404("Cette catégorie n'existe pas")
 
@@ -145,7 +145,7 @@ def DisplayCategory(request, comp_id, cls_id):
 
     context = {"competition" : competition,
                "categories": categories,
-               "selectedCat": categorie,
+               "selectedCat": category,
                "leg":legInGet,
                "results": itertools.zip_longest(qResults, listeTime, listeTimeDiff, listeClub, listeComplement),
                "type":typeFormat}
@@ -156,7 +156,7 @@ def DisplayRunDetails(request, comp_id, cls_id, run_id):
     competition = getCompetition(comp_id)
     categories = categoriesList(comp_id)
     try:
-        categorie = Mopclass.objects.get(cid=comp_id, id=cls_id)
+        category = Mopclass.objects.get(cid=comp_id, id=cls_id)
     except:
         raise Http404("Cette catégorie n'existe pas")
     try:
@@ -198,7 +198,7 @@ def DisplayRunDetails(request, comp_id, cls_id, run_id):
 
     context={"competition": competition,
              "categories": categories,
-             "category": categorie,
+             "category": category,
              "runner_name": runner.name.replace(','," "),
              "runner_club": Club,
              "runner_status": runnerStatus[runner.stat],
@@ -212,7 +212,7 @@ def DisplayTeamDetails(request, comp_id, cls_id, team_id):
     competition = getCompetition(comp_id)
     categories = categoriesList(comp_id)
     try:
-        categorie = Mopclass.objects.get(cid=comp_id, id=cls_id)
+        category = Mopclass.objects.get(cid=comp_id, id=cls_id)
     except:
         raise Http404("Cette catégorie n'existe pas")
     try:
@@ -252,7 +252,7 @@ def DisplayTeamDetails(request, comp_id, cls_id, team_id):
 
     context={"competition": competition,
          "categories": categories,
-         "category": categorie,
+         "category": category,
          "runner_name": team.name,
          "runner_club": Club,
          "runner_status": runnerStatus[team.stat],
@@ -330,11 +330,11 @@ def update_database(request):
 
 
 def DisplayCategoryComplet (request, comp_id, cls_id):
-    """ Display category details with full details """
+    """ Will Display category details with full details soon but not now """
     competition = getCompetition(comp_id)
     categories = categoriesList(comp_id)
     try:
-        categorie = Mopclass.objects.get(cid=comp_id, id=cls_id)
+        category = Mopclass.objects.get(cid=comp_id, id=cls_id)
     except:
         raise Http404("Cette catégorie n'existe pas")
 
@@ -439,14 +439,13 @@ def DisplayCategoryComplet (request, comp_id, cls_id):
         listeComplement = []
         listCtrlPointsTime = []
         listeResultats = []
-        liste2DResultats =[]
         sep = " / "
-        leg = 0
         for team in qResults:
-            liste2DResultats.append([])
+            leg = 0
+            liste2DResultats =[]
             queryTeammember=Mopteammember.objects.filter(cid=comp_id, id=team.id).order_by('leg')
-#            listeComplement.append(sep.join(queryTeammember.values_list("name", flat=True)))
-# erreur = name est dans mopcompetitor
+            listeComplement.append(sep.join(Mopcompetitor.objects.filter(cid=comp_id, id__in=queryTeammember.values_list('rid', flat=True)).values_list('name', flat=True)))
+
             # pour chaque membre de l'équipe, liste des temps intermédiaires
             for mb in queryTeammember:
                 qRadio = Mopradio.objects.filter(cid=comp_id, id=mb.id)\
@@ -460,10 +459,19 @@ def DisplayCategoryComplet (request, comp_id, cls_id):
                         listCtrlPointsTime[leg][i] = formatTime(rr.rt/10)
                     except:
                         break
-                listCtrlPointsTime[leg].append(formatTime(mb.rt/10))
-# erreur = rt est dans mopcompetitor
-                listeResultats[-1].extend(listCtrlPointsTime[leg]) # liste de listes de résultats
-            leg += 1
+                runner = Mopcompetitor.objects.get(cid=comp_id, id=mb.rid)
+                timeRunner = formatTime(runner.rt/10)
+                # si le coureur n'est pas OK on précise son statut
+                if runnerStatus[runner.stat] != 'OK':
+                    timeRunner += " ("+runnerStatus[runner.stat]+")"
+                # pour le dernier coureur, si l'équipe n'est pas OK on précise son statut
+                if leg == (num_legs-1) and runnerStatus[team.stat] != 'OK':
+                    timeRunner += " team "+runnerStatus[team.stat]
+                listCtrlPointsTime[leg].append(timeRunner)
+
+                liste2DResultats.extend(listCtrlPointsTime[leg]) # liste de listes de résultats
+                leg += 1
+            listeResultats.append(liste2DResultats)
 
     else: # épreuve individuelle
         typeFormat = 'run'
@@ -501,12 +509,13 @@ def DisplayCategoryComplet (request, comp_id, cls_id):
                     listCtrlPointsTime[i] = formatTime(rr.rt/10)
                 except:
                     break
-            listCtrlPointsTime.append(formatTime(runner.rt/10))
+            listCtrlPointsTime.append(formatTime(runner.rt/10)\
+              if runnerStatus[runner.stat] == 'OK' else runnerStatus[runner.stat])
             listeResultats.append(listCtrlPointsTime) # liste de listes de résultats
 
     context = {"competition" : competition,
                "categories": categories,
-               "selectedCat": categorie,
+               "selectedCat": category,
                "leg":legInGet,
                "ctrlName": listCtrlPointsName,
                "results": itertools.zip_longest(qResults, listeComplement, listeResultats),
