@@ -1,19 +1,17 @@
 
-<div class="container mb-3">
-<div class="row gy-3">
+<div class="d-flex justify-content-center align-content-stretch flex-grow-1 flex-wrap">
 	{% for catid, catname, listlegs in categories %}
-		<div class="col">
+		<div class="p-1">
 			<a class="btn btn-primary link-light"
 			   href="{% url 'results:catDet' comp_id=competition.cid cls_id=catid %}">{{ catname }}</a>
 		</div><!-- /.col-sm -->
 		{% if listlegs|length > 1 %}
 			{% for legNum in listlegs %}
-		<div class="col">
+		<div class="p-1">
 			<a class="btn btn-primary link-light"
 			   href="{% url 'results:catDet' comp_id=competition.cid cls_id=catid %}?leg={{ legNum }}">{{ catname }} - {{ legNum }}</a>
 		</div><!-- /.col-sm -->
 			{% endfor %}
 		{% endif %}
 	{% endfor %}
-</div><!-- /.row -->
 </div><!-- /.container -->
