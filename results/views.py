@@ -3,6 +3,7 @@ from django.shortcuts     import render, get_object_or_404
 from django.http          import HttpResponse
 from django.views.generic import ListView
 from django.db.models     import Max
+from django.http          import Http404
 from django.views.decorators.csrf import csrf_exempt
 # Settings
 from MeOSDjango.dev_settings import MEOS_PASSWORD
@@ -10,10 +11,11 @@ from MeOSDjango.dev_settings import MEOS_PASSWORD
 # Other imports
 import markdown
 import xml.etree.ElementTree as ET
+import itertools
 
 # Models imports
-from .models          import (Mopcompetition, Mopclass, Mopteammember,
-                              Mopcompetitor, Mopradio, Mopclasscontrol,
+from .models          import (Mopcompetition, Mopclass, Mopteammember, Mopteam, Mopcontrol,
+                              Mopcompetitor, Mopradio, Mopclasscontrol, Moporganization,
                               MeosTutorial)
 
 #  Utility functions imports
@@ -40,10 +42,11 @@ class TutoView(ListView):
 
 # Functions based views *******************
 def ShowCategories(request, comp_id):
-    categories = Mopclass.objects.filter(cid=comp_id).order_by('name')
-    competition =  Mopcompetition.objects.get(cid=comp_id)
-    context = {"categories": categories,
-               "competition" : competition}
+    """ renvoi la liste des catégories de la compétition, plus les legs pour les relais """
+    competition = getCompetition(comp_id)
+    categories = categoriesList(comp_id)
+    context = {"competition" : competition,
+               "categories": categories}
     return render(request, "category.html", context)
 
 def MarkdownView(request, article_id):
@@ -55,68 +58,219 @@ def MarkdownView(request, article_id):
         context=context)
 
 def DisplayCategory(request, comp_id, cls_id):
-    """ Display category details
-    """
-    num_legs = Mopteammember.objects.filter(cid=comp_id).\
-            aggregate(Max('leg'))['leg__max']
-    if (num_legs != None and num_legs > 1):
-        # Relais
-        results = []
-        Time = []
-        TimeDiff = []
-    else:
-        # NO Relais
-        results = Mopcompetitor.objects.filter(cls=cls_id, cid=comp_id,
-                                            stat__gt=0).order_by('stat',
-                                                                 'rt',
-                                                                 'id')
-        runTime = [rt/10 for rt in results.values_list("rt", flat=True)]
-        tDiff = [rt - runTime[0] for rt in runTime]
-        runStatus = [runnerStatus[stat] for stat in
-                     results.values_list("stat", flat=True)]
-        Time = formatTimeList(runTime, runStatus)
-        TimeDiff = formatTimeList(tDiff, runStatus)
-    categories = Mopclass.objects.filter(cid=comp_id).order_by('name')
-    selectedCat = Mopclass.objects.filter(cid=comp_id).get(id=cls_id)
-    competition = Mopcompetition.objects.get(cid=comp_id)
-    context = {"selectedCat": selectedCat,
-               "categories" : categories,
-               "competition": competition,
-               "results": zip(results, Time, TimeDiff, runStatus)}
-    return render(request, "catDetail2.html", context)
-    #return render(request, "catDetail.html", context)
+    """ Display category details """
+    competition = getCompetition(comp_id)
+    categories = categoriesList(comp_id)
+    try:
+        categorie = Mopclass.objects.get(cid=comp_id, id=cls_id)
+    except:
+        raise Http404("Cette catégorie n'existe pas")
 
-def DisplayRunDetails(request, comp_id, cls_id, run_id, leg_id=None):
-    """ Display control point and time for a runner
-    """
-    runner = Mopcompetitor.objects.get(cid=comp_id, cls=cls_id, id=run_id)
-    if leg_id == None:
-        # get control points for a runner
-        ctrlPointѕList = [str(c) for c in Mopclasscontrol.objects.\
-                           filter(cid=comp_id, id=cls_id).\
-                           order_by('ord').values_list("ctrl", flat=True)]
-        ctrlPointѕList.append("Finish")
+    # nombre de legs pour savoir si c'est un relai
+    num_legs = nombreLegs(comp_id)
+    # récupérer la valeur de 'leg' dans le GET (si il y en a)
+    testGet = request.GET.get("leg")
+    if testGet == None:
+        legInGet = 0
     else:
-        # get control points for a runner in relay
-        pass
-    runRace = Mopradio.objects.filter(cid=comp_id, id=run_id).order_by('rt')
-    runTime = {str(key): formatTime(value/10) for key, value
-               in zip(runRace.values_list("ctrl", flat=True),
-                      runRace.values_list("rt", flat=True))}
-    runTime["Finish"]=formatTime(runner.rt/10)
-    ctrlPointѕTime = [runTime[key] if key in runTime else "---"
-                       for key in ctrlPointѕList]
-    competition = Mopcompetition.objects.get(cid=comp_id)
-    categories = Mopclass.objects.filter(cid=comp_id).order_by('name')
-    selectedCat = Mopclass.objects.filter(cid=comp_id).get(id=cls_id)
+        try:
+            legInGet = int(testGet)
+            if legInGet  < 1 | legInGet > num_legs:
+                legInGet = 0
+        except:
+            legInGet = 0
+
+    # precedent ?
+    # suivant ?
+
+    if (num_legs > 1) and (legInGet != 0): # affichage d'un leg en particulier dans le relais
+        typeFormat = 'run' # information pour le template
+        # query des équipes,
+        # query des coureurs de ces équipes sur ce leg,
+        # query des résultats de ces coureurs
+        qTeam = Mopteam.objects.filter(cid=comp_id, cls=cls_id)
+        qRunnerLeg = Mopteammember.objects\
+          .filter(cid=comp_id, id__in=qTeam.values_list('id', flat=True), leg=legInGet)\
+          .values_list('rid', flat=True)
+        qResults = Mopcompetitor.objects.filter(cid=comp_id, id__in=qRunnerLeg, stat__gt=0)\
+          .order_by('stat','rt', 'id')
+        # pour les résultats spécifiques d'un leg, on affiche le nom de l'équipe
+        # en plus du nom du coureur
+        # lien : dictR [id du runner] = nom de l'équipe
+        dictR = { runner : team for runner, team\
+          in zip(qRunnerLeg, qTeam.values_list('name', flat=True))}
+        listeComplement = [ dictR[r] for r in qResults.values_list('id', flat=True)]
+
+        # liste des clubs pour chaque ligne
+        listeClub = [Moporganization.objects.get(id=org, cid=comp_id).name if org != 0 else ''\
+          for org in qResults.values_list("org", flat=True)]
+
+    elif (num_legs > 1) and (legInGet == 0) : # affichage de l'ensemble des legs du relai
+        typeFormat = 'team' # information pour le template
+        # query des résultats des équipes pour cette catégorie (dans Mopteam)
+        qResults = Mopteam.objects.filter(cid=comp_id, cls=cls_id, stat__gt=0)\
+          .order_by('stat', 'rt', 'id')
+        # pour les résultats globaux du relais, on affiche les noms des membres
+        # en plus de celui de l'équipe
+        listeComplement = []
+        sep = " / "
+        for team in qResults:
+            listeRid = Mopteammember.objects.filter(cid=comp_id, id=team.id).order_by('leg')\
+              .values_list('rid', flat=True)
+            listeComplement.append(sep.join([Mopcompetitor.objects.get(cid=comp_id, id=rid).name\
+              for rid in listeRid]))
+
+        # liste des clubs pour chaque ligne
+        listeClub = [Moporganization.objects.get(id=org, cid=comp_id).name if org != 0 else ''\
+          for org in qResults.values_list("org", flat=True)]
+
+    else: # épreuve individuelle
+        # query des résultats indivduels
+        # liste des clubs pour chaque ligne
+        qResults = Mopcompetitor.objects.filter(cls=cls_id, cid=comp_id, stat__gt=0)\
+                  .order_by('stat', 'rt', 'id')
+        listeClub = [Moporganization.objects.get(id=org, cid=comp_id).name if org != 0 else ''\
+            for org in qResults.values_list("org", flat=True)]
+        listeComplement = [] # rien pour les épreuves individuelles
+        typeFormat = 'run'
+
+    # liste des résultats sans les dixièmes de seconde
+    # liste des écarts au premier du classement
+    # liste des statuts
+    listeRunTime = [rt/10 for rt in qResults.values_list("rt", flat=True)]
+    listeEcart = [rt - listeRunTime[0] for rt in listeRunTime]
+    listeRunStatus = [runnerStatus[stat] for stat in qResults.values_list("stat", flat=True)]
+    # formatage des temps
+    listeTime = formatTimeList(listeRunTime, listeRunStatus)
+    listeTimeDiff = formatTimeList(listeEcart, listeRunStatus)
+
+    context = {"competition" : competition,
+               "categories": categories,
+               "selectedCat": categorie,
+               "leg":legInGet,
+               "results": itertools.zip_longest(qResults, listeTime, listeTimeDiff, listeClub, listeComplement),
+               "type":typeFormat}
+    return render(request, "catDetail.html", context)
+
+def DisplayRunDetails(request, comp_id, cls_id, run_id):
+    """ Display control point and time for a runner (not a team) """
+    competition = getCompetition(comp_id)
+    categories = categoriesList(comp_id)
+    try:
+        categorie = Mopclass.objects.get(cid=comp_id, id=cls_id)
+    except:
+        raise Http404("Cette catégorie n'existe pas")
+    try:
+        runner = Mopcompetitor.objects.get(cid=comp_id, id=run_id)
+    except:
+        raise Http404("Cour/eur/euse inconnu/e")
+
+    Club = Moporganization.objects.get(id=runner.org, cid=comp_id).name if runner.org != 0 else ''
+
+    # precedent ?
+    # suivant ?
+
+# on vérifie si c'est un leg de relais
+    try:
+        runLeg = Mopteammember.objects.get(cid=comp_id, rid=run_id)
+        forLeg = runLeg.leg
+    except:
+        forLeg = 1
+# get control points for the class of this runner
+    ctrlPointѕList = list(Mopclasscontrol.objects.filter(cid=comp_id, id=cls_id, leg=forLeg)\
+      .order_by('ord').values_list('ctrl', flat=True))
+    ctrlPointsName = [Mopcontrol.objects.get(cid=comp_id, id=ctrl).name for ctrl in ctrlPointѕList]
+    ctrlPointsTime = ['---' for cpn in ctrlPointsName] # liste vide
+# get radio for the runner
+    runRace = Mopradio.objects.filter(cid=comp_id, id=run_id)\
+      .order_by('rt')
+# rapprocher les controles trouvés avec la liste des controles
+    i = 0
+    for rr in runRace:
+        try:
+            i = ctrlPointѕList.index(rr.ctrl, i)
+            ctrlPointsTime[i] = formatTime(rr.rt/10)
+        except:
+            break
+
+    ctrlPointѕList.append("Finish")
+    ctrlPointsName.append("Finish")
+    ctrlPointsTime.append(formatTime(runner.rt/10))
+
     context={"competition": competition,
              "categories": categories,
-             "category": selectedCat,
+             "category": categorie,
              "runner_name": runner.name.replace(','," "),
+             "runner_club": Club,
              "runner_status": runnerStatus[runner.stat],
-             "ctrlPointѕ": zip(ctrlPointѕList, ctrlPointѕTime)
-            }
+             "ctrlPointѕ": zip(ctrlPointsName, ctrlPointsTime)
+    }
+
     return render(request, "circuitDetail.html", context)
+
+def DisplayTeamDetails(request, comp_id, cls_id, team_id):
+    """ Display control point and time for a team """
+    competition = getCompetition(comp_id)
+    categories = categoriesList(comp_id)
+    try:
+        categorie = Mopclass.objects.get(cid=comp_id, id=cls_id)
+    except:
+        raise Http404("Cette catégorie n'existe pas")
+    try:
+        team = Mopteam.objects.get(cid=comp_id, id=team_id)
+    except:
+        raise Http404("Équipe inconnue")
+    Club = Moporganization.objects.get(id=team.org, cid=comp_id).name if team.org != 0 else ''
+
+    # precedent ?
+    # suivant ?
+
+    typeFormat = 'relai'
+# get runner list for this team
+    teamMembers = Mopteammember.objects.filter(cid=comp_id, id=team_id).order_by('leg')
+    members = [Mopcompetitor.objects.get(cid=comp_id, id=tm.rid) for tm in teamMembers]
+
+# control points for all runners in a global list
+    ctrlPointѕList = []
+    ctrlPointѕTime = []
+    runNum = 1
+    previousLegTime = 0
+    for tm, run in zip(teamMembers, members):
+        runRaceLeg = Mopradio.objects.filter(cid=comp_id, id=tm.rid).order_by('rt')
+        ctrlPointѕLeg = [ str(rrl.ctrl) for rrl in runRaceLeg ]
+        ctrlPointѕTimeLeg = [ formatTime((rrl.rt+previousLegTime)/10) for rrl in runRaceLeg ]
+        ctrlPointѕLeg.append("Finish leg "+str(runNum))
+        ctrlPointѕTimeLeg.append(formatTime((run.rt+previousLegTime)/10)) # unique utilisation de members
+        previousLegTime += run.rt
+
+        ctrlPointѕList.extend(ctrlPointѕLeg) # ce n'est pas le nom du contrôle mais son id
+        ctrlPointѕTime.extend(ctrlPointѕTimeLeg) # defaut : ce n'est pas le temps cumulé mais juste le temps dans le leg
+
+        runNum += 1
+
+    ctrlPointsName = [(Mopcontrol.objects.get(cid=comp_id, id=int(ctrl_id)).name).split('-')[0]\
+        if (ctrl_id.isnumeric()) else ctrl_id for ctrl_id in ctrlPointѕList ]
+
+    context={"competition": competition,
+         "categories": categories,
+         "category": categorie,
+         "runner_name": team.name,
+         "runner_club": Club,
+         "runner_status": runnerStatus[team.stat],
+         "ctrlPointѕ": zip(ctrlPointsName, ctrlPointѕTime)
+    }
+
+    return render(request, "circuitDetail.html", context)
+
+
+
+def MarkdownView(request, article_id):
+    md = markdown.Markdown(extensions=["fenced_code"])
+    markdown_content = MeosTutorial.objects.get(pk=article_id)
+    markdown_content.content = md.convert(markdown_content.text)
+    context = {"markdown_content": markdown_content}
+    return render(request, "markdown_content.html",
+        context=context)
 
 def test1(request):
     return render(request, "test_template1.html", None)
@@ -126,6 +280,12 @@ def test2(request):
 
 def test3(request):
     return render(request, "test_template3.html", None)
+
+def etiquettes(request):
+    return render(request, "etiquettes.html", None)
+
+def drivers(request):
+    return render(request, "drivers.html", None)
 
 # Update Race database with MeOS Online Protocol
 @csrf_exempt
@@ -169,4 +329,192 @@ def update_database(request):
 
     return HttpResponse('OK')
 
+
+def DisplayCategoryComplet (request, comp_id, cls_id):
+    """ Display category details with full details """
+    competition = getCompetition(comp_id)
+    categories = categoriesList(comp_id)
+    try:
+        categorie = Mopclass.objects.get(cid=comp_id, id=cls_id)
+    except:
+        raise Http404("Cette catégorie n'existe pas")
+
+    # nombre de legs pour savoir si c'est un relai
+    num_legs = nombreLegs(comp_id)
+    # récupérer la valeur de 'leg' dans le GET (si il y en a)
+    testGet = request.GET.get("leg")
+    if testGet == None:
+        legInGet = 0
+    else:
+        try:
+            legInGet = int(testGet)
+            if legInGet  < 1 | legInGet > num_legs:
+                legInGet = 0
+        except:
+            legInGet = 0
+
+    # precedent ?
+    # suivant ?
+
+    if (num_legs > 1) and (legInGet != 0): # affichage d'un leg en particulier dans le relais
+        typeFormat = 'run' # information pour le template
+        # query des équipes,
+        # query des coureurs de ces équipes sur ce leg,
+        # query des résultats de ces coureurs
+        # liste des clubs pour chaque ligne de résultat
+        qTeam = Mopteam.objects.filter(cid=comp_id, cls=cls_id)
+        qRunnerLeg = Mopteammember.objects\
+          .filter(cid=comp_id, id__in=qTeam.values_list('id', flat=True), leg=legInGet)\
+          .values_list('rid', flat=True)
+        qResults = Mopcompetitor.objects.filter(cid=comp_id, id__in=qRunnerLeg, stat__gt=0)\
+          .order_by('stat','rt', 'id')
+        listeClub = [Moporganization.objects.get(id=org, cid=comp_id).name if org != 0 else ''\
+          for org in qResults.values_list("org", flat=True)]
+
+        # pour les résultats spécifiques d'un leg, on affiche le nom de l'équipe
+        # en plus du nom du coureur
+        # lien : dictR [id du runner] = nom de l'équipe
+        dictR = { runner : team for runner, team\
+          in zip(qRunnerLeg, qTeam.values_list('name', flat=True))}
+        listeComplement = [ dictR[r] for r in qResults.values_list('id', flat=True)]
+
+        # liste des id des contrôles du circuit pour ce leg
+        # liste des noms des contrôles
+        # liste template qui va servir pour les temps de passage de chaque coureur
+        listCtrlPointѕ = list(Mopclasscontrol.objects.filter(cid=comp_id, id=cls_id, leg=legInGet)\
+          .order_by('ord')\
+          .values_list('ctrl', flat=True))
+        listCtrlPointsName = list([Mopcontrol.objects.get(cid=comp_id, id=ctrl).name for ctrl in listCtrlPointѕ])
+        listCtrlPointsTimeTemplate = ['---' for cpn in listCtrlPointѕ]
+        listCtrlPointѕ.append("Finish")
+        listCtrlPointsName.append("Finish leg "+str(legInGet))
+
+        # get radio for the runner
+        listeResultats = []
+        for runner in qResults:
+            qRadio = Mopradio.objects.filter(cid=comp_id, id=runner.id)\
+              .order_by('rt')
+            # rapprocher les controles trouvés avec la liste des controles
+            listCtrlPointsTime = listCtrlPointsTimeTemplate.copy()
+            i = 0
+            for rr in qRadio:
+                try:
+                    i = listCtrlPointѕ.index(rr.ctrl, i)
+                    listCtrlPointsTime[i] = formatTime(rr.rt/10)
+                except:
+                    break
+            listCtrlPointsTime.append(formatTime(runner.rt/10))
+            listeResultats.append(listCtrlPointsTime) # liste de listes de résultats
+
+    elif (num_legs > 1) and (legInGet == 0): # affichage de l'ensemble des legs du relai
+        typeFormat = 'team' # information pour le template
+        # query des résultats des équipes
+        # liste des clubs pour chaque ligne de résultat
+        qResults = Mopteam.objects.filter(cid=comp_id, cls=cls_id, stat__gt=0)\
+          .order_by('stat', 'rt', 'id')
+        listeClub = [Moporganization.objects.get(id=org, cid=comp_id).name if org != 0 else ''\
+          for org in qResults.values_list("org", flat=True)]
+
+        # liste des id des contrôles du circuit
+        # liste des noms des contrôles
+        # liste template qui va servir pour les temps de passage de chaque coureur
+        listCtrlPointsName = []
+        list2DCtrlPointѕ = []
+        list2DCtrlPointsName = []
+        list2DCtrlPointsTimeTemplate = []
+        leg = 0
+        while leg < num_legs:
+            list2DCtrlPointѕ.append(list(Mopclasscontrol.objects.filter(cid=comp_id, id=cls_id, leg=legInGet)\
+              .order_by('ord')\
+              .values_list('ctrl', flat=True)))
+            list2DCtrlPointsName.append(list([Mopcontrol.objects.get(cid=comp_id, id=ctrl).name for ctrl in list2DCtrlPointѕ[leg]]))
+            list2DCtrlPointsTimeTemplate.append(['---' for cpn in list2DCtrlPointѕ[leg]])
+            list2DCtrlPointsName[leg].append("Finish"+str(leg+1))
+            list2DCtrlPointsTimeTemplate[leg].append("Finish leg "+str(leg+1))
+            listCtrlPointsName.extend(list2DCtrlPointsTimeTemplate[leg])
+            leg += 1
+
+        # pour chaque équipe, query des membres de l'équipe
+        # pour les résultats globaux du relais, on affiche les noms des membres
+        # en plus de celui de l'équipe
+        listeComplement = []
+        listCtrlPointsTime = []
+        listeResultats = []
+        liste2DResultats =[]
+        sep = " / "
+        leg = 0
+        for team in qResults:
+            liste2DResultats.append([])
+            queryTeammember=Mopteammember.objects.filter(cid=comp_id, id=team.id).order_by('leg')
+#            listeComplement.append(sep.join(queryTeammember.values_list("name", flat=True)))
+# erreur = name est dans mopcompetitor
+            # pour chaque membre de l'équipe, liste des temps intermédiaires
+            for mb in queryTeammember:
+                qRadio = Mopradio.objects.filter(cid=comp_id, id=mb.id)\
+                  .order_by('rt')
+                # rapprocher les controles trouvés avec la liste des controles
+                listCtrlPointsTime.append(list2DCtrlPointsTimeTemplate[leg].copy())
+                i = 0
+                for rr in qRadio:
+                    try:
+                        i = list2DCtrlPointѕ[leg].index(rr.ctrl, i)
+                        listCtrlPointsTime[leg][i] = formatTime(rr.rt/10)
+                    except:
+                        break
+                listCtrlPointsTime[leg].append(formatTime(mb.rt/10))
+# erreur = rt est dans mopcompetitor
+                listeResultats[-1].extend(listCtrlPointsTime[leg]) # liste de listes de résultats
+            leg += 1
+
+    else: # épreuve individuelle
+        typeFormat = 'run'
+        # query des résultats indivduels
+        # liste des clubs pour chaque ligne
+        # pas de complement pour les épreuves individuelles
+        qResults = Mopcompetitor.objects.filter(cls=cls_id, cid=comp_id, stat__gt=0)\
+                  .order_by('stat', 'rt', 'id')
+        listeClub = [Moporganization.objects.get(id=org, cid=comp_id).name if org != 0 else ''\
+            for org in qResults.values_list("org", flat=True)]
+        listeComplement = []
+
+        # liste des id des contrôles du circuit
+        # liste des noms des contrôles
+        # liste template qui va servir pour les temps de passage de chaque coureur
+        listCtrlPointѕ = list(Mopclasscontrol.objects.filter(cid=comp_id, id=cls_id)\
+          .order_by('ord')\
+          .values_list('ctrl', flat=True))
+        listCtrlPointsName = list([Mopcontrol.objects.get(cid=comp_id, id=ctrl).name for ctrl in listCtrlPointѕ])
+        listCtrlPointsTimeTemplate = ['---' for cpn in listCtrlPointѕ]
+        listCtrlPointѕ.append("Finish")
+        listCtrlPointsName.append("Finish")
+
+        # get radio for the runner
+        listeResultats = []
+        for runner in qResults:
+            qRadio = Mopradio.objects.filter(cid=comp_id, id=runner.id)\
+              .order_by('rt')
+            # rapprocher les controles trouvés avec la liste des controles
+            listCtrlPointsTime = listCtrlPointsTimeTemplate.copy()
+            i = 0
+            for rr in qRadio:
+                try:
+                    i = listCtrlPointѕ.index(rr.ctrl, i)
+                    listCtrlPointsTime[i] = formatTime(rr.rt/10)
+                except:
+                    break
+            listCtrlPointsTime.append(formatTime(runner.rt/10))
+            listeResultats.append(listCtrlPointsTime) # liste de listes de résultats
+
+    context = {"competition" : competition,
+               "categories": categories,
+               "selectedCat": categorie,
+               "leg":legInGet,
+               "ctrlName": listCtrlPointsName,
+               "results": itertools.zip_longest(qResults, listeComplement, listeResultats),
+               "type":typeFormat}
+    return render(request, "catComplet.html", context)
+
+
+
 # Functions based views ENDS ***************
+
