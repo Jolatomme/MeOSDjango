@@ -330,7 +330,7 @@ def update_database(request):
 
 
 def DisplayCategoryComplet (request, comp_id, cls_id):
-    """ Will Display category details with full details soon but not now """
+    """ Display category details with full details (relay or individual) """
     competition = getCompetition(comp_id)
     categories = categoriesList(comp_id)
     try:
@@ -375,7 +375,7 @@ def DisplayCategoryComplet (request, comp_id, cls_id):
         # lien : dictR [id du runner] = nom de l'équipe
         dictR = { runner : team for runner, team\
           in zip(qRunnerLeg, qTeam.values_list('name', flat=True))}
-        listeComplement = [ dictR[r] for r in qResults.values_list('id', flat=True)]
+        listeComplement = [dictR[r] for r in qResults.values_list('id', flat=True)]
 
         # liste des id des contrôles du circuit pour ce leg
         # liste des noms des contrôles
@@ -402,75 +402,92 @@ def DisplayCategoryComplet (request, comp_id, cls_id):
                     listCtrlPointsTime[i] = formatTime(rr.rt/10)
                 except:
                     break
-            listCtrlPointsTime.append(formatTime(runner.rt/10))
+            timeRunner = formatTime(runner.rt/10)
+            timeRunner += " ("+runnerStatus[runner.stat]+")" if runnerStatus[runner.stat] != 'OK' else ''
+            # si le coureur n'est pas OK on précise son statut
+            listCtrlPointsTime.append(timeRunner)
+
             listeResultats.append(listCtrlPointsTime) # liste de listes de résultats
 
     elif (num_legs > 1) and (legInGet == 0): # affichage de l'ensemble des legs du relai
+
+        # nombre de legs dans la catégorie affichée
+        nbLegsInCls = nombreLegs(comp_id, cls_id)
+
         typeFormat = 'team' # information pour le template
-        # query des résultats des équipes
-        # liste des clubs pour chaque ligne de résultat
+
+        # liste de liste des id des contrôles du circuit
+        # liste des noms des contrôles correspondant (envoyée au template html)
+        # liste de liste des template qui vont servir pour les temps de passage de chaque coureur
+        list2DCtrlPointѕ = []
+        listCtrlPointsName = []
+        list2DTimeTemplate = []
+        legindex = 0
+        while (legindex < nbLegsInCls):
+            qClassControl = Mopclasscontrol.objects\
+              .filter(cid=comp_id, id=cls_id, leg=legindex+1)\
+              .order_by('ord')
+            list2DCtrlPointѕ.append(list(qClassControl.values_list('ctrl', flat=True)))
+            listName = list(Mopcontrol.objects.get(cid=comp_id, id=ctrl).name\
+              for ctrl in list2DCtrlPointѕ[legindex])
+            listCtrlPointsName.extend(listName)
+            listCtrlPointsName.append("Finish"+str(legindex+1))
+            list2DTimeTemplate.append(['---' for cpn in list2DCtrlPointѕ[legindex]])
+            list2DTimeTemplate[legindex].append('---')
+            legindex += 1
+
+        # query des équipes de la catégorie
+        # liste des clubs pour chaque équipe
+        # liste des informations complémentaires par équipe (noms des membres)
+        # liste de liste des résultats qui sera envoyée au template html
         qResults = Mopteam.objects.filter(cid=comp_id, cls=cls_id, stat__gt=0)\
           .order_by('stat', 'rt', 'id')
         listeClub = [Moporganization.objects.get(id=org, cid=comp_id).name if org != 0 else ''\
           for org in qResults.values_list("org", flat=True)]
-
-        # liste des id des contrôles du circuit
-        # liste des noms des contrôles
-        # liste template qui va servir pour les temps de passage de chaque coureur
-        listCtrlPointsName = []
-        list2DCtrlPointѕ = []
-        list2DCtrlPointsName = []
-        list2DCtrlPointsTimeTemplate = []
-        leg = 0
-        while leg < num_legs:
-            list2DCtrlPointѕ.append(list(Mopclasscontrol.objects.filter(cid=comp_id, id=cls_id, leg=legInGet)\
-              .order_by('ord')\
-              .values_list('ctrl', flat=True)))
-            list2DCtrlPointsName.append(list([Mopcontrol.objects.get(cid=comp_id, id=ctrl).name for ctrl in list2DCtrlPointѕ[leg]]))
-            list2DCtrlPointsTimeTemplate.append(['---' for cpn in list2DCtrlPointѕ[leg]])
-            list2DCtrlPointsName[leg].append("Finish"+str(leg+1))
-            list2DCtrlPointsTimeTemplate[leg].append("Finish leg "+str(leg+1))
-            listCtrlPointsName.extend(list2DCtrlPointsTimeTemplate[leg])
-            leg += 1
-
-        # pour chaque équipe, query des membres de l'équipe
-        # pour les résultats globaux du relais, on affiche les noms des membres
-        # en plus de celui de l'équipe
-        listeComplement = []
-        listCtrlPointsTime = []
-        listeResultats = []
         sep = " / "
-        for team in qResults:
-            leg = 0
-            liste2DResultats =[]
-            queryTeammember=Mopteammember.objects.filter(cid=comp_id, id=team.id).order_by('leg')
-            listeComplement.append(sep.join(Mopcompetitor.objects.filter(cid=comp_id, id__in=queryTeammember.values_list('rid', flat=True)).values_list('name', flat=True)))
+        listeComplement = []
+        listeResultats = []
 
-            # pour chaque membre de l'équipe, liste des temps intermédiaires
-            for mb in queryTeammember:
-                qRadio = Mopradio.objects.filter(cid=comp_id, id=mb.id)\
+        for team in qResults:
+            # pour chaque équipe, query des membres de l'équipe
+            # listeComplement : pour les résultats globaux du relais, on affiche
+            # les noms des membres en plus de celui de l'équipe
+            qTeammember = Mopteammember.objects.filter(cid=comp_id, id=team.id).order_by('leg')
+            qCompetitor = Mopcompetitor.objects.filter(cid=comp_id, id__in=qTeammember.values_list('rid',flat=True))
+            listeComplement.append(sep.join(list(qCompetitor.values_list('name',flat=True))))
+
+            # pour chaque membre, query des temps de passage dans radiocontrol
+            liste2DResultats =[]
+            legindex = 0
+            for mb in qTeammember:
+                # pour chaque membre de l'équipe, liste des temps intermédiaires
+                qRadio = Mopradio.objects\
+                  .filter(cid=comp_id, id=mb.rid)\
                   .order_by('rt')
-                # rapprocher les controles trouvés avec la liste des controles
-                listCtrlPointsTime.append(list2DCtrlPointsTimeTemplate[leg].copy())
+#                if len(qRadio) == 0:
+#                    test = mb.id
+#                    trace = int('a') 
+                # affecter les controles trouvés dans une copie du template pour ce leg
+                # PROBLEME : impossible de gérer les circuits avec variations faute de données exportées par Meos
+
+                listCtrlPointsTime = list2DTimeTemplate[legindex].copy()
                 i = 0
+                runner = Mopcompetitor.objects.get(cid=comp_id, id=mb.rid)
                 for rr in qRadio:
                     try:
-                        i = list2DCtrlPointѕ[leg].index(rr.ctrl, i)
-                        listCtrlPointsTime[leg][i] = formatTime(rr.rt/10)
+                        i = list2DCtrlPointѕ[legindex].index(rr.ctrl, i)
+                        listCtrlPointsTime[i] = formatTime((rr.rt + runner.it)/10)
                     except:
                         break
-                runner = Mopcompetitor.objects.get(cid=comp_id, id=mb.rid)
-                timeRunner = formatTime(runner.rt/10)
+                timeRunner = formatTime((runner.rt + runner.it)/10)
                 # si le coureur n'est pas OK on précise son statut
-                if runnerStatus[runner.stat] != 'OK':
-                    timeRunner += " ("+runnerStatus[runner.stat]+")"
+                timeRunner += " ("+runnerStatus[runner.stat]+")" if runnerStatus[runner.stat] != 'OK' else ''
                 # pour le dernier coureur, si l'équipe n'est pas OK on précise son statut
-                if leg == (num_legs-1) and runnerStatus[team.stat] != 'OK':
-                    timeRunner += " team "+runnerStatus[team.stat]
-                listCtrlPointsTime[leg].append(timeRunner)
-
-                liste2DResultats.extend(listCtrlPointsTime[leg]) # liste de listes de résultats
-                leg += 1
+                if (legindex + 1) == nbLegsInCls:
+                    timeRunner += " team "+runnerStatus[team.stat] if runnerStatus[team.stat] != 'OK' else ''
+                listCtrlPointsTime[-1] = timeRunner
+                liste2DResultats.extend(listCtrlPointsTime) # liste de listes de résultats
+                legindex += 1
             listeResultats.append(liste2DResultats)
 
     else: # épreuve individuelle
@@ -509,9 +526,16 @@ def DisplayCategoryComplet (request, comp_id, cls_id):
                     listCtrlPointsTime[i] = formatTime(rr.rt/10)
                 except:
                     break
-            listCtrlPointsTime.append(formatTime(runner.rt/10)\
-              if runnerStatus[runner.stat] == 'OK' else runnerStatus[runner.stat])
             listeResultats.append(listCtrlPointsTime) # liste de listes de résultats
+            timeRunner = formatTime(runner.rt/10)
+            timeRunner += " ("+runnerStatus[runner.stat]+")" if runnerStatus[runner.stat] != 'OK' else ''
+            listCtrlPointsTime.append(timeRunner)
+
+# correction de l'affichage des noms des postes
+    i = 0
+    while i < len(listCtrlPointsName):
+        listCtrlPointsName[i] = listCtrlPointsName[i].partition("-")[0]
+        i += 1
 
     context = {"competition" : competition,
                "categories": categories,

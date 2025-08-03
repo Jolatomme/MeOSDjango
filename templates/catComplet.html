@@ -1,5 +1,18 @@
 {% extends "base.html" %}
 
+{{
+"""
+    context = {"competition" : competition,
+               "categories": categories,
+               "selectedCat": category,
+               "leg":legInGet,
+               "ctrlName": listCtrlPointsName,
+               "results": itertools.zip_longest(qResults, listeComplement, listeResultats),
+               "type":typeFormat}
+
+"""
+}}
+
 {% block titre %}
 <title>{{ competition.name }} - catégorie {{selectedCat.name}} {% if leg > 0 %}- leg {{ leg }}{% endif %}</title>
 {% endblock %}
@@ -24,17 +37,17 @@
     </tr>
 </thead>
 <tbody>
-    {% for q, c, rlist in results %}
+    {% for q, complement, rlist in results %}
     <tr>
         <td>{{ forloop.counter }}</td>
         <td>
         {% if type == "run" %}
                 {{ q.name }}{% if c %} - ({{ c }}){% endif %}
 
-        {% elif type == "team" %}
+        {% else %}
             <a class="link-light"
-                href="{% url 'results:team' comp_id=competition.cid cls_id=selectedCat.id team_id=r.id%}">
-                {{ r.name }}{% if complement %} ({{ complement }}){% endif %}
+                href="{% url 'results:team' comp_id=competition.cid cls_id=selectedCat.id team_id=q.id %}">
+                {{ q.name }}{% if complement %} ({{ complement }}){% endif %}
             </a>
         {% endif %}
         </td>

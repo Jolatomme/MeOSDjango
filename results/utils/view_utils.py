@@ -27,9 +27,13 @@ def formatTimeList(timeList:list, statusList:list = None):
     return [formatTime(rt) if statusList[n] == 'OK' else statusList[n]
                 for n,rt in enumerate(timeList)]
 
-def nombreLegs (comp_id:int):
-    return len(set(Mopclasscontrol.objects.filter(cid=comp_id)\
-      .values_list('leg', flat=True)))
+def nombreLegs (comp_id:int, cls:int = 0):
+    if cls == 0:
+        return len(set(Mopclasscontrol.objects.filter(cid=comp_id)\
+          .values_list('leg', flat=True)))
+    else:
+        return len(set(Mopclasscontrol.objects.filter(cid=comp_id, id=cls)\
+          .values_list('leg', flat=True)))
 
 def categoriesList (comp_id:int):
     catListe = []
