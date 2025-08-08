@@ -1,16 +1,29 @@
-<div class="d-flex justify-content-center align-content-stretch flex-grow-1 flex-wrap">
+<div class="container">
+	<div class="row">
+		<div class="col-lg-10">
+			<div id="linkToCls" class="d-flex justify-content-center align-content-stretch flex-grow-1 flex-wrap">
 	{% for catid, catname, listlegs in categories %}
-		<div class="p-1">
-			<a class="btn btn-primary link-light"
-			   href="{% url 'results:catDet' comp_id=competition.cid cls_id=catid %}">{{ catname }}</a>
-		</div>
+				<div class="p-1">
+					<a class="btn btn-primary link-light"
+					   href="{% url 'results:catDet' comp_id=competition.cid cls_id=catid %}{% if sFD %}detail/{% endif %}">{{ catname }}</a>
+				</div>
 		{% if listlegs|length > 1 %}
 			{% for legNum in listlegs %}
-		<div class="p-1">
-			<a class="btn btn-primary link-light"
-			   href="{% url 'results:catDet' comp_id=competition.cid cls_id=catid %}?leg={{ legNum }}">{{ catname }} - {{ legNum }}</a>
-		</div>
+				<div class="p-1">
+					<a class="btn btn-primary link-light"
+					   href="{% url 'results:catDet' comp_id=competition.cid cls_id=catid %}{% if sFD %}detail/{% endif %}?leg={{ legNum }}">{{ catname }} - {{ legNum }}</a>
+				</div>
 			{% endfor %}
 		{% endif %}
 	{% endfor %}
-</div><!-- /.container -->
+			</div>
+		</div>
+
+		<div class="col-lg-2">
+			<div class="form-check form-switch">
+				<input class="form-check-input" type="checkbox" role="switch" id="switchFullDetail" {% if sFD %}checked{% endif %}>
+				<label class="form-check-label" for="flexSwitchCheckDefault">Résultats détaillés</label>
+			</div>
+		</div>
+	</div>
+</div>

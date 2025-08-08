@@ -96,7 +96,7 @@ a {
                                 <div class="candidate-list-content mt-3 mt-lg-0">
                                     <h4 class="fs-19 mb-0">
                                         <a class="primary-link" href="{% url 'results:run' comp_id=competition.cid cls_id=selectedCat.id run_id=r.id %}">{{ r.name }}&raquo;</a>
-                                        {% if complement != None %}<span class="badge bg-success ms-1"><i class="mdi mdi-star align-middle"></i> {{ complement }}</span>{% endif %}
+                                        {% if complement != None %}<span class="badge bg-success ms-1"><i class="mdi mdi-star align-middle"> {{ complement }} </i></span>{% endif %}
                                     </h4>
                                     <p class="text-muted mb-2">{% if c != '' %}Club: {{ c }}{% endif %}</p>
                                 </div>
@@ -104,7 +104,7 @@ a {
                             <div class="col-lg-4">
                                 <div class="mt-2 mt-lg-0 d-flex gap-1">
                                     <span class="badge bg-soft-secondary fs-4 mt-1 w-50">{{ t }}</span>
-                                    <span class="badge bg-soft-secondary fs-4 mt-1 w-50">{% if t != 'MP' and d != '0:00:00' %}+ {{ d }}{% endif %}</span>
+                                    <span class="badge bg-soft-secondary fs-4 mt-1 w-50">{% if d != '' %}+ {{ d }}{% endif %}</span>
                                 </div>
                             </div>
                         </div>

@@ -22,10 +22,10 @@ def formatTimeWithMs(timeWithMs:int):
     time = timeWithMs/10
     return "{0:d}:{1:02d}:{2:02d}.{3:d}".format(time/3600, (time/60)%60, time%60, timeWithMs%10)
 
-def formatTimeList(timeList:list, statusList:list = None):
-    """ Format time from seconds or return runner status if not OK """
-    return [formatTime(rt) if statusList[n] == 'OK' else statusList[n]
-                for n,rt in enumerate(timeList)]
+#def formatTimeList(timeList:list, statusList:list):
+#    """ Format time from seconds or return runner status if not OK """
+#    return [formatTime(rt) if statusList[n] == 'OK' else statusList[n]
+#                for n,rt in enumerate(timeList)]
 
 def nombreLegs (comp_id:int, cls:int = 0):
     if cls == 0:
