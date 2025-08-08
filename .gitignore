@@ -71,3 +71,9 @@ docs/_build/
 .pybuilder/
 target/
 
+# fichiers macos
+*.DS_Store
+TODO.md
+
+# python env
+django-env/
