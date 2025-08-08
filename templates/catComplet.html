@@ -21,7 +21,7 @@
 
 <h1 class="text-body-emphasis">{{ competition.name }}</h1>
 
-{% include "categoryListComponent.html" %}
+{% include "categoryListComponent.html" with sFD="checked" %}
 
 <h2 class="text-body-emphasis">{{ selectedCat.name }}{% if leg > 0 %} - leg {{ leg }}{% endif %}</h2>
 <div class="table-responsive">

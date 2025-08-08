@@ -136,12 +136,15 @@ def DisplayCategory(request, comp_id, cls_id):
     # liste des résultats sans les dixièmes de seconde
     # liste des écarts au premier du classement
     # liste des statuts
-    listeRunTime = [rt/10 for rt in qResults.values_list("rt", flat=True)]
-    listeEcart = [rt - listeRunTime[0] for rt in listeRunTime]
-    listeRunStatus = [runnerStatus[stat] for stat in qResults.values_list("stat", flat=True)]
-    # formatage des temps
-    listeTime = formatTimeList(listeRunTime, listeRunStatus)
-    listeTimeDiff = formatTimeList(listeEcart, listeRunStatus)
+    listeTime, listeTimeDiff = [], []
+    rBase = qResults[0].rt if len(qResults) > 0 else 0
+    for r in qResults:
+        if r.stat == 1:
+            listeTime.append(formatTime(r.rt/10))
+            listeTimeDiff.append(formatTime((r.rt - rBase)/10) if r.rt != rBase else '')
+        else:
+            listeTime.append(runnerStatus[r.stat])
+            listeTimeDiff.append('')
 
     context = {"competition" : competition,
                "categories": categories,
