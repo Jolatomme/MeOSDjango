@@ -14,9 +14,19 @@ a long way to go...
 
 mais :
 - pas de navigation possible entre les catégories ou les concurrents dans l'affichage en liste
-- pas d'affichage avec interpostes par catégorie
+- pas d'affichage avec interpostes par catégorie (OK à l'étape 2)
 - pas d'administration des courses proposées par défaut
  	(je voudrais pouvoir en mettre certaines en première page et d'autres en archives)
 - pas encore de prise en compte des dixièmes de secondes
 
 - le style global reste à revoir
+
+## deuxième étape
+- on peut à présent changer la présentation de simple à complète avec un switch sur la page (la page est rechargée)
+- l'affichage complet est fonctionnel aussi bien pour les courses individuelles que les relais ou un leg au sein d'un relai
+
+mais
+- on pourrait passer de simple à complet sans recharger la page, avec du javascript
+- l'affichage détaillée n'est pas adaptée au écrans mobiles
+
+  
