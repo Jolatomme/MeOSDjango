@@ -48,14 +48,6 @@ def ShowCategories(request, comp_id):
                "categories": categories}
     return render(request, "category.html", context)
 
-def MarkdownView(request, article_id):
-    md = markdown.Markdown(extensions=["fenced_code"])
-    markdown_content = MeosTutorial.objects.get(pk=article_id)
-    markdown_content.content = md.convert(markdown_content.text)
-    context = {"markdown_content": markdown_content}
-    return render(request, "markdown_content.html",
-        context=context)
-
 def DisplayCategory(request, comp_id, cls_id):
     """ Display category details """
     competition = getCompetition(comp_id)

@@ -17,6 +17,46 @@
 <title>{{ competition.name }} - catégorie {{selectedCat.name}} {% if leg > 0 %}- leg {{ leg }}{% endif %}</title>
 {% endblock %}
 
+{% block style %}
+/* CSS pour une table avec des marges sticky */
+.table-responsive {
+	height:calc(100vh - 6rem);
+
+	& table {
+		table-layout: fixed;
+		& th, td { 
+			width:5em;
+		}
+		& th:nth-of-type(2), td:nth-of-type(2) {
+			width:200px;
+			position : sticky;
+			left:5em;
+		}
+	}
+
+	& thead tr {
+		position : sticky;
+		top:0;
+		text-align:center;
+		z-index:1;
+	}
+
+	& thead tr th:nth-of-type(1) {
+		text-align:center;
+		position : sticky;
+		left:0;
+		text-align:center;
+	}
+	& tr td:nth-of-type(1) {
+		text-align:center;
+		position : sticky;
+		left:0;
+		text-align:center;
+	}
+
+}
+{% endblock %}
+
 {% block content %}
 
 <h1 class="text-body-emphasis">{{ competition.name }}</h1>
@@ -29,17 +69,17 @@
 <caption>Classement non officiel</caption>
 <thead>
     <tr>
-        <th>Place</th>
-        <th>Nom (Club)</th>
+        <th scope="col">Place</th>
+        <th scope="col">Nom (Club)</th>
         {% for ctrl in ctrlName %}
-            <th>{{ ctrl }}</th>
+            <th scope="col">{{ ctrl }}</th>
         {% endfor %}
     </tr>
 </thead>
 <tbody>
     {% for q, complement, rlist in results %}
     <tr>
-        <td>{{ forloop.counter }}</td>
+        <td scope="row">{{ forloop.counter }}</td>
         <td>
         {% if type == "run" %}
                 {{ q.name }}{% if c %} - ({{ c }}){% endif %}

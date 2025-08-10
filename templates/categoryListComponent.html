@@ -1,29 +1,26 @@
 <div class="container">
 	<div class="row">
-		<div class="col-lg-10">
-			<div id="linkToCls" class="d-flex justify-content-center align-content-stretch flex-grow-1 flex-wrap">
+		<div id="linkToCls" class="col-lg-9 d-flex justify-content-center flex-grow-1 flex-wrap">
 	{% for catid, catname, listlegs in categories %}
-				<div class="p-1">
-					<a class="btn btn-primary link-light"
-					   href="{% url 'results:catDet' comp_id=competition.cid cls_id=catid %}{% if sFD %}detail/{% endif %}">{{ catname }}</a>
-				</div>
+			<div class="p-1">
+				<a class="btn btn-primary link-light" style="min-width:150px;"
+				   href="{% url 'results:catDet' comp_id=competition.cid cls_id=catid %}{% if sFD %}detail/{% endif %}">{{ catname }}</a>
+			</div>
 		{% if listlegs|length > 1 %}
 			{% for legNum in listlegs %}
-				<div class="p-1">
-					<a class="btn btn-primary link-light"
-					   href="{% url 'results:catDet' comp_id=competition.cid cls_id=catid %}{% if sFD %}detail/{% endif %}?leg={{ legNum }}">{{ catname }} - {{ legNum }}</a>
-				</div>
+			<div class="p-1">
+				<a class="btn btn-primary link-light"
+				   href="{% url 'results:catDet' comp_id=competition.cid cls_id=catid %}{% if sFD %}detail/{% endif %}?leg={{ legNum }}">{{ catname }} - {{ legNum }}</a>
+			</div>
 			{% endfor %}
 		{% endif %}
 	{% endfor %}
-			</div>
 		</div>
 
-		<div class="col-lg-2">
-			<div class="form-check form-switch">
-				<input class="form-check-input" type="checkbox" role="switch" id="switchFullDetail" {% if sFD %}checked{% endif %}>
-				<label class="form-check-label" for="flexSwitchCheckDefault">Résultats détaillés</label>
-			</div>
+		<div id="switchDetailForm" class="col-lg-3 p-1 d-flex justify-content-right align-items-center flex-grow-1 form-check form-switch">
+				<label class="form-check-label p-2" for="flexSwitchCheckDefault">Résultats détaillés</label>
+				<input class="form-check-input p-2" type="checkbox" role="switch" id="switchFullDetail" {% if sFD %}checked{% endif %}>
+				<span id="etatSwitchDetail" class="p-2">{% if sFD %}ON{% else %}OFF{% endif %}</span>
 		</div>
 	</div>
 </div>
