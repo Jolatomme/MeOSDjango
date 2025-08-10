@@ -53,3 +53,4 @@ function toggleSwitchFullDetail () {
 }
 
 switchFullDetail.addEventListener("click", toggleSwitchFullDetail);
+

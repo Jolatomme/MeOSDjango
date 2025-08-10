@@ -23,6 +23,18 @@
 			right: 20px;
 			display: none;
 		}
+		#switchDetailForm {
+			font-size: 120%;
+			font-weight: bold;
+		}
+		#switchFullDetail {
+			margin : 0px !important;
+			height: 2rem;
+			width: 4rem;
+			border-radius: 0.5rem;
+			background-color:red;
+			border:none;
+		}
 		{% block style %}
 		{% endblock %}
 	</style>
@@ -70,13 +82,13 @@
 		</div>
 	</nav>
 <!-- Navbar -->
-	<div class="col-lg-10 mx-auto p-2 py-md-5">
+	<div id="main" class="col-lg-10 mx-auto p-2 py-md-5">
 		{% block content %}
 		{% endblock%}
-	</div>
-	<div style="clear:both;padding-top:1em;color:grey;padding-left:2em">
-		Results provided by <a href="http://www.melin.nu/meos" target="_blank">
-		MeOS Online Results</a>.
+		<div style="clear:both;padding-top:1em;color:grey;padding-left:2em">
+			Results provided by <a href="http://www.melin.nu/meos" target="_blank">
+			MeOS Online Results</a>.
+		</div>
 	</div>
 
 {% include "backtotop.html" %}
