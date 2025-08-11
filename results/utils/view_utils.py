@@ -11,16 +11,21 @@ runnerStatus = {0:  "UKNWN",
                 21: "CANCEL",
                 99: "NC"}
 
-def formatTime(time:int):
-    """ Format time from seconds
-    """
-    return "{0:d}:{1:02d}:{2:02d}".format(int(time/3600), int((time/60)%60),
-                                          int(time%60))
+#def formatTime(time:int):
+#    """ Format time from seconds
+#    """
+#    return "{0:d}:{1:02d}:{2:02d}".format(int(time/3600), int((time/60)%60),
+#                                          int(time%60))
 
 def formatTimeWithMs(timeWithMs:int):
     """ Format time from seconds with 1/10 precision """
-    time = timeWithMs/10
-    return "{0:d}:{1:02d}:{2:02d}.{3:d}".format(time/3600, (time/60)%60, time%60, timeWithMs%10)
+    dixiemes = timeWithMs%10
+    time = int(timeWithMs/10)
+    if dixiemes != 0:
+        test = "{0:d}:{1:02d}:{2:02d}.{3:0d}".format(int(time/3600), int((time/60)%60), int(time%60), dixiemes)
+    else:
+        test = "{0:d}:{1:02d}:{2:02d}".format(int(time/3600), int((time/60)%60), int(time%60))
+    return test
 
 #def formatTimeList(timeList:list, statusList:list):
 #    """ Format time from seconds or return runner status if not OK """

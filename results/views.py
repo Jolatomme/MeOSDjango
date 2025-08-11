@@ -132,8 +132,8 @@ def DisplayCategory(request, comp_id, cls_id):
     rBase = qResults[0].rt if len(qResults) > 0 else 0
     for r in qResults:
         if r.stat == 1:
-            listeTime.append(formatTime(r.rt/10))
-            listeTimeDiff.append(formatTime((r.rt - rBase)/10) if r.rt != rBase else '')
+            listeTime.append(formatTimeWithMs(r.rt))
+            listeTimeDiff.append(formatTimeWithMs(r.rt - rBase) if r.rt != rBase else '')
         else:
             listeTime.append(runnerStatus[r.stat])
             listeTimeDiff.append('')
@@ -183,13 +183,13 @@ def DisplayRunDetails(request, comp_id, cls_id, run_id):
     for rr in runRace:
         try:
             i = ctrlPointѕList.index(rr.ctrl, i)
-            ctrlPointsTime[i] = formatTime(rr.rt/10)
+            ctrlPointsTime[i] = formatTimeWithMs(rr.rt)
         except:
             break
 
     ctrlPointѕList.append("Finish")
     ctrlPointsName.append("Finish")
-    ctrlPointsTime.append(formatTime(runner.rt/10))
+    ctrlPointsTime.append(formatTimeWithMs(runner.rt))
 
     context={"competition": competition,
              "categories": categories,
@@ -232,9 +232,9 @@ def DisplayTeamDetails(request, comp_id, cls_id, team_id):
     for tm, run in zip(teamMembers, members):
         runRaceLeg = Mopradio.objects.filter(cid=comp_id, id=tm.rid).order_by('rt')
         ctrlPointѕLeg = [ str(rrl.ctrl) for rrl in runRaceLeg ]
-        ctrlPointѕTimeLeg = [ formatTime((rrl.rt+previousLegTime)/10) for rrl in runRaceLeg ]
+        ctrlPointѕTimeLeg = [ formatTimeWithMs(rrl.rt+previousLegTime) for rrl in runRaceLeg ]
         ctrlPointѕLeg.append("Finish leg "+str(runNum))
-        ctrlPointѕTimeLeg.append(formatTime((run.rt+previousLegTime)/10)) # unique utilisation de members
+        ctrlPointѕTimeLeg.append(formatTimeWithMs(run.rt+previousLegTime)) # unique utilisation de members
         previousLegTime += run.rt
 
         ctrlPointѕList.extend(ctrlPointѕLeg) # ce n'est pas le nom du contrôle mais son id
@@ -394,10 +394,10 @@ def DisplayCategoryComplet (request, comp_id, cls_id):
             for rr in qRadio:
                 try:
                     i = listCtrlPointѕ.index(rr.ctrl, i)
-                    listCtrlPointsTime[i] = formatTime(rr.rt/10)
+                    listCtrlPointsTime[i] = formatTimeWithMs(rr.rt)
                 except:
                     break
-            timeRunner = formatTime(runner.rt/10)
+            timeRunner = formatTimeWithMs(runner.rt)
             timeRunner += " ("+runnerStatus[runner.stat]+")" if runnerStatus[runner.stat] != 'OK' else ''
             # si le coureur n'est pas OK on précise son statut
             listCtrlPointsTime.append(timeRunner)
@@ -471,10 +471,10 @@ def DisplayCategoryComplet (request, comp_id, cls_id):
                 for rr in qRadio:
                     try:
                         i = list2DCtrlPointѕ[legindex].index(rr.ctrl, i)
-                        listCtrlPointsTime[i] = formatTime((rr.rt + runner.it)/10)
+                        listCtrlPointsTime[i] = formatTimeWithMs(rr.rt + runner.it)
                     except:
                         break
-                timeRunner = formatTime((runner.rt + runner.it)/10)
+                timeRunner = formatTimeWithMs(runner.rt + runner.it)
                 # si le coureur n'est pas OK on précise son statut
                 timeRunner += " ("+runnerStatus[runner.stat]+")" if runnerStatus[runner.stat] != 'OK' else ''
                 # pour le dernier coureur, si l'équipe n'est pas OK on précise son statut
@@ -518,11 +518,11 @@ def DisplayCategoryComplet (request, comp_id, cls_id):
             for rr in qRadio:
                 try:
                     i = listCtrlPointѕ.index(rr.ctrl, i)
-                    listCtrlPointsTime[i] = formatTime(rr.rt/10)
+                    listCtrlPointsTime[i] = formatTimeWithMs(rr.rt)
                 except:
                     break
             listeResultats.append(listCtrlPointsTime) # liste de listes de résultats
-            timeRunner = formatTime(runner.rt/10)
+            timeRunner = formatTimeWithMs(runner.rt)
             timeRunner += " ("+runnerStatus[runner.stat]+")" if runnerStatus[runner.stat] != 'OK' else ''
             listCtrlPointsTime.append(timeRunner)
 
