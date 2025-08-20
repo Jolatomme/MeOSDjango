@@ -2,7 +2,7 @@ from django.urls import path
 
 from .views import (IndexView, ShowCategories, DisplayCategory, DisplayCategoryComplet,
                     DisplayRunDetails, DisplayTeamDetails, TutoView, MarkdownView, test1, test2,
-                    test3, etiquettes, drivers, update_database)
+                    test3, etiquettes, drivers, update_database, displayTestAnalytic)
 
 app_name = 'results'
 urlpatterns = [
@@ -21,4 +21,7 @@ urlpatterns = [
     path('test3/', test3, name='test3'),
     path('etiquettes/', etiquettes, name='etiquettes'),
     path('drivers/', drivers, name='drivers'),
+    
+    path('<int:comp_id>/cat<int:cls_id>/zonetest/', displayTestAnalytic, name='zonetest'),
+
 ]
