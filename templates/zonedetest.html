@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{{
+"""
+    context = {"competition" : competition,
+               "categories": categories,
+               "selectedCat": category,
+               "leg":legInGet,
+               "ctrlName": listCtrlPointsName,
+               "results": listeResultats,
+               "type":typeFormat,
+               "json":dictResults}
+
+"""
+}}
+
+{% block titre %}
+<title>{{ competition.name }} - catégorie {{selectedCat.name}} {% if leg > 0 %}- leg {{ leg }}{% endif %}</title>
+{% endblock %}
+
+{% block content %}
+<h1 class="text-body-emphasis">{{ competition.name }}</h1>
+{% include "categoryListComponent.html" with sFD="checked" %}
+<h2 class="text-body-emphasis">{{ selectedCat.name }}{% if leg > 0 %} - leg {{ leg }}{% endif %}</h2>
+<div id="alttable" class="table-responsive"></div>
+{% endblock %}
+
+{% block style %}
+/* CSS pour une table avec des marges sticky */
+.table-responsive {
+	height:calc(100vh - 6rem);
+
+	& table {
+		table-layout: fixed;
+		& th, td { 
+			width:6rem;
+		}
+		& th:nth-of-type(2), td:nth-of-type(2) {
+			width:200px;
+			position : sticky;
+			left:6rem;
+			border-right: 1px solid white;
+		}
+		& th:nth-of-type(1), th:nth-of-type(2), td:nth-of-type(1), td:nth-of-type(2) {
+			vertical-align:middle;
+		}
+	}
+
+	& thead tr {
+		position : sticky;
+		top:0;
+		text-align:center;
+		z-index:1;
+		border-bottom: 1px solid white;
+	}
+
+	& thead tr th:nth-of-type(1) {
+		text-align:center;
+		position : sticky;
+		left:0;
+		text-align:center;
+	}
+	& tr td:nth-of-type(1) {
+		text-align:center;
+		position : sticky;
+		left:0;
+		text-align:center;
+	}
+
+}
+.hCtrl {
+	padding-bottom:0.5rem;
+}
+.bActif {
+	background-color:white;
+}
+.sActif, .hActif {
+	color:red;
+}
+{% endblock %}
+
+
+
+{% block scriptspecifique %}
+<div id="dataheader" style="display:none;">
+{{jsonCtrl}}
+</div>
+<div id="datasource" style="display:none;">
+{{json}}
+</div>
+
+
+<script type="text/javascript">
+
+function createElementFrom ( type, id = '', scope = '', content = '') {
+// pour la creation répétitive des éléments de tableau, mais pas uniquement
+	let itemHTML = document.createElement(type);
+	id != '' ? itemHTML.id = id : '';
+	scope !='' ? itemHTML.scope = scope : '';
+	itemHTML.innerHTML = content;
+	return itemHTML;
+}
+
+function sortByCol(critere, typeTri) {
+// fonction spécifique pour faire le tri de la table de données
+// (avant la construction de la table à afficher)
+	let sortBy = critere.replace('th','');
+
+	let sm, gt;
+	if (typeTri == "bi-chevron-double-down" || typeTri == "bi-chevron-down") {
+	// de petit à grand
+		sm = 1;
+		gt = -1;
+	} else {
+	// de grand à petit
+		sm = -1;
+		gt = 1;
+	}
+	if (typeTri == "bi-chevron-up" || typeTri == "bi-chevron-down") { // classement sur le temps interposte
+		critere = 'IP-'+critere;
+	}
+	return function (rowA, rowB) {
+		const critereA = rowA[1][sortBy];
+		const critereB = rowB[1][sortBy];
+		let statA, statB;
+		if (critere == 'rt' || critere == 'IP-rt') {
+		// seulement si on trie sur 'rt' ou 'IP-rt', les statuts autre que 'OK' sont à la fin
+			statA = (rowA[1]['stat'] == 1);
+			statB = (rowB[1]['stat'] == 1);
+		} else {
+			// si on trie sur un autre critère que 'rt' ou 'IP-rt', ceux dont le temps est 0 sont à la fin.
+			statA = (rowA[1][sortBy] != 0);
+			statB = (rowB[1][sortBy] != 0);
+		}
+		if (statA != statB) {
+			return statA < statB ? 1 : -1;
+		} else {
+			return critereA < critereB ? sm : gt;
+		}
+	}
+}
+
+function formatTimeWithMS (timeWithMs) {
+// formatage du temps reçu en dixième de secondes vers hh.mm.ss.d
+	if (timeWithMs != 0) {
+		const time = timeWithMs/10,
+			hh = Math.floor(time/3600).toString().padStart(2, "0"),
+			mm = Math.floor((time/60)%60).toString().padStart(2, "0"),
+			ss = Math.floor(time%60).toString().padStart(2, "0"),
+			d = timeWithMs % 10;
+		let timeFormat = hh != '00' ? hh+":" : '';
+		timeFormat += mm+":"+ss;
+		timeFormat += (d > 0) ? "."+ d : '';
+		return timeFormat;
+	} else {
+		return "---";
+	}
+}
+
+function fnAffichage (element, typeTri) {
+	let bActif = document.querySelector(".bActif");
+	if (bActif) {
+		document.querySelector(".bActif").classList.remove("bActif");
+	}
+	element.classList.add("bActif");
+
+	let arrayNode = document.querySelectorAll(".sActif");
+	for (let index = 0; index < arrayNode.length; index++) {
+		arrayNode[index].classList.remove("sActif");
+	}
+	
+// "bi-chevron-double-up", "bi-chevron-double-down", "bi-chevron-down", "bi-chevron-up"
+	const idCtrl = element.parentElement.parentElement.parentElement.id;
+	const selecteur = (typeTri == "bi-chevron-down" || typeTri == "bi-chevron-up")
+	  ? "."+idCtrl+" .timeIP"
+	  : "."+idCtrl+" .timeGen";
+	arrayNode = document.querySelectorAll(selecteur);
+	for (index = 0; index < arrayNode.length; index++) {
+		arrayNode[index].classList.add("sActif");
+	}
+	bActif = document.querySelector(".hActif");
+	if (bActif) {
+		document.querySelector(".hActif").classList.remove("hActif");
+	}
+	document.querySelector(`#${idCtrl} .hCtrl`).classList.add("hActif");
+
+}
+
+function fnBuildLines(critere, typeTri) {
+// construction du tableau à partir des données triées selon le critère et le type de tri
+	let datasource = Object.entries(JSON.parse(document.getElementById("datasource").innerHTML));
+	// editer les données en fonction de l'affichage demandé ?
+
+	datasource.sort(sortByCol(critere, typeTri));
+
+	let tableBody = document.getElementById("mainContent");
+	tableBody.innerHTML = '';
+	datasource.forEach ((item, index) => {
+		row = item[1];
+		let tr = createElementFrom("tr", '', "row");
+
+		let td = document.createElement("td"); // place
+		td.innerHTML = index+1;
+		tr.appendChild(td);
+
+		td = document.createElement("td"); // nom et autres infos
+		td.innerHTML = row["name"]
+		  + (row["org"] == 0
+		  ? ''
+		  : "<br/>"+row["org"]+" - "+row["club"]);
+		tr.appendChild(td);
+
+		arCtrl.forEach(ctrl => {
+			td = document.createElement("td");
+			td.className = "th"+ctrl;
+			td.innerHTML = "<span class='timeGen'>"+formatTimeWithMS(row[ctrl])+"</span>"
+			  + (row[ctrl] != ""
+			  ? "<br/><span class='timeIP'>("+formatTimeWithMS(row['IP-'+ctrl])+")</span>"
+			  : '');
+			tr.appendChild(td);
+		});
+
+		td = document.createElement("td"); // finish
+		td.className = 'thrt';
+		td.innerHTML = "<span class='timeGen'>"+formatTimeWithMS(row["rt"])+"</span>"
+		  + (row["rt"] != ""
+		  ?"<br/><span class='timeIP'>("+formatTimeWithMS(row['IP-rt'])+")</span>"
+		  : '');
+		tr.appendChild(td);
+		td = document.createElement("td"); // statut
+		td.innerHTML = runnerStatus[row["stat"]];
+		tr.appendChild(td);
+
+		tableBody.appendChild(tr);
+	});
+}
+
+const runnerStatus = {
+	0:  "UKNWN",
+	1:  "OK",
+	3:  "MP",
+	4:  "DNF",
+	5:  "DSQ",
+	6:  "OT",
+	20: "DNS",
+	21: "CANCEL",
+	99: "NC"
+}
+
+// construction de la table vide
+
+let table = document.createElement("table");
+table.className="table table-striped table-dark table-hover";
+
+// entete de la table
+// le tableau des données est dans le div invisible 'dataheader'
+let dataheader = JSON.parse(document.getElementById("dataheader").innerHTML);
+
+let thead = document.createElement("thead");
+let tr = document.createElement("tr");
+let th;
+tr.appendChild(createElementFrom("th", "place", "col", "<div class='hCtrl'>Place</div>"))
+tr.appendChild(createElementFrom("th", "nom", "col", "<div class='hCtrl'>Nom (Club)</div>"))
+
+let bGroup = document.createElement("div");
+bGroup.innerHTML = `
+<div style="display:flex;">
+<button type="button" class="btn btn-outline-secondary">
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-double-up" viewBox="0 0 16 16">
+  <path fill-rule="evenodd" d="M7.646 2.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 3.707 2.354 9.354a.5.5 0 1 1-.708-.708z"/>
+  <path fill-rule="evenodd" d="M7.646 6.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 7.707l-5.646 5.647a.5.5 0 0 1-.708-.708z"/>
+</svg>
+<span class="visually-hidden">Sort by time, best first</span>
+</button>
+<button type="button" class="btn btn-outline-secondary">
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-double-down" viewBox="0 0 16 16">
+  <path fill-rule="evenodd" d="M1.646 6.646a.5.5 0 0 1 .708 0L8 12.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708"></path>
+  <path fill-rule="evenodd" d="M1.646 2.646a.5.5 0 0 1 .708 0L8 8.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708"></path>
+</svg>
+<span class="visually-hidden">Sort by time, worst first</span>
+</button>
+</div>
+<div style="display:flex;">
+<button type="button" class="btn btn-outline-secondary">
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-up" viewBox="0 0 16 16">
+  <path fill-rule="evenodd" d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708z"/>
+</svg>
+<span class="visually-hidden">Sort by time of leg, best first</span>
+</button>
+<button type="button" class="btn btn-outline-secondary">
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-down" viewBox="0 0 16 16">
+  <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708"/>
+</svg>
+<span class="visually-hidden">Sort by time of leg, worst first</span>
+</button>
+</div>`;
+
+let index = 0
+let arCtrl = []
+while (index < Object.entries(dataheader).length) {
+	th = createElementFrom("th", "th"+dataheader[index].id, "col", "<div class='hCtrl'>"+dataheader[index].name+"</div>");
+	th.appendChild(bGroup.cloneNode(true));
+	tr.appendChild(th);
+	arCtrl.push(dataheader[index].id);
+	index ++;
+}
+th = createElementFrom("th", "thrt", "col",  "<div class='hCtrl'>Finish</div>");
+th.appendChild(bGroup);
+tr.appendChild(th);
+tr.appendChild(createElementFrom("th", "thstat", "col", "Status"));
+table.appendChild(thead).appendChild(tr);
+
+// body
+let tbody = document.createElement("tbody");
+tbody.id="mainContent";
+table.appendChild(tbody)
+document.getElementById("alttable").appendChild(table)
+
+for (let classname of ["bi-chevron-double-up", "bi-chevron-double-down", "bi-chevron-down", "bi-chevron-up"]) {
+	let arraysource = document.getElementsByClassName(classname);
+	for (let index = 0; index < arraysource.length; index++) {
+		arraysource[index].parentElement.addEventListener("click", function(event) {
+			// closure
+			fnBuildLines(event.currentTarget.parentElement.parentElement.parentElement.id, classname);
+			fnAffichage(event.currentTarget, classname);
+		});
+	}
+}
+// fin de construction du tableau vide
+
+// remplissage du tableau trié en fin de chargement
+fnBuildLines('thrt', 'bi-chevron-double-up');
+fnAffichage(document.querySelector("#thrt .bi-chevron-double-up").parentElement);
+
+</script>
+{% endblock %}
