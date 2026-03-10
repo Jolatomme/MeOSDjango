@@ -1,0 +1,60 @@
+{% extends "results/base.html" %}
+{% load meos_tags %}
+{% block title %}{{ organization.name }} — {{ competition.name }}{% endblock %}
+
+{% block page_header %}
+<div class="co-page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="co-breadcrumb">
+      <ol class="breadcrumb mb-2 small">
+        {% include 'results/_breadcrumb_home_comp.html' %}
+        <li class="breadcrumb-item active">{{ organization.name }}</li>
+      </ol>
+    </nav>
+    <h1><i class="bi bi-building me-2 opacity-75"></i>{{ organization.name }}</h1>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="co-card">
+  <div class="co-card-header">
+    <i class="bi bi-people me-2"></i>Concurrents — {{ organization.name }}
+  </div>
+  <div class="table-responsive">
+    <table class="results-table">
+      <thead>
+        <tr>
+          <th>Concurrent</th>
+          <th>Catégorie</th>
+          <th class="text-end">Temps</th>
+          <th class="text-center">Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for comp in competitors %}
+        <tr>
+          <td class="runner-name">
+            <a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name }}</a>
+          </td>
+          <td>
+            {% if comp.class_obj %}
+              <a href="{% url 'results:class_results' competition.cid comp.cls %}"
+                 class="text-muted text-decoration-none">{{ comp.class_obj.name }}</a>
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-end time-col">
+            {% if comp.is_ok %}{{ comp.rt|meos_time }}{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="text-center">
+            <span class="badge bg-{{ comp.stat|status_badge }}">{{ comp.stat|status_label }}</span>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-muted p-4">Aucun concurrent.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

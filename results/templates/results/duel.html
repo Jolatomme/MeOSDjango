@@ -1,0 +1,474 @@
+{% extends "results/base.html" %}
+{% load meos_tags %}
+{% load static %}
+{% block title %}Duel de coureurs — {{ cls.name }} — {{ competition.name }}{% endblock %}
+
+{% block page_header %}
+<div class="co-page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="co-breadcrumb">
+      <ol class="breadcrumb mb-2 small">
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'results:competition_detail' competition.cid %}">{{ competition.name }}</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'results:class_results' competition.cid cls.id %}">{{ cls.name }}</a>
+        </li>
+        <li class="breadcrumb-item active">Duel de coureurs</li>
+      </ol>
+    </nav>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h1>
+          <i class="bi bi-people-fill me-2 opacity-75" style="color:var(--co-gold)"></i>Duel de coureurs
+        </h1>
+        <div class="opacity-75 small mt-1">{{ cls.name }} — {{ competition.name }}</div>
+      </div>
+      {% if not no_data %}
+      <span class="badge bg-light text-dark fs-6">{{ n_runners }} participant{{ n_runners|pluralize }}</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% include 'results/analysis_tabs.html' %}
+{% endblock %}
+
+{% block content %}
+
+{% if no_data %}
+<div class="co-card text-center p-5 text-muted">
+  <i class="bi bi-people fs-1 d-block mb-3 opacity-25"></i>
+  Aucun coureur disponible pour cette catégorie.
+</div>
+
+{% else %}
+
+{# ── Sélecteurs de coureurs ──────────────────────────────────────────────────── #}
+<div class="co-card mb-4">
+  <div class="co-card-header">
+    <i class="bi bi-people-fill me-2"></i>Choisissez les deux coureurs à comparer
+  </div>
+  <div class="p-3">
+    <div class="row g-3 align-items-center">
+
+      <div class="col-12 col-md-5">
+        <label class="form-label small fw-bold mb-1" style="color:#4363d8">
+          <i class="bi bi-person-fill me-1"></i>Coureur A
+        </label>
+        <select id="selectA" class="form-select" onchange="onSelectionChange()">
+          <option value="">— Sélectionner —</option>
+        </select>
+        <div id="badgeA" class="mt-2 d-none">
+          <span class="badge duel-badge-a px-3 py-2 fs-6" id="totalA"></span>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-2 text-center">
+        <div class="duel-vs">VS</div>
+      </div>
+
+      <div class="col-12 col-md-5">
+        <label class="form-label small fw-bold mb-1" style="color:#e07840">
+          <i class="bi bi-person-fill me-1"></i>Coureur B
+        </label>
+        <select id="selectB" class="form-select" onchange="onSelectionChange()">
+          <option value="">— Sélectionner —</option>
+        </select>
+        <div id="badgeB" class="mt-2 d-none">
+          <span class="badge duel-badge-b px-3 py-2 fs-6" id="totalB"></span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{# ── Résumé du duel ──────────────────────────────────────────────────────────── #}
+<div id="duelSummary" class="d-none mb-3">
+  <div class="row g-3 text-center">
+    <div class="col-4">
+      <div class="duel-summary-card duel-summary-a" id="summaryWinsA">
+        <div class="duel-summary-val" id="winsAVal">—</div>
+        <div class="duel-summary-lbl">tronçons gagnés</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="duel-summary-card duel-summary-tie">
+        <div class="duel-summary-val" id="tiesVal">—</div>
+        <div class="duel-summary-lbl">ex-æquo</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="duel-summary-card duel-summary-b" id="summaryWinsB">
+        <div class="duel-summary-val" id="winsBVal">—</div>
+        <div class="duel-summary-lbl">tronçons gagnés</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Tableau de duel ─────────────────────────────────────────────────────────── #}
+<div id="duelTableWrap" class="co-card d-none">
+  <div class="co-card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-table me-2"></i>Comparaison tronçon par tronçon</span>
+    <div class="d-flex align-items-center gap-2">
+      <span class="small text-white opacity-75">Afficher temps :</span>
+      <div class="btn-group btn-group-sm">
+        <input type="radio" class="btn-check" name="timeMode" id="modeLeg" value="leg" checked>
+        <label class="btn btn-sm btn-outline-light" for="modeLeg">Tronçon</label>
+        <input type="radio" class="btn-check" name="timeMode" id="modeAbs" value="abs">
+        <label class="btn btn-sm btn-outline-light" for="modeAbs">Cumulé</label>
+      </div>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="duel-table" id="duelTable">
+      <thead>
+        <tr>
+          <th class="text-end duel-th-a" id="headA">Coureur A</th>
+          <th class="text-center duel-th-ctrl">Tronçon</th>
+          <th class="text-center duel-th-delta">Écart</th>
+          <th class="text-start duel-th-b" id="headB">Coureur B</th>
+        </tr>
+      </thead>
+      <tbody id="duelTbody"></tbody>
+      <tfoot id="duelTfoot"></tfoot>
+    </table>
+  </div>
+</div>
+
+{# ── Message quand aucun coureur sélectionné ─────────────────────────────────── #}
+<div id="duelPlaceholder" class="co-card text-center p-5 text-muted">
+  <i class="bi bi-people fs-1 d-block mb-3 opacity-25"></i>
+  <p class="mb-0">Sélectionnez deux coureurs ci-dessus pour afficher le duel tronçon par tronçon.</p>
+</div>
+
+{% endif %}
+{% endblock %}
+
+
+{% block extra_head %}
+{% if not no_data %}
+<style>
+  /* ── VS badge ───────────────────────────────────────────────────────── */
+  .duel-vs {
+    font-family: var(--font-display); font-weight: 800; font-size: 2rem;
+    color: var(--co-gold); letter-spacing: .08em;
+    text-shadow: 0 2px 8px rgba(0,0,0,.15);
+  }
+
+  /* ── Badges temps total ─────────────────────────────────────────────── */
+  .duel-badge-a { background: #4363d8; color: #fff; }
+  .duel-badge-b { background: #e07840; color: #fff; }
+
+  /* ── Cartes résumé ──────────────────────────────────────────────────── */
+  .duel-summary-card {
+    background: #fff; border-radius: 10px;
+    box-shadow: var(--co-shadow); border: 1px solid var(--co-border);
+    padding: 1rem .5rem;
+  }
+  .duel-summary-val {
+    font-family: var(--font-display); font-weight: 800;
+    font-size: 2.2rem; line-height: 1;
+  }
+  .duel-summary-lbl {
+    font-size: .75rem; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--co-grey); margin-top: .3rem;
+  }
+  .duel-summary-a { border-top: 4px solid #4363d8; }
+  .duel-summary-a .duel-summary-val { color: #4363d8; }
+  .duel-summary-b { border-top: 4px solid #e07840; }
+  .duel-summary-b .duel-summary-val { color: #e07840; }
+  .duel-summary-tie { border-top: 4px solid var(--co-gold); }
+  .duel-summary-tie .duel-summary-val { color: var(--co-gold); }
+
+  /* ── Tableau duel ───────────────────────────────────────────────────── */
+  .duel-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .92rem; }
+  .duel-table thead th {
+    background: var(--co-forest); color: #fff;
+    font-family: var(--font-display); font-weight: 700;
+    font-size: .8rem; letter-spacing: .07em; text-transform: uppercase;
+    padding: .65rem 1rem;
+  }
+  .duel-th-a    { width: 38%; }
+  .duel-th-b    { width: 38%; }
+  .duel-th-ctrl { width: 14%; }
+  .duel-th-delta { width: 10%; }
+
+  .duel-table tbody tr { border-bottom: 1px solid #f0f0f0; transition: background .12s; }
+  .duel-table tbody tr:hover { background: #f5f5f5; }
+  .duel-table tbody td { padding: .55rem .85rem; vertical-align: middle; }
+
+  /* cellule coureur */
+  .duel-cell-a { text-align: right; }
+  .duel-cell-b { text-align: left;  }
+  .duel-cell-ctrl {
+    text-align: center; font-family: var(--font-display);
+    font-weight: 700; font-size: .82rem; color: var(--co-forest);
+  }
+  .duel-cell-delta { text-align: center; }
+
+  /* temps principal */
+  .duel-leg-time {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: 1.05rem; display: inline-block;
+  }
+  .duel-leg-time.win  { color: #1a6b3c; }
+  .duel-leg-time.lose { color: #c0392b; }
+  .duel-leg-time.tie  { color: var(--co-grey); }
+
+  /* temps cumulé secondaire */
+  .duel-abs-time { font-size: .75rem; color: var(--co-grey); margin-top: .05rem; display: block; }
+  .duel-missing  { font-size: .85rem; color: #bbb; }
+
+  /* badge écart */
+  .duel-delta-badge {
+    display: inline-block; font-family: var(--font-display); font-weight: 700;
+    font-size: .85rem; border-radius: 4px; padding: .2rem .55rem;
+  }
+  .duel-delta-badge.a-wins { background: #d4edda; color: #155724; }
+  .duel-delta-badge.b-wins { background: #f8d7da; color: #721c24; }
+  .duel-delta-badge.tie    { background: #fff3cd; color: #856404; }
+
+  /* indicateur de victoire (flèche) */
+  .duel-arrow-a { color: #1a6b3c; font-size: 1rem; margin-left: .3rem; }
+  .duel-arrow-b { color: #c0392b; font-size: 1rem; margin-right: .3rem; }
+
+  /* pied de tableau (total) */
+  .duel-table tfoot td {
+    background: var(--co-forest); color: #fff;
+    padding: .7rem .85rem; font-family: var(--font-display);
+    font-weight: 700; font-size: 1rem; border-top: 2px solid var(--co-gold);
+  }
+  .duel-total-time { font-size: 1.15rem; }
+  .duel-total-time.win  { color: var(--co-gold); }
+  .duel-total-time.lose { color: rgba(255,255,255,.5); }
+  .duel-total-time.tie  { color: rgba(255,255,255,.8); }
+  .duel-total-delta { font-size: .85rem; color: rgba(255,255,255,.75); }
+
+  @media (max-width: 576px) {
+    .duel-abs-time { display: none; }
+    .duel-table tbody td { padding: .45rem .5rem; }
+    .duel-th-ctrl { display: none; }
+    .duel-cell-ctrl { display: none; }
+  }
+</style>
+{% endif %}
+{% endblock %}
+
+
+{% block extra_js %}
+{% if not no_data %}
+<script>
+const RUNNERS = {{ runners_json|safe }};
+
+// ── Helpers de formatage ─────────────────────────────────────────────────────
+function fmtTenths(v) {
+  // Convertit des dixièmes de seconde en "M:SS" ou "H:MM:SS"
+  if (v === null || v === undefined || v <= 0) return '—';
+  const abs   = Math.abs(Math.round(v));
+  const total = Math.floor(abs / 10);
+  const h = Math.floor(total / 3600), rem = total % 3600;
+  const m = Math.floor(rem / 60),     s   = rem % 60;
+  const ss = String(s).padStart(2, '0');
+  return h > 0
+    ? `${h}:${String(m).padStart(2,'0')}:${ss}`
+    : `${m}:${ss}`;
+}
+
+function fmtDelta(d) {
+  // d en dixièmes de seconde, toujours positif (on passe le signe séparément)
+  const abs   = Math.abs(Math.round(d));
+  const total = Math.floor(abs / 10);
+  const m = Math.floor(total / 60), s = total % 60;
+  const ss = String(s).padStart(2,'0');
+  return m > 0 ? `${m}:${ss}` : `${s}s`;
+}
+
+function runnerLabel(r) {
+  const rank = r.rank ? `${r.rank}. ` : '';
+  const org  = r.org  ? ` (${r.org})` : '';
+  return `${rank}${r.name}${org}`;
+}
+
+// ── Peuplement des selects ───────────────────────────────────────────────────
+function populateSelects() {
+  ['selectA', 'selectB'].forEach(id => {
+    const sel = document.getElementById(id);
+    RUNNERS.forEach(r => {
+      const opt   = document.createElement('option');
+      opt.value   = r.id;
+      opt.textContent = runnerLabel(r);
+      sel.appendChild(opt);
+    });
+  });
+}
+
+// ── Mise à jour à chaque changement de sélection ────────────────────────────
+function onSelectionChange() {
+  const idA = parseInt(document.getElementById('selectA').value);
+  const idB = parseInt(document.getElementById('selectB').value);
+
+  document.getElementById('duelPlaceholder').classList.toggle(
+    'd-none', !!(idA && idB)
+  );
+  document.getElementById('duelTableWrap').classList.toggle(
+    'd-none', !(idA && idB)
+  );
+  document.getElementById('duelSummary').classList.toggle(
+    'd-none', !(idA && idB)
+  );
+
+  if (!idA || !idB) return;
+
+  const rA = RUNNERS.find(r => r.id === idA);
+  const rB = RUNNERS.find(r => r.id === idB);
+  if (!rA || !rB) return;
+
+  buildDuel(rA, rB);
+}
+
+// ── Construction du tableau ─────────────────────────────────────────────────
+function buildDuel(rA, rB) {
+  const mode   = document.querySelector('input[name="timeMode"]:checked')?.value ?? 'leg';
+  const nLegs  = Math.max(rA.splits.length, rB.splits.length);
+
+  // En-têtes colonnes coureurs
+  document.getElementById('headA').textContent = `${rA.name}${rA.rank ? ' ' + rA.rank : ''}`;
+  document.getElementById('headB').textContent = `${rA.name !== rB.name ? rB.name : rB.name}${rB.rank ? ' ' + rB.rank : ''}`;
+
+  // Badges temps total
+  document.getElementById('badgeA').classList.remove('d-none');
+  document.getElementById('badgeB').classList.remove('d-none');
+  const txtA = (rA.rank ? `${rA.rank}. ` : '') + rA.name + ' — ' + rA.rt_fmt;
+  const txtB = (rB.rank ? `${rB.rank}. ` : '') + rB.name + ' — ' + rB.rt_fmt;
+  document.getElementById('totalA').textContent = txtA;
+  document.getElementById('totalB').textContent = txtB;
+
+  let winsA = 0, winsB = 0, ties = 0;
+  const rows = [];
+
+  for (let j = 0; j < nLegs; j++) {
+    const spA = rA.splits[j];
+    const spB = rB.splits[j];
+
+    const legA = spA?.leg_raw ?? null;
+    const legB = spB?.leg_raw ?? null;
+    const absA = spA?.abs_raw ?? null;
+    const absB = spB?.abs_raw ?? null;
+    const nameCtrl = spA?.ctrl_name ?? spB?.ctrl_name ?? `P${j+1}`;
+
+    const valA = mode === 'abs' ? absA : legA;
+    const valB = mode === 'abs' ? absB : legB;
+    const fmtA = mode === 'abs' ? (spA?.abs_fmt ?? '—') : (spA?.leg_fmt ?? '—');
+    const fmtB = mode === 'abs' ? (spB?.abs_fmt ?? '—') : (spB?.leg_fmt ?? '—');
+
+    // Qui gagne ce tronçon (sur temps de tronçon uniquement, indépendamment du mode)
+    let winner = 'none';   // 'A' | 'B' | 'tie' | 'none'
+    if (legA !== null && legB !== null && legA > 0 && legB > 0) {
+      if (legA < legB)        { winner = 'A'; winsA++; }
+      else if (legB < legA)   { winner = 'B'; winsB++; }
+      else                    { winner = 'tie'; ties++; }
+    }
+
+    // Delta tronçon (toujours en termes de legtime)
+    let deltaHtml = '<span class="text-muted small">—</span>';
+    if (legA !== null && legB !== null && legA > 0 && legB > 0) {
+      const d    = legA - legB;   // négatif = A plus rapide
+      const absd = Math.abs(d);
+      if (absd < 3) {
+        deltaHtml = `<span class="duel-delta-badge tie">= ${fmtDelta(absd)}</span>`;
+      } else if (d < 0) {
+        deltaHtml = `<span class="duel-delta-badge a-wins">◀ ${fmtDelta(absd)}</span>`;
+      } else {
+        deltaHtml = `<span class="duel-delta-badge b-wins">${fmtDelta(absd)} ▶</span>`;
+      }
+    }
+
+    // Classe CSS pour le temps affiché
+    const clsA = winner === 'A' ? 'win' : winner === 'B' ? 'lose' : winner === 'tie' ? 'tie' : '';
+    const clsB = winner === 'B' ? 'win' : winner === 'A' ? 'lose' : winner === 'tie' ? 'tie' : '';
+
+    // Temps secondaire (cumulé si mode leg, tronçon si mode abs)
+    const secFmtA = mode === 'abs' ? (spA?.leg_fmt ?? '') : (spA?.abs_fmt ?? '');
+    const secFmtB = mode === 'abs' ? (spB?.leg_fmt ?? '') : (spB?.abs_fmt ?? '');
+
+    const arrowA = winner === 'A' ? `<span class="duel-arrow-a">◀</span>` : '';
+    const arrowB = winner === 'B' ? `<span class="duel-arrow-b">▶</span>` : '';
+
+    rows.push(`
+      <tr>
+        <td class="duel-cell-a">
+          ${arrowA}
+          <span class="duel-leg-time ${clsA}">${valA !== null && valA > 0 ? fmtA : '<span class="duel-missing">—</span>'}</span>
+          ${secFmtA ? `<span class="duel-abs-time">${secFmtA}</span>` : ''}
+        </td>
+        <td class="duel-cell-ctrl">${nameCtrl}</td>
+        <td class="duel-cell-delta">${deltaHtml}</td>
+        <td class="duel-cell-b">
+          <span class="duel-leg-time ${clsB}">${valB !== null && valB > 0 ? fmtB : '<span class="duel-missing">—</span>'}</span>
+          ${arrowB}
+          ${secFmtB ? `<span class="duel-abs-time">${secFmtB}</span>` : ''}
+        </td>
+      </tr>
+    `);
+  }
+
+  document.getElementById('duelTbody').innerHTML = rows.join('');
+
+  // ── Résumé gains ───────────────────────────────────────────────────────────
+  document.getElementById('winsAVal').textContent = winsA;
+  document.getElementById('winsBVal').textContent = winsB;
+  document.getElementById('tiesVal').textContent  = ties;
+
+  // Mettre en avant le vainqueur des tronçons
+  document.getElementById('summaryWinsA').style.opacity = winsA >= winsB ? '1' : '.6';
+  document.getElementById('summaryWinsB').style.opacity = winsB >= winsA ? '1' : '.6';
+
+  // ── Pied de tableau : temps total ─────────────────────────────────────────
+  const rtA = rA.rt_raw, rtB = rB.rt_raw;
+  let totWinA = '', totWinB = '', totDeltaHtml = '';
+  if (rtA !== null && rtB !== null) {
+    const d = rtA - rtB;
+    totWinA = d < 0 ? 'win' : d > 0 ? 'lose' : 'tie';
+    totWinB = d > 0 ? 'win' : d < 0 ? 'lose' : 'tie';
+    const absd = Math.abs(d);
+    if (d < 0) totDeltaHtml = `<span class="duel-delta-badge a-wins">◀ ${fmtDelta(absd)}</span>`;
+    else if (d > 0) totDeltaHtml = `<span class="duel-delta-badge b-wins">${fmtDelta(absd)} ▶</span>`;
+    else totDeltaHtml = `<span class="duel-delta-badge tie">=</span>`;
+  }
+
+  document.getElementById('duelTfoot').innerHTML = `
+    <tr>
+      <td class="text-end">
+        <span class="duel-total-time ${totWinA}">${rA.rt_fmt}</span>
+      </td>
+      <td class="text-center duel-cell-ctrl" style="color:rgba(255,255,255,.6);font-size:.75rem">TOTAL</td>
+      <td class="text-center">${totDeltaHtml}</td>
+      <td class="text-start">
+        <span class="duel-total-time ${totWinB}">${rB.rt_fmt}</span>
+      </td>
+    </tr>
+  `;
+}
+
+// ── Reload quand on change le mode leg/abs ───────────────────────────────────
+document.querySelectorAll('input[name="timeMode"]').forEach(r =>
+  r.addEventListener('change', onSelectionChange)
+);
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  populateSelects();
+
+  // Pré-sélectionner les deux premiers coureurs si disponibles
+  if (RUNNERS.length >= 2) {
+    document.getElementById('selectA').value = RUNNERS[0].id;
+    document.getElementById('selectB').value = RUNNERS[1].id;
+    onSelectionChange();
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -37,12 +38,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     'results',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -63,6 +66,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'results.context_processors.site_settings',
             ],
         },
     },
@@ -85,7 +89,11 @@ DATABASES = {
         'USER': DATABASE_USER,
         'PASSWORD': DATABASE_PASSWORD,
         'HOST': DATABASE_HOST,
-        'PORT': DATABASE_PORT
+        'PORT': DATABASE_PORT,
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
 
@@ -125,8 +133,24 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = []
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ─── MeOS MOP (réception des données en temps réel) ───────────────────────────
+# Mot de passe à configurer dans MeOS : Outils > Serveur Online > Mot de passe
+# À surcharger via variable d'environnement MOP_PASSWORD en production
+#MOP_PASSWORD = os.environ.get('MOP_PASSWORD', 'meos')
+MOP_PASSWORD = MEOS_PASSWORD
+
+# ─── SITE CONFIG (override in .env) ────────────────────────────────────────────
+SITE_NAME = os.environ.get('SITE_NAME', 'Résultats CO')
+SITE_SUBTITLE = os.environ.get('SITE_SUBTITLE', 'Course d\'Orientation')
+SITE_LOGO_URL = os.environ.get('SITE_LOGO_URL', '')
+CLUB_NAME = os.environ.get('CLUB_NAME', 'COCS 73')
+CLUB_COLOR_PRIMARY = os.environ.get('CLUB_COLOR_PRIMARY', '#1a6b3c')   # forest green
+CLUB_COLOR_ACCENT = os.environ.get('CLUB_COLOR_ACCENT', '#f0a500')     # gold

@@ -1,0 +1,213 @@
+{% extends "results/base.html" %}
+{% load meos_tags %}
+{% load static %}
+{#
+  Gabarit commun pour Superman, Performance, Regroupement.
+  Blocs à surcharger dans les templates enfants :
+    analysis_title         → texte du <h1>
+    analysis_breadcrumb    → libellé du dernier fil d'Ariane
+    analysis_icon          → classe BI de l'icône (ex: "bi bi-lightning-charge-fill")
+    analysis_header_right  → badges côté droit du header
+    analysis_explanation   → bloc <div class="alert"> d'explication
+    extra_filters          → contrôles additionnels dans la barre de filtres
+    chart_icon / chart_title
+    canvas_id              → id du <canvas>   (défaut : analysisChart)
+    chart_height           → hauteur en px     (défaut : 420)
+    between_chart_and_table
+    summary_card_title
+    table_headers          → <th> du tableau
+    table_body             → tbody complet (défaut : <tbody id="tbody_id">)
+    tbody_id               → id du tbody     (défaut : analysisTableBody)
+    extra_css              → règles CSS supplémentaires (dans le <style> partagé)
+    chart_init_js          → JS spécifique ; doit définir function initChart()
+    extra_dom_ready        → code JS après initChart() dans DOMContentLoaded
+#}
+
+{% block page_header %}
+<div class="co-page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="co-breadcrumb">
+      <ol class="breadcrumb mb-2 small">
+        {% include 'results/_breadcrumb_home_comp.html' %}
+        <li class="breadcrumb-item">
+          <a href="{% url 'results:class_results' competition.cid cls.id %}">{{ cls.name }}</a>
+        </li>
+        <li class="breadcrumb-item active">{% block analysis_breadcrumb %}Analyse{% endblock %}</li>
+      </ol>
+    </nav>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h1>
+          <i class="{% block analysis_icon %}bi bi-bar-chart{% endblock %} me-2 opacity-75"
+             style="color:var(--co-gold)"></i>{% block analysis_title %}Analyse{% endblock %}
+        </h1>
+        <div class="opacity-75 small mt-1">{{ cls.name }} — {{ competition.name }}</div>
+      </div>
+      {% block analysis_header_right %}{% endblock %}
+    </div>
+  </div>
+</div>
+{% include 'results/analysis_tabs.html' %}
+{% endblock %}
+
+
+{% block content %}
+
+{% if no_data %}
+<div class="co-card text-center p-5 text-muted">
+  <i class="bi bi-bar-chart fs-1 d-block mb-3 opacity-25"></i>
+  {% block no_data_message %}Pas assez de données pour cette analyse.{% endblock %}
+</div>
+
+{% else %}
+
+{# ── Explication ────────────────────────────────────────────────────────── #}
+{% block analysis_explanation %}{% endblock %}
+
+{# ── Filtres ────────────────────────────────────────────────────────────── #}
+<div class="co-card mb-3">
+  <div class="p-3 d-flex gap-3 align-items-center flex-wrap">
+    <div>
+      <label class="form-label mb-1 small fw-bold text-muted">Afficher</label>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-secondary" onclick="showTop(3)">Top 3</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="showTop(10)">Top 10</button>
+        <button class="btn btn-sm btn-success active" id="btnAll" onclick="showAll()">Tous</button>
+        <button class="btn btn-sm btn-outline-danger" onclick="hideAll()"
+                title="Masquer toutes les courbes">
+          <i class="bi bi-x-lg"></i> Effacer
+        </button>
+      </div>
+    </div>
+    <div style="max-width:280px;flex:1">
+      <label class="form-label mb-1 small fw-bold text-muted">Rechercher un coureur</label>
+      <input type="text" id="runnerFilter" class="form-control form-control-sm"
+             placeholder="Nom…" oninput="filterRunner(this.value)">
+    </div>
+    {% block extra_filters %}{% endblock %}
+  </div>
+</div>
+
+{# ── Graphique ───────────────────────────────────────────────────────────── #}
+<div class="co-card mb-4">
+  <div class="co-card-header">
+    <i class="{% block chart_icon %}bi bi-graph-up{% endblock %} me-2"></i>{% block chart_title %}Graphique{% endblock %}
+  </div>
+  <div class="p-3">
+    <div style="position:relative;height:{% block chart_height %}420{% endblock %}px;">
+      <canvas id="{% block canvas_id %}analysisChart{% endblock %}"></canvas>
+    </div>
+    <div id="legendBox"></div>
+  </div>
+</div>
+
+{# ── Bloc optionnel entre graphique et tableau ────────────────────────────── #}
+{% block between_chart_and_table %}{% endblock %}
+
+{# ── Tableau récapitulatif ────────────────────────────────────────────────── #}
+<div class="co-card mb-4">
+  <div class="co-card-header">
+    <i class="bi bi-table me-2"></i>{% block summary_card_title %}Récapitulatif{% endblock %}
+  </div>
+  <div class="table-responsive">
+    <table class="results-table">
+      <thead><tr>{% block table_headers %}{% endblock %}</tr></thead>
+      {% block table_body %}
+      <tbody id="{% block tbody_id %}analysisTableBody{% endblock %}"></tbody>
+      {% endblock %}
+    </table>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+
+{% block extra_head %}
+{% if not no_data %}
+<style>{% block extra_css %}{% endblock %}</style>
+{% endif %}
+{% endblock %}
+
+
+{% block extra_js %}
+{% if not no_data %}
+<script src="{% static 'results/js/chart.umd.min.js' %}"></script>
+<script>
+const PALETTE = [
+  '#e6194b','#3cb44b','#4363d8','#f58231','#911eb4',
+  '#42d4f4','#f032e6','#bfef45','#fabed4','#469990',
+  '#dcbeff','#9a6324','#800000','#aaffc3','#808000',
+  '#ffd8b1','#000075','#a9a9a9','#7d5a50','#2d6a4f',
+];
+let chart = null;
+
+// ── Contrôles de visibilité ───────────────────────────────────────────────
+function showTop(n) {
+  chart.data.datasets.forEach((_, i) => { chart.getDatasetMeta(i).hidden = i >= n; });
+  chart.update();
+  document.querySelectorAll('#legendBox .legend-item').forEach((el, i) => {
+    el.classList.toggle('hidden', i >= n);
+  });
+}
+function showAll() {
+  chart.data.datasets.forEach((_, i) => { chart.getDatasetMeta(i).hidden = false; });
+  chart.update();
+  document.querySelectorAll('#legendBox .legend-item').forEach(el => el.classList.remove('hidden'));
+}
+function hideAll() {
+  chart.data.datasets.forEach((_, i) => { chart.getDatasetMeta(i).hidden = true; });
+  chart.update();
+  document.querySelectorAll('#legendBox .legend-item').forEach(el => el.classList.add('hidden'));
+}
+function filterRunner(q) {
+  q = q.toLowerCase();
+  chart.data.datasets.forEach((ds, i) => {
+    const match = !q || ds.label.toLowerCase().includes(q);
+    chart.getDatasetMeta(i).hidden = !match;
+    document.querySelector(`#legendBox .legend-item[data-idx="${i}"]`)
+      ?.classList.toggle('hidden', !match);
+  });
+  chart.update();
+}
+
+// ── Légende ───────────────────────────────────────────────────────────────
+// Ces deux fonctions peuvent être redéfinies dans chart_init_js pour personnaliser la légende
+function getLegendItemClass(ds, i) {
+  return 'legend-item' + (chart.getDatasetMeta(i).hidden ? ' hidden' : '');
+}
+function getLegendItemInnerHTML(ds) {
+  return `<div class="legend-color" style="background:${ds.borderColor}"></div>
+          <span>${ds.label}</span>`;
+}
+function buildLegend() {
+  const box = document.getElementById('legendBox');
+  if (!box) return;
+  box.innerHTML = '';
+  chart.data.datasets.forEach((ds, i) => {
+    const item       = document.createElement('div');
+    item.className   = getLegendItemClass(ds, i);
+    item.dataset.idx = i;
+    item.innerHTML   = getLegendItemInnerHTML(ds, i);
+    item.addEventListener('click', () => {
+      const meta  = chart.getDatasetMeta(i);
+      meta.hidden = !meta.hidden;
+      item.classList.toggle('hidden', meta.hidden);
+      chart.update();
+    });
+    box.appendChild(item);
+  });
+}
+
+// ── Code spécifique à la page (doit définir initChart) ────────────────────
+{% block chart_init_js %}
+function initChart() {}
+{% endblock %}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initChart();
+  {% block extra_dom_ready %}{% endblock %}
+});
+</script>
+{% endif %}
+{% endblock %}

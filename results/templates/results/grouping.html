@@ -1,0 +1,204 @@
+{% extends "results/analysis_base.html" %}
+{% load meos_tags %}
+{% load static %}
+
+{% block title %}Regroupement — {{ cls.name }} — {{ competition.name }}{% endblock %}
+{% block analysis_breadcrumb %}Regroupement des coureurs{% endblock %}
+{% block analysis_icon %}bi bi-diagram-3{% endblock %}
+{% block analysis_title %}Regroupement des coureurs{% endblock %}
+
+{% block analysis_header_right %}
+{% if not no_data %}
+<div class="d-flex align-items-center gap-2">
+  <span class="badge bg-light text-dark fs-6">{{ n_runners }} coureur{{ n_runners|pluralize }}</span>
+  <span class="badge bg-light text-dark fs-6">{{ n_controls }} contrôle{{ n_controls|pluralize }}</span>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block no_data_message %}Pas assez de données pour afficher le regroupement des coureurs.{% endblock %}
+
+{% block analysis_explanation %}
+<div class="alert alert-warning border-0 mb-4"
+     style="background:#fffbe6;border-left:4px solid var(--co-gold) !important;">
+  <i class="bi bi-info-circle me-2"></i>
+  Le graphique montre le <strong>déroulé de la course en heure absolue</strong>.
+  Des <strong>lignes proches</strong> indiquent des coureurs ayant probablement couru ensemble.
+  Une ligne <strong>plus horizontale</strong> signifie un coureur plus rapide sur ce tronçon.
+  Un <strong>croisement de lignes</strong> révèle un dépassement.
+</div>
+{% endblock %}
+
+{% block extra_filters %}
+<div>
+  <label class="form-label mb-1 small fw-bold text-muted d-block">Afficher</label>
+  <div class="btn-group" role="group" aria-label="Type de coureurs">
+    <input type="radio" class="btn-check" name="runnerType" id="radioAll"
+           value="all" checked autocomplete="off">
+    <label class="btn btn-sm btn-outline-success" for="radioAll">Tous</label>
+    <input type="radio" class="btn-check" name="runnerType" id="radioFinished"
+           value="finished" autocomplete="off">
+    <label class="btn btn-sm btn-outline-secondary" for="radioFinished">Classés seulement</label>
+  </div>
+</div>
+{% endblock %}
+
+{% block chart_icon %}bi bi-graph-up{% endblock %}
+{% block chart_title %}Temps de passage absolu par poste de contrôle{% endblock %}
+{% block canvas_id %}groupingChart{% endblock %}
+{% block chart_height %}520{% endblock %}
+
+{% block table_headers %}
+<th style="width:3rem">#</th>
+<th>Coureur</th>
+<th>Club</th>
+<th class="text-end">Départ</th>
+<th class="text-end">Arrivée</th>
+<th class="text-end">Temps de course</th>
+{% endblock %}
+{% block tbody_id %}groupingTableBody{% endblock %}
+
+{% block extra_css %}
+  /* Coureurs non classés : tirets dans la légende */
+  .legend-item.dnf .legend-color {
+    background: repeating-linear-gradient(
+      90deg,
+      var(--leg-color) 0px, var(--leg-color) 6px,
+      transparent 6px,    transparent 10px
+    ) !important;
+  }
+{% endblock %}
+
+{% block chart_init_js %}
+const MEDAL_GOLD   = "{% static 'results/img/medal-gold.svg' %}";
+const MEDAL_SILVER = "{% static 'results/img/medal-silver.svg' %}";
+const MEDAL_BRONZE = "{% static 'results/img/medal-bronze.svg' %}";
+const SERIES   = {{ series_json|safe }};
+const X_LABELS = {{ x_labels_json|safe }};
+const STAT_OK  = 1;
+
+function fmtAbsTime(v) {
+  if (v === null || v === undefined) return '';
+  const totalSecs = Math.floor(Math.round(Math.abs(v)) / 10);
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = totalSecs % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function buildDatasets(showAll) {
+  return SERIES
+    .filter(s => showAll || s.stat === STAT_OK)
+    .map((s, i) => {
+      const color      = PALETTE[i % PALETTE.length];
+      const isFinished = s.has_finish && s.stat === STAT_OK;
+      return {
+        label:            `${s.rank != null ? s.rank : '—'}. ${s.name}`,
+        data:             s.points,
+        borderColor:      color, backgroundColor: color + '22',
+        borderWidth:      1.5, borderDash: isFinished ? [] : [6, 3],
+        pointRadius:      3, pointHoverRadius: 7,
+        tension:          0, spanGaps: false,
+        _runnerId: s.id, _isFinished: isFinished, _stat: s.stat,
+      };
+    });
+}
+
+function buildTable() {
+  const tbody = document.getElementById('groupingTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = SERIES.map(s => {
+    const color      = PALETTE[(s.rank - 1) % PALETTE.length];
+    const timeFmt    = s.time > 0 ? s.time_fmt : '<span class="text-muted">—</span>';
+    const finishAbs  = s.has_finish && s.points.length > 0
+      ? fmtAbsTime(s.points[s.points.length - 1])
+      : '<span class="text-muted">—</span>';
+    const opacity = s.has_finish && s.stat === STAT_OK ? '' : 'opacity:.6;font-style:italic';
+    const rankDisp = s.rank === 1 ? `<img src="${MEDAL_GOLD}"   width="22" height="22" alt="1er">`
+                   : s.rank === 2 ? `<img src="${MEDAL_SILVER}" width="22" height="22" alt="2e">`
+                   : s.rank === 3 ? `<img src="${MEDAL_BRONZE}" width="22" height="22" alt="3e">`
+                   : s.rank       ? `<span class="rank-n">${s.rank}</span>`
+                   :                `<span class="text-muted">—</span>`;
+    return `
+      <tr style="${opacity}">
+        <td>${rankDisp}</td>
+        <td class="runner-name fw-bold">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;
+                       background:${color};margin-right:5px"></span>${s.name}
+        </td>
+        <td class="club-name text-muted">${s.org}</td>
+        <td class="text-end font-monospace">${fmtAbsTime(s.st_abs)}</td>
+        <td class="text-end font-monospace">${finishAbs}</td>
+        <td class="text-end time-col">${timeFmt}</td>
+      </tr>`;
+  }).join('');
+}
+
+function applyRunnerType(value) {
+  chart.data.datasets = buildDatasets(value === 'all');
+  chart.update();
+  buildLegend();
+}
+
+// ── Surcharges légende pour gestion DNF ──────────────────────────────────
+function getLegendItemClass(ds, i) {
+  return 'legend-item'
+    + (chart.getDatasetMeta(i).hidden ? ' hidden' : '')
+    + (ds._isFinished ? '' : ' dnf');
+}
+function getLegendItemInnerHTML(ds) {
+  const colorStyle = ds._isFinished
+    ? `background:${ds.borderColor}`
+    : `background:repeating-linear-gradient(90deg,${ds.borderColor} 0px,${ds.borderColor} 6px,transparent 6px,transparent 10px)`;
+  return `<div class="legend-color" style="${colorStyle}"></div><span>${ds.label}</span>`;
+}
+
+function initChart() {
+  const ctx = document.getElementById('groupingChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: X_LABELS, datasets: buildDatasets(true) },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title(items) { return items[0]?.label || ''; },
+            label(ctx) {
+              const v = ctx.parsed.y;
+              return (v === null || v === undefined) ? null
+                : `${ctx.dataset.label} : ${fmtAbsTime(v)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { font: { family: "'Barlow Condensed', sans-serif", weight: '700', size: 11 } },
+          grid:  { color: '#e8e8e8' },
+        },
+        y: {
+          title: { display: true, text: 'Heure de passage (temps absolu)',
+                   font: { family: "'Barlow', sans-serif", size: 12 }, color: '#6c757d' },
+          ticks: {
+            callback: v => fmtAbsTime(v),
+            font: { family: "'Barlow Condensed', sans-serif", size: 11 },
+            maxTicksLimit: 12,
+          },
+          grid: { color: '#e8e8e8' },
+        }
+      }
+    }
+  });
+  buildLegend();
+  buildTable();
+}
+{% endblock %}
+
+{% block extra_dom_ready %}
+document.querySelectorAll('input[name="runnerType"]').forEach(radio => {
+  radio.addEventListener('change', e => applyRunnerType(e.target.value));
+});
+{% endblock %}

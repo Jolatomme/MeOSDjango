@@ -1,0 +1,101 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ SITE_NAME }}{% endblock %}</title>
+  <link rel="icon" href={% static 'results/img/favicon.ico' %} />
+  <link href="{% static 'results/css/bootstrap.min.css' %}" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'results/css/bootstrap-icons.min.css' %}">
+  <link rel="stylesheet" href="{% static 'results/css/site.css' %}">
+  <style>
+    /* ─── Variables dynamiques (couleurs configurables) ─────────────────── */
+    :root {
+      --co-green:      {{ CLUB_COLOR_PRIMARY }};
+      --co-green-dark: color-mix(in srgb, {{ CLUB_COLOR_PRIMARY }} 75%, black);
+      --co-gold:       {{ CLUB_COLOR_ACCENT }};
+      --co-forest:     #0d3320;
+      --co-light:      #f4f7f4;
+      --co-grey:       #6c757d;
+      --co-border:     #dee2e6;
+      --co-shadow:     0 2px 12px rgba(0,0,0,.08);
+      --font-display:  'Barlow Condensed', sans-serif;
+      --font-body:     'Barlow', sans-serif;
+    }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg co-navbar">
+    <div class="container">
+      <a class="navbar-brand" href="{% url 'results:home' %}">
+        <i class="bi bi-compass me-2"></i>{{ SITE_NAME }}<span class="brand-accent">.</span>
+      </a>
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse"
+              data-bs-target="#mainNav" aria-label="Menu">
+        <i class="bi bi-list text-white fs-4"></i>
+      </button>
+      <div class="collapse navbar-collapse" id="mainNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link {% block nav_home %}{% endblock %}" href="{% url 'results:home' %}">
+              <i class="bi bi-house me-1"></i> Accueil
+            </a>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button"
+               data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-folder2-open me-1"></i> Ressources GEC
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end co-dropdown">
+              <li>
+                <a class="dropdown-item" href={% url 'results:etiquettes' %}>
+                  <i class="bi bi-tag me-2"></i>Étiquettes pour boitiers
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href={% url 'results:drivers' %}>
+                  <i class="bi bi-usb-drive me-2"></i>Drivers
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item" href={% url 'results:tuto' %}>
+                  <i class="bi bi-book me-2"></i>Tutoriels
+                </a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  {% block page_header %}{% endblock %}
+
+  <main class="py-4">
+    <div class="container">
+      {% if messages %}
+        {% for msg in messages %}
+          <div class="alert alert-{{ msg.tags }} alert-dismissible fade show" role="alert">
+            {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <footer>
+    <div class="container d-flex justify-content-between flex-wrap gap-2">
+      <div><i class="bi bi-compass me-1"></i>{{ SITE_NAME }} — {{ CLUB_NAME }}</div>
+      <div>Données MeOS &bull; <a href="https://www.melin.nu/meos/" target="_blank">meos</a></div>
+    </div>
+  </footer>
+
+  <script src="{% static 'results/js/bootstrap.bundle.min.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
