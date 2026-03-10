@@ -1,0 +1,127 @@
+{% extends "results/base.html" %}
+{% load meos_tags %}
+{% block title %}{{ competitor.name }} — {{ competition.name }}{% endblock %}
+
+{% block page_header %}
+<div class="co-page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="co-breadcrumb">
+      <ol class="breadcrumb mb-2 small">
+        {% include 'results/_breadcrumb_home_comp.html' %}
+        {% if cls %}
+        <li class="breadcrumb-item">
+          <a href="{% url 'results:class_results' competition.cid cls.id %}">{{ cls.name }}</a>
+        </li>
+        {% endif %}
+        <li class="breadcrumb-item active">{{ competitor.name }}</li>
+      </ol>
+    </nav>
+    <h1><i class="bi bi-person-circle me-2 opacity-75"></i>{{ competitor.name }}</h1>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- Fiche -->
+  <div class="col-12 col-md-4">
+    <div class="co-card">
+      <div class="co-card-header"><i class="bi bi-person-badge me-2"></i>Fiche concurrent</div>
+      <div class="p-3">
+        <dl class="row mb-0 small">
+          <dt class="col-5 text-muted">Catégorie</dt>
+          <dd class="col-7">
+            {% if cls %}<a href="{% url 'results:class_results' competition.cid cls.id %}">{{ cls.name }}</a>
+            {% else %}—{% endif %}
+          </dd>
+
+          <dt class="col-5 text-muted">Club</dt>
+          <dd class="col-7">
+            {% if org %}<a href="{% url 'results:org_results' competition.cid competitor.org %}">{{ org.name }}</a>
+            {% else %}—{% endif %}
+          </dd>
+
+          {% if competitor.st > 0 %}
+          <dt class="col-5 text-muted">Départ</dt>
+          <dd class="col-7 fw-bold">{{ competitor.st|meos_time }}</dd>
+          {% endif %}
+
+          {% if competitor.it > 0 %}
+          <dt class="col-5 text-muted">Arrivée</dt>
+          <dd class="col-7 fw-bold">{{ competitor.it|meos_time }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+
+    <!-- Résultat -->
+    <div class="co-card mt-3">
+      <div class="co-card-header"><i class="bi bi-stopwatch me-2"></i>Résultat</div>
+      <div class="p-3 text-center">
+        {% if competitor.is_ok %}
+          <div style="font-family:var(--font-display);font-size:3rem;font-weight:800;color:var(--co-green)">
+            {{ total_time }}
+          </div>
+          <div class="mt-1">
+            <span class="badge badge-co-ok fs-6"><i class="bi bi-check-circle me-1"></i>OK</span>
+          </div>
+        {% else %}
+          <div style="font-family:var(--font-display);font-size:2rem;font-weight:800;color:#6c757d">
+            {{ competitor.status_label }}
+          </div>
+          <div class="mt-1">
+            <span class="badge bg-{{ competitor.stat|status_badge }} fs-6">{{ competitor.stat|status_label }}</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Temps intermédiaires -->
+  <div class="col-12 col-md-8">
+    <div class="co-card">
+      <div class="co-card-header"><i class="bi bi-diagram-3 me-2"></i>Temps intermédiaires</div>
+      {% if splits %}
+      <div class="table-responsive">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>Balise</th>
+              <th class="text-end">Cumulé</th>
+              <th class="text-end">Tronçon</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="split-row">
+              <td><i class="bi bi-play-fill text-success"></i> Départ</td>
+              <td class="text-end split-abs">0:00</td>
+              <td class="text-end split-leg">—</td>
+            </tr>
+            {% for sp in splits %}
+            <tr class="split-row">
+              <td>{{ sp.ctrl_name }}</td>
+              <td class="text-end split-abs">{{ sp.abs_time }}</td>
+              <td class="text-end split-leg">{{ sp.leg_time }}</td>
+            </tr>
+            {% endfor %}
+            {% if competitor.is_ok %}
+            <tr class="split-row" style="border-top:2px solid var(--co-green)">
+              <td><i class="bi bi-flag-fill text-danger"></i> Arrivée</td>
+              <td class="text-end split-abs fw-bold" style="color:var(--co-green)">{{ total_time }}</td>
+              <td class="text-end split-leg">—</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="p-4 text-center text-muted">
+        <i class="bi bi-info-circle me-2"></i>
+        Aucun temps intermédiaire disponible (table <code>mopRadio</code> vide pour ce concurrent).
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

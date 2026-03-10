@@ -1,0 +1,228 @@
+{% extends "results/analysis_base.html" %}
+{% load meos_tags %}
+{% load static %}
+
+{% block title %}Indice de performance — {{ cls.name }} — {{ competition.name }}{% endblock %}
+{% block analysis_breadcrumb %}Indice de performance{% endblock %}
+{% block analysis_icon %}bi bi-speedometer2{% endblock %}
+{% block analysis_title %}Indice de performance{% endblock %}
+
+{% block analysis_header_right %}
+{% if not no_data %}
+<div class="d-flex align-items-center gap-2">
+  <span class="badge bg-light text-dark fs-6">{{ n_finishers }} classé{{ n_finishers|pluralize }}</span>
+  <span class="badge bg-light text-dark fs-6">{{ n_legs }} tronçon{{ n_legs|pluralize }}</span>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block no_data_message %}Pas assez de données pour calculer l'indice de performance.{% endblock %}
+
+{% block analysis_explanation %}
+<div class="alert alert-warning border-0 mb-4"
+     style="background:#fffbe6;border-left:4px solid var(--co-gold) !important;">
+  <i class="bi bi-info-circle me-2"></i>
+  L'<strong>indice de performance</strong> d'un coureur sur un tronçon est la
+  <strong>moyenne des 25% meilleurs temps</strong> divisée par son propre temps.
+  Une valeur de <strong>1.0</strong> signifie qu'il court au niveau des meilleurs.
+  Une <strong>courbe haute et étroite</strong> indique une course régulière ;
+  une <strong>courbe étalée</strong> révèle des irrégularités entre les tronçons.
+  Chaque tronçon est <strong>pondéré par sa longueur</strong> (temps de référence).
+</div>
+{% endblock %}
+
+{% block extra_filters %}
+<div>
+  <label class="form-label mb-1 small fw-bold text-muted" for="sigmaRange">
+    Lissage &sigma; = <span id="sigmaVal">0.050</span>
+  </label>
+  <input type="range" id="sigmaRange" class="form-range" style="width:160px"
+         min="0.010" max="0.150" step="0.005" value="0.050"
+         oninput="onSigmaChange(this.value)">
+</div>
+{% endblock %}
+
+{% block chart_icon %}bi bi-graph-up{% endblock %}
+{% block chart_title %}Distribution des indices de performance{% endblock %}
+{% block canvas_id %}perfChart{% endblock %}
+
+{% block summary_card_title %}
+  Récapitulatif par coureur
+  <span class="ms-2 small fw-normal opacity-75">
+    IP moyen pondéré &middot; Régularité = écart-type (plus petit = plus régulier)
+  </span>
+{% endblock %}
+
+{% block table_headers %}
+<th style="width:3rem">#</th>
+<th>Coureur</th>
+<th>Club</th>
+<th class="text-end">Temps</th>
+<th class="text-end">IP moyen</th>
+<th class="text-end">Régularité (&sigma;)</th>
+{% endblock %}
+{% block tbody_id %}perfTableBody{% endblock %}
+
+{% block extra_css %}
+  .ip-bar-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  .ip-bar      { height: 4px; border-radius: 2px; max-width: 100px; min-width: 4px; }
+{% endblock %}
+
+{% block chart_init_js %}
+const SERIES   = {{ series_json|safe }};
+const LEG_INFO = {{ leg_info_json|safe }};
+const N_LEGS   = {{ n_legs }};
+
+const XS = (() => {
+  const a = [];
+  for (let i = 0; i <= 300; i++) a.push(0.25 + i * (1.10 - 0.25) / 300);
+  return a;
+})();
+
+function gaussianKDE(pis, weights, sigma, xs) {
+  let totalW = 0;
+  for (let j = 0; j < pis.length; j++) {
+    if (pis[j] !== null && weights[j] !== null) totalW += weights[j];
+  }
+  if (totalW === 0) return xs.map(() => 0);
+  const k = 1 / (totalW * sigma * Math.sqrt(2 * Math.PI));
+  const inv2s2 = 1 / (2 * sigma * sigma);
+  return xs.map(x => {
+    let sum = 0;
+    for (let j = 0; j < pis.length; j++) {
+      if (pis[j] === null || weights[j] === null) continue;
+      const u = x - pis[j];
+      sum += weights[j] * Math.exp(-u * u * inv2s2);
+    }
+    return k * sum;
+  });
+}
+
+function buildDatasets(sigma) {
+  return SERIES.map((s, i) => {
+    const ys    = gaussianKDE(s.indices, s.weights, sigma, XS);
+    const color = PALETTE[i % PALETTE.length];
+    return {
+      label: `${s.rank}. ${s.name}`,
+      data:  XS.map((x, k) => ({ x, y: ys[k] })),
+      borderColor: color, backgroundColor: color + '18',
+      borderWidth: s.rank <= 3 ? 2.5 : 1.5,
+      pointRadius: 0, pointHoverRadius: 0,
+      fill: true, tension: 0.4, parsing: false,
+      _runnerId: s.id,
+    };
+  });
+}
+
+function buildTable() {
+  const tbody  = document.getElementById('perfTableBody');
+  if (!tbody) return;
+  const MEDAL_GOLD   = "{% static 'results/img/medal-gold.svg' %}";
+  const MEDAL_SILVER = "{% static 'results/img/medal-silver.svg' %}";
+  const MEDAL_BRONZE = "{% static 'results/img/medal-bronze.svg' %}";
+  const medals = [
+    `<img src="${MEDAL_GOLD}"   width="22" height="22" alt="1er">`,
+    `<img src="${MEDAL_SILVER}" width="22" height="22" alt="2e">`,
+    `<img src="${MEDAL_BRONZE}" width="22" height="22" alt="3e">`,
+  ];
+  const sorted = [...SERIES].sort((a, b) =>
+    a.mean_pi === null ? 1 : b.mean_pi === null ? -1 : b.mean_pi - a.mean_pi
+  );
+  tbody.innerHTML = sorted.map(s => {
+    const color   = PALETTE[(s.rank - 1) % PALETTE.length];
+    const barW    = s.mean_pi !== null ? Math.min(100, s.mean_pi * 100).toFixed(1) + '%' : '0%';
+    const rankDisp = s.rank <= 3 ? medals[s.rank - 1] : `<span class="rank-n">${s.rank}</span>`;
+    return `
+      <tr>
+        <td>${rankDisp}</td>
+        <td class="runner-name fw-bold">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;
+                       background:${color};margin-right:5px"></span>${s.name}
+        </td>
+        <td class="club-name text-muted">${s.org}</td>
+        <td class="text-end time-col">${s.time}</td>
+        <td class="text-end">
+          <div class="ip-bar-wrap">
+            <span>${s.mean_pi !== null ? s.mean_pi.toFixed(4) : '—'}</span>
+            <div class="ip-bar" style="width:${barW};background:${color}"></div>
+          </div>
+        </td>
+        <td class="text-end text-muted">${s.std_pi !== null ? s.std_pi.toFixed(4) : '—'}</td>
+      </tr>`;
+  }).join('');
+}
+
+function onSigmaChange(val) {
+  const sigma = parseFloat(val);
+  document.getElementById('sigmaVal').textContent = sigma.toFixed(3);
+  if (!chart) return;
+  SERIES.forEach((s, i) => {
+    const ys = gaussianKDE(s.indices, s.weights, sigma, XS);
+    chart.data.datasets[i].data = XS.map((x, k) => ({ x, y: ys[k] }));
+  });
+  chart.update('none');
+}
+
+function initChart() {
+  const sigma = parseFloat(document.getElementById('sigmaRange').value);
+  const ctx   = document.getElementById('perfChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { datasets: buildDatasets(sigma) },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 150 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title(items) {
+              const x = items[0]?.parsed.x;
+              return x != null ? `IP = ${x.toFixed(3)}` : '';
+            },
+            label(ctx) {
+              const v = ctx.parsed.y;
+              return (!v || v < 1e-6) ? null : `${ctx.dataset.label} : ${v.toFixed(4)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'linear', min: 0.25, max: 1.10,
+          title: { display: true, text: 'Indice de performance',
+                   font: { family: "'Barlow', sans-serif", size: 12 }, color: '#6c757d' },
+          ticks: { callback: v => v.toFixed(2),
+                   font: { family: "'Barlow Condensed', sans-serif", size: 11 } },
+          grid: { color: '#e8e8e8' },
+        },
+        y: {
+          title: { display: true, text: 'Densité (pondérée par longueur)',
+                   font: { family: "'Barlow', sans-serif", size: 12 }, color: '#6c757d' },
+          ticks: { font: { family: "'Barlow Condensed', sans-serif", size: 11 } },
+          grid:  { color: '#e8e8e8' },
+        }
+      }
+    },
+    plugins: [{
+      id: 'refLine',
+      afterDraw(chart) {
+        const { x: xScale, y: yScale } = chart.scales;
+        const x    = xScale.getPixelForValue(1.0);
+        const ctx2 = chart.ctx;
+        ctx2.save();
+        ctx2.beginPath();
+        ctx2.moveTo(x, yScale.top); ctx2.lineTo(x, yScale.bottom);
+        ctx2.strokeStyle = '#dc3545'; ctx2.lineWidth = 1.5; ctx2.setLineDash([6, 3]);
+        ctx2.stroke();
+        ctx2.font = "11px 'Barlow Condensed', sans-serif";
+        ctx2.fillStyle = '#dc3545'; ctx2.textAlign = 'center';
+        ctx2.fillText('IP = 1.0', x, yScale.top - 6);
+        ctx2.restore();
+      }
+    }]
+  });
+  buildLegend();
+  buildTable();
+}
+{% endblock %}

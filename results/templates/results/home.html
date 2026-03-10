@@ -1,0 +1,63 @@
+{% extends "results/base.html" %}
+{% block title %}{{ SITE_NAME }} — Accueil{% endblock %}
+{% block nav_home %}active{% endblock %}
+
+{% block page_header %}
+<div class="co-hero">
+  <div class="container position-relative">
+    <span class="hero-badge mb-2 d-inline-block">{{ CLUB_NAME }}</span>
+    <h1 class="hero-title mt-1">{{ SITE_NAME }}</h1>
+    <p class="hero-sub mb-0">{{ SITE_SUBTITLE }}</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<h2 class="mb-3" style="font-family:var(--font-display);font-weight:800;">
+  <i class="bi bi-calendar-event me-2 text-success"></i>Compétitions
+</h2>
+
+{% if competitions %}
+  <div class="row g-3">
+    {% for comp in competitions %}
+    <div class="col-12 col-md-6 col-lg-4">
+      <a href="{% url 'results:competition_detail' comp.cid %}" class="text-decoration-none">
+        <div class="co-card h-100">
+          <div class="co-card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-compass me-2"></i>{{ comp.name }}</span>
+            {% if comp.date %}
+              <span class="badge bg-warning text-dark">{{ comp.date|date:"d/m/Y" }}</span>
+            {% endif %}
+          </div>
+          <div class="p-3">
+            {% if comp.organizer %}
+              <div class="mb-1 text-muted small">
+                <i class="bi bi-building me-1"></i>{{ comp.organizer }}
+              </div>
+            {% endif %}
+            <div class="d-flex gap-2 flex-wrap mt-2">
+              <span class="badge bg-success rounded-pill">
+                <i class="bi bi-arrow-right me-1"></i>Voir les résultats
+              </span>
+              {% if comp.homepage %}
+                <a href="{{ comp.homepage }}" target="_blank"
+                   class="badge bg-secondary rounded-pill text-decoration-none"
+                   onclick="event.stopPropagation()">
+                  <i class="bi bi-globe me-1"></i>Site web
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="co-card text-center p-5 text-muted">
+    <i class="bi bi-search fs-1 d-block mb-3 opacity-25"></i>
+    <p class="mb-0">Aucune compétition trouvée dans la base de données MeOS.</p>
+    <p class="small mt-1">Vérifiez la connexion et que la table <code>mopCompetition</code> contient des données.</p>
+  </div>
+{% endif %}
+{% endblock %}

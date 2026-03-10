@@ -1,0 +1,213 @@
+{% extends "results/analysis_base.html" %}
+{% load meos_tags %}
+  {% load static %}
+
+{% block title %}Superman — {{ cls.name }} — {{ competition.name }}{% endblock %}
+{% block analysis_breadcrumb %}Analyse Superman{% endblock %}
+{% block analysis_icon %}bi bi-lightning-charge-fill{% endblock %}
+{% block analysis_title %}Analyse Superman{% endblock %}
+
+{% block analysis_header_right %}
+{% if not no_data %}
+<div class="d-flex align-items-center gap-2">
+  <span class="badge bg-warning text-dark fs-6">
+    <i class="bi bi-lightning me-1"></i>Superman : {{ superman_total }}
+  </span>
+  <span class="badge bg-light text-dark fs-6">{{ n_finishers }} classé{{ n_finishers|pluralize }}</span>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block no_data_message %}Pas assez de données pour calculer l'analyse Superman.{% endblock %}
+
+{% block analysis_explanation %}
+<div class="alert alert-warning border-0 mb-4"
+     style="background:#fffbe6;border-left:4px solid var(--co-gold) !important;">
+  <i class="bi bi-info-circle me-2"></i>
+  Le <strong>Superman</strong> est un coureur fictif qui réalise le
+  <strong>meilleur tronçon de chaque contrôle</strong>.
+  Le graphique montre le retard cumulé de chaque coureur par rapport au Superman.
+  Une courbe <em>plate</em> signifie que le coureur court à la vitesse du meilleur sur ce tronçon ;
+  une courbe <em>qui descend</em> signifie qu'il perd du temps.
+</div>
+{% endblock %}
+
+{% block extra_filters %}
+<div class="ms-auto">
+  <label class="form-label mb-1 small fw-bold text-muted d-block">Axe Y</label>
+  <div class="btn-group" role="group" aria-label="Format axe Y">
+    <input type="radio" class="btn-check" name="yAxisMode" id="radioMmss"
+           value="mmss" checked autocomplete="off">
+    <label class="btn btn-sm btn-outline-success" for="radioMmss">MM:SS</label>
+    <input type="radio" class="btn-check" name="yAxisMode" id="radioSeconds"
+           value="seconds" autocomplete="off">
+    <label class="btn btn-sm btn-outline-secondary" for="radioSeconds">Secondes</label>
+  </div>
+</div>
+{% endblock %}
+
+{% block chart_icon %}bi bi-graph-up{% endblock %}
+{% block chart_title %}Retard cumulé vs Superman{% endblock %}
+{% block canvas_id %}supermanChart{% endblock %}
+
+{% block between_chart_and_table %}
+<div class="co-card mb-4">
+  <div class="co-card-header">
+    <i class="bi bi-lightning-fill me-2"></i>Meilleurs tronçons Superman
+    <span class="ms-2 badge bg-warning text-dark">Total : {{ superman_total }}</span>
+  </div>
+  <div class="p-0">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th style="width:6rem">Tronçon</th>
+          <th style="width:5rem" class="text-end">Temps</th>
+          <th>Coureur(s)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for leg in superman_leg_data %}
+        <tr>
+          <td class="fw-bold text-success font-monospace">{{ leg.ctrl }}</td>
+          <td class="text-end fw-bold" style="color:#9a6700">{{ leg.time }}</td>
+          <td>
+            {% for name in leg.names %}
+              <span class="badge bg-light text-dark border me-1">{{ name }}</span>
+            {% endfor %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block table_headers %}
+<th style="width:3rem">#</th>
+<th>Concurrent</th>
+<th>Club</th>
+<th class="text-end">Temps total</th>
+<th class="text-end">Retard Superman</th>
+{% endblock %}
+
+{% block table_body %}
+<tbody>
+  {% for s in series %}
+  <tr>
+    <td>
+      {% if s.rank == 1 %}<img src="{% static 'results/img/medal-gold.svg' %}" width="22" height="22" alt="1er">
+      {% elif s.rank == 2 %}<img src="{% static 'results/img/medal-silver.svg' %}" width="22" height="22" alt="2e">
+      {% elif s.rank == 3 %}<img src="{% static 'results/img/medal-bronze.svg' %}" width="22" height="22" alt="3e">
+      {% else %}<span class="rank-n">{{ s.rank }}</span>
+      {% endif %}
+    </td>
+    <td class="runner-name fw-bold">{{ s.name }}</td>
+    <td class="club-name text-muted">{{ s.org }}</td>
+    <td class="text-end time-col">{{ s.total }}</td>
+    <td class="text-end">
+      <span class="badge {% if s.rank == 1 %}bg-warning text-dark{% else %}bg-light text-dark{% endif %} fw-bold">
+        +{{ s.loss }}
+      </span>
+    </td>
+  </tr>
+  {% endfor %}
+</tbody>
+{% endblock %}
+
+{% block extra_css %}
+  .slc-ctrl {
+    font-family: var(--font-display); font-weight: 800; font-size: .82rem; color: var(--co-forest);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+  }
+  .slc-time { font-family: var(--font-display); font-weight: 800; font-size: 1rem; color: #9a6700; margin-top: .1rem; }
+  .slc-name {
+    font-size: .7rem; color: var(--co-grey); margin-top: .15rem; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+  }
+{% endblock %}
+
+{% block chart_init_js %}
+const X_LABELS = {{ x_labels_json|safe }};
+const SERIES   = {{ series_json|safe }};
+let yMode = 'mmss';
+
+function fmtSeconds(v) {
+  if (v === null || v === undefined) return '';
+  const sign = v < 0 ? '-' : '+';
+  const abs  = Math.abs(Math.round(v));
+  const tenths = abs % 10, totalSecs = Math.floor(abs / 10);
+  const h = Math.floor(totalSecs / 3600), rem = totalSecs % 3600;
+  const m = Math.floor(rem / 60), sec = rem % 60;
+  let str = h > 0
+    ? `${sign}${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
+    : `${sign}${m}:${String(sec).padStart(2,'0')}`;
+  if (tenths !== 0) str += '.' + tenths;
+  return str;
+}
+
+function buildDatasets(visibleIds) {
+  return SERIES.map((s, i) => ({
+    label:            `${s.rank}. ${s.name}`,
+    data:             s.points,
+    _labels:          s.labels,
+    borderColor:      PALETTE[i % PALETTE.length],
+    backgroundColor:  PALETTE[i % PALETTE.length] + '22',
+    borderWidth:      s.rank <= 3 ? 2.5 : 1.5,
+    pointRadius:      3, pointHoverRadius: 6,
+    tension:          0.3, spanGaps: false,
+    hidden:           visibleIds !== null && !visibleIds.includes(s.id),
+    _runnerId:        s.id,
+  }));
+}
+
+function initChart() {
+  const ctx = document.getElementById('supermanChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: X_LABELS, datasets: buildDatasets(null) },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label(ctx) {
+              const v = ctx.parsed.y;
+              if (v === null || v === undefined) return null;
+              const fmt = yMode === 'mmss'
+                ? ((ctx.dataset._labels && ctx.dataset._labels[ctx.dataIndex]) || fmtSeconds(v))
+                : `${v >= 0 ? '+' : ''}${(v / 10).toFixed(1)}s`;
+              return `${ctx.dataset.label} : ${fmt}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { font: { family: "'Barlow Condensed', sans-serif", weight: '700', size: 11 } },
+          grid:  { color: '#e8e8e8' },
+        },
+        y: {
+          reverse: true,
+          title: { display: true, text: 'Retard vs Superman',
+                   font: { family: "'Barlow', sans-serif", size: 12 }, color: '#6c757d' },
+          ticks: {
+            callback: v => yMode === 'mmss' ? fmtSeconds(v) : `+${(v / 10).toFixed(1)}s`,
+            font: { family: "'Barlow Condensed', sans-serif", size: 11 },
+          },
+          grid: { color: '#e8e8e8' },
+        }
+      }
+    }
+  });
+  buildLegend();
+}
+{% endblock %}
+
+{% block extra_dom_ready %}
+document.querySelectorAll('input[name="yAxisMode"]').forEach(radio => {
+  radio.addEventListener('change', e => { yMode = e.target.value; chart.update(); });
+});
+{% endblock %}

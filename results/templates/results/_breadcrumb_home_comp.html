@@ -1,0 +1,16 @@
+<!-- {#
+  Partial : premiers éléments du fil d'Ariane communs à toutes les pages
+  liées à une compétition.
+
+  Variables attendues dans le contexte :
+    competition  → objet Mopcompetition (fournit .cid et .name)
+
+  Usage (à placer à l'intérieur d'une balise <ol class="breadcrumb …>)
+  #} -->
+
+<li class="breadcrumb-item">
+  <a href="{% url 'results:home' %}">Accueil</a>
+</li>
+<li class="breadcrumb-item">
+  <a href="{% url 'results:competition_detail' competition.cid %}">{{ competition.name }}</a>
+</li>
