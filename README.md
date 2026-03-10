@@ -1,32 +1,149 @@
-# MeOSDjango
-Django development for MeOS Orienteering results display.
+# MeOS Results — Site de résultats Course d'Orientation
 
-a long way to go...
+Site web Django pour afficher les résultats de courses d'orientation gérées avec **MeOS**, avec un rendu Bootstrap 5 moderne.
 
-## première étape
-- les compétitions s'affichent en liste
-- les catégories de la compétition sélectionnée s'affichent,
-	y compris les legs au sein de chaque catégorie s'il s'agit d'un relai
-- les résultats d'une catégorie s'affichent en liste simple (sans les interpostes)
-- les résultats individuels s'affichent en liste avec les interpostes
-- ajout de vérification sur les paramètres des url avec renvoi d'erreur 404 si besoin
-- ajout d'un titre personnalisé à chaque page renvoyée pour la navigation dans l'historique du navigateur
+## Prérequis
 
-mais :
-- pas de navigation possible entre les catégories ou les concurrents dans l'affichage en liste
-- pas d'affichage avec interpostes par catégorie (OK à l'étape 2)
-- pas d'administration des courses proposées par défaut
- 	(je voudrais pouvoir en mettre certaines en première page et d'autres en archives)
-- pas encore de prise en compte des dixièmes de secondes
+- Python 3.10+
+- MySQL 5.7+ (base de données MeOS existante)
+- `libmysqlclient-dev` (Linux) ou MySQL Connector (Windows)
 
-- le style global reste à revoir
+## Installation
 
-## deuxième étape
-- on peut à présent changer la présentation de simple à complète avec un switch sur la page (la page est rechargée)
-- l'affichage complet est fonctionnel aussi bien pour les courses individuelles que les relais ou un leg au sein d'un relai
+```bash
+# 1. Cloner / déposer le projet
+cd meos_results
 
-mais
-- on pourrait passer de simple à complet sans recharger la page, avec du javascript
-- l'affichage détaillée n'est pas adaptée au écrans mobiles
+# 2. Environnement virtuel
+python -m venv venv
+source venv/bin/activate          # Linux/Mac
+venv\Scripts\activate.bat         # Windows
 
-  
+# 3. Dépendances
+pip install -r requirements.txt
+
+# 4. Configuration (créer un fichier .env à la racine)
+cp .env.example .env
+nano .env
+```
+
+## Configuration `.env`
+
+```ini
+# Connexion base de données MeOS
+MEOS_DB_NAME=meos
+MEOS_DB_USER=root
+MEOS_DB_PASSWORD=votre_mot_de_passe
+MEOS_DB_HOST=127.0.0.1
+MEOS_DB_PORT=3306
+
+# Apparence du site
+SITE_NAME=Résultats CO
+SITE_SUBTITLE=Course d'Orientation
+CLUB_NAME=Votre Club
+CLUB_COLOR_PRIMARY=#1a6b3c
+CLUB_COLOR_ACCENT=#f0a500
+```
+
+## Lancement
+
+```bash
+# Appliquer les migrations Django (auth, sessions…)
+python manage.py migrate
+
+# Créer un super-utilisateur pour l'admin (optionnel)
+python manage.py createsuperuser
+
+# Lancer le serveur de développement
+python manage.py runserver
+```
+
+Ouvrir → http://127.0.0.1:8000
+
+## Structure du projet
+
+```
+meos_results/
+├── meos_results/          # Configuration Django
+│   ├── settings.py        # Paramètres (DB, static…)
+│   └── urls.py            # Routes principales
+├── results/               # Application principale
+│   ├── models.py          # Modèles MeOS (managed=False)
+│   ├── views.py           # Vues (home, classement, splits…)
+│   ├── urls.py            # Routes de l'app
+│   ├── context_processors.py
+│   ├── templatetags/
+│   │   └── meos_tags.py   # Filtres personnalisés
+│   └── templates/results/
+│       ├── base.html      # Template de base Bootstrap 5
+│       ├── home.html      # Liste des épreuves
+│       ├── event_detail.html   # Catégories d'une épreuve
+│       ├── class_results.html  # Classement par catégorie
+│       ├── runner_detail.html  # Fiche + intermédiaires
+│       ├── club_results.html   # Résultats par club
+│       └── statistics.html    # Statistiques globales
+└── requirements.txt
+```
+
+## Structure de la base MeOS
+
+Le site lit les tables MeOS en lecture seule (`managed = False`).
+
+| Table MeOS   | Modèle Django | Contenu                  |
+|-------------|---------------|--------------------------|
+| `oEvent`    | `Event`       | Épreuves                 |
+| `oClass`    | `Class`       | Catégories (H21E, D20…)  |
+| `oClub`     | `Club`        | Clubs                    |
+| `oCourse`   | `Course`      | Circuits                 |
+| `oRunner`   | `Runner`      | Concurrents + résultats  |
+| `oFreePunch`| `SplitTime`   | Temps intermédiaires     |
+
+## Pages disponibles
+
+| URL | Description |
+|-----|-------------|
+| `/` | Liste des épreuves |
+| `/event/<id>/` | Catégories d'une épreuve |
+| `/event/<id>/class/<id>/` | Classement par catégorie |
+| `/event/<id>/runner/<id>/` | Fiche concurrent + splits |
+| `/event/<id>/club/<id>/` | Résultats d'un club |
+| `/event/<id>/stats/` | Statistiques globales |
+| `/api/class/<id>/results/` | JSON (refresh live) |
+
+## Personnalisation
+
+- **Couleurs / nom du club** → variables `CLUB_COLOR_*` et `CLUB_NAME` dans `.env`
+- **Logo** → remplacer l'icône Bootstrap dans `base.html`
+- **Langue** → changer `LANGUAGE_CODE` dans `settings.py`
+
+## Rafraîchissement en direct
+
+L'endpoint `/api/class/<id>/results/` retourne du JSON.
+Pour un affichage live, appelez-le toutes les 30 secondes :
+
+```js
+setInterval(() => {
+  fetch('/api/class/42/results/')
+    .then(r => r.json())
+    .then(data => updateTable(data.results));
+}, 30000);
+```
+
+## Mise a jour de la course en direct
+
+Configuration MeOS
+Dans MeOS : Outils → Serveur Online → Configurer
+
+Adresse : http://votre-serveur/mop/update/
+Mot de passe : la valeur de MOP_PASSWORD dans settings.py (défaut : meos)
+
+Pour changer le mot de passe en production, utiliser la variable d'environnement :
+```bash
+export MOP_PASSWORD="monMotDePasseSécurisé"
+```
+
+## Tests de non-régression
+```bash
+pytest results/tests/
+```
+
