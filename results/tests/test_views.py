@@ -9,6 +9,7 @@ On vérifie que chaque vue :
 
 from unittest.mock import patch, MagicMock
 import pytest
+import json
 from django.test import RequestFactory
 from django.http import Http404
 
@@ -311,7 +312,134 @@ class TestSupermanAnalysis:
         assert len(context['series']) == 2
 
 
-# ─── Tests class_results — rank_splits intégré ────────────────────────────────
+# ─── Tests superman — invariants de couleur tableau/graphique ──────────────────
+#
+# Depuis la refonte du tableau (rendu JS), la pastille de couleur dans le tableau
+# et la ligne dans le graphique utilisent toutes deux PALETTE[i % PALETTE.length]
+# où `i` est l'index du coureur dans SERIES (= ordre de classement).
+# Ces tests vérifient les invariants Python dont dépend cette cohérence.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestSupermanColorInvariants:
+
+    @patch('results.views.get_org_map',        return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.get_radio_map',      return_value={})
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    def test_series_json_contient_champs_table(
+        self, MockCompetitor, mock_get404, mock_render,
+        mock_radio, mock_ctrl, mock_org,
+    ):
+        """series_json doit contenir tous les champs utilisés par buildTable() :
+        id, name, org, rank, total, loss."""
+        competition = make_competition(); cls = make_cls()
+        mock_get404.side_effect = [competition, cls]
+        c = make_competitor(1, rt=6000)
+        MockCompetitor.objects.filter.return_value = [c]
+
+        from results.views import superman_analysis
+        superman_analysis(rf_get(), cid=1, class_id=10)
+
+        _, _, context = mock_render.call_args[0]
+        series = json.loads(context['series_json'])
+        assert len(series) == 1
+        s = series[0]
+        for field in ('id', 'name', 'org', 'rank', 'total', 'loss'):
+            assert field in s, f"Champ '{field}' manquant dans series_json (requis par buildTable)"
+
+    @patch('results.views.get_org_map',        return_value={1: 'Club A', 2: 'Club B'})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.get_radio_map',      return_value={})
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    def test_series_ordre_par_classement(
+        self, MockCompetitor, mock_get404, mock_render,
+        mock_radio, mock_ctrl, mock_org,
+    ):
+        """Les coureurs dans series_json doivent être triés par rang (rt croissant).
+        L'index dans SERIES = couleur du graphique ET couleur de la pastille."""
+        competition = make_competition(); cls = make_cls()
+        mock_get404.side_effect = [competition, cls]
+
+        # Bob arrive avant Alice malgré l'ordre dans la liste ORM
+        alice = make_competitor(1, rt=8000, name='Alice')
+        bob   = make_competitor(2, rt=5000, name='Bob')
+        alice.org = 1; bob.org = 2
+        MockCompetitor.objects.filter.return_value = [alice, bob]
+
+        from results.views import superman_analysis
+        superman_analysis(rf_get(), cid=1, class_id=10)
+
+        _, _, context = mock_render.call_args[0]
+        series = json.loads(context['series_json'])
+
+        # Bob (rt=5000) doit être à l'index 0, Alice (rt=8000) à l'index 1
+        assert series[0]['name'] == 'Bob',   "Bob (rt=5000) doit être rank=1, index 0 dans SERIES"
+        assert series[1]['name'] == 'Alice', "Alice (rt=8000) doit être rank=2, index 1 dans SERIES"
+        assert series[0]['rank'] == 1
+        assert series[1]['rank'] == 2
+
+    @patch('results.views.get_org_map',        return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.get_radio_map',      return_value={})
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    def test_index_series_egal_rang_moins_un(
+        self, MockCompetitor, mock_get404, mock_render,
+        mock_radio, mock_ctrl, mock_org,
+    ):
+        """Pour N coureurs classés, series[i]['rank'] == i + 1 pour tout i.
+        C'est l'invariant qui garantit que PALETTE[i] est la même couleur
+        dans le graphique (buildDatasets) et dans le tableau (buildTable)."""
+        competition = make_competition(); cls = make_cls()
+        mock_get404.side_effect = [competition, cls]
+
+        runners = [make_competitor(i, rt=5000 + i * 1000) for i in range(1, 6)]
+        MockCompetitor.objects.filter.return_value = runners
+
+        from results.views import superman_analysis
+        superman_analysis(rf_get(), cid=1, class_id=10)
+
+        _, _, context = mock_render.call_args[0]
+        series = json.loads(context['series_json'])
+
+        for i, s in enumerate(series):
+            assert s['rank'] == i + 1, \
+                f"Attendu rank={i+1} à l'index {i}, obtenu rank={s['rank']}"
+
+    @patch('results.views.get_org_map',        return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.get_radio_map',      return_value={})
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    def test_champ_id_unique_dans_series(
+        self, MockCompetitor, mock_get404, mock_render,
+        mock_radio, mock_ctrl, mock_org,
+    ):
+        """Chaque entrée de series_json doit avoir un id unique, permettant au
+        frontend de relier la ligne du tableau au dataset du graphique."""
+        competition = make_competition(); cls = make_cls()
+        mock_get404.side_effect = [competition, cls]
+
+        c1 = make_competitor(42, rt=5000, name='Alice')
+        c2 = make_competitor(99, rt=6000, name='Bob')
+        MockCompetitor.objects.filter.return_value = [c1, c2]
+
+        from results.views import superman_analysis
+        superman_analysis(rf_get(), cid=1, class_id=10)
+
+        _, _, context = mock_render.call_args[0]
+        series = json.loads(context['series_json'])
+
+        ids = [s['id'] for s in series]
+        assert len(ids) == len(set(ids)), "Les ids dans series_json doivent être uniques"
+        assert 42 in ids
+        assert 99 in ids
 
 class TestClassResultsRankSplits:
     """Vérifie que rank_splits est appelé et que les rangs sont présents dans les splits."""

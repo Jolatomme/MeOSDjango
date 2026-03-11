@@ -545,3 +545,138 @@ class TestGroupingRealRank:
         series = json.loads(context['series_json'])
         s_bob = next(s for s in series if s['name'] == 'Bob')
         assert s_bob['time_fmt'] == '—'
+
+
+# ─── Tests invariants de couleur tableau/graphique ────────────────────────────
+#
+# La pastille de couleur dans le tableau et la ligne dans le graphique doivent
+# avoir la même couleur. Le frontend JS calcule la couleur via :
+#   PALETTE[SERIES.indexOf(s) % PALETTE.length]
+# (identique pour buildDatasets et buildTable).
+#
+# Les tests suivants vérifient les invariants Python dont dépend cette logique :
+#   1. La position (index) de chaque coureur dans series_json est stable et
+#      reflète l'ordre de départ (pas le classement).
+#   2. L'identité de chaque coureur est conservée (champ `id` présent).
+#   3. Le champ `rank` est indépendant de la position dans SERIES.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestGroupingColorInvariants:
+    """Vérifie les invariants Python dont dépend la cohérence des couleurs
+    entre le tableau récapitulatif et le graphique."""
+
+    def _get(self):
+        from django.test import RequestFactory
+        return RequestFactory().get('/')
+
+    @patch('results.views.get_org_map',        return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.get_radio_map',      return_value={})
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    def test_position_series_independante_du_rang(
+        self, MockCompetitor, mock_get404, mock_render,
+        mock_radio, mock_ctrl, mock_org,
+    ):
+        """L'index dans SERIES (= couleur) est basé sur l'heure de départ,
+        pas sur le classement. Un coureur rapide parti tard peut être en
+        position 1 dans SERIES tout en ayant rank=1 — mais si un coureur
+        part en 1er et arrive 2e, sa position dans SERIES (→ couleur) doit
+        rester 0 indépendamment de son rang."""
+        competition = MagicMock(); competition.cid = 1
+        cls         = MagicMock(); cls.id = 10
+        mock_get404.side_effect = [competition, cls]
+
+        # Bob part en 1er (st=100k) mais arrive 2e (rt=60k) → index 0 dans SERIES
+        # Alice part en 2e (st=110k) mais arrive 1re (rt=40k) → index 1 dans SERIES
+        bob   = make_runner(2, st=100000, rt=60000, name='Bob')
+        alice = make_runner(1, st=110000, rt=40000, name='Alice')
+        MockCompetitor.objects.filter.return_value = [alice, bob]
+
+        from results.views import grouping_analysis
+        grouping_analysis(self._get(), cid=1, class_id=10)
+
+        _, _, context = mock_render.call_args[0]
+        series = json.loads(context['series_json'])
+
+        # Position dans SERIES (index = couleur du graphique)
+        idx_bob   = next(i for i, s in enumerate(series) if s['name'] == 'Bob')
+        idx_alice = next(i for i, s in enumerate(series) if s['name'] == 'Alice')
+
+        assert idx_bob   == 0, "Bob (st=100k, part en 1er) doit être à l'index 0"
+        assert idx_alice == 1, "Alice (st=110k, part en 2e) doit être à l'index 1"
+
+        # Vérifier que le rang est bien inversé par rapport à la position
+        s_bob   = series[idx_bob]
+        s_alice = series[idx_alice]
+        assert s_bob['rank']   == 2, "Bob arrive 2e"
+        assert s_alice['rank'] == 1, "Alice arrive 1re"
+
+    @patch('results.views.get_org_map',        return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.get_radio_map',      return_value={})
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    def test_champ_id_present_dans_series(
+        self, MockCompetitor, mock_get404, mock_render,
+        mock_radio, mock_ctrl, mock_org,
+    ):
+        """Chaque entrée de series_json doit contenir un champ `id` permettant
+        au frontend de relier la ligne du tableau au dataset du graphique."""
+        competition = MagicMock(); competition.cid = 1
+        cls         = MagicMock(); cls.id = 10
+        mock_get404.side_effect = [competition, cls]
+
+        c1 = make_runner(42, st=100000, rt=50000, name='Alice')
+        c2 = make_runner(99, st=110000, rt=55000, name='Bob')
+        MockCompetitor.objects.filter.return_value = [c1, c2]
+
+        from results.views import grouping_analysis
+        grouping_analysis(self._get(), cid=1, class_id=10)
+
+        _, _, context = mock_render.call_args[0]
+        series = json.loads(context['series_json'])
+
+        for s in series:
+            assert 'id' in s, f"Le champ 'id' est manquant pour le coureur '{s.get('name')}'"
+
+        ids = [s['id'] for s in series]
+        assert 42 in ids
+        assert 99 in ids
+
+    @patch('results.views.get_org_map',        return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.get_radio_map',      return_value={})
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    def test_ordre_series_stable_avec_dnf(
+        self, MockCompetitor, mock_get404, mock_render,
+        mock_radio, mock_ctrl, mock_org,
+    ):
+        """La présence de coureurs DNF ne doit pas perturber les index dans SERIES
+        (et donc les couleurs). Un DNF conserve sa position basée sur st."""
+        competition = MagicMock(); competition.cid = 1
+        cls         = MagicMock(); cls.id = 10
+        mock_get404.side_effect = [competition, cls]
+
+        # Alice part en 1er, Bob (DNF) en 2e, Charlie en 3e
+        alice   = make_runner(1, st=100000, rt=50000, stat=STAT_OK,  name='Alice')
+        bob_dnf = make_runner(2, st=110000, rt=-1,    stat=STAT_DNF, name='Bob')
+        charlie = make_runner(3, st=120000, rt=55000, stat=STAT_OK,  name='Charlie')
+        MockCompetitor.objects.filter.return_value = [alice, bob_dnf, charlie]
+
+        from results.views import grouping_analysis
+        grouping_analysis(self._get(), cid=1, class_id=10)
+
+        _, _, context = mock_render.call_args[0]
+        series = json.loads(context['series_json'])
+
+        names_in_order = [s['name'] for s in series]
+        # L'ordre de départ doit être préservé : Alice(0), Bob(1), Charlie(2)
+        assert names_in_order.index('Alice')   < names_in_order.index('Bob'),   \
+            "Alice (st=100k) doit précéder Bob (st=110k)"
+        assert names_in_order.index('Bob')     < names_in_order.index('Charlie'), \
+            "Bob (st=110k) doit précéder Charlie (st=120k)"

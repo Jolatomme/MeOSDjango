@@ -1,5 +1,5 @@
 {% load static %}<!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,9 +22,28 @@
       --font-display:  'Barlow Condensed', sans-serif;
       --font-body:     'Barlow', sans-serif;
     }
+    /* ─── Overrides variables mode sombre ───────────────────────────────── */
+    /* Placés ici (même feuille que :root) pour garantir la cascade correcte */
+    html[data-theme="dark"] {
+      --co-forest:  #0a2010;
+      --co-light:   #141a14;
+      --co-grey:    #9aabb5;
+      --co-border:  rgba(255,255,255,.1);
+      --co-shadow:  0 2px 12px rgba(0,0,0,.35);
+    }
   </style>
 
   {% block extra_head %}{% endblock %}
+  <script>
+    /* Appliqué immédiatement pour éviter le flash blanc→sombre au chargement */
+    (function(){
+      try {
+        var t = localStorage.getItem('co-theme');
+        if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch(e) {}
+    })();
+  </script>
 </head>
 
 <body>
@@ -38,7 +57,12 @@
         <i class="bi bi-list text-white fs-4"></i>
       </button>
       <div class="collapse navbar-collapse" id="mainNav">
-        <ul class="navbar-nav ms-auto">
+        <ul class="navbar-nav ms-auto align-items-center">
+          <li class="nav-item me-1">
+            <button id="darkModeToggle" aria-label="Basculer mode sombre/clair" title="Mode sombre / clair">
+              <i class="bi bi-moon-stars-fill" id="darkModeIcon"></i>
+            </button>
+          </li>
           <li class="nav-item">
             <a class="nav-link {% block nav_home %}{% endblock %}" href="{% url 'results:home' %}">
               <i class="bi bi-house me-1"></i> Accueil
@@ -89,13 +113,132 @@
   </main>
 
   <footer>
-    <div class="container d-flex justify-content-between flex-wrap gap-2">
+    <div class="container d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div><i class="bi bi-compass me-1"></i>{{ SITE_NAME }} — {{ CLUB_NAME }}</div>
-      <div>Données MeOS &bull; <a href="https://www.melin.nu/meos/" target="_blank">meos</a></div>
+      <div class="d-flex align-items-center gap-3">
+        <span>Données MeOS &bull; <a href="https://www.melin.nu/meos/" target="_blank">meos</a></span>
+        <span class="d-flex align-items-center gap-2">
+          Hébergé par
+          <a href="https://www.alwaysdata.com" target="_blank" rel="noopener"
+             title="alwaysdata">
+            <img src="{% static 'results/img/alwaysdata.svg' %}"
+                 alt="alwaysdata" height="16"
+                 style="filter:brightness(0) invert(1);opacity:.85;vertical-align:middle;">
+          </a>
+        </span>
+      </div>
     </div>
   </footer>
 
   <script src="{% static 'results/js/bootstrap.bundle.min.js' %}"></script>
+  <script>
+    /* ── Dark mode toggle ──────────────────────────────────────────────── */
+    (function () {
+      var html = document.documentElement;
+      var btn  = document.getElementById('darkModeToggle');
+      var icon = document.getElementById('darkModeIcon');
+
+      function applyTheme(theme) {
+        html.setAttribute('data-theme', theme);
+        icon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+        try { localStorage.setItem('co-theme', theme); } catch(e) {}
+      }
+
+      applyTheme(html.getAttribute('data-theme') || 'light');
+
+      btn.addEventListener('click', function () {
+        applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+      });
+    })();
+  </script>
+
+  {# ── Styles dark mode injectés APRÈS Bootstrap pour garantir la priorité ── #}
+  <style>
+    html[data-theme="dark"] body,
+    html[data-theme="dark"] {
+      background-color: #141a14 !important;
+      color: #dde8dd !important;
+    }
+    /* Tous les textes non colorés explicitement */
+    html[data-theme="dark"] h1, html[data-theme="dark"] h2,
+    html[data-theme="dark"] h3, html[data-theme="dark"] h4,
+    html[data-theme="dark"] h5, html[data-theme="dark"] h6 { color: #dde8dd !important; }
+    html[data-theme="dark"] p, html[data-theme="dark"] li,
+    html[data-theme="dark"] span:not(.badge):not(.hero-badge),
+    html[data-theme="dark"] td, html[data-theme="dark"] th  { color: inherit; }
+    html[data-theme="dark"] .text-muted   { color: #9aabb5 !important; }
+    html[data-theme="dark"] .text-dark    { color: #dde8dd !important; }
+    html[data-theme="dark"] code          { color: #a8d8a8 !important; background: #1e2e1e !important; }
+
+    /* Containers */
+    html[data-theme="dark"] .co-card      { background: #192118 !important; border-color: rgba(255,255,255,.08) !important; }
+    html[data-theme="dark"] .stat-card    { background: #192118 !important; }
+    html[data-theme="dark"] .class-card   { background: #192118 !important; color: #dde8dd !important; border-color: rgba(255,255,255,.08) !important; }
+    html[data-theme="dark"] .class-card:hover { border-color: var(--co-green) !important; }
+    html[data-theme="dark"] .class-card .class-finishers { color: #8fcfa0 !important; }
+    html[data-theme="dark"] .class-card .class-meta      { color: #9aabb5 !important; }
+    html[data-theme="dark"] .stat-card .stat-label       { color: #9aabb5 !important; }
+
+    /* Results table */
+    html[data-theme="dark"] .results-table tbody td { color: #dde8dd !important; }
+    html[data-theme="dark"] .results-table tbody tr:hover { background: #223022 !important; }
+    html[data-theme="dark"] .results-table tbody tr { border-bottom-color: rgba(255,255,255,.06) !important; }
+    html[data-theme="dark"] .runner-name a       { color: #dde8dd !important; }
+    html[data-theme="dark"] .runner-name a:hover { color: var(--co-green) !important; }
+
+    /* Splits */
+    html[data-theme="dark"] .split-cell         { background: #192118 !important; border-color: rgba(255,255,255,.1) !important; color: #dde8dd !important; }
+    html[data-theme="dark"] .split-start,
+    html[data-theme="dark"] .split-finish       { background: #1a2e22 !important; border-color: #2e5c3a !important; }
+    html[data-theme="dark"] .split-best         { background: #2a2510 !important; border-color: var(--co-gold) !important; }
+    html[data-theme="dark"] .split-ctrl-name    { color: #8fcfa0 !important; }
+    html[data-theme="dark"] .split-time-abs     { color: #6fcf8f !important; }
+    html[data-theme="dark"] .split-time-leg     { color: #9aabb5 !important; }
+    html[data-theme="dark"] .split-rank         { color: #9aabb5 !important; }
+    html[data-theme="dark"] .split-leg-best     { color: var(--co-gold) !important; }
+
+    /* Onglets analyses */
+    html[data-theme="dark"] .analysis-tabs-bar  { background: #151d14 !important; border-bottom-color: rgba(255,255,255,.1) !important; }
+    html[data-theme="dark"] .analysis-tab       { color: #9aabb5 !important; }
+    html[data-theme="dark"] .analysis-tab:hover:not(.disabled):not(.active) { background: #223022 !important; color: var(--co-green) !important; }
+    html[data-theme="dark"] .analysis-tab.active { background: #2a2510 !important; color: #f5d76e !important; }
+
+    /* Légende */
+    html[data-theme="dark"] .legend-item       { color: #dde8dd !important; }
+    html[data-theme="dark"] .legend-item:hover { background: #223022 !important; }
+
+    /* Alertes */
+    html[data-theme="dark"] .alert-warning              { background: #26220e !important; color: #e8d98a !important; }
+    html[data-theme="dark"] .alert-warning strong       { color: #f5d76e !important; }
+
+    /* Badges */
+    html[data-theme="dark"] .badge.bg-light  { background: #263226 !important; color: #c8ddc8 !important; }
+    html[data-theme="dark"] .badge.bg-dark   { background: #2c3830 !important; color: #c8ddc8 !important; }
+
+    /* Tableaux Bootstrap génériques */
+    html[data-theme="dark"] .table          { color: #c8d8c8 !important; }
+    html[data-theme="dark"] .table td,
+    html[data-theme="dark"] .table th       { color: #c8d8c8 !important; border-color: rgba(255,255,255,.07) !important; }
+    html[data-theme="dark"] .table-light    { background: #151d14 !important; color: #c0d0c0 !important; }
+    html[data-theme="dark"] .table-hover > tbody > tr:hover > * { background: #1e2a1e !important; }
+
+    /* Formulaires */
+    html[data-theme="dark"] .form-control   { background: #192118 !important; border-color: rgba(255,255,255,.15) !important; color: #dde8dd !important; }
+    html[data-theme="dark"] .form-control:focus { border-color: var(--co-green) !important; }
+
+    /* Boutons outline */
+    html[data-theme="dark"] .btn-outline-secondary        { color: #9aabb5 !important; border-color: #9aabb5 !important; }
+    html[data-theme="dark"] .btn-outline-secondary:hover  { background: #2e3e2e !important; color: #dde8dd !important; }
+    html[data-theme="dark"] .btn-check:checked + .btn-outline-secondary,
+    html[data-theme="dark"] .btn-check:checked + .btn-outline-success { background: var(--co-green) !important; border-color: var(--co-green) !important; color: #fff !important; }
+
+    /* Scrollbar */
+    html[data-theme="dark"] ::-webkit-scrollbar       { width: 8px; height: 8px; }
+    html[data-theme="dark"] ::-webkit-scrollbar-track  { background: #0f1510; }
+    html[data-theme="dark"] ::-webkit-scrollbar-thumb  { background: #2e3e2e; border-radius: 4px; }
+    html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: var(--co-green); }
+  </style>
+
   {% block extra_js %}{% endblock %}
 </body>
 </html>
