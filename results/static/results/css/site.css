@@ -308,6 +308,21 @@ footer a { color: var(--co-gold); }
 .legend-item.hidden { opacity: .35; }
 .legend-color { width: 18px; height: 3px; border-radius: 2px; flex-shrink: 0; }
 
+/* ─── Bouton dark-mode toggle ────────────────────────────────────────────────── */
+
+#darkModeToggle {
+  background: none;
+  border: 1px solid rgba(255,255,255,.3);
+  color: rgba(255,255,255,.75);
+  border-radius: 6px;
+  padding: .25rem .55rem;
+  font-size: .9rem;
+  cursor: pointer;
+  transition: border-color .2s, color .2s;
+  line-height: 1.5;
+}
+#darkModeToggle:hover { border-color: var(--co-gold); color: var(--co-gold); }
+
 /* ─── Responsive ─────────────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {

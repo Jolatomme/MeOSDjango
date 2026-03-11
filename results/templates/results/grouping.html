@@ -89,7 +89,8 @@ function fmtAbsTime(v) {
 function buildDatasets(showAll) {
   return SERIES
     .filter(s => showAll || s.stat === STAT_OK)
-    .map((s, i) => {
+    .map((s) => {
+      const i          = SERIES.indexOf(s);
       const color      = PALETTE[i % PALETTE.length];
       const isFinished = s.has_finish && s.stat === STAT_OK;
       return {
@@ -107,8 +108,8 @@ function buildDatasets(showAll) {
 function buildTable() {
   const tbody = document.getElementById('groupingTableBody');
   if (!tbody) return;
-  tbody.innerHTML = SERIES.map(s => {
-    const color      = PALETTE[(s.rank - 1) % PALETTE.length];
+  tbody.innerHTML = SERIES.map((s, i) => {
+    const color      = PALETTE[i % PALETTE.length];
     const timeFmt    = s.time > 0 ? s.time_fmt : '<span class="text-muted">—</span>';
     const finishAbs  = s.has_finish && s.points.length > 0
       ? fmtAbsTime(s.points[s.points.length - 1])

@@ -90,30 +90,7 @@
 <th class="text-end">Temps total</th>
 <th class="text-end">Retard Superman</th>
 {% endblock %}
-
-{% block table_body %}
-<tbody>
-  {% for s in series %}
-  <tr>
-    <td>
-      {% if s.rank == 1 %}<img src="{% static 'results/img/medal-gold.svg' %}" width="22" height="22" alt="1er">
-      {% elif s.rank == 2 %}<img src="{% static 'results/img/medal-silver.svg' %}" width="22" height="22" alt="2e">
-      {% elif s.rank == 3 %}<img src="{% static 'results/img/medal-bronze.svg' %}" width="22" height="22" alt="3e">
-      {% else %}<span class="rank-n">{{ s.rank }}</span>
-      {% endif %}
-    </td>
-    <td class="runner-name fw-bold">{{ s.name }}</td>
-    <td class="club-name text-muted">{{ s.org }}</td>
-    <td class="text-end time-col">{{ s.total }}</td>
-    <td class="text-end">
-      <span class="badge {% if s.rank == 1 %}bg-warning text-dark{% else %}bg-light text-dark{% endif %} fw-bold">
-        +{{ s.loss }}
-      </span>
-    </td>
-  </tr>
-  {% endfor %}
-</tbody>
-{% endblock %}
+{% block tbody_id %}supermanTableBody{% endblock %}
 
 {% block extra_css %}
   .slc-ctrl {
@@ -161,6 +138,35 @@ function buildDatasets(visibleIds) {
   }));
 }
 
+function buildTable() {
+  const tbody = document.getElementById('supermanTableBody');
+  if (!tbody) return;
+  const MEDAL_GOLD   = "{% static 'results/img/medal-gold.svg' %}";
+  const MEDAL_SILVER = "{% static 'results/img/medal-silver.svg' %}";
+  const MEDAL_BRONZE = "{% static 'results/img/medal-bronze.svg' %}";
+  tbody.innerHTML = SERIES.map((s, i) => {
+    const color    = PALETTE[i % PALETTE.length];
+    const rankDisp = s.rank === 1 ? `<img src="${MEDAL_GOLD}"   width="22" height="22" alt="1er">`
+                   : s.rank === 2 ? `<img src="${MEDAL_SILVER}" width="22" height="22" alt="2e">`
+                   : s.rank === 3 ? `<img src="${MEDAL_BRONZE}" width="22" height="22" alt="3e">`
+                   : `<span class="rank-n">${s.rank}</span>`;
+    const lossBadge = s.rank === 1
+      ? `<span class="badge bg-warning text-dark fw-bold">+${s.loss}</span>`
+      : `<span class="badge bg-light text-dark fw-bold">+${s.loss}</span>`;
+    return `
+      <tr>
+        <td>${rankDisp}</td>
+        <td class="runner-name fw-bold">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;
+                       background:${color};margin-right:5px"></span>${s.name}
+        </td>
+        <td class="club-name text-muted">${s.org}</td>
+        <td class="text-end time-col">${s.total}</td>
+        <td class="text-end">${lossBadge}</td>
+      </tr>`;
+  }).join('');
+}
+
 function initChart() {
   const ctx = document.getElementById('supermanChart').getContext('2d');
   chart = new Chart(ctx, {
@@ -203,6 +209,7 @@ function initChart() {
     }
   });
   buildLegend();
+  buildTable();
 }
 {% endblock %}
 
