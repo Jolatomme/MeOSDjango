@@ -157,9 +157,9 @@ python manage.py collectstatic
 python manage.py runserver
 ```
 
-### 5. Lancer en production (exemple Gunicorn + Nginx)
+### 5. Lancer en production
 
-Cette partie va dépendre des psécificités de votre hébergeur.
+Cette partie va dépendre des spécificités de votre hébergeur.
 
 ### 6. Configurer MeOS
 
