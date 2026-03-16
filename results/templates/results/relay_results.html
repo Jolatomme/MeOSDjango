@@ -285,58 +285,41 @@
 
 {% block extra_js %}
 <script>
-  let hideNonF = false;
-  function toggleNonFinishers() {
-    hideNonF = !hideNonF;
-    document.querySelectorAll('.non-finisher').forEach(r => r.style.display = hideNonF ? 'none' : '');
-    document.getElementById('toggleLabel').textContent =
-      hideNonF ? 'Afficher abandons' : 'Masquer abandons';
-  }
+  // ── Toggle non-classés ──────────────────────────────────────────────────────
+  const _toggleNF = COUtils.makeNonFinisherToggle('toggleLabel');
+  function toggleNonFinishers() { _toggleNF(); }
 
-  document.getElementById('teamSearch').addEventListener('input', function () {
-    const q = this.value.toLowerCase();
-    document.querySelectorAll('tr.result-row:not(.legs-row)').forEach(row => {
-      const match = row.dataset.name.includes(q) || row.dataset.org.includes(q);
-      const legsRow = row.nextElementSibling;
-      row.style.display = match ? '' : 'none';
-      if (legsRow && legsRow.classList.contains('legs-row') && !match) {
-        legsRow.style.display = 'none';
-      }
-    });
-  });
+  // ── Recherche équipe ────────────────────────────────────────────────────────
+  COUtils.bindRowSearch('teamSearch', 'tr.result-row:not(.legs-row)', 'legs-row');
 
+  // ── Toggle fractions d'une équipe ───────────────────────────────────────────
   function toggleLegs(teamId, btn) {
-    const row = document.getElementById('legs-' + teamId);
-    if (!row) return;
-    const isOpen = !row.classList.contains('d-none');
-    row.classList.toggle('d-none', isOpen);
-    btn.classList.toggle('open', !isOpen);
+    COUtils.toggleDetailRow('legs-' + teamId, btn);
   }
 
+  // ── Toggle intermédiaires d'une fraction ────────────────────────────────────
   function toggleSplits(key, btn) {
-    const el = document.getElementById('splits-' + key);
-    if (!el) return;
-    const isOpen = !el.classList.contains('d-none');
-    el.classList.toggle('d-none', isOpen);
-    btn.classList.toggle('open', !isOpen);
+    COUtils.toggleDetailRow('splits-' + key, btn);
   }
-  // Réinitialise les splits lors de la fermeture des fractions
+
+  // ── Réinitialise les splits lors de la fermeture des fractions ─────────────
   function closeSplitsInRow(legsRow) {
     legsRow.querySelectorAll('.lg-splits-content').forEach(el => el.classList.add('d-none'));
     legsRow.querySelectorAll('.splits-toggle').forEach(b => b.classList.remove('open'));
   }
 
-  let allOpen = false;
-  function toggleAllLegs() {
-    allOpen = !allOpen;
-    document.querySelectorAll('.legs-row').forEach(r => r.classList.toggle('d-none', !allOpen));
-    document.querySelectorAll('.legs-toggle').forEach(b => b.classList.toggle('open', allOpen));
-    if (!allOpen) {
+  // ── Toggle toutes les fractions ─────────────────────────────────────────────
+  const _allLegsToggle = COUtils.makeAllToggle({
+    rowSelector: '.legs-row',
+    btnSelector: '.legs-toggle',
+    labelId:     'legsToggleLabel',
+    openText:    'Réduire toutes les fractions',
+    closeText:   'Développer toutes les fractions',
+    onClose: () => {
       document.querySelectorAll('.lg-splits-content').forEach(el => el.classList.add('d-none'));
       document.querySelectorAll('.splits-toggle').forEach(b => b.classList.remove('open'));
-    }
-    document.getElementById('legsToggleLabel').textContent =
-      allOpen ? 'Réduire toutes les fractions' : 'Développer toutes les fractions';
-  }
+    },
+  });
+  function toggleAllLegs() { _allLegsToggle(); }
 </script>
 {% endblock %}

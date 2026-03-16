@@ -103,12 +103,6 @@
 
 {% block extra_js %}
 <script>
-  const search = document.getElementById('classSearch');
-  search.addEventListener('input', () => {
-    const q = search.value.toLowerCase();
-    document.querySelectorAll('.class-item').forEach(el => {
-      el.style.display = el.dataset.name.includes(q) ? '' : 'none';
-    });
-  });
+  COUtils.bindSimpleSearch('classSearch', '.class-item', 'name');
 </script>
 {% endblock %}

@@ -1,15 +1,43 @@
 {% extends "results/base.html" %}
+{% block title %}Tutoriels MeOS — {{ SITE_NAME }}{% endblock %}
+
+{% block page_header %}
+<div class="co-page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="co-breadcrumb">
+      <ol class="breadcrumb mb-2 small">
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
+        <li class="breadcrumb-item active">Tutoriels</li>
+      </ol>
+    </nav>
+    <h1><i class="bi bi-book me-2 opacity-75"></i>Tutoriels MeOS</h1>
+  </div>
+</div>
+{% endblock %}
 
 {% block content %}
-
-<h1 class="text-body-emphasis">Tutoriels pour MeOS</h1>
-<ul class="list-group">
-    {% for tuto in object_list %}
-	<li class="list-group-item">
-		<a href="{% url 'results:markdown' tuto.id %}">
-			{{ tuto.title }}</a>
-	</li>
-    {% endfor %}
-</ul>
-
+{% if object_list %}
+<div class="row g-3">
+  {% for tuto in object_list %}
+  <div class="col-12 col-md-6 col-lg-4">
+    <a href="{% url 'results:markdown' tuto.id %}" class="class-card d-flex align-items-start gap-3">
+      <span class="fs-3 mt-1 opacity-75" style="color:var(--co-gold)">
+        <i class="bi bi-file-text"></i>
+      </span>
+      <div>
+        <div class="class-name">{{ tuto.title }}</div>
+        {% if tuto.description %}
+        <div class="class-meta mt-1">{{ tuto.description }}</div>
+        {% endif %}
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="co-card text-center p-5 text-muted">
+  <i class="bi bi-book fs-1 d-block mb-3 opacity-25"></i>
+  <p class="mb-0">Aucun tutoriel disponible pour le moment.</p>
+</div>
+{% endif %}
 {% endblock %}

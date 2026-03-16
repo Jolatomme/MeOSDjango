@@ -246,45 +246,30 @@
 {% block extra_js %}
 <script src="{% static 'results/js/chart.umd.min.js' %}"></script>
 <script>
-  let hideNonF = false;
-  function toggleNonFinishers() {
-    hideNonF = !hideNonF;
-    document.querySelectorAll('.non-finisher').forEach(r => r.style.display = hideNonF ? 'none' : '');
-    document.getElementById('toggleLabel').textContent = hideNonF ? 'Afficher abandons' : 'Masquer abandons';
-  }
+  // ── Toggle non-classés ──────────────────────────────────────────────────────
+  const _toggleNF = COUtils.makeNonFinisherToggle('toggleLabel');
+  function toggleNonFinishers() { _toggleNF(); }
 
-  document.getElementById('runnerSearch').addEventListener('input', function () {
-    const q = this.value.toLowerCase();
-    document.querySelectorAll('tr.result-row:not(.splits-row)').forEach(row => {
-      const match = row.dataset.name.includes(q) || row.dataset.org.includes(q);
-      const splitsRow = row.nextElementSibling;
-      row.style.display = match ? '' : 'none';
-      if (splitsRow && splitsRow.classList.contains('splits-row') && !match) {
-        splitsRow.style.display = 'none';
-      }
-    });
-  });
+  // ── Recherche coureur ───────────────────────────────────────────────────────
+  COUtils.bindRowSearch('runnerSearch', 'tr.result-row:not(.splits-row)', 'splits-row');
 
+  // ── Toggle intermédiaires d'un coureur ──────────────────────────────────────
   function toggleSplits(compId, btn) {
-    const row = document.getElementById('splits-' + compId);
-    if (!row) return;
-    const isOpen = !row.classList.contains('d-none');
-    row.classList.toggle('d-none', isOpen);
-    btn.classList.toggle('open', !isOpen);
-    if (!isOpen) applyErrorThresholds();
+    COUtils.toggleDetailRow('splits-' + compId, btn, applyErrorThresholds);
   }
 
-  let allOpen = false;
-  function toggleAllSplits() {
-    allOpen = !allOpen;
-    document.querySelectorAll('.splits-row').forEach(r => r.classList.toggle('d-none', !allOpen));
-    document.querySelectorAll('.split-toggle').forEach(b => b.classList.toggle('open', allOpen));
-    document.getElementById('allSplitsLabel').textContent =
-      allOpen ? 'Réduire tous les intermédiaires' : 'Développer tous les intermédiaires';
-    if (allOpen) applyErrorThresholds();
-  }
+  // ── Toggle tous les intermédiaires ─────────────────────────────────────────
+  const _allSplitsToggle = COUtils.makeAllToggle({
+    rowSelector: '.splits-row',
+    btnSelector: '.split-toggle',
+    labelId:     'allSplitsLabel',
+    openText:    'Réduire tous les intermédiaires',
+    closeText:   'Développer tous les intermédiaires',
+    onOpen:      () => applyErrorThresholds(),
+  });
+  function toggleAllSplits() { _allSplitsToggle(); }
 
-  // ── Détection des erreurs ────────────────────────────────────────────────────
+  // ── Détection des erreurs ───────────────────────────────────────────────────
   function applyErrorThresholds() {
     const thSec = parseFloat(document.getElementById('thresholdSec').value) || 0;
     const thPct = parseFloat(document.getElementById('thresholdPct').value) || 0;
@@ -315,7 +300,7 @@
   document.getElementById('thresholdPct')?.addEventListener('input', applyErrorThresholds);
   document.addEventListener('DOMContentLoaded', applyErrorThresholds);
 
-  // ── Graphique taux d'erreur par tronçon ─────────────────────────────────────
+  // ── Graphique taux d'erreur par tronçon ────────────────────────────────────
   const LEG_ERROR_DATA = {{ leg_error_data_json|default:"[]"|safe }};
   let errorChart = null;
 
@@ -428,7 +413,7 @@
     if (errorChartOpen) requestAnimationFrame(() => requestAnimationFrame(renderErrorChart));
   }
 
-  // Re-render when thresholds change
+  // Re-render quand les seuils changent
   ['thresholdSec', 'thresholdPct'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', () => {
       if (errorChartOpen) renderErrorChart();

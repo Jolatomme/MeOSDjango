@@ -479,3 +479,215 @@ def compute_error_estimates(finishers, controls_seq, radio_map, top_fraction=0.2
         result[c.id] = errors
 
     return result
+
+
+# ─── Indice de regroupement (lièvre / suiveur) ────────────────────────────────
+
+def _hare_integral(d0, d1, T1, T2):
+    """Intègre la fonction lièvre sur f ∈ [0, 1] pour une paire de coureurs.
+
+    delta(f) = d0 + f * (d1 - d0) est la différence de temps absolue interpolée
+    linéairement.  delta > 0 signifie que le coureur « self » est en avance sur
+    le coureur « autre » de delta dixièmes de seconde.
+
+    Fonction lièvre h(d) :
+        d ≤ 0          → 0        (self est derrière)
+        0 < d ≤ T1     → 1        (self totalement en tête)
+        T1 < d ≤ T2    → (T2-d) / (T2-T1)   (zone de transition linéaire)
+        d > T2         → 0        (trop d'avance, aucune interaction)
+
+    T1 et T2 sont exprimés en dixièmes de seconde.
+
+    L'intégrale est calculée analytiquement par découpage en sous-intervalles
+    aux points de transition de h (d = 0, T1, T2).
+
+    Retourne un flottant dans [0, 1].
+    """
+    # Cas ex-aequo strict : les deux coureurs ont les mêmes heures de passage
+    # à tous les postes → h = 0.5 par convention (spec).
+    if d0 == 0 and d1 == 0:
+        return 0.5
+
+    slope = d1 - d0
+
+    # Calcule les valeurs de f où delta franchit 0, T1 ou T2.
+    breakpoints = {0.0, 1.0}
+    if abs(slope) > 1e-9:
+        for d_crit in (0.0, float(T1), float(T2)):
+            f_c = (d_crit - d0) / slope
+            if 0.0 < f_c < 1.0:
+                breakpoints.add(f_c)
+
+    total = 0.0
+    fps = sorted(breakpoints)
+    for idx in range(len(fps) - 1):
+        fa, fb = fps[idx], fps[idx + 1]
+        da = d0 + fa * slope
+        db = d0 + fb * slope
+        avg_d = (da + db) / 2.0
+        w = fb - fa
+
+        if avg_d <= 0 or avg_d > T2:
+            pass                                   # h = 0
+        elif avg_d <= T1:
+            total += w                             # h = 1
+        else:
+            total += w * (T2 - avg_d) / (T2 - T1) # h linéaire
+
+    return total
+
+
+def compute_grouping_index(runners, controls_seq, radio_map, t1_sec=7, t2_sec=20):
+    """Calcule l'indice de regroupement (lièvre/suiveur) par coureur et par tronçon.
+
+    Pour chaque tronçon, on compare chaque paire de coureurs ayant tous les deux
+    des temps valides aux deux postes encadrant ce tronçon.  Si leur écart au
+    poste de départ du tronçon est supérieur à T2, la paire est ignorée pour ce
+    tronçon (ils ne sont pas dans le même groupe).
+
+    L'interpolation linéaire des temps de passage permet de suivre en continu
+    l'évolution de l'écart entre deux coureurs au fil du tronçon et d'intégrer
+    la fonction lièvre analytiquement.
+
+    Indice net par tronçon = moyenne sur tous les adversaires valides de
+        (indice_suiveur_ik - indice_lièvre_ik)  ∈ [-1, 1]
+        · négatif → coureur en tête (lièvre, vert)
+        · positif → coureur qui suit (suiveur, rouge)
+
+    Indice global = moyenne pondérée des indices de tronçon, pondérée par la
+    durée du tronçon du coureur (proxy de la longueur physique du tronçon).
+
+    Note : la règle "un coureur en 2e position d'un groupe ne peut pas avoir
+    d'indice lièvre vis-à-vis du 3e" n'est pas implémentée ; on utilise la
+    moyenne pair-à-pair.
+
+    Args:
+        runners      : liste d'objets Mopcompetitor (attributs .id, .st, .rt)
+        controls_seq : liste de {'ctrl_id': int, 'ctrl_name': str} dans l'ordre
+        radio_map    : {runner_id: {ctrl_id: rt}} — temps cumulés depuis le départ
+        t1_sec       : seuil « lièvre à 100% » en secondes (défaut : 7)
+        t2_sec       : seuil « aucune interaction » en secondes (défaut : 20)
+
+    Returns:
+        Liste de dicts (un par coureur dans le même ordre que `runners`) :
+        {
+            'id'          : int,
+            'leg_indices' : [float|None, ...],  # n_legs valeurs
+            'leg_ref_ids' : [int|None, ...],    # id du partenaire dominant par tronçon
+            'global_index': float|None,
+        }
+        Le partenaire dominant est celui dont |follow_ik - hare_ik| est le plus grand
+        sur ce tronçon — i.e. le coureur qui influence le plus l'indice.
+    """
+    T1 = int(t1_sec * 10)
+    T2 = int(t2_sec * 10)
+    n_ctrls = len(controls_seq)
+    n_legs  = n_ctrls + 1          # n intermédiaires + 1 tronçon final
+
+    # ── Construction des tableaux de temps absolus ────────────────────────────
+    # abs_pts[i][j] = heure absolue du coureur i à la frontière j du tronçon
+    #   j = 0          → heure de départ (c.st)
+    #   j = 1..n_ctrls → c.st + radio[ctrl_id]  (None si poste manquant)
+    #   j = n_ctrls+1  → c.st + c.rt            (None si pas d'arrivée)
+    abs_pts = []
+    for c in runners:
+        if c.st <= 0:
+            abs_pts.append(None)
+            continue
+        radios = radio_map.get(c.id, {})
+        pts    = [c.st]
+        for ctrl in controls_seq:
+            rt = radios.get(ctrl['ctrl_id'], -1)
+            pts.append(c.st + rt if rt > 0 else None)
+        pts.append(c.st + c.rt if c.rt > 0 else None)
+        abs_pts.append(pts)
+
+    n = len(runners)
+    results = []
+
+    for i in range(n):
+        pts_i = abs_pts[i]
+        if pts_i is None:
+            results.append({'id': runners[i].id,
+                            'leg_indices': [None] * n_legs,
+                            'leg_ref_ids': [None] * n_legs,
+                            'global_index': None})
+            continue
+
+        leg_indices = []
+        leg_ref_ids = []
+        leg_weights = []
+
+        for leg_j in range(n_legs):
+            t_start = pts_i[leg_j]
+            t_end   = pts_i[leg_j + 1]
+
+            if t_start is None or t_end is None or t_end <= t_start:
+                leg_indices.append(None)
+                leg_ref_ids.append(None)
+                leg_weights.append(0)
+                continue
+
+            net_sum      = 0.0
+            n_valid      = 0
+            best_ref_id  = None
+            best_abs_net = -1.0
+
+            for k in range(n):
+                if k == i:
+                    continue
+                pts_k = abs_pts[k]
+                if pts_k is None:
+                    continue
+                t_k_start = pts_k[leg_j]
+                t_k_end   = pts_k[leg_j + 1]
+                if t_k_start is None or t_k_end is None:
+                    continue
+                # Ignorer si l'écart au poste de départ du tronçon dépasse T2
+                if abs(t_start - t_k_start) > T2:
+                    continue
+
+                # d > 0  ↔  coureur i est en avance sur coureur k
+                d0 = t_k_start - t_start
+                d1 = t_k_end   - t_end
+
+                hare_ik   = _hare_integral(d0,  d1,  T1, T2)  # i devant k
+                follow_ik = _hare_integral(-d0, -d1, T1, T2)  # k devant i
+                net_ik    = follow_ik - hare_ik
+                net_sum  += net_ik
+                n_valid  += 1
+
+                # Coureur dominant : celui dont la contribution absolue est la plus grande
+                if abs(net_ik) > best_abs_net:
+                    best_abs_net = abs(net_ik)
+                    best_ref_id  = runners[k].id
+
+            if n_valid == 0:
+                leg_indices.append(None)
+                leg_ref_ids.append(None)
+                leg_weights.append(0)
+            else:
+                leg_indices.append(net_sum / n_valid)
+                leg_ref_ids.append(best_ref_id)
+                leg_weights.append(t_end - t_start)
+
+        # ── Indice global : moyenne pondérée par durée de tronçon ─────────────
+        valid_pairs = [
+            (leg_indices[j], leg_weights[j])
+            for j in range(n_legs)
+            if leg_indices[j] is not None and leg_weights[j] > 0
+        ]
+        if valid_pairs:
+            total_w    = sum(w for _, w in valid_pairs)
+            global_idx = sum(v * w for v, w in valid_pairs) / total_w if total_w > 0 else None
+        else:
+            global_idx = None
+
+        results.append({
+            'id':           runners[i].id,
+            'leg_indices':  leg_indices,
+            'leg_ref_ids':  leg_ref_ids,
+            'global_index': global_idx,
+        })
+
+    return results

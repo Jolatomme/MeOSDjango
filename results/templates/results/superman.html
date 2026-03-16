@@ -141,25 +141,15 @@ function buildDatasets(visibleIds) {
 function buildTable() {
   const tbody = document.getElementById('supermanTableBody');
   if (!tbody) return;
-  const MEDAL_GOLD   = "{% static 'results/img/medal-gold.svg' %}";
-  const MEDAL_SILVER = "{% static 'results/img/medal-silver.svg' %}";
-  const MEDAL_BRONZE = "{% static 'results/img/medal-bronze.svg' %}";
   tbody.innerHTML = SERIES.map((s, i) => {
     const color    = PALETTE[i % PALETTE.length];
-    const rankDisp = s.rank === 1 ? `<img src="${MEDAL_GOLD}"   width="22" height="22" alt="1er">`
-                   : s.rank === 2 ? `<img src="${MEDAL_SILVER}" width="22" height="22" alt="2e">`
-                   : s.rank === 3 ? `<img src="${MEDAL_BRONZE}" width="22" height="22" alt="3e">`
-                   : `<span class="rank-n">${s.rank}</span>`;
     const lossBadge = s.rank === 1
       ? `<span class="badge bg-warning text-dark fw-bold">+${s.loss}</span>`
       : `<span class="badge bg-light text-dark fw-bold">+${s.loss}</span>`;
     return `
       <tr>
-        <td>${rankDisp}</td>
-        <td class="runner-name fw-bold">
-          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;
-                       background:${color};margin-right:5px"></span>${s.name}
-        </td>
+        <td>${COUtils.renderMedal(s.rank)}</td>
+        <td class="runner-name fw-bold">${COUtils.renderRunnerDot(color, s.name)}</td>
         <td class="club-name text-muted">${s.org}</td>
         <td class="text-end time-col">${s.total}</td>
         <td class="text-end">${lossBadge}</td>

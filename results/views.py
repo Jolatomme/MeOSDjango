@@ -15,6 +15,7 @@ from .services import (
     rank_finishers, build_rank_map,
     build_leg_matrix, compute_leg_refs,
     build_abs_time_series, compute_error_estimates,
+    compute_grouping_index,
 )
 
 
@@ -516,7 +517,105 @@ def grouping_analysis(request, cid, class_id):
     })
 
 
-# ─── Duel de coureurs ─────────────────────────────────────────────────────────
+# ─── Indice de regroupement (lièvre / suiveur) ───────────────────────────────
+
+def grouping_index_analysis(request, cid, class_id):
+    """Analyse lièvre / suiveur : indice de regroupement par coureur et par tronçon.
+
+    L'indice est calculé à partir des heures absolues de passage aux postes.
+    Une interpolation linéaire entre chaque paire de postes consécutifs permet
+    d'intégrer en continu la fonction lièvre sur chaque tronçon.
+
+    · Indice négatif (vert)  → coureur en tête de groupe (lièvre)
+    · Indice positif (rouge) → coureur qui en suit un autre (suiveur)
+
+    T1 et T2 (seuils en secondes) sont ajustables via les paramètres GET `t1`
+    et `t2` (défauts : 7 s et 20 s).
+    """
+    competition, cls, competitors = _load_class_context(cid, class_id)
+
+    runners = [c for c in competitors if c.st > 0]
+    runners.sort(key=lambda c: c.st)
+
+    if not runners:
+        return render(request, 'results/grouping_index.html', {
+            'competition':      competition,
+            'cls':              cls,
+            'no_data':          True,
+            'current_analysis': 'grouping_index',
+        })
+
+    # ── Paramètres de seuil (GET, avec garde-fous) ────────────────────────────
+    try:
+        t1 = max(1,       min(int(request.GET.get('t1', 7)),  30))
+        t2 = max(t1 + 1,  min(int(request.GET.get('t2', 20)), 60))
+    except (ValueError, TypeError):
+        t1, t2 = 7, 20
+
+    # ── Données de base ───────────────────────────────────────────────────────
+    org_map         = get_org_map(cid)
+    controls_seq, _ = get_class_controls(cid, class_id)
+    radio_map       = get_radio_map(cid, [c.id for c in runners])
+
+    # Classement final (pour affichage dans le tableau)
+    finishers, _, _ = rank_finishers(competitors)
+    rank_map        = {c.id: c.rank for c in finishers}
+    for c in runners:
+        c.rank = rank_map.get(c.id)
+
+    # ── Calcul des indices ────────────────────────────────────────────────────
+    raw = compute_grouping_index(runners, controls_seq, radio_map, t1, t2)
+
+    # Enrichissement (nom, rang, club)
+    runner_map = {c.id: c for c in runners}
+    id_to_firstname = {
+        c.id: c.name if c.name else ''
+        for c in runners
+    }
+    for r in raw:
+        c = runner_map.get(r['id'])
+        if c:
+            r['name'] = c.name
+            r['rank'] = getattr(c, 'rank', None)
+            r['org']  = org_map.get(c.org, '')
+        # Résolution des partenaires dominants en prénoms
+        r['leg_ref_names'] = [
+            id_to_firstname.get(rid) if rid is not None else None
+            for rid in r.get('leg_ref_ids', [])
+        ]
+
+    # Tri : classés par rang, puis non-classés par nom
+    raw.sort(key=lambda r: (r['rank'] is None, r['rank'] or 0, r.get('name', '')))
+
+    # Arrondi des indices et nettoyage pour alléger le JSON
+    for r in raw:
+        r['leg_indices']  = [round(v, 3) if v is not None else None
+                             for v in r['leg_indices']]
+        r['global_index'] = round(r['global_index'], 3) \
+                            if r['global_index'] is not None else None
+        del r['leg_ref_ids']   # remplacé par leg_ref_names côté client
+
+    # ── Labels des tronçons ───────────────────────────────────────────────────
+    ctrl_names = [c['ctrl_name'] for c in controls_seq]
+    all_names  = ['Dép.'] + ctrl_names + ['Arr.']
+    leg_labels = [f"{all_names[j]}→{all_names[j + 1]}"
+                  for j in range(len(all_names) - 1)]
+
+    return render(request, 'results/grouping_index.html', {
+        'competition':     competition,
+        'cls':             cls,
+        'results_json':    json.dumps(raw),
+        'leg_labels_json': json.dumps(leg_labels),
+        'n_runners':       len(raw),
+        'n_legs':          len(leg_labels),
+        't1':              t1,
+        't2':              t2,
+        'no_data':         False,
+        'current_analysis': 'grouping_index',
+    })
+
+
+# ─── Duel de coureurs ────────────────────────────────────────────────────────
 
 def duel_analysis(request, cid, class_id):
     """Compare tronçon par tronçon deux coureurs choisis interactivement.

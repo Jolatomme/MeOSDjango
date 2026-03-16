@@ -58,21 +58,9 @@
 {% endblock %}
 {% block tbody_id %}groupingTableBody{% endblock %}
 
-{% block extra_css %}
-  /* Coureurs non classés : tirets dans la légende */
-  .legend-item.dnf .legend-color {
-    background: repeating-linear-gradient(
-      90deg,
-      var(--leg-color) 0px, var(--leg-color) 6px,
-      transparent 6px,    transparent 10px
-    ) !important;
-  }
-{% endblock %}
+{% block extra_css %}{% endblock %}
 
 {% block chart_init_js %}
-const MEDAL_GOLD   = "{% static 'results/img/medal-gold.svg' %}";
-const MEDAL_SILVER = "{% static 'results/img/medal-silver.svg' %}";
-const MEDAL_BRONZE = "{% static 'results/img/medal-bronze.svg' %}";
 const SERIES   = {{ series_json|safe }};
 const X_LABELS = {{ x_labels_json|safe }};
 const STAT_OK  = 1;
@@ -114,19 +102,17 @@ function buildTable() {
     const finishAbs  = s.has_finish && s.points.length > 0
       ? fmtAbsTime(s.points[s.points.length - 1])
       : '<span class="text-muted">—</span>';
-    const opacity = s.has_finish && s.stat === STAT_OK ? '' : 'opacity:.6;font-style:italic';
-    const rankDisp = s.rank === 1 ? `<img src="${MEDAL_GOLD}"   width="22" height="22" alt="1er">`
-                   : s.rank === 2 ? `<img src="${MEDAL_SILVER}" width="22" height="22" alt="2e">`
-                   : s.rank === 3 ? `<img src="${MEDAL_BRONZE}" width="22" height="22" alt="3e">`
-                   : s.rank       ? `<span class="rank-n">${s.rank}</span>`
-                   :                `<span class="text-muted">—</span>`;
+    const opacity    = s.has_finish && s.stat === STAT_OK ? '' : 'opacity:.6;font-style:italic';
+    // Coureurs classés → médaille/rang habituel.
+    // Coureurs non classés → trait pointillé dans leur couleur (cohérent avec la légende DNF).
+    const rankCell   = s.rank
+      ? COUtils.renderMedal(s.rank)
+      : `<div style="width:18px;height:3px;border-radius:2px;display:inline-block;` +
+        `background:repeating-linear-gradient(90deg,${color} 0px,${color} 6px,transparent 6px,transparent 10px)"></div>`;
     return `
       <tr style="${opacity}">
-        <td>${rankDisp}</td>
-        <td class="runner-name fw-bold">
-          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;
-                       background:${color};margin-right:5px"></span>${s.name}
-        </td>
+        <td>${rankCell}</td>
+        <td class="runner-name fw-bold">${COUtils.renderRunnerDot(color, s.name)}</td>
         <td class="club-name text-muted">${s.org}</td>
         <td class="text-end font-monospace">${fmtAbsTime(s.st_abs)}</td>
         <td class="text-end font-monospace">${finishAbs}</td>
