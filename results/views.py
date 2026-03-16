@@ -1,5 +1,7 @@
 import json
+import re
 import markdown
+from markdown.extensions.toc import slugify_unicode
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
@@ -38,8 +40,27 @@ def _load_class_context(cid, class_id):
 
 # ─── Pages statiques / utilitaires ────────────────────────────────────────────
 
+_PREFIX_RE = re.compile(r'^\d+(\.\d+)*\.?\s+')
+
+
+def _slugify_no_prefix(value, separator):
+    """Slugifie un titre Markdown en retirant d'abord son préfixe numérique.
+
+    Exemples :
+        "1 En amont"               → "en-amont"
+        "1.1 Créer la compétition" → "créer-la-compétition"
+        "5. Statuts des coureurs"  → "statuts-des-coureurs"
+    Cela garantit que les ancres générées correspondent aux liens de la table
+    des matières qui ne répètent pas les numéros.
+    """
+    return slugify_unicode(_PREFIX_RE.sub('', value), separator)
+
+
 def MarkdownView(request, article_id):
-    md = markdown.Markdown(extensions=["fenced_code"])
+    md = markdown.Markdown(
+        extensions=["fenced_code", "toc", "tables"],
+        extension_configs={"toc": {"slugify": _slugify_no_prefix}},
+    )
     markdown_content = MeosTutorial.objects.get(pk=article_id)
     markdown_content.content = md.convert(markdown_content.text)
     return render(request, "results/markdown_content.html",
