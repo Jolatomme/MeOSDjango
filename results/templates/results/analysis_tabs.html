@@ -2,7 +2,7 @@
    Paramètres attendus dans le contexte :
      competition       → objet Mopcompetition (pour competition.cid)
      cls               → objet Mopclass (pour cls.id)
-     current_analysis  → 'results' | 'superman' | 'performance' | 'grouping' | 'duel'
+     current_analysis  → 'results' | 'superman' | 'performance' | 'grouping' | 'grouping_index' | 'duel'
 -->
 <div class="analysis-tabs-bar">
   <div class="container">
@@ -36,10 +36,12 @@
         <span>Regroupement</span>
       </a>
 
-      <span class="analysis-tab disabled" title="Indice de regroupement — Bientôt disponible">
+      <a href="{% url 'results:grouping_index' competition.cid cls.id %}"
+         class="analysis-tab {% if current_analysis == 'grouping_index' %}active{% endif %}"
+         title="Indice lièvre / suiveur">
         <i class="bi bi-collection"></i>
-        <span>Indice regroupement</span>
-      </span>
+        <span>Lièvre / Suiveur</span>
+      </a>
 
       <a href="{% url 'results:duel' competition.cid cls.id %}"
          class="analysis-tab {% if current_analysis == 'duel' %}active{% endif %}"

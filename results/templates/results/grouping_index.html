@@ -1,0 +1,367 @@
+{% extends "results/base.html" %}
+{% load static %}
+{% block title %}Lièvre / Suiveur — {{ cls.name }} — {{ competition.name }}{% endblock %}
+
+{% block page_header %}
+<div class="co-page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="co-breadcrumb">
+      <ol class="breadcrumb mb-2 small">
+        {% include 'results/_breadcrumb_home_comp.html' %}
+        <li class="breadcrumb-item">
+          <a href="{% url 'results:class_results' competition.cid cls.id %}">{{ cls.name }}</a>
+        </li>
+        <li class="breadcrumb-item active">Lièvre / Suiveur</li>
+      </ol>
+    </nav>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h1>
+          <i class="bi bi-collection me-2 opacity-75" style="color:var(--co-gold)"></i>
+          Lièvre / Suiveur
+        </h1>
+        <div class="opacity-75 small mt-1">{{ cls.name }} — {{ competition.name }}</div>
+      </div>
+      {% if not no_data %}
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-light text-dark fs-6">{{ n_runners }} coureur{{ n_runners|pluralize }}</span>
+        <span class="badge bg-light text-dark fs-6">{{ n_legs }} tronçon{{ n_legs|pluralize }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% include 'results/analysis_tabs.html' %}
+{% endblock %}
+
+
+{% block content %}
+
+{% if no_data %}
+<div class="co-card text-center p-5 text-muted">
+  <i class="bi bi-collection fs-1 d-block mb-3 opacity-25"></i>
+  Pas assez de données pour calculer l'indice lièvre / suiveur.
+</div>
+
+{% else %}
+
+{# ── Explication ─────────────────────────────────────────────────────────── #}
+<div class="alert alert-warning border-0 mb-4"
+     style="background:#fffbe6;border-left:4px solid var(--co-gold) !important;">
+  <i class="bi bi-info-circle me-2"></i>
+  L'<strong>indice lièvre / suiveur</strong> évalue les regroupements à partir
+  des heures absolues de passage aux postes.
+  Une case <strong style="color:#1a6b3c">verte</strong> indique un coureur en
+  tête de groupe (lièvre) ; une case <strong style="color:#c0392b">rouge</strong>
+  un coureur qui en suit un autre (suiveur).
+  Une case grise signifie que le coureur était seul sur ce tronçon.
+  L'<strong>indice global</strong> est la moyenne pondérée par la durée de
+  chaque tronçon.
+</div>
+
+{# ── Seuils ──────────────────────────────────────────────────────────────── #}
+<div class="co-card mb-3">
+  <div class="p-3 d-flex gap-4 align-items-end flex-wrap">
+    <div>
+      <label class="form-label mb-1 small fw-bold text-muted">
+        Seuil T1 — lièvre à 100%
+      </label>
+      <div class="input-group input-group-sm" style="width:110px">
+        <input type="number" id="t1Input" class="form-control"
+               value="{{ t1 }}" min="1" max="30" step="1">
+        <span class="input-group-text">s</span>
+      </div>
+    </div>
+    <div>
+      <label class="form-label mb-1 small fw-bold text-muted">
+        Seuil T2 — aucune interaction
+      </label>
+      <div class="input-group input-group-sm" style="width:110px">
+        <input type="number" id="t2Input" class="form-control"
+               value="{{ t2 }}" min="2" max="60" step="1">
+        <span class="input-group-text">s</span>
+      </div>
+    </div>
+    <button class="btn btn-sm btn-outline-success" id="applyThresholds">
+      <i class="bi bi-arrow-clockwise me-1"></i>Recalculer
+    </button>
+    <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+      <span class="small text-muted fw-bold">Légende :</span>
+      <span class="gi-legend-swatch" style="background:#1a6b3c"></span>
+      <span class="small">Lièvre</span>
+      <span class="gi-legend-swatch" style="background:#e0e0e0"></span>
+      <span class="small">Seul</span>
+      <span class="gi-legend-swatch" style="background:#c0392b"></span>
+      <span class="small">Suiveur</span>
+    </div>
+  </div>
+</div>
+
+{# ── Heatmap ─────────────────────────────────────────────────────────────── #}
+<div class="co-card mb-4">
+  <div class="co-card-header">
+    <i class="bi bi-grid-3x3-gap me-2"></i>Indice par coureur et par tronçon
+  </div>
+  <div class="p-0">
+    <div id="heatmapWrap" style="overflow-x:auto">
+      <table class="gi-table" id="heatmapTable">
+        <thead id="heatmapHead"></thead>
+        <tbody id="heatmapBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{# ── Tableau récapitulatif ────────────────────────────────────────────────── #}
+<div class="co-card mb-4">
+  <div class="co-card-header">
+    <i class="bi bi-table me-2"></i>Indice global par coureur
+  </div>
+  <div class="table-responsive">
+    <table class="results-table">
+      <thead>
+        <tr>
+          <th style="width:3rem">#</th>
+          <th>Coureur</th>
+          <th>Club</th>
+          <th class="text-end">Indice global</th>
+          <th class="text-center" style="width:10rem">Profil</th>
+        </tr>
+      </thead>
+      <tbody id="summaryBody"></tbody>
+    </table>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+
+{% block extra_head %}
+{% if not no_data %}
+<style>
+  /* ── Table heatmap ─────────────────────────────────────────────────────── */
+  .gi-table {
+    width: max-content; min-width: 100%;
+    border-collapse: separate; border-spacing: 0;
+    font-size: .78rem;
+  }
+  .gi-table thead th {
+    background: var(--co-forest); color: #fff;
+    font-family: var(--font-display); font-weight: 700; font-size: .72rem;
+    letter-spacing: .04em; text-transform: uppercase;
+    padding: .5rem .6rem; white-space: nowrap;
+    position: sticky; top: 0; z-index: 2;
+    border-right: 1px solid rgba(255,255,255,.12);
+  }
+  .gi-table thead th.gi-th-runner {
+    position: sticky; left: 0; z-index: 3;
+    min-width: 10rem; max-width: 14rem;
+  }
+  .gi-table thead th.gi-th-global {
+    border-left: 2px solid var(--co-gold);
+  }
+
+  /* ── Cellules coureur (colonne fixe) ───────────────────────────────────── */
+  .gi-table tbody td.gi-td-runner {
+    position: sticky; left: 0; z-index: 1;
+    background: #fff; border-right: 2px solid var(--co-border);
+    padding: .4rem .6rem; white-space: nowrap;
+    font-size: .8rem;
+  }
+  html[data-theme="dark"] .gi-table tbody td.gi-td-runner {
+    background: #192118 !important;
+    border-right-color: rgba(255,255,255,.1) !important;
+  }
+
+  /* ── Cellules de valeur ────────────────────────────────────────────────── */
+  .gi-table tbody td.gi-td-val {
+    padding: .2rem .3rem; text-align: center;
+    border-right: 1px solid rgba(0,0,0,.05);
+    min-width: 3.5rem; max-width: 6rem;
+    font-family: var(--font-display); font-weight: 700; font-size: .78rem;
+    vertical-align: middle; line-height: 1.2;
+  }
+  .gi-ref-name {
+    display: block;
+    font-family: var(--font-body); font-weight: 400; font-size: .65rem;
+    opacity: .75; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; max-width: 5.5rem; margin: 0 auto;
+  }
+  html[data-theme="dark"] .gi-table tbody td.gi-td-val {
+    border-right-color: rgba(255,255,255,.05) !important;
+  }
+
+  /* ── Cellule indice global ─────────────────────────────────────────────── */
+  .gi-table tbody td.gi-td-global {
+    border-left: 2px solid var(--co-gold);
+    font-size: .85rem;
+  }
+
+  /* ── Lignes alternées ──────────────────────────────────────────────────── */
+  .gi-table tbody tr:nth-child(even) td.gi-td-runner {
+    background: #f8fbf8;
+  }
+  html[data-theme="dark"] .gi-table tbody tr:nth-child(even) td.gi-td-runner {
+    background: #1e2a1e !important;
+  }
+
+  /* ── Barre de progression indice global (tableau récap) ─────────────────── */
+  .gi-bar-wrap { position: relative; height: 6px; border-radius: 3px;
+                 background: #e9ecef; overflow: hidden; width: 100%; }
+  .gi-bar      { position: absolute; top: 0; height: 100%; border-radius: 3px; }
+
+  /* ── Légende swatches ──────────────────────────────────────────────────── */
+  .gi-legend-swatch {
+    display: inline-block; width: 18px; height: 10px;
+    border-radius: 2px; vertical-align: middle;
+  }
+</style>
+{% endif %}
+{% endblock %}
+
+
+{% block extra_js %}
+{% if not no_data %}
+<script>
+// ── Données injectées ─────────────────────────────────────────────────────
+const GI_DATA    = {{ results_json|safe }};
+const LEG_LABELS = {{ leg_labels_json|safe }};
+let   T1_INIT    = {{ t1 }};
+let   T2_INIT    = {{ t2 }};
+
+// ── Couleur interpolée vert→gris→rouge ────────────────────────────────────
+// v ∈ [-1, 1] :  -1 = lièvre (vert), 0 = seul (gris), +1 = suiveur (rouge)
+function indexColor(v) {
+  if (v === null || v === undefined) return '#e9ecef';
+  const clamped = Math.max(-1, Math.min(1, v));
+  if (clamped <= 0) {
+    // vert → gris
+    const t   = 1 + clamped;          // 0 (lièvre pur) → 1 (neutre)
+    const r   = Math.round(26  + t * (224 - 26));
+    const g   = Math.round(107 + t * (224 - 107));
+    const b   = Math.round(60  + t * (224 - 60));
+    return `rgb(${r},${g},${b})`;
+  } else {
+    // gris → rouge
+    const t   = clamped;
+    const r   = Math.round(224 + t * (192 - 224));
+    const g   = Math.round(224 + t * (57  - 224));
+    const b   = Math.round(224 + t * (43  - 224));
+    return `rgb(${r},${g},${b})`;
+  }
+}
+
+// ── Couleur du texte sur fond coloré ─────────────────────────────────────
+function textColor(v) {
+  if (v === null || v === undefined) return '#999';
+  return Math.abs(v) > 0.35 ? '#fff' : '#333';
+}
+
+// ── Formatage de l'indice ─────────────────────────────────────────────────
+function fmtIndex(v) {
+  if (v === null || v === undefined) return '—';
+  const pct = (v * 100).toFixed(0);
+  return (v > 0 ? '+' : '') + pct + '%';
+}
+
+// ── Construction de la heatmap ────────────────────────────────────────────
+function buildHeatmap() {
+  // En-tête
+  const head = document.getElementById('heatmapHead');
+  let thRow = '<tr>';
+  thRow += '<th class="gi-th-runner">Coureur</th>';
+  LEG_LABELS.forEach(lbl => {
+    thRow += `<th title="${lbl}">${lbl}</th>`;
+  });
+  thRow += '<th class="gi-th-global" title="Indice global pondéré">Global</th>';
+  thRow += '</tr>';
+  head.innerHTML = thRow;
+
+  // Corps
+  const body = document.getElementById('heatmapBody');
+  body.innerHTML = GI_DATA.map((r, i) => {
+    const rankDisp = r.rank ? `${r.rank}.` : '—';
+    let row = `<tr>`;
+    row += `<td class="gi-td-runner">${COUtils.renderRunnerDot(
+      `hsl(${(i * 47) % 360},55%,45%)`, `<span class="text-muted me-1">${rankDisp}</span>${r.name}`
+    )}</td>`;
+    r.leg_indices.forEach((v, j) => {
+      const bg      = indexColor(v);
+      const col     = textColor(v);
+      const ref     = r.leg_ref_names ? r.leg_ref_names[j] : null;
+      const refHtml = ref
+        ? `<span class="gi-ref-name">${ref}</span>`
+        : '';
+      row += `<td class="gi-td-val" style="background:${bg};color:${col}"
+                  title="${fmtIndex(v)}${ref ? ' — ' + ref : ''}">${fmtIndex(v)}${refHtml}</td>`;
+    });
+    const gbg  = indexColor(r.global_index);
+    const gcol = textColor(r.global_index);
+    row += `<td class="gi-td-val gi-td-global" style="background:${gbg};color:${gcol}"
+                title="${fmtIndex(r.global_index)}">${fmtIndex(r.global_index)}</td>`;
+    row += '</tr>';
+    return row;
+  }).join('');
+}
+
+// ── Construction du tableau récap ─────────────────────────────────────────
+function buildSummary() {
+  const body = document.getElementById('summaryBody');
+  // tri : classés par indice global (lièvre d'abord), puis non-classés
+  const sorted = [...GI_DATA].sort((a, b) => {
+    if (a.rank === null && b.rank === null) return (a.global_index ?? 0) - (b.global_index ?? 0);
+    if (a.rank === null) return 1;
+    if (b.rank === null) return -1;
+    return (a.global_index ?? 0) - (b.global_index ?? 0);
+  });
+
+  body.innerHTML = sorted.map((r, i) => {
+    const color    = `hsl(${(GI_DATA.indexOf(r) * 47) % 360},55%,45%)`;
+    const gv       = r.global_index;
+    const barColor = indexColor(gv);
+    // La barre : centrée sur 50% (neutre), s'étale vers la gauche (lièvre) ou droite (suiveur)
+    const pct   = gv !== null ? Math.abs(gv) * 50 : 0;
+    const left  = gv !== null && gv < 0 ? (50 - pct) + '%' : '50%';
+    const width = pct + '%';
+
+    return `<tr>
+      <td>${COUtils.renderMedal(r.rank)}</td>
+      <td class="runner-name fw-bold">${COUtils.renderRunnerDot(color, r.name)}</td>
+      <td class="club-name text-muted">${r.org || '—'}</td>
+      <td class="text-end fw-bold" style="color:${barColor}">
+        ${fmtIndex(gv)}
+      </td>
+      <td>
+        <div class="gi-bar-wrap">
+          <div class="gi-bar" style="left:${left};width:${width};background:${barColor}"></div>
+          <div style="position:absolute;left:50%;top:0;height:100%;
+                      width:1px;background:rgba(0,0,0,.2)"></div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Recalcul via rechargement de page avec nouveaux seuils ────────────────
+document.getElementById('applyThresholds').addEventListener('click', () => {
+  const t1 = parseInt(document.getElementById('t1Input').value, 10) || {{ t1 }};
+  const t2 = parseInt(document.getElementById('t2Input').value, 10) || {{ t2 }};
+  if (t2 <= t1) {
+    alert('T2 doit être supérieur à T1.');
+    return;
+  }
+  const url = new URL(window.location.href);
+  url.searchParams.set('t1', t1);
+  url.searchParams.set('t2', t2);
+  window.location.href = url.toString();
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  buildHeatmap();
+  buildSummary();
+});
+</script>
+{% endif %}
+{% endblock %}
