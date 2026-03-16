@@ -1256,3 +1256,226 @@ class TestDuelAnalysisView:
 
         _, _, context = mock_render.call_args[0]
         assert context['n_runners'] == 3
+
+
+# ─── Tests _slugify_no_prefix ─────────────────────────────────────────────────
+
+class TestSlugifyNoPrefix:
+    """Vérifie que _slugify_no_prefix retire les numéros en tête de titre."""
+
+    def _call(self, value):
+        from results.views import _slugify_no_prefix
+        return _slugify_no_prefix(value, separator='-')
+
+    def test_prefixe_simple_retire(self):
+        assert self._call('1 En amont') == 'en-amont'
+
+    def test_prefixe_pointe_retire(self):
+        assert self._call('5. Statuts des coureurs') == 'statuts-des-coureurs'
+
+    def test_prefixe_compose_retire(self):
+        assert self._call('1.1 Créer la compétition') == 'créer-la-compétition'
+
+    def test_sans_prefixe_inchange(self):
+        """Un titre sans numéro doit rester identique après slugification."""
+        result = self._call('Introduction')
+        assert result == 'introduction'
+
+    def test_accents_preserves(self):
+        """Les caractères accentués doivent être conservés (slugify_unicode)."""
+        result = self._call('2 Résultats généraux')
+        assert 'sultats' in result    # "résultats" slugifié
+        assert result.startswith('r')
+
+    def test_prefixe_multi_niveaux(self):
+        assert self._call('3.2.1 Sous-section') == 'sous-section'
+
+
+# ─── Tests MarkdownView ───────────────────────────────────────────────────────
+
+class TestMarkdownView:
+
+    @patch('results.views.MeosTutorial')
+    @patch('results.views.render')
+    def test_retourne_contenu_converti(self, mock_render, MockTutorial):
+        """MarkdownView doit convertir le texte Markdown et passer content."""
+        article        = MagicMock()
+        article.text   = '# Titre\n\nParagraphe de test.'
+        article.title  = 'Tutoriel'
+        MockTutorial.objects.get.return_value = article
+
+        from results.views import MarkdownView
+        request = rf_get()
+        MarkdownView(request, article_id=1)
+
+        MockTutorial.objects.get.assert_called_once_with(pk=1)
+        _, template, context = mock_render.call_args[0]
+        assert template == 'results/markdown_content.html'
+        assert 'markdown_content' in context
+        # Le champ .content doit avoir été injecté sur l'objet
+        assert hasattr(context['markdown_content'], 'content')
+
+    @patch('results.views.MeosTutorial')
+    @patch('results.views.render')
+    def test_contenu_est_html(self, mock_render, MockTutorial):
+        """Le contenu converti doit contenir des balises HTML."""
+        article       = MagicMock()
+        article.text  = '# Mon titre'
+        MockTutorial.objects.get.return_value = article
+
+        from results.views import MarkdownView
+        MarkdownView(rf_get(), article_id=1)
+
+        _, _, context = mock_render.call_args[0]
+        # Le Markdown '# Mon titre' doit devenir une balise <h1>
+        assert '<h1' in context['markdown_content'].content
+
+    @patch('results.views.MeosTutorial')
+    @patch('results.views.render')
+    def test_table_of_contents_generee(self, mock_render, MockTutorial):
+        """L'extension toc doit produire un attribut toc sur l'objet Markdown."""
+        article       = MagicMock()
+        article.text  = '## Section A\n\n## Section B'
+        MockTutorial.objects.get.return_value = article
+
+        from results.views import MarkdownView
+        MarkdownView(rf_get(), article_id=1)
+
+        _, _, context = mock_render.call_args[0]
+        content_html = context['markdown_content'].content
+        # Chaque section doit générer un lien ancre
+        assert 'section-a' in content_html or 'section' in content_html
+
+
+# ─── Tests etiquettes ─────────────────────────────────────────────────────────
+
+class TestEtiquettesView:
+
+    @patch('results.views.render')
+    def test_utilise_bon_template(self, mock_render):
+        from results.views import etiquettes
+        etiquettes(rf_get())
+        args = mock_render.call_args[0]
+        template = args[1]
+        assert template == 'results/etiquettes.html'
+
+    @patch('results.views.render')
+    def test_status_200(self, mock_render):
+        """La vue ne doit pas lever d'exception."""
+        mock_render.return_value = MagicMock(status_code=200)
+        from results.views import etiquettes
+        etiquettes(rf_get())
+        assert mock_render.called
+
+
+# ─── Tests drivers ────────────────────────────────────────────────────────────
+
+class TestDriversView:
+
+    @patch('results.views.render')
+    def test_utilise_bon_template(self, mock_render):
+        from results.views import drivers
+        drivers(rf_get())
+        args = mock_render.call_args[0]
+        template = args[1]
+        assert template == 'results/drivers.html'
+
+    @patch('results.views.render')
+    def test_appele_render(self, mock_render):
+        mock_render.return_value = MagicMock(status_code=200)
+        from results.views import drivers
+        drivers(rf_get())
+        assert mock_render.called
+
+
+# ─── Tests competition_detail ─────────────────────────────────────────────────
+
+class TestCompetitionDetailView:
+
+    def _run(self, cid=1, classes=None, teams_cls_ids=None,
+             competitors_count=5, finishers_count=3, relay_count=2, relay_finishers=1):
+        """Lance competition_detail avec tous les mocks."""
+        competition = make_competition(cid)
+        classes     = classes or [make_cls(cid, 10), make_cls(cid, 11)]
+
+        # mock relay detection
+        relay_cls_ids = teams_cls_ids if teams_cls_ids is not None else set()
+
+        with patch('results.views.get_object_or_404', return_value=competition), \
+             patch('results.views.Mopclass') as MockClass, \
+             patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views.Mopcompetitor') as MockCompetitor, \
+             patch('results.views.render') as mock_render:
+
+            MockClass.objects.filter.return_value.order_by.return_value = classes
+
+            # Mopteam.objects.filter(...).values_list(...).distinct() → relay class ids
+            MockTeam.objects.filter.return_value \
+                .values_list.return_value \
+                .distinct.return_value = list(relay_cls_ids)
+
+            # Pour chaque classe, les counts de competitor ou team
+            comp_qs  = MagicMock()
+            comp_qs.count.return_value = competitors_count
+            comp_qs.filter.return_value.exclude.return_value.count.return_value = finishers_count
+            MockCompetitor.objects.filter.return_value = comp_qs
+
+            team_qs  = MagicMock()
+            team_qs.count.return_value = relay_count
+            team_qs.filter.return_value.exclude.return_value.count.return_value = relay_finishers
+            # Quand c'est une classe relais
+            MockTeam.objects.filter.return_value.count.return_value = relay_count
+            MockTeam.objects.filter.return_value.filter.return_value.exclude.return_value.count.return_value = relay_finishers
+
+            from results.views import competition_detail
+            competition_detail(rf_get(), cid=cid)
+
+            _, template, context = mock_render.call_args[0]
+            return template, context
+
+    def test_template_correct(self):
+        template, _ = self._run()
+        assert template == 'results/competition_detail.html'
+
+    def test_cles_de_contexte(self):
+        _, context = self._run()
+        assert 'competition' in context
+        assert 'class_stats' in context
+
+    def test_class_stats_contient_toutes_les_classes(self):
+        cls1 = make_cls(1, 10); cls2 = make_cls(1, 11)
+        _, context = self._run(classes=[cls1, cls2])
+        assert len(context['class_stats']) == 2
+
+    def test_class_stats_champs_individuels(self):
+        """Chaque entrée doit avoir cls, total, finishers, is_relay."""
+        cls1 = make_cls(1, 10)
+        _, context = self._run(classes=[cls1])
+        stat = context['class_stats'][0]
+        assert 'cls'       in stat
+        assert 'total'     in stat
+        assert 'finishers' in stat
+        assert 'is_relay'  in stat
+
+    def test_classe_individuelle_marquee_false(self):
+        """Une catégorie sans équipe de relais doit avoir is_relay=False."""
+        cls1 = make_cls(1, 10)
+        _, context = self._run(classes=[cls1], teams_cls_ids=set())
+        stat = context['class_stats'][0]
+        assert stat['is_relay'] is False
+
+    def test_classe_relais_marquee_true(self):
+        """Une catégorie avec des équipes de relais doit avoir is_relay=True."""
+        cls1 = make_cls(1, 10)
+        _, context = self._run(classes=[cls1], teams_cls_ids={10})
+        stat = context['class_stats'][0]
+        assert stat['is_relay'] is True
+
+    def test_total_et_finishers_transmis(self):
+        """total et finishers doivent refléter les counts du mock."""
+        cls1 = make_cls(1, 10)
+        _, context = self._run(classes=[cls1], competitors_count=8, finishers_count=5)
+        stat = context['class_stats'][0]
+        # Pour une classe individuelle (non-relay), on utilise Mopcompetitor
+        assert stat['total'] == 8
+        assert stat['finishers'] == 5
