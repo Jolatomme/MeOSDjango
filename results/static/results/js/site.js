@@ -165,6 +165,37 @@ const COUtils = (() => {
     });
   }
 
+  // ── Bouton retour en haut ─────────────────────────────────────────────────
+
+  /**
+   * Initialise le bouton "retour en haut de page".
+   *
+   * Le bouton devient visible (classe `.visible`) une fois que l'utilisateur
+   * a scrollé au-delà du seuil `threshold` (pixels depuis le haut).
+   * Un clic provoque un défilement fluide vers le sommet de la page.
+   *
+   * @param {string} btnId     - ID du bouton dans le DOM
+   * @param {number} threshold - Distance de scroll (px) avant apparition (défaut : 300)
+   */
+  function initBackToTop(btnId, threshold) {
+    threshold = (threshold === undefined || threshold === null) ? 300 : threshold;
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+
+    function _update() {
+      const scrolled = window.pageYOffset || document.documentElement.scrollTop;
+      btn.classList.toggle('visible', scrolled > threshold);
+    }
+
+    window.addEventListener('scroll', _update, { passive: true });
+    btn.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // Synchroniser l'état initial (utile si la page est déjà scrollée au chargement)
+    _update();
+  }
+
   // ── API publique ──────────────────────────────────────────────────────────
   return {
     renderMedal,
@@ -174,5 +205,6 @@ const COUtils = (() => {
     toggleDetailRow,
     makeAllToggle,
     bindSimpleSearch,
+    initBackToTop,
   };
 })();
