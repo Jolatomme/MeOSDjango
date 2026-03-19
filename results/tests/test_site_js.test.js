@@ -435,3 +435,174 @@ describe('COUtils.bindSimpleSearch', () => {
     expect(() => el.dispatchEvent(new Event('input'))).not.toThrow();
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// initBackToTop
+// ─────────────────────────────────────────────────────────────────────────────
+describe('COUtils.initBackToTop', () => {
+  // Helpers
+  function setupBtn(extraClass = '') {
+    document.body.innerHTML = `<button id="backToTop" ${extraClass}></button>`;
+  }
+
+  function setScrollY(value) {
+    // jsdom ne gère pas le scroll natif — on surcharge pageYOffset via Object.defineProperty
+    Object.defineProperty(window, 'pageYOffset', { writable: true, configurable: true, value });
+    // Déclencher manuellement l'événement scroll
+    window.dispatchEvent(new Event('scroll'));
+  }
+
+  // ── Existence dans l'API publique ─────────────────────────────────────────
+
+  test('initBackToTop est exposé dans COUtils', () => {
+    expect(typeof COUtils.initBackToTop).toBe('function');
+  });
+
+  // ── Comportement nominal ──────────────────────────────────────────────────
+
+  test('ne plante pas si le bouton est absent du DOM', () => {
+    document.body.innerHTML = '';
+    expect(() => COUtils.initBackToTop('backToTop')).not.toThrow();
+  });
+
+  test('le bouton n\'a pas la classe visible au chargement (scroll = 0)', () => {
+    setupBtn();
+    setScrollY(0);
+    COUtils.initBackToTop('backToTop');
+    expect(document.getElementById('backToTop').classList.contains('visible')).toBe(false);
+  });
+
+  test('le bouton reçoit la classe visible quand scroll > seuil par défaut (300)', () => {
+    setupBtn();
+    COUtils.initBackToTop('backToTop');
+    setScrollY(301);
+    expect(document.getElementById('backToTop').classList.contains('visible')).toBe(true);
+  });
+
+  test('le bouton perd la classe visible quand on remonte sous le seuil', () => {
+    setupBtn();
+    COUtils.initBackToTop('backToTop');
+    setScrollY(400);
+    expect(document.getElementById('backToTop').classList.contains('visible')).toBe(true);
+    setScrollY(50);
+    expect(document.getElementById('backToTop').classList.contains('visible')).toBe(false);
+  });
+
+  test('exactement au seuil (300) → pas encore visible', () => {
+    setupBtn();
+    COUtils.initBackToTop('backToTop', 300);
+    setScrollY(300);
+    expect(document.getElementById('backToTop').classList.contains('visible')).toBe(false);
+  });
+
+  test('un pixel au-delà du seuil → visible', () => {
+    setupBtn();
+    COUtils.initBackToTop('backToTop', 300);
+    setScrollY(301);
+    expect(document.getElementById('backToTop').classList.contains('visible')).toBe(true);
+  });
+
+  // ── Seuil personnalisé ────────────────────────────────────────────────────
+
+  test('seuil personnalisé — visible si scroll > seuil custom', () => {
+    setupBtn();
+    COUtils.initBackToTop('backToTop', 100);
+    setScrollY(101);
+    expect(document.getElementById('backToTop').classList.contains('visible')).toBe(true);
+  });
+
+  test('seuil personnalisé — pas visible si scroll ≤ seuil custom', () => {
+    setupBtn();
+    COUtils.initBackToTop('backToTop', 100);
+    setScrollY(50);
+    expect(document.getElementById('backToTop').classList.contains('visible')).toBe(false);
+  });
+
+  test('seuil 0 → visible dès le moindre scroll', () => {
+    setupBtn();
+    COUtils.initBackToTop('backToTop', 0);
+    setScrollY(1);
+    expect(document.getElementById('backToTop').classList.contains('visible')).toBe(true);
+  });
+
+  // ── Appel de scrollTo au clic ────────────────────────────────────────────
+
+  test('un clic sur le bouton appelle window.scrollTo vers 0', () => {
+    setupBtn();
+    const scrollToMock = jest.fn();
+    window.scrollTo = scrollToMock;
+
+    COUtils.initBackToTop('backToTop');
+    document.getElementById('backToTop').click();
+
+    expect(scrollToMock).toHaveBeenCalledTimes(1);
+    expect(scrollToMock).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
+  });
+
+  test('plusieurs clics → plusieurs appels à scrollTo', () => {
+    setupBtn();
+    const scrollToMock = jest.fn();
+    window.scrollTo = scrollToMock;
+
+    COUtils.initBackToTop('backToTop');
+    document.getElementById('backToTop').click();
+    document.getElementById('backToTop').click();
+
+    expect(scrollToMock).toHaveBeenCalledTimes(2);
+  });
+
+  // ── Synchronisation initiale ─────────────────────────────────────────────
+
+  test('synchronisation initiale : bouton visible si la page est déjà scrollée', () => {
+    setupBtn();
+    // Simuler une page déjà scrollée avant l'init
+    Object.defineProperty(window, 'pageYOffset', { writable: true, configurable: true, value: 500 });
+    COUtils.initBackToTop('backToTop', 300);
+    // Après l'init, le bouton doit déjà être visible sans attendre un scroll
+    expect(document.getElementById('backToTop').classList.contains('visible')).toBe(true);
+  });
+
+  test('synchronisation initiale : bouton masqué si la page n\'est pas scrollée', () => {
+    setupBtn();
+    Object.defineProperty(window, 'pageYOffset', { writable: true, configurable: true, value: 0 });
+    COUtils.initBackToTop('backToTop', 300);
+    expect(document.getElementById('backToTop').classList.contains('visible')).toBe(false);
+  });
+
+  // ── Appels multiples ──────────────────────────────────────────────────────
+
+  test('initialiser deux fois avec le même bouton ne provoque pas d\'erreur', () => {
+    setupBtn();
+    expect(() => {
+      COUtils.initBackToTop('backToTop', 300);
+      COUtils.initBackToTop('backToTop', 300);
+    }).not.toThrow();
+  });
+
+  // ── Valeur de seuil par défaut ────────────────────────────────────────────
+
+  test('seuil par défaut est 300 (visible à 301, pas à 300)', () => {
+    setupBtn();
+    COUtils.initBackToTop('backToTop');  // sans passer de seuil
+
+    setScrollY(300);
+    expect(document.getElementById('backToTop').classList.contains('visible')).toBe(false);
+
+    setScrollY(301);
+    expect(document.getElementById('backToTop').classList.contains('visible')).toBe(true);
+  });
+
+  test('seuil undefined utilise la valeur par défaut (300)', () => {
+    setupBtn();
+    COUtils.initBackToTop('backToTop', undefined);
+    setScrollY(301);
+    expect(document.getElementById('backToTop').classList.contains('visible')).toBe(true);
+  });
+
+  test('seuil null utilise la valeur par défaut (300)', () => {
+    setupBtn();
+    COUtils.initBackToTop('backToTop', null);
+    setScrollY(301);
+    expect(document.getElementById('backToTop').classList.contains('visible')).toBe(true);
+  });
+});

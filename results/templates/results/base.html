@@ -132,6 +132,11 @@
     </div>
   </footer>
 
+  {# ── Bouton retour en haut ─────────────────────────────────────────────── #}
+  <button id="backToTop" aria-label="Retour en haut de page" title="Retour en haut">
+    <i class="bi bi-arrow-up-short"></i>
+  </button>
+
   <script src="{% static 'results/js/bootstrap.bundle.min.js' %}"></script>
   <script src="{% static 'results/js/site.js' %}"></script>
   <script>
@@ -153,6 +158,9 @@
         applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
       });
     })();
+
+    /* ── Retour en haut ────────────────────────────────────────────────── */
+    COUtils.initBackToTop('backToTop');
   </script>
 
   {# ── Styles dark mode injectés APRÈS Bootstrap pour garantir la priorité ── #}
@@ -234,6 +242,10 @@
     html[data-theme="dark"] .btn-outline-secondary:hover  { background: #2e3e2e !important; color: #dde8dd !important; }
     html[data-theme="dark"] .btn-check:checked + .btn-outline-secondary,
     html[data-theme="dark"] .btn-check:checked + .btn-outline-success { background: var(--co-green) !important; border-color: var(--co-green) !important; color: #fff !important; }
+
+    /* Bouton retour en haut — mode sombre */
+    html[data-theme="dark"] #backToTop { background: var(--co-green) !important; box-shadow: 0 2px 12px rgba(0,0,0,.5); }
+    html[data-theme="dark"] #backToTop:hover { background: var(--co-green-dark) !important; }
 
     /* Scrollbar */
     html[data-theme="dark"] ::-webkit-scrollbar       { width: 8px; height: 8px; }
