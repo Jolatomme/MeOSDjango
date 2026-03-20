@@ -225,9 +225,3 @@ npm test
 | `CLUB_NAME` | `COCS` | Nom du club |
 | `CLUB_COLOR_PRIMARY` | `#1a6b3c` | Couleur principale (CSS `--co-green`) |
 | `CLUB_COLOR_ACCENT` | `#f0a500` | Couleur d'accent (CSS `--co-gold`) |
-
----
-
-## Licence
-
-MIT
