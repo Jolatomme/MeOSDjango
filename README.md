@@ -2,8 +2,7 @@
 
 Interface web de résultats en temps réel pour les compétitions de **course d'orientation**, connectée à [MeOS](https://www.melin.nu/meos/) via son protocole MOP (MeOS Online Protocol).
 
-
-iPlus d'informations sur le [Wiki](https://github.com/Jolatomme/MeOSDjango/wiki)
+Plus d'informations sur le [Wiki](https://github.com/Jolatomme/MeOSDjango/wiki)
 
 ---
 
