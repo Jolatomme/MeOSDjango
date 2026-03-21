@@ -1,0 +1,341 @@
+{% extends "results/base.html" %}
+{% load static %}
+{% block title %}Régularité — {{ cls.name }} — {{ competition.name }}{% endblock %}
+
+{% block page_header %}
+<div class="co-page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="co-breadcrumb">
+      <ol class="breadcrumb mb-2 small">
+        {% include 'results/_breadcrumb_home_comp.html' %}
+        <li class="breadcrumb-item">
+          <a href="{% url 'results:class_results' competition.cid cls.id %}">{{ cls.name }}</a>
+        </li>
+        <li class="breadcrumb-item active">Régularité</li>
+      </ol>
+    </nav>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h1>
+          <i class="bi bi-activity me-2 opacity-75" style="color:var(--co-gold)"></i>
+          Régularité
+        </h1>
+        <div class="opacity-75 small mt-1">{{ cls.name }} — {{ competition.name }}</div>
+      </div>
+      {% if not no_data %}
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        {% if category_regularity is not None %}
+        <span class="badge bg-warning text-dark fs-6 fw-bold">
+          <i class="bi bi-activity me-1"></i>σ catégorie : {{ category_regularity }}
+        </span>
+        {% endif %}
+        <span class="badge bg-light text-dark fs-6">{{ n_finishers }} classé{{ n_finishers|pluralize }}</span>
+        <span class="badge bg-light text-dark fs-6">{{ n_legs }} tronçon{{ n_legs|pluralize }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% include 'results/analysis_tabs.html' %}
+{% endblock %}
+
+
+{% block content %}
+
+{% if no_data %}
+<div class="co-card text-center p-5 text-muted">
+  <i class="bi bi-activity fs-1 d-block mb-3 opacity-25"></i>
+  Pas assez de coureurs classés pour calculer la régularité
+  (minimum 2 requis).
+</div>
+
+{% else %}
+
+{# ── Explication ─────────────────────────────────────────────────────────── #}
+<div class="alert alert-warning border-0 mb-4"
+     style="background:#fffbe6;border-left:4px solid var(--co-gold) !important;">
+  <i class="bi bi-info-circle me-2"></i>
+  La <strong>régularité</strong> est mesurée par la déviation standard (σ) des
+  <strong>indices de performance</strong> — une valeur plus faible indique une
+  meilleure régularité.
+  <ul class="mb-0 mt-2 small">
+    <li><strong>Coureur</strong> : σ pondéré de ses IP sur l'ensemble des tronçons
+        (pondéré par la longueur estimée du tronçon).</li>
+    <li><strong>Tronçon</strong> : σ des IP de <em>tous</em> les coureurs sur ce tronçon
+        — un σ élevé signale un tronçon à forte dispersion (erreurs nombreuses ou
+        dénivelé/orientation difficile).</li>
+    <li><strong>Catégorie</strong> : moyenne des σ pondérés de tous les coureurs.</li>
+  </ul>
+</div>
+
+{# ── Graphique 1 : régularité par coureur ────────────────────────────────── #}
+<div class="co-card mb-4">
+  <div class="co-card-header">
+    <i class="bi bi-bar-chart-steps me-2"></i>Régularité par coureur (σ pondéré) —
+    <span class="fw-normal opacity-75 small">trié du plus régulier au moins régulier</span>
+  </div>
+  <div class="p-3">
+    <div id="runnerChartWrap" style="position:relative;min-height:300px;">
+      <canvas id="runnerChart"></canvas>
+    </div>
+  </div>
+</div>
+
+{# ── Graphique 2 : dispersion par tronçon ────────────────────────────────── #}
+<div class="co-card mb-4">
+  <div class="co-card-header">
+    <i class="bi bi-bar-chart me-2"></i>Dispersion par tronçon (σ des IP)
+  </div>
+  <div class="p-3">
+    <div style="position:relative;height:220px;">
+      <canvas id="legChart"></canvas>
+    </div>
+    <p class="small text-muted mt-2 mb-0">
+      <i class="bi bi-info-circle me-1"></i>
+      Un tronçon avec un σ élevé présente une grande disparité de niveau entre
+      les coureurs — terrain sélectif, erreurs fréquentes ou poste difficile à trouver.
+    </p>
+  </div>
+</div>
+
+{# ── Tableau récapitulatif ────────────────────────────────────────────────── #}
+<div class="co-card mb-4">
+  <div class="co-card-header">
+    <i class="bi bi-table me-2"></i>Récapitulatif par coureur
+    <span class="ms-2 small fw-normal opacity-75">
+      trié par régularité croissante (σ pondéré)
+    </span>
+  </div>
+  <div class="table-responsive">
+    <table class="results-table">
+      <thead>
+        <tr>
+          <th style="width:3rem" title="Rang régularité"># reg.</th>
+          <th>Coureur</th>
+          <th>Club</th>
+          <th class="text-center" title="Rang course">Rang course</th>
+          <th class="text-end">Temps</th>
+          <th class="text-end" title="Indice de performance moyen pondéré">IP moyen</th>
+          <th class="text-end" title="Déviation standard pondérée">σ (régularité)</th>
+          <th style="width:9rem">Profil σ</th>
+        </tr>
+      </thead>
+      <tbody id="regularityTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+
+{% block extra_head %}
+{% if not no_data %}
+<style>
+  .reg-bar-wrap {
+    position: relative; height: 6px; border-radius: 3px;
+    background: #e9ecef; overflow: hidden; width: 100%;
+  }
+  .reg-bar { position: absolute; top: 0; height: 100%; border-radius: 3px; }
+</style>
+{% endif %}
+{% endblock %}
+
+
+{% block extra_js %}
+{% if not no_data %}
+<script src="{% static 'results/js/chart.umd.min.js' %}"></script>
+<script>
+// ── Données injectées ─────────────────────────────────────────────────────
+const SERIES   = {{ series_json|safe }};
+const LEG_INFO = {{ leg_info_json|safe }};
+
+// ── Couleur interpolée vert → orange → rouge selon le niveau de σ ─────────
+// v ∈ [0, maxVal] :  0 = vert (régulier), maxVal = rouge (irrégulier)
+function stdColor(v, maxVal) {
+  if (v === null || v === undefined) return '#e9ecef';
+  const t = maxVal > 0 ? Math.min(1, v / maxVal) : 0;
+  // Vert #1a6b3c → Orange #f58231 → Rouge #c0392b
+  let r, g, b;
+  if (t <= 0.5) {
+    const u = t * 2;
+    r = Math.round(26  + u * (245 - 26));
+    g = Math.round(107 + u * (130 - 107));
+    b = Math.round(60  + u * (49  - 60));
+  } else {
+    const u = (t - 0.5) * 2;
+    r = Math.round(245 + u * (192 - 245));
+    g = Math.round(130 + u * (57  - 130));
+    b = Math.round(49  + u * (43  - 49));
+  }
+  return `rgb(${r},${g},${b})`;
+}
+
+// ── Séries triées par σ croissant ─────────────────────────────────────────
+const sorted = [...SERIES].sort((a, b) => {
+  if (a.weighted_std === null) return 1;
+  if (b.weighted_std === null) return -1;
+  return a.weighted_std - b.weighted_std;
+});
+
+const validStds = sorted.filter(s => s.weighted_std !== null).map(s => s.weighted_std);
+const maxRunnerStd = validStds.length ? Math.max(...validStds) : 0;
+
+const legStds   = LEG_INFO.map(l => l.leg_std);
+const validLeg  = legStds.filter(v => v !== null);
+const maxLegStd = validLeg.length ? Math.max(...validLeg) : 0;
+
+// ── Graphique 1 : régularité par coureur (barres horizontales) ────────────
+function initRunnerChart() {
+  const wrap = document.getElementById('runnerChartWrap');
+  const h    = Math.max(300, sorted.length * 36);
+  wrap.style.height = h + 'px';
+
+  const ctx = document.getElementById('runnerChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(s => `${s.rank}. ${s.name}`),
+      datasets: [{
+        label: 'σ pondéré',
+        data:  sorted.map(s => s.weighted_std),
+        backgroundColor: sorted.map(s => stdColor(s.weighted_std, maxRunnerStd) + 'cc'),
+        borderColor:     sorted.map(s => stdColor(s.weighted_std, maxRunnerStd)),
+        borderWidth: 1,
+        borderRadius: 3,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label(ctx) {
+              const v = ctx.parsed.x;
+              if (v === null || v === undefined) return '—';
+              const s = sorted[ctx.dataIndex];
+              return [
+                `σ = ${v.toFixed(4)}`,
+                `IP moyen = ${s.mean_pi !== null ? s.mean_pi.toFixed(4) : '—'}`,
+                `Temps : ${s.time}`,
+              ];
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          min: 0,
+          title: {
+            display: true, text: 'Déviation standard pondérée (σ)',
+            font: { family: "'Barlow', sans-serif", size: 12 }, color: '#6c757d',
+          },
+          ticks: { font: { family: "'Barlow Condensed', sans-serif", size: 11 } },
+          grid:  { color: '#e8e8e8' },
+        },
+        y: {
+          ticks: { font: { family: "'Barlow Condensed', sans-serif", size: 11 } },
+          grid:  { display: false },
+        },
+      },
+    },
+  });
+}
+
+// ── Graphique 2 : dispersion par tronçon (barres verticales) ─────────────
+function initLegChart() {
+  const ctx = document.getElementById('legChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: LEG_INFO.map(l => l.label),
+      datasets: [{
+        label: 'σ des IP',
+        data:  legStds,
+        backgroundColor: legStds.map(v => stdColor(v, maxLegStd) + 'cc'),
+        borderColor:     legStds.map(v => stdColor(v, maxLegStd)),
+        borderWidth: 1,
+        borderRadius: 3,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label(ctx) {
+              const v = ctx.parsed.y;
+              if (v === null || v === undefined) return '—';
+              const info = LEG_INFO[ctx.dataIndex];
+              return [`σ = ${v.toFixed(4)}`, `Référence : ${info.ref}`];
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { font: { family: "'Barlow Condensed', sans-serif", weight: '700', size: 11 } },
+          grid:  { display: false },
+        },
+        y: {
+          min: 0,
+          title: {
+            display: true, text: 'σ des IP (dispersion entre coureurs)',
+            font: { family: "'Barlow', sans-serif", size: 12 }, color: '#6c757d',
+          },
+          ticks: { font: { family: "'Barlow Condensed', sans-serif", size: 11 } },
+          grid:  { color: '#e8e8e8' },
+        },
+      },
+    },
+  });
+}
+
+// ── Tableau récapitulatif ─────────────────────────────────────────────────
+function buildTable() {
+  const tbody = document.getElementById('regularityTableBody');
+  if (!tbody) return;
+
+  tbody.innerHTML = sorted.map((s, regRank) => {
+    const color  = stdColor(s.weighted_std, maxRunnerStd);
+    const stdFmt = s.weighted_std !== null ? s.weighted_std.toFixed(4) : '—';
+    const piMean = s.mean_pi      !== null ? s.mean_pi.toFixed(4)      : '—';
+    const barW   = (s.weighted_std !== null && maxRunnerStd > 0)
+      ? Math.min(100, (s.weighted_std / maxRunnerStd) * 100).toFixed(1) + '%'
+      : '0%';
+
+    return `
+      <tr>
+        <td><span class="rank-n">${regRank + 1}</span></td>
+        <td class="runner-name fw-bold">
+          ${COUtils.renderRunnerDot(color, s.name)}
+        </td>
+        <td class="club-name text-muted">${s.org || '—'}</td>
+        <td class="text-center">${COUtils.renderMedal(s.rank)}</td>
+        <td class="text-end time-col">${s.time}</td>
+        <td class="text-end">${piMean}</td>
+        <td class="text-end fw-bold" style="color:${color}">${stdFmt}</td>
+        <td>
+          <div class="reg-bar-wrap">
+            <div class="reg-bar"
+                 style="width:${barW};background:${color}"></div>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initRunnerChart();
+  initLegChart();
+  buildTable();
+});
+</script>
+{% endif %}
+{% endblock %}

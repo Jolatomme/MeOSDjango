@@ -2,7 +2,8 @@
    Paramètres attendus dans le contexte :
      competition       → objet Mopcompetition (pour competition.cid)
      cls               → objet Mopclass (pour cls.id)
-     current_analysis  → 'results' | 'superman' | 'performance' | 'grouping' | 'grouping_index' | 'duel'
+     current_analysis  → 'results' | 'superman' | 'performance' | 'regularity'
+                         | 'grouping' | 'grouping_index' | 'duel'
 -->
 <div class="analysis-tabs-bar">
   <div class="container">
@@ -27,6 +28,13 @@
          title="Indice de performance">
         <i class="bi bi-speedometer2"></i>
         <span>Indice perf.</span>
+      </a>
+
+      <a href="{% url 'results:regularity' competition.cid cls.id %}"
+         class="analysis-tab {% if current_analysis == 'regularity' %}active{% endif %}"
+         title="Régularité">
+        <i class="bi bi-activity"></i>
+        <span>Régularité</span>
       </a>
 
       <a href="{% url 'results:grouping' competition.cid cls.id %}"

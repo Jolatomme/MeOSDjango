@@ -691,3 +691,124 @@ def compute_grouping_index(runners, controls_seq, radio_map, t1_sec=7, t2_sec=20
         })
 
     return results
+
+
+# ─── Régularité ───────────────────────────────────────────────────────────────
+
+def compute_regularity_analysis(finishers, controls_seq, radio_map, top_fraction=0.25):
+    """Calcule les indices de régularité par coureur, par tronçon et pour la catégorie.
+
+    La régularité est mesurée par la déviation standard (σ) des indices de
+    performance. Une valeur plus faible indique une meilleure régularité.
+
+    Trois niveaux :
+      · Coureur   : σ pondéré des IP du coureur sur l'ensemble des tronçons,
+                    pondéré par le temps de référence de chaque tronçon
+                    (proxy de la longueur physique).
+      · Tronçon   : σ simple des IP de tous les coureurs sur ce tronçon.
+      · Catégorie : moyenne des σ pondérés de tous les coureurs.
+
+    Args:
+        finishers      : liste de coureurs classés (stat=OK, rt>0).
+        controls_seq   : liste ordonnée de {'ctrl_id': int, 'ctrl_name': str}.
+        radio_map      : {runner_id: {ctrl_id: rt}} — temps cumulés depuis le départ.
+        top_fraction   : fraction des meilleurs temps pour la référence (défaut 25 %).
+
+    Returns:
+        dict avec :
+          'runner_regularity'   : liste de dicts (un par coureur, même ordre que finishers)
+              {'id', 'weighted_std', 'mean_pi', 'leg_pis', 'leg_weights'}
+          'leg_stds'            : [float|None, ...]  — σ par tronçon (n_legs valeurs)
+          'leg_refs'            : [float|None, ...]  — temps de référence par tronçon
+          'category_regularity' : float|None         — moyenne des σ pondérés
+          'n_legs'              : int
+    """
+    import math
+
+    if not finishers:
+        return {
+            'runner_regularity':   [],
+            'leg_stds':            [],
+            'leg_refs':            [],
+            'category_regularity': None,
+            'n_legs':              0,
+        }
+
+    leg_matrix = build_leg_matrix(finishers, controls_seq, radio_map)
+    n_legs     = len(controls_seq) + 1
+    leg_refs   = compute_leg_refs(leg_matrix, n_legs, top_fraction)
+
+    # ── Matrice des indices de performance ────────────────────────────────────
+    # pi_matrix[i] = {'pis': [...], 'weights': [...]}
+    pi_matrix = []
+    for i in range(len(finishers)):
+        pis, weights = [], []
+        for j in range(n_legs):
+            t   = leg_matrix[i][j]
+            ref = leg_refs[j]
+            if t and t > 0 and ref and ref > 0:
+                pis.append(ref / t)
+                weights.append(ref)
+            else:
+                pis.append(None)
+                weights.append(None)
+        pi_matrix.append({'pis': pis, 'weights': weights})
+
+    # ── Régularité par coureur : σ pondéré de ses propres IP ─────────────────
+    runner_regularity = []
+    for i, c in enumerate(finishers):
+        pis     = pi_matrix[i]['pis']
+        weights = pi_matrix[i]['weights']
+        valid   = [
+            (pi, w) for pi, w in zip(pis, weights)
+            if pi is not None and w is not None
+        ]
+        if len(valid) >= 2:
+            total_w  = sum(w for _, w in valid)
+            mean_pi  = sum(pi * w for pi, w in valid) / total_w
+            variance = sum(w * (pi - mean_pi) ** 2 for pi, w in valid) / total_w
+            wstd     = math.sqrt(variance)
+        elif len(valid) == 1:
+            mean_pi = valid[0][0]
+            wstd    = 0.0
+        else:
+            mean_pi = None
+            wstd    = None
+
+        runner_regularity.append({
+            'id':           c.id,
+            'weighted_std': wstd,
+            'mean_pi':      mean_pi,
+            'leg_pis':      pis,
+            'leg_weights':  weights,
+        })
+
+    # ── Régularité par tronçon : σ simple sur tous les coureurs ───────────────
+    leg_stds = []
+    for j in range(n_legs):
+        col_pis = [
+            pi_matrix[i]['pis'][j]
+            for i in range(len(finishers))
+            if pi_matrix[i]['pis'][j] is not None
+        ]
+        if len(col_pis) >= 2:
+            mean     = sum(col_pis) / len(col_pis)
+            variance = sum((pi - mean) ** 2 for pi in col_pis) / len(col_pis)
+            leg_stds.append(math.sqrt(variance))
+        else:
+            leg_stds.append(None)
+
+    # ── Régularité catégorie : moyenne des σ pondérés des coureurs ────────────
+    valid_stds          = [
+        r['weighted_std'] for r in runner_regularity
+        if r['weighted_std'] is not None
+    ]
+    category_regularity = sum(valid_stds) / len(valid_stds) if valid_stds else None
+
+    return {
+        'runner_regularity':   runner_regularity,
+        'leg_stds':            leg_stds,
+        'leg_refs':            leg_refs,
+        'category_regularity': category_regularity,
+        'n_legs':              n_legs,
+    }
