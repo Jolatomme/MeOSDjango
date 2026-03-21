@@ -17,7 +17,7 @@ from .services import (
     rank_finishers, build_rank_map,
     build_leg_matrix, compute_leg_refs,
     build_abs_time_series, compute_error_estimates,
-    compute_grouping_index,
+    compute_grouping_index, compute_regularity_analysis,
 )
 
 
@@ -478,6 +478,80 @@ def performance_analysis(request, cid, class_id):
     })
 
 
+# ─── Régularité ───────────────────────────────────────────────────────────────
+
+def regularity_analysis(request, cid, class_id):
+    """Analyse de régularité : σ pondéré des indices de performance.
+
+    Trois niveaux de régularité (σ — valeur plus faible = meilleure régularité) :
+      · Coureur   : σ pondéré de ses IP sur tous les tronçons (pondéré par longueur).
+      · Tronçon   : σ des IP de tous les coureurs sur ce tronçon.
+      · Catégorie : moyenne des σ pondérés de tous les coureurs.
+
+    Nécessite au moins 2 coureurs classés pour que les σ par tronçon soient calculables.
+    """
+    competition, cls, competitors = _load_class_context(cid, class_id)
+    finishers, _, _ = rank_finishers(competitors)
+
+    if len(finishers) < 2:
+        return render(request, 'results/regularity.html', {
+            'competition':      competition,
+            'cls':              cls,
+            'no_data':          True,
+            'current_analysis': 'regularity',
+        })
+
+    org_map                  = get_org_map(cid)
+    controls_seq, _          = get_class_controls(cid, class_id)
+    controls_labels          = [c['ctrl_name'] for c in controls_seq]
+    radio_map                = get_radio_map(cid, [c.id for c in finishers])
+
+    reg_data   = compute_regularity_analysis(finishers, controls_seq, radio_map)
+    leg_labels = controls_labels + ['Arrivée']
+
+    # ── Séries JSON (ordre classement course) ─────────────────────────────────
+    series = []
+    for i, c in enumerate(finishers):
+        reg = reg_data['runner_regularity'][i]
+        series.append({
+            'id':           c.id,
+            'name':         c.name,
+            'org':          org_map.get(c.org, ''),
+            'rank':         i + 1,
+            'time':         format_time(c.rt),
+            'weighted_std': round(reg['weighted_std'], 4) if reg['weighted_std'] is not None else None,
+            'mean_pi':      round(reg['mean_pi'], 4)      if reg['mean_pi']      is not None else None,
+            'leg_pis':      [round(pi, 4) if pi is not None else None for pi in reg['leg_pis']],
+            'leg_weights':  [round(w) if w is not None else None for w in reg['leg_weights']],
+        })
+
+    # ── Infos par tronçon ─────────────────────────────────────────────────────
+    leg_info = [
+        {
+            'label':   leg_labels[j],
+            'ref':     format_time(round(reg_data['leg_refs'][j]))
+                       if reg_data['leg_refs'][j] else '-',
+            'leg_std': round(reg_data['leg_stds'][j], 4)
+                       if reg_data['leg_stds'][j] is not None else None,
+        }
+        for j in range(reg_data['n_legs'])
+    ]
+
+    cat_reg = reg_data['category_regularity']
+
+    return render(request, 'results/regularity.html', {
+        'competition':         competition,
+        'cls':                 cls,
+        'series_json':         json.dumps(series),
+        'leg_info_json':       json.dumps(leg_info),
+        'category_regularity': round(cat_reg, 4) if cat_reg is not None else None,
+        'n_legs':              reg_data['n_legs'],
+        'n_finishers':         len(finishers),
+        'no_data':             False,
+        'current_analysis':    'regularity',
+    })
+
+
 # ─── Regroupement des coureurs ────────────────────────────────────────────────
 
 def grouping_analysis(request, cid, class_id):
@@ -790,7 +864,7 @@ def relay_results(request, cid, class_id):
             'legs':     legs_data,
         })
 
-    # ── Passe 2 : classements par fraction et au cumulé ───────────────────────
+    # ── Passe 2 : classements par fraction et au cumulé ──────────────────────
     for leg_num in range(1, n_legs + 1):
         idx = leg_num - 1   # index dans legs_data
 

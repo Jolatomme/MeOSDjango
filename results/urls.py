@@ -40,6 +40,10 @@ urlpatterns = [
     path('competition/<int:cid>/class/<int:class_id>/performance/',
          views.performance_analysis,
          name='performance'),
+    # Régularité
+    path('competition/<int:cid>/class/<int:class_id>/regularity/',
+         views.regularity_analysis,
+         name='regularity'),
     # Analyse Superman
     path('competition/<int:cid>/class/<int:class_id>/superman/',
          views.superman_analysis,
