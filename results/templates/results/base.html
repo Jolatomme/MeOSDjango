@@ -9,7 +9,6 @@
   <link rel="stylesheet" href="{% static 'results/css/bootstrap-icons.min.css' %}">
   <link rel="stylesheet" href="{% static 'results/css/site.css' %}">
   <style>
-    /* ─── Variables dynamiques (couleurs configurables) ─────────────────── */
     :root {
       --co-green:      {{ CLUB_COLOR_PRIMARY }};
       --co-green-dark: color-mix(in srgb, {{ CLUB_COLOR_PRIMARY }} 75%, black);
@@ -22,8 +21,6 @@
       --font-display:  'Barlow Condensed', sans-serif;
       --font-body:     'Barlow', sans-serif;
     }
-    /* ─── Overrides variables mode sombre ───────────────────────────────── */
-    /* Placés ici (même feuille que :root) pour garantir la cascade correcte */
     html[data-theme="dark"] {
       --co-forest:  #0a2010;
       --co-light:   #141a14;
@@ -32,10 +29,8 @@
       --co-shadow:  0 2px 12px rgba(0,0,0,.35);
     }
   </style>
-
   {% block extra_head %}{% endblock %}
   <script>
-    /* Appliqué immédiatement pour éviter le flash blanc→sombre au chargement */
     (function(){
       try {
         var t = localStorage.getItem('co-theme');
@@ -49,6 +44,7 @@
 <body data-medal-gold="{% static 'results/img/medal-gold.svg' %}"
       data-medal-silver="{% static 'results/img/medal-silver.svg' %}"
       data-medal-bronze="{% static 'results/img/medal-bronze.svg' %}">
+
   <nav class="navbar navbar-expand-lg co-navbar">
     <div class="container">
       <a class="navbar-brand" href="{% url 'results:home' %}">
@@ -77,18 +73,24 @@
             </a>
             <ul class="dropdown-menu dropdown-menu-end co-dropdown">
               <li>
-                <a class="dropdown-item" href={% url 'results:etiquettes' %}>
-                  <i class="bi bi-tag me-2"></i>Étiquettes pour boitiers
+                <a class="dropdown-item" href="{% url 'results:etiquettes' %}">
+                  <i class="bi bi-tag me-2"></i>Etiquettes pour boitiers
                 </a>
               </li>
               <li>
-                <a class="dropdown-item" href={% url 'results:drivers' %}>
+                <a class="dropdown-item" href="{% url 'results:drivers' %}">
                   <i class="bi bi-usb-drive me-2"></i>Drivers
                 </a>
               </li>
               <li><hr class="dropdown-divider"></li>
               <li>
-                <a class="dropdown-item" href={% url 'results:tuto' %}>
+                <a class="dropdown-item" href="{% url 'results:meos_checker' %}">
+                  <i class="bi bi-shield-check me-2"></i>Verificateur de tirage
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item" href="{% url 'results:tuto' %}">
                   <i class="bi bi-book me-2"></i>Tutoriels
                 </a>
               </li>
@@ -116,15 +118,13 @@
 
   <footer>
     <div class="container d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <div><i class="bi bi-compass me-1"></i>{{ SITE_NAME }} — {{ CLUB_NAME }}</div>
+      <div><i class="bi bi-compass me-1"></i>{{ SITE_NAME }} &mdash; {{ CLUB_NAME }}</div>
       <div class="d-flex align-items-center gap-3">
-        <span>Données MeOS &bull; <a href="https://www.melin.nu/meos/" target="_blank">meos</a></span>
+        <span>Donnees MeOS &bull; <a href="https://www.melin.nu/meos/" target="_blank">meos</a></span>
         <span class="d-flex align-items-center gap-2">
-          Hébergé par
-          <a href="https://www.alwaysdata.com" target="_blank" rel="noopener"
-             title="alwaysdata">
-            <img src="{% static 'results/img/alwaysdata.svg' %}"
-                 alt="alwaysdata" height="16"
+          Heberge par
+          <a href="https://www.alwaysdata.com" target="_blank" rel="noopener" title="alwaysdata">
+            <img src="{% static 'results/img/alwaysdata.svg' %}" alt="alwaysdata" height="16"
                  style="filter:brightness(0) invert(1);opacity:.85;vertical-align:middle;">
           </a>
         </span>
@@ -132,7 +132,6 @@
     </div>
   </footer>
 
-  {# ── Bouton retour en haut ─────────────────────────────────────────────── #}
   <button id="backToTop" aria-label="Retour en haut de page" title="Retour en haut">
     <i class="bi bi-arrow-up-short"></i>
   </button>
@@ -140,48 +139,33 @@
   <script src="{% static 'results/js/bootstrap.bundle.min.js' %}"></script>
   <script src="{% static 'results/js/site.js' %}"></script>
   <script>
-    /* ── Dark mode toggle ──────────────────────────────────────────────── */
     (function () {
       var html = document.documentElement;
       var btn  = document.getElementById('darkModeToggle');
       var icon = document.getElementById('darkModeIcon');
-
       function applyTheme(theme) {
         html.setAttribute('data-theme', theme);
         icon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
         try { localStorage.setItem('co-theme', theme); } catch(e) {}
       }
-
       applyTheme(html.getAttribute('data-theme') || 'light');
-
       btn.addEventListener('click', function () {
         applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
       });
     })();
-
-    /* ── Retour en haut ────────────────────────────────────────────────── */
     COUtils.initBackToTop('backToTop');
   </script>
 
-  {# ── Styles dark mode injectés APRÈS Bootstrap pour garantir la priorité ── #}
   <style>
-    html[data-theme="dark"] body,
-    html[data-theme="dark"] {
-      background-color: #141a14 !important;
-      color: #dde8dd !important;
-    }
-    /* Tous les textes non colorés explicitement */
-    html[data-theme="dark"] h1, html[data-theme="dark"] h2,
-    html[data-theme="dark"] h3, html[data-theme="dark"] h4,
-    html[data-theme="dark"] h5, html[data-theme="dark"] h6 { color: #dde8dd !important; }
+    html[data-theme="dark"] body, html[data-theme="dark"] { background-color: #141a14 !important; color: #dde8dd !important; }
+    html[data-theme="dark"] h1, html[data-theme="dark"] h2, html[data-theme="dark"] h3,
+    html[data-theme="dark"] h4, html[data-theme="dark"] h5, html[data-theme="dark"] h6 { color: #dde8dd !important; }
     html[data-theme="dark"] p, html[data-theme="dark"] li,
     html[data-theme="dark"] span:not(.badge):not(.hero-badge),
-    html[data-theme="dark"] td, html[data-theme="dark"] th  { color: inherit; }
+    html[data-theme="dark"] td, html[data-theme="dark"] th { color: inherit; }
     html[data-theme="dark"] .text-muted   { color: #9aabb5 !important; }
     html[data-theme="dark"] .text-dark    { color: #dde8dd !important; }
     html[data-theme="dark"] code          { color: #a8d8a8 !important; background: #1e2e1e !important; }
-
-    /* Containers */
     html[data-theme="dark"] .co-card      { background: #192118 !important; border-color: rgba(255,255,255,.08) !important; }
     html[data-theme="dark"] .stat-card    { background: #192118 !important; }
     html[data-theme="dark"] .class-card   { background: #192118 !important; color: #dde8dd !important; border-color: rgba(255,255,255,.08) !important; }
@@ -189,15 +173,11 @@
     html[data-theme="dark"] .class-card .class-finishers { color: #8fcfa0 !important; }
     html[data-theme="dark"] .class-card .class-meta      { color: #9aabb5 !important; }
     html[data-theme="dark"] .stat-card .stat-label       { color: #9aabb5 !important; }
-
-    /* Results table */
     html[data-theme="dark"] .results-table tbody td { color: #dde8dd !important; }
     html[data-theme="dark"] .results-table tbody tr:hover { background: #223022 !important; }
     html[data-theme="dark"] .results-table tbody tr { border-bottom-color: rgba(255,255,255,.06) !important; }
     html[data-theme="dark"] .runner-name a       { color: #dde8dd !important; }
     html[data-theme="dark"] .runner-name a:hover { color: var(--co-green) !important; }
-
-    /* Splits */
     html[data-theme="dark"] .split-cell         { background: #192118 !important; border-color: rgba(255,255,255,.1) !important; color: #dde8dd !important; }
     html[data-theme="dark"] .split-start,
     html[data-theme="dark"] .split-finish       { background: #1a2e22 !important; border-color: #2e5c3a !important; }
@@ -207,47 +187,29 @@
     html[data-theme="dark"] .split-time-leg     { color: #9aabb5 !important; }
     html[data-theme="dark"] .split-rank         { color: #9aabb5 !important; }
     html[data-theme="dark"] .split-leg-best     { color: var(--co-gold) !important; }
-
-    /* Onglets analyses */
     html[data-theme="dark"] .analysis-tabs-bar  { background: #151d14 !important; border-bottom-color: rgba(255,255,255,.1) !important; }
     html[data-theme="dark"] .analysis-tab       { color: #9aabb5 !important; }
     html[data-theme="dark"] .analysis-tab:hover:not(.disabled):not(.active) { background: #223022 !important; color: var(--co-green) !important; }
     html[data-theme="dark"] .analysis-tab.active { background: #2a2510 !important; color: #f5d76e !important; }
-
-    /* Légende */
     html[data-theme="dark"] .legend-item       { color: #dde8dd !important; }
     html[data-theme="dark"] .legend-item:hover { background: #223022 !important; }
-
-    /* Alertes */
     html[data-theme="dark"] .alert-warning              { background: #26220e !important; color: #e8d98a !important; }
     html[data-theme="dark"] .alert-warning strong       { color: #f5d76e !important; }
-
-    /* Badges */
     html[data-theme="dark"] .badge.bg-light  { background: #263226 !important; color: #c8ddc8 !important; }
     html[data-theme="dark"] .badge.bg-dark   { background: #2c3830 !important; color: #c8ddc8 !important; }
-
-    /* Tableaux Bootstrap génériques */
     html[data-theme="dark"] .table          { color: #c8d8c8 !important; }
     html[data-theme="dark"] .table td,
     html[data-theme="dark"] .table th       { color: #c8d8c8 !important; border-color: rgba(255,255,255,.07) !important; }
     html[data-theme="dark"] .table-light    { background: #151d14 !important; color: #c0d0c0 !important; }
     html[data-theme="dark"] .table-hover > tbody > tr:hover > * { background: #1e2a1e !important; }
-
-    /* Formulaires */
     html[data-theme="dark"] .form-control   { background: #192118 !important; border-color: rgba(255,255,255,.15) !important; color: #dde8dd !important; }
     html[data-theme="dark"] .form-control:focus { border-color: var(--co-green) !important; }
-
-    /* Boutons outline */
     html[data-theme="dark"] .btn-outline-secondary        { color: #9aabb5 !important; border-color: #9aabb5 !important; }
     html[data-theme="dark"] .btn-outline-secondary:hover  { background: #2e3e2e !important; color: #dde8dd !important; }
     html[data-theme="dark"] .btn-check:checked + .btn-outline-secondary,
     html[data-theme="dark"] .btn-check:checked + .btn-outline-success { background: var(--co-green) !important; border-color: var(--co-green) !important; color: #fff !important; }
-
-    /* Bouton retour en haut — mode sombre */
     html[data-theme="dark"] #backToTop { background: var(--co-green) !important; box-shadow: 0 2px 12px rgba(0,0,0,.5); }
     html[data-theme="dark"] #backToTop:hover { background: var(--co-green-dark) !important; }
-
-    /* Scrollbar */
     html[data-theme="dark"] ::-webkit-scrollbar       { width: 8px; height: 8px; }
     html[data-theme="dark"] ::-webkit-scrollbar-track  { background: #0f1510; }
     html[data-theme="dark"] ::-webkit-scrollbar-thumb  { background: #2e3e2e; border-radius: 4px; }
