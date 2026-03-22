@@ -1,0 +1,18 @@
+{# ── En-tête d'une carte de règle ────────────────────────────────────────────
+   Variables attendues : rule (RuleResult), num (int)
+#}
+<div class="co-card-header d-flex justify-content-between align-items-center"
+     style="background:{% if rule.status == 'ok' %}var(--co-green){% elif rule.status == 'error' %}#a71d2a{% else %}#795c00{% endif %}">
+  <span>
+    {% if rule.status == 'ok' %}<i class="bi bi-check-circle-fill me-2"></i>
+    {% elif rule.status == 'error' %}<i class="bi bi-x-circle-fill me-2"></i>
+    {% else %}<i class="bi bi-exclamation-triangle-fill me-2"></i>{% endif %}
+    <span style="opacity:.7" class="me-1">R{{ num }}.</span>{{ rule.title }}
+  </span>
+  <span class="badge ms-2 {% if rule.status == 'ok' %}bg-light text-dark{% elif rule.status == 'error' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+    {% if rule.status == 'ok' %}✓ OK
+    {% elif rule.status == 'error' %}{{ rule.violations|length }} erreur{{ rule.violations|length|pluralize }}
+    {% else %}{{ rule.violations|length }} avertissement{{ rule.violations|length|pluralize }}
+    {% endif %}
+  </span>
+</div>

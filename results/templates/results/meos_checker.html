@@ -1,0 +1,168 @@
+{% extends "results/base.html" %}
+{% load static %}
+{% block title %}Verificateur de tirage &mdash; {{ SITE_NAME }}{% endblock %}
+
+{% block page_header %}
+<div class="co-page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="co-breadcrumb">
+      <ol class="breadcrumb mb-2 small">
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
+        <li class="breadcrumb-item active">Verificateur de tirage</li>
+      </ol>
+    </nav>
+    <div>
+      <h1><i class="bi bi-shield-check me-2 opacity-75"></i>Verificateur de tirage MeOS</h1>
+      <p class="opacity-75 small mt-1 mb-0">
+        Chargez un fichier <code>.meosxml</code> pour verifier la conformite reglementaire du tirage.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Égalisation hauteur des boîtes de statistiques */
+  .stat-row-equal .stat-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="co-card mb-4">
+  <div class="co-card-header">
+    <i class="bi bi-upload me-2"></i>Charger un fichier MeOS
+  </div>
+  <div class="p-4">
+    <form method="post" enctype="multipart/form-data" id="uploadForm">
+      {% csrf_token %}
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-8">
+          <label for="meosfile" class="form-label fw-bold small text-muted">
+            Fichier d'exportation MeOS (<code>.meosxml</code>)
+          </label>
+          <input type="file" class="form-control" id="meosfile" name="meosfile"
+                 accept=".meosxml,.xml" required>
+          <div class="form-text">
+            Exportez depuis MeOS via <em>Fichier &rarr; Sauvegarder sous&hellip;</em>
+            au format <code>.meosxml</code>.
+          </div>
+        </div>
+        <div class="col-12 col-md-4">
+          <button type="submit" class="btn btn-success w-100 fw-bold" id="submitBtn">
+            <i class="bi bi-shield-check me-2"></i>Verifier la conformite
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if parse_error %}
+<div class="alert alert-danger border-0 mb-4" style="border-left:4px solid #dc3545 !important;">
+  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+  <strong>Erreur de lecture du fichier :</strong> {{ parse_error }}
+</div>
+{% endif %}
+
+{% if report %}
+
+<div class="co-card mb-4">
+  <div class="co-card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-file-earmark-text me-2"></i>{{ report.competition_name }}</span>
+    <span class="badge bg-warning text-dark">{{ report.competition_date }}</span>
+  </div>
+  <div class="p-3">
+    <div class="row g-3 mb-3 align-items-stretch stat-row-equal">
+      <div class="col-6 col-md-2 d-flex">
+        <div class="stat-card h-100">
+          <div class="stat-value">{{ report.n_runners }}</div>
+          <div class="stat-label"><i class="bi bi-person me-1"></i>Coureurs tires</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-2 d-flex">
+        <div class="stat-card h-100" style="border-left-color:#f0a500">
+          <div class="stat-value" style="color:#f0a500">{{ report.n_no_start }}</div>
+          <div class="stat-label"><i class="bi bi-person-walking me-1"></i>Depart en parallele</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-2 d-flex">
+        <div class="stat-card h-100" style="border-left-color:#6c757d">
+          <div class="stat-value" style="color:#6c757d">{{ report.n_vacants }}</div>
+          <div class="stat-label"><i class="bi bi-person-dash me-1"></i>Places vacantes</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-2 d-flex">
+        <div class="stat-card h-100">
+          <div class="stat-value">{{ report.n_classes }}</div>
+          <div class="stat-label"><i class="bi bi-tag me-1"></i>Categories</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-2 d-flex">
+        <div class="stat-card h-100">
+          <div class="stat-value">{{ report.n_courses }}</div>
+          <div class="stat-label"><i class="bi bi-map me-1"></i>Circuits</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-2 d-flex">
+        <div class="stat-card h-100" style="border-left-color:{% if report.has_errors %}#dc3545{% elif report.has_warnings %}#f0a500{% else %}var(--co-green){% endif %}">
+          <div class="stat-value" style="color:{% if report.has_errors %}#dc3545{% elif report.has_warnings %}#f0a500{% else %}var(--co-green){% endif %};font-size:1.4rem">
+            {% if report.has_errors %}<i class="bi bi-x-circle-fill"></i> Erreurs
+            {% elif report.has_warnings %}<i class="bi bi-exclamation-triangle-fill"></i> Avertissements
+            {% else %}<i class="bi bi-check-circle-fill"></i> Conforme{% endif %}
+          </div>
+          <div class="stat-label">Statut general</div>
+        </div>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      {% for rule in report.results %}
+      <a href="#rule-{{ rule.rule_id }}"
+         class="badge text-decoration-none {% if rule.status == 'ok' %}bg-success{% elif rule.status == 'error' %}bg-danger{% else %}bg-warning text-dark{% endif %}"
+         style="font-size:.78rem;padding:.35rem .7rem">
+        {% if rule.status == 'ok' %}<i class="bi bi-check2 me-1"></i>{% elif rule.status == 'error' %}<i class="bi bi-x me-1"></i>{% else %}<i class="bi bi-exclamation me-1"></i>{% endif %}R{{ forloop.counter }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<h2 class="fw-bold mb-3" style="font-family:var(--font-display);font-size:1.2rem">
+  <i class="bi bi-shuffle me-2" style="color:var(--co-gold)"></i>Regles de tirage au sort
+</h2>
+{% for rule in report.results %}
+{% if forloop.counter <= 4 %}
+{% include "results/_checker_rule_card.html" with rule=rule num=forloop.counter %}
+{% endif %}
+{% endfor %}
+
+<h2 class="fw-bold mb-3 mt-4" style="font-family:var(--font-display);font-size:1.2rem">
+  <i class="bi bi-database-check me-2" style="color:var(--co-gold)"></i>Completude des donnees
+</h2>
+{% for rule in report.results %}
+{% if forloop.counter > 4 %}
+{% include "results/_checker_rule_card.html" with rule=rule num=forloop.counter %}
+{% endif %}
+{% endfor %}
+
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.getElementById('uploadForm')?.addEventListener('submit', function() {
+    const btn = document.getElementById('submitBtn');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analyse en cours&hellip;';
+    }
+  });
+</script>
+{% endblock %}
