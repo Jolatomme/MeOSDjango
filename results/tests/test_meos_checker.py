@@ -127,17 +127,17 @@ class TestParseMeosxml:
 
     def test_parse_club_name(self):
         body = _minimal_body(clubs=_club_list(('10', 'COCS')))
-        _, _, _, _, _, clubs, _ = parse_meosxml(_xml(body))
+        _, _, _, _, _, _, clubs, _ = parse_meosxml(_xml(body))
         assert clubs['10'].name == 'COCS'
 
     def test_parse_category_name(self):
         body = _minimal_body(cats=_class_list(('100', 'H21', '1', 3600, 120)))
-        _, _, _, _, categories, _, _ = parse_meosxml(_xml(body))
+        _, _, _, _, _, categories, _, _ = parse_meosxml(_xml(body))
         assert categories['100'].name == 'H21'
 
     def test_parse_course_name(self):
         body = _minimal_body(courses=_course_list(('1', 'Circuit A', '79;80;')))
-        _, _, _, courses, _, _, _ = parse_meosxml(_xml(body))
+        _, _, _, _, courses, _, _, _ = parse_meosxml(_xml(body))
         assert courses['1'].name == 'Circuit A'
         assert courses['1'].controls == [79, 80]
 
@@ -306,7 +306,7 @@ class TestCheckPlagesContinues:
         assert res.status == 'error'
         assert 'H21' in res.violations[0].description
         assert 'D21' in res.violations[0].description
-        assert 'Xavier' in res.violations[0].runners[0]
+        assert any('Xavier' in line for line in res.violations[0].runners)
 
 
 # ── Tests R5 : coordonnees postes ─────────────────────────────────────────────
@@ -399,12 +399,12 @@ class TestCheckCompletudeCoureurs:
         res = self._run([Runner('1', 'Alice', None, '10', '100', '99')])
         assert res.status == 'error'
         assert 'Alice' in res.violations[0].description
-        assert 'depart' in res.violations[0].description
+        assert 'départ' in res.violations[0].description
 
     def test_sans_categorie(self):
         res = self._run([Runner('1', 'Alice', 3600, '10', None, '99')])
         assert res.status == 'error'
-        assert 'categorie' in res.violations[0].description
+        assert 'catégorie' in res.violations[0].description
 
     def test_id_duplique(self):
         r = [Runner('1', 'Alice', 3600, '10', '100', '1'),
