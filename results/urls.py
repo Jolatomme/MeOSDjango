@@ -21,6 +21,7 @@ urlpatterns = [
     path('competition/<int:cid>/class/<int:class_id>/duel/', views.duel_analysis, name='duel'),
     path('competition/<int:cid>/class/<int:class_id>/relay/', views.relay_results, name='relay_results'),
     path('gec/checker/', views.meos_checker_view, name='meos_checker'),
+    path('gec/verifie-moi/', views.verifie_moi_view, name='verifie_moi'),
     path('tuto/', TutoView.as_view(), name='tuto'),
     path('tuto/<int:article_id>/', views.MarkdownView, name='markdown'),
     path('etiquettes/', views.etiquettes, name='etiquettes'),
