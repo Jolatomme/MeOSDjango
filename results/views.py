@@ -20,6 +20,7 @@ from .services import (
     compute_grouping_index, compute_regularity_analysis,
 )
 from .meos_checker import check_meos_file
+from .verifie_moi import generate_verifie_moi_csv
 
 
 # ─── Helpers internes ─────────────────────────────────────────────────────────
@@ -74,6 +75,38 @@ def meos_checker_view(request):
     return render(request, 'results/meos_checker.html', {
         'report':      report,
         'parse_error': parse_error,
+    })
+
+
+def verifie_moi_view(request):
+    """Génère la liste de départ CSV pour l'application Android O Checklist (Vérifie moi).
+
+    Sur POST avec un fichier valide : affiche la prévisualisation et injecte
+    le contenu CSV en JSON pour que le JS puisse proposer le téléchargement.
+    Sur POST avec un fichier invalide : affiche le message d'erreur.
+    Sur GET : affiche le formulaire vide.
+    """
+    parse_error      = None
+    result           = None
+    csv_content_json = None
+    filename_json    = None
+
+    if request.method == 'POST' and 'meosfile' in request.FILES:
+        try:
+            xml_bytes        = request.FILES['meosfile'].read()
+            result           = generate_verifie_moi_csv(xml_bytes)
+            csv_content_json = json.dumps(result.csv_content)
+            # Nom de fichier : nom de la compétition, caractères invalides nettoyés
+            safe_name = re.sub(r'[^\w\-\.\s]', '_', result.competition_name).strip() or 'verifie_moi'
+            filename_json = json.dumps(safe_name + '.csv')
+        except ValueError as exc:
+            parse_error = str(exc)
+
+    return render(request, 'results/verifie_moi.html', {
+        'parse_error':      parse_error,
+        'result':           result,
+        'csv_content_json': csv_content_json,
+        'filename_json':    filename_json,
     })
 
 

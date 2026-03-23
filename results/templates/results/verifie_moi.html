@@ -1,0 +1,223 @@
+{% extends "results/base.html" %}
+{% load static %}
+{% block title %}Vérifie moi — {{ SITE_NAME }}{% endblock %}
+
+{% block page_header %}
+<div class="co-page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="co-breadcrumb">
+      <ol class="breadcrumb mb-2 small">
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
+        <li class="breadcrumb-item active">Vérifie moi</li>
+      </ol>
+    </nav>
+    <div>
+      <h1><i class="bi bi-person-check me-2 opacity-75"></i>Générateur CSV — Vérifie moi</h1>
+      <p class="opacity-75 small mt-1 mb-0">
+        Générez la liste de départ à importer dans l'application Android
+        <strong>O Checklist / Vérifie moi</strong> à partir d'un fichier MeOS.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{# ── Explications ──────────────────────────────────────────────────────────── #}
+<div class="alert alert-warning border-0 mb-4"
+     style="background:#fffbe6;border-left:4px solid var(--co-gold) !important;">
+  <i class="bi bi-info-circle me-2"></i>
+  <strong>Mode d'emploi :</strong>
+  <ol class="mb-0 mt-2 small">
+    <li>Exportez votre compétition depuis MeOS via <em>Fichier → Sauvegarder sous…</em>
+        au format <code>.meosxml</code>.</li>
+    <li>Chargez ce fichier ci-dessous et vérifiez la prévisualisation.</li>
+    <li>Téléchargez le CSV et importez-le dans l'application
+        <strong>O Checklist</strong> sur Android.</li>
+  </ol>
+</div>
+
+{# ── Formulaire d'upload ───────────────────────────────────────────────────── #}
+<div class="co-card mb-4">
+  <div class="co-card-header">
+    <i class="bi bi-upload me-2"></i>Charger un fichier MeOS
+  </div>
+  <div class="p-4">
+    <form method="post" enctype="multipart/form-data" id="uploadForm">
+      {% csrf_token %}
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-9">
+          <label for="meosfile" class="form-label fw-bold small text-muted">
+            Fichier d'exportation MeOS (<code>.meosxml</code>)
+          </label>
+          <input type="file" class="form-control" id="meosfile" name="meosfile"
+                 accept=".meosxml,.xml" required>
+        </div>
+        <div class="col-12 col-md-3">
+          <button type="submit" class="btn btn-success w-100 fw-bold" id="submitBtn">
+            <i class="bi bi-arrow-clockwise me-2"></i>Générer
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── Erreur de parsing ─────────────────────────────────────────────────────── #}
+{% if parse_error %}
+<div class="alert alert-danger border-0 mb-4"
+     style="border-left:4px solid #dc3545 !important;">
+  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+  <strong>Erreur de lecture du fichier :</strong> {{ parse_error }}
+</div>
+{% endif %}
+
+{# ── Résultat : statistiques + bouton téléchargement ──────────────────────── #}
+{% if result %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-value">{{ result.n_runners }}</div>
+      <div class="stat-label"><i class="bi bi-people me-1"></i>Coureurs dans le CSV</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="border-left-color:var(--co-gold)">
+      <div class="stat-value" style="color:var(--co-gold)">{{ result.n_with_card }}</div>
+      <div class="stat-label"><i class="bi bi-credit-card me-1"></i>Avec numéro de puce</div>
+    </div>
+  </div>
+  {% if result.n_skipped %}
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="border-left-color:#6c757d">
+      <div class="stat-value" style="color:#6c757d">{{ result.n_skipped }}</div>
+      <div class="stat-label"><i class="bi bi-skip-forward me-1"></i>Exclus (départ parallèle)</div>
+    </div>
+  </div>
+  {% endif %}
+  <div class="col-6 col-md-3 d-flex align-items-center">
+    <button class="btn btn-success w-100 fw-bold py-3" onclick="downloadCsv()">
+      <i class="bi bi-download me-2"></i>Télécharger le CSV
+    </button>
+  </div>
+</div>
+
+{% if result.n_skipped %}
+<div class="alert alert-secondary border-0 mb-4"
+     style="border-left:4px solid #6c757d !important;">
+  <i class="bi bi-info-circle me-2"></i>
+  <strong>{{ result.n_skipped }} coureur{{ result.n_skipped|pluralize }}</strong>
+  sans heure de départ {{ result.n_skipped|pluralize:"a été exclu,ont été exclus" }}
+  du CSV — ils partent en parallèle avec un autre dispositif.
+</div>
+{% endif %}
+
+{# ── Prévisualisation ──────────────────────────────────────────────────────── #}
+<div class="co-card mb-4">
+  <div class="co-card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-table me-2"></i>Prévisualisation — liste de départ</span>
+    <input type="text" id="runnerSearchPreview" class="form-control form-control-sm"
+           placeholder="Filtrer…" style="width:180px"
+           oninput="filterPreview(this.value)">
+  </div>
+  <div class="table-responsive" style="max-height:520px;overflow-y:auto">
+    <table class="results-table" id="previewTable">
+      <thead>
+        <tr>
+          <th class="text-end" style="width:4rem">#</th>
+          <th style="width:6rem">Heure</th>
+          <th>Nom</th>
+          <th>Club</th>
+          <th>Catégorie</th>
+          <th class="text-end" style="width:7rem">Puce</th>
+        </tr>
+      </thead>
+      <tbody id="previewBody">
+        {% for row in result.rows %}
+        <tr data-name="{{ row.name|lower }} {{ row.club|lower }} {{ row.cls|lower }}">
+          <td class="text-end text-muted">{{ forloop.counter }}</td>
+          <td>
+            <span class="fw-bold font-monospace" style="color:var(--co-green)">
+              {{ row.start_time }}
+            </span>
+          </td>
+          <td class="runner-name fw-bold">{{ row.name }}</td>
+          <td class="club-name text-muted">{{ row.club }}</td>
+          <td>
+            <span class="badge bg-light text-dark border"
+                  style="font-family:var(--font-display)">{{ row.cls }}</span>
+          </td>
+          <td class="text-end font-monospace text-muted small">
+            {{ row.card_no|default:"—" }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{# ── Format du CSV (affiché uniquement si pas encore de résultat) ──────────── #}
+{% if not result %}
+<div class="co-card">
+  <div class="co-card-header">
+    <i class="bi bi-file-earmark-text me-2"></i>Format du fichier CSV généré
+  </div>
+  <div class="p-4">
+    <p class="small text-muted mb-2">
+      Une ligne par coureur avec heure de départ, triée chronologiquement.
+      Les coureurs sans heure de départ (départ en parallèle) sont exclus.
+      Séparateur : virgule.
+    </p>
+    <pre class="p-3 rounded small mb-0"
+         style="background:#f0f7f2;border:1px solid #c8e6d0;border-left:4px solid var(--co-green)">// O Checklist / Vérifie moi — généré depuis MeOS
+// @colDefs: Nom*, Club*, Catégorie*, Dossard, Heure*, Puce, Départ
+Alice Martin,COCS,H21E,,10:00:00,314159,
+Bob Dupont,COCS,H21E,,10:02:00,271828,
+Lina Simon,Pas de club,D21E,,10:01:00,,</pre>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{% if result %}
+<script>
+  const CSV_CONTENT = {{ csv_content_json|safe }};
+  const CSV_FILENAME = {{ filename_json|safe }};
+
+  function downloadCsv() {
+    const bom  = '\uFEFF';   // BOM UTF-8 pour compatibilité Excel/Android
+    const blob = new Blob([bom + CSV_CONTENT], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = CSV_FILENAME;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function filterPreview(q) {
+    q = q.toLowerCase();
+    document.querySelectorAll('#previewBody tr').forEach(row => {
+      row.style.display = (row.dataset.name || '').includes(q) ? '' : 'none';
+    });
+  }
+</script>
+{% endif %}
+
+<script>
+  document.getElementById('uploadForm')?.addEventListener('submit', function () {
+    const btn = document.getElementById('submitBtn');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Génération…';
+    }
+  });
+</script>
+{% endblock %}
