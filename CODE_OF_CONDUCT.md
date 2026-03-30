@@ -36,7 +36,7 @@ Ce Code de Conduite s'applique dans tous les espaces de la communauté, et s'app
 
 ## Application
 
-Les cas de comportement abusif, harcelant ou autrement inacceptable peuvent être signalés aux dirigeants de la communauté responsables de l'application à [insérer ici l'adresse e-mail ou le moyen de contact, par exemple : conduct@meosdjango.com]. Toutes les plaintes seront examinées et enquêtées rapidement et équitablement.
+Les cas de comportement abusif, harcelant ou autrement inacceptable peuvent être signalés aux dirigeants de la communauté responsables de l'application. Toutes les plaintes seront examinées et enquêtées rapidement et équitablement.
 
 Tous les dirigeants de la communauté sont tenus de respecter la confidentialité et la sécurité du rapporteur de tout incident.
 
