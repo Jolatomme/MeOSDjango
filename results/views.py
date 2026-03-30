@@ -32,6 +32,26 @@ def _load_class_context(cid, class_id):
     return competition, cls, competitors
 
 
+def _get_adjacent_classes(cid, class_id):
+    """Retourne (prev_cls, next_cls) dans l'ordre (ord, name) de la compétition.
+
+    Args:
+        cid:      identifiant de la compétition.
+        class_id: identifiant de la catégorie courante.
+
+    Returns:
+        Tuple (prev_cls, next_cls) où chaque élément est un objet Mopclass
+        ou None si la catégorie est la première / dernière.
+    """
+    all_classes = list(Mopclass.objects.filter(cid=cid).order_by('ord', 'name'))
+    current_idx = next((i for i, c in enumerate(all_classes) if c.id == class_id), None)
+    if current_idx is None:
+        return None, None
+    prev_cls = all_classes[current_idx - 1] if current_idx > 0 else None
+    next_cls = all_classes[current_idx + 1] if current_idx < len(all_classes) - 1 else None
+    return prev_cls, next_cls
+
+
 # ─── Pages statiques ──────────────────────────────────────────────────────────
 
 _PREFIX_RE = re.compile(r'^\d+(\.\d+)*\.?\s+')
@@ -161,6 +181,9 @@ def class_results(request, cid, class_id):
 
     competition, cls, competitors = _load_class_context(cid, class_id)
 
+    # Navigation précédent / suivant
+    prev_cls, next_cls = _get_adjacent_classes(cid, class_id)
+
     org_map = get_org_map(cid, as_objects=True)
     for c in competitors:
         c.org_obj = org_map.get(c.org)
@@ -209,6 +232,8 @@ def class_results(request, cid, class_id):
         'has_splits':          bool(controls_seq),
         'current_analysis':    'results',
         'leg_error_data_json': json.dumps(leg_error_data),
+        'prev_cls':            prev_cls,
+        'next_cls':            next_cls,
     })
 
 

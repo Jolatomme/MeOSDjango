@@ -25,11 +25,12 @@ def make_competition(cid=1):
     return c
 
 
-def make_cls(cid=1, class_id=10):
+def make_cls(cid=1, class_id=10, name='H21', ord_=10):
     c = MagicMock()
     c.cid  = cid
     c.id   = class_id
-    c.name = 'H21'
+    c.name = name
+    c.ord  = ord_
     return c
 
 
@@ -123,6 +124,80 @@ class TestLoadClassContext:
             _load_class_context(cid=999, class_id=10)
 
 
+# ─── Tests _get_adjacent_classes ─────────────────────────────────────────────
+
+class TestGetAdjacentClasses:
+    """Vérifie le helper qui renvoie les catégories précédente et suivante."""
+
+    def _mk_cls(self, class_id, name, ord_=10):
+        c = MagicMock()
+        c.id   = class_id
+        c.name = name
+        c.ord  = ord_
+        return c
+
+    def _call(self, mock_qs, cid, class_id):
+        from results.views import _get_adjacent_classes
+        with patch('results.views.Mopclass') as MockMopclass:
+            MockMopclass.objects.filter.return_value.order_by.return_value = mock_qs
+            return _get_adjacent_classes(cid, class_id)
+
+    def test_classe_unique_aucun_voisin(self):
+        cls_list = [self._mk_cls(10, 'H21')]
+        prev, nxt = self._call(cls_list, cid=1, class_id=10)
+        assert prev is None
+        assert nxt  is None
+
+    def test_premiere_classe_pas_de_precedent(self):
+        cls_list = [self._mk_cls(10, 'H21'), self._mk_cls(20, 'D21'), self._mk_cls(30, 'H35')]
+        prev, nxt = self._call(cls_list, cid=1, class_id=10)
+        assert prev is None
+        assert nxt.id == 20
+
+    def test_derniere_classe_pas_de_suivant(self):
+        cls_list = [self._mk_cls(10, 'H21'), self._mk_cls(20, 'D21'), self._mk_cls(30, 'H35')]
+        prev, nxt = self._call(cls_list, cid=1, class_id=30)
+        assert prev.id == 20
+        assert nxt is None
+
+    def test_classe_du_milieu(self):
+        cls_list = [self._mk_cls(10, 'H21'), self._mk_cls(20, 'D21'), self._mk_cls(30, 'H35')]
+        prev, nxt = self._call(cls_list, cid=1, class_id=20)
+        assert prev.id == 10
+        assert nxt.id  == 30
+
+    def test_classe_inexistante_retourne_double_none(self):
+        cls_list = [self._mk_cls(10, 'H21')]
+        prev, nxt = self._call(cls_list, cid=1, class_id=999)
+        assert prev is None
+        assert nxt  is None
+
+    def test_noms_corrects(self):
+        cls_list = [self._mk_cls(10, 'H21'), self._mk_cls(20, 'D21'), self._mk_cls(30, 'H35')]
+        prev, nxt = self._call(cls_list, cid=1, class_id=20)
+        assert prev.name == 'H21'
+        assert nxt.name  == 'H35'
+
+    def test_deux_classes_premiere(self):
+        cls_list = [self._mk_cls(10, 'H21'), self._mk_cls(20, 'D21')]
+        prev, nxt = self._call(cls_list, cid=1, class_id=10)
+        assert prev is None
+        assert nxt.id == 20
+
+    def test_deux_classes_derniere(self):
+        cls_list = [self._mk_cls(10, 'H21'), self._mk_cls(20, 'D21')]
+        prev, nxt = self._call(cls_list, cid=1, class_id=20)
+        assert prev.id == 10
+        assert nxt is None
+
+    def test_filtre_par_cid(self):
+        from results.views import _get_adjacent_classes
+        with patch('results.views.Mopclass') as MockMopclass:
+            MockMopclass.objects.filter.return_value.order_by.return_value = []
+            _get_adjacent_classes(cid=42, class_id=10)
+            MockMopclass.objects.filter.assert_called_once_with(cid=42)
+
+
 # ─── Tests home ───────────────────────────────────────────────────────────────
 
 class TestHomeView:
@@ -159,6 +234,7 @@ class TestClassResultsView:
         c2 = make_competitor(2, rt=6000)
         mock_mopcompetitor.objects.filter.return_value = [c1, c2]
 
+    @patch('results.views._get_adjacent_classes', return_value=(None, None))
     @patch('results.views.get_org_map',        return_value={})
     @patch('results.views.get_class_controls', return_value=([], {}))
     @patch('results.views.get_radio_map',      return_value={})
@@ -173,6 +249,7 @@ class TestClassResultsView:
     def test_contexte_contient_resultats(
         self, MockTeam, MockComp, MockClass, MockCompetitor, mock_get404,
         mock_render, mock_mark, mock_splits, mock_radio, mock_controls, mock_org,
+        mock_adj,
     ):
         self._patch_all(MockTeam, MockComp, MockClass, MockCompetitor, mock_get404)
 
@@ -198,6 +275,62 @@ class TestClassResultsView:
         mock_redirect.assert_called_once_with(
             'results:relay_results', cid=1, class_id=10
         )
+
+    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views.get_org_map',        return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.get_radio_map',      return_value={})
+    @patch('results.views.compute_splits',     return_value=[])
+    @patch('results.views.mark_best_splits')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.Mopteam')
+    def test_prev_cls_et_next_cls_dans_contexte(
+        self, MockTeam, MockCompetitor, mock_get404, mock_render,
+        mock_mark, mock_splits, mock_radio, mock_controls, mock_org,
+        mock_adj,
+    ):
+        """prev_cls et next_cls doivent être présents dans le contexte."""
+        MockTeam.objects.filter.return_value.exists.return_value = False
+        mock_get404.side_effect = [make_competition(), make_cls()]
+        MockCompetitor.objects.filter.return_value = [make_competitor()]
+
+        from results.views import class_results
+        class_results(rf_get(), cid=1, class_id=10)
+
+        _, _, context = mock_render.call_args[0]
+        assert 'prev_cls' in context
+        assert 'next_cls' in context
+
+    @patch('results.views._get_adjacent_classes', return_value=(make_cls(class_id=5, name='H20'), make_cls(class_id=15, name='D21')))
+    @patch('results.views.get_org_map',        return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.get_radio_map',      return_value={})
+    @patch('results.views.compute_splits',     return_value=[])
+    @patch('results.views.mark_best_splits')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.Mopteam')
+    def test_prev_cls_et_next_cls_transmis_depuis_helper(
+        self, MockTeam, MockCompetitor, mock_get404, mock_render,
+        mock_mark, mock_splits, mock_radio, mock_controls, mock_org,
+        mock_adj,
+    ):
+        """Les valeurs renvoyées par _get_adjacent_classes sont bien transmises."""
+        MockTeam.objects.filter.return_value.exists.return_value = False
+        mock_get404.side_effect = [make_competition(), make_cls()]
+        MockCompetitor.objects.filter.return_value = [make_competitor()]
+
+        from results.views import class_results
+        class_results(rf_get(), cid=1, class_id=10)
+
+        _, _, context = mock_render.call_args[0]
+        assert context['prev_cls'].id   == 5
+        assert context['next_cls'].id   == 15
+        assert context['prev_cls'].name == 'H20'
+        assert context['next_cls'].name == 'D21'
 
 
 # ─── Tests competitor_detail ──────────────────────────────────────────────────
@@ -313,12 +446,6 @@ class TestSupermanAnalysis:
 
 
 # ─── Tests superman — invariants de couleur tableau/graphique ──────────────────
-#
-# Depuis la refonte du tableau (rendu JS), la pastille de couleur dans le tableau
-# et la ligne dans le graphique utilisent toutes deux PALETTE[i % PALETTE.length]
-# où `i` est l'index du coureur dans SERIES (= ordre de classement).
-# Ces tests vérifient les invariants Python dont dépend cette cohérence.
-# ─────────────────────────────────────────────────────────────────────────────
 
 class TestSupermanColorInvariants:
 
@@ -332,8 +459,6 @@ class TestSupermanColorInvariants:
         self, MockCompetitor, mock_get404, mock_render,
         mock_radio, mock_ctrl, mock_org,
     ):
-        """series_json doit contenir tous les champs utilisés par buildTable() :
-        id, name, org, rank, total, loss."""
         competition = make_competition(); cls = make_cls()
         mock_get404.side_effect = [competition, cls]
         c = make_competitor(1, rt=6000)
@@ -359,12 +484,9 @@ class TestSupermanColorInvariants:
         self, MockCompetitor, mock_get404, mock_render,
         mock_radio, mock_ctrl, mock_org,
     ):
-        """Les coureurs dans series_json doivent être triés par rang (rt croissant).
-        L'index dans SERIES = couleur du graphique ET couleur de la pastille."""
         competition = make_competition(); cls = make_cls()
         mock_get404.side_effect = [competition, cls]
 
-        # Bob arrive avant Alice malgré l'ordre dans la liste ORM
         alice = make_competitor(1, rt=8000, name='Alice')
         bob   = make_competitor(2, rt=5000, name='Bob')
         alice.org = 1; bob.org = 2
@@ -376,7 +498,6 @@ class TestSupermanColorInvariants:
         _, _, context = mock_render.call_args[0]
         series = json.loads(context['series_json'])
 
-        # Bob (rt=5000) doit être à l'index 0, Alice (rt=8000) à l'index 1
         assert series[0]['name'] == 'Bob',   "Bob (rt=5000) doit être rank=1, index 0 dans SERIES"
         assert series[1]['name'] == 'Alice', "Alice (rt=8000) doit être rank=2, index 1 dans SERIES"
         assert series[0]['rank'] == 1
@@ -392,9 +513,6 @@ class TestSupermanColorInvariants:
         self, MockCompetitor, mock_get404, mock_render,
         mock_radio, mock_ctrl, mock_org,
     ):
-        """Pour N coureurs classés, series[i]['rank'] == i + 1 pour tout i.
-        C'est l'invariant qui garantit que PALETTE[i] est la même couleur
-        dans le graphique (buildDatasets) et dans le tableau (buildTable)."""
         competition = make_competition(); cls = make_cls()
         mock_get404.side_effect = [competition, cls]
 
@@ -421,8 +539,6 @@ class TestSupermanColorInvariants:
         self, MockCompetitor, mock_get404, mock_render,
         mock_radio, mock_ctrl, mock_org,
     ):
-        """Chaque entrée de series_json doit avoir un id unique, permettant au
-        frontend de relier la ligne du tableau au dataset du graphique."""
         competition = make_competition(); cls = make_cls()
         mock_get404.side_effect = [competition, cls]
 
@@ -441,9 +557,11 @@ class TestSupermanColorInvariants:
         assert 42 in ids
         assert 99 in ids
 
+
 class TestClassResultsRankSplits:
     """Vérifie que rank_splits est appelé et que les rangs sont présents dans les splits."""
 
+    @patch('results.views._get_adjacent_classes', return_value=(None, None))
     @patch('results.views.rank_splits')
     @patch('results.views.mark_best_splits')
     @patch('results.views.get_org_map',        return_value={})
@@ -457,7 +575,7 @@ class TestClassResultsRankSplits:
     @patch('results.views.Mopteam')
     def test_rank_splits_appele(
         self, MockTeam, MockCompetitor, mock_get404, mock_render,
-        mock_radio, mock_ctrl, mock_org, mock_mark, mock_rank,
+        mock_radio, mock_ctrl, mock_org, mock_mark, mock_rank, mock_adj,
     ):
         """rank_splits doit être appelé lors du rendu des résultats."""
         MockTeam.objects.filter.return_value.exists.return_value = False
@@ -471,6 +589,7 @@ class TestClassResultsRankSplits:
 
         assert mock_rank.called, "rank_splits devrait être appelé dans class_results"
 
+    @patch('results.views._get_adjacent_classes', return_value=(None, None))
     @patch('results.views.rank_splits')
     @patch('results.views.mark_best_splits')
     @patch('results.views.get_org_map',        return_value={})
@@ -484,7 +603,7 @@ class TestClassResultsRankSplits:
     @patch('results.views.Mopteam')
     def test_rank_splits_recoit_finishers_et_all_results(
         self, MockTeam, MockCompetitor, mock_get404, mock_render,
-        mock_radio, mock_ctrl, mock_org, mock_mark, mock_rank,
+        mock_radio, mock_ctrl, mock_org, mock_mark, mock_rank, mock_adj,
     ):
         """rank_splits doit recevoir (finishers, all_results) comme arguments."""
         MockTeam.objects.filter.return_value.exists.return_value = False
@@ -549,7 +668,6 @@ class TestOrgResultsView:
         from results.views import org_results
         org_results(rf_get(), cid=1, org_id=5)
 
-        # class_obj doit avoir été attaché
         assert hasattr(c, 'class_obj')
         assert c.class_obj is cls_obj
 
@@ -587,7 +705,6 @@ class TestStatisticsView:
     @patch('results.views.get_object_or_404')
     @patch('results.views.Mopcompetitor')
     def test_top_orgs_transmis(self, MockCompetitor, mock_get404, mock_render):
-        """top_orgs doit contenir les données de la requête SQL."""
         competition = make_competition()
         mock_get404.return_value = competition
         MockCompetitor.objects.filter.return_value.count.return_value = 50
@@ -677,7 +794,6 @@ class TestRelayResultsView:
         self, mock_get404, mock_render, MockTeam, MockTeamMember,
         MockCompetitor, mock_org, mock_radio, mock_ctrl,
     ):
-        """L'équipe la plus rapide doit être en tête."""
         competition = make_competition(); cls = make_cls()
         mock_get404.side_effect = [competition, cls]
 
@@ -692,7 +808,6 @@ class TestRelayResultsView:
 
         _, _, context = mock_render.call_args[0]
         teams = context['teams_data']
-        # L'équipe rapide (id=2, rt=10000) doit avoir rank=1
         assert teams[0]['team'].rt == 10000
 
     @patch('results.views.get_controls_by_leg', return_value=({1: [31]}, {31: 'P31'}))
@@ -707,7 +822,6 @@ class TestRelayResultsView:
         self, mock_get404, mock_render, MockTeam, MockTeamMember,
         MockCompetitor, mock_org, mock_radio, mock_ctrl,
     ):
-        """Chaque fraction doit contenir des données de splits."""
         competition = make_competition(); cls = make_cls()
         mock_get404.side_effect = [competition, cls]
 
@@ -742,7 +856,6 @@ class TestRelayResultsView:
         self, mock_get404, mock_render, MockTeam, MockTeamMember,
         MockCompetitor, mock_org, mock_radio, mock_ctrl,
     ):
-        """Les équipes DNF doivent apparaître dans teams_data (après les classées)."""
         competition = make_competition(); cls = make_cls()
         mock_get404.side_effect = [competition, cls]
 
@@ -804,7 +917,6 @@ class TestRelayResultsRanking:
             return context
 
     def test_leg_rank_une_seule_equipe(self):
-        """Une seule équipe → leg_rank=1 et cum_rank=1 sur chaque fraction."""
         t = self._make_team(1, rt=10000)
         m = self._make_member(team_id=1, rid=101, leg=1)
         c = make_competitor(101, rt=10000)
@@ -815,29 +927,19 @@ class TestRelayResultsRanking:
         assert leg['cum_rank'] == 1
 
     def test_leg_rank_deux_equipes_ordre_correct(self):
-        """L'équipe avec le temps de fraction le plus court obtient leg_rank=1."""
         t1 = self._make_team(1, rt=18000)
         t2 = self._make_team(2, rt=20000)
         m1 = self._make_member(team_id=1, rid=101, leg=1)
         m2 = self._make_member(team_id=2, rid=102, leg=1)
-        c1 = make_competitor(101, rt=8000)   # fraction rapide
-        c2 = make_competitor(102, rt=10000)  # fraction lente
+        c1 = make_competitor(101, rt=8000)
+        c2 = make_competitor(102, rt=10000)
 
         ctx = self._run_view([t1, t2], [m1, m2], [c1, c2])
         legs = {td['team'].id: td['legs'][0] for td in ctx['teams_data']}
-        assert legs[1]['leg_rank'] == 1   # c1 rt=8000 → 1er sur la fraction
+        assert legs[1]['leg_rank'] == 1
         assert legs[2]['leg_rank'] == 2
 
     def test_cum_rank_independant_du_leg_rank(self):
-        """cum_rank reflète le cumulé des fractions, pas juste la fraction courante.
-
-        Equipe 1 : fraction lente (leg=12000) mais cumulé rapide car leg précédent court.
-        Equipe 2 : fraction rapide (leg=10000) mais cumulé lent car leg précédent long.
-
-        On simule un relais à 2 fractions :
-          T1 : leg1=5000, leg2=12000 → cum après leg2 = 17000
-          T2 : leg1=9000, leg2=10000 → cum après leg2 = 19000
-        """
         t1 = self._make_team(1, rt=17000)
         t2 = self._make_team(2, rt=19000)
         m1a = self._make_member(team_id=1, rid=101, leg=1)
@@ -850,23 +952,18 @@ class TestRelayResultsRanking:
         c104 = make_competitor(104, rt=10000)
 
         ctx = self._run_view([t1, t2], [m1a, m1b, m2a, m2b], [c101, c102, c103, c104])
-        legs_t1 = ctx['teams_data'][0]['legs']  # t1 est en tête (rt=17000 < 19000)
+        legs_t1 = ctx['teams_data'][0]['legs']
         legs_t2 = ctx['teams_data'][1]['legs']
 
-        # Fraction 2 : T2 (leg=10000) plus rapide → leg_rank=1
         assert legs_t2[1]['leg_rank'] == 1
         assert legs_t1[1]['leg_rank'] == 2
-
-        # Cumulé après fraction 2 : T1 (cum=17000) devant T2 (cum=19000) → cum_rank=1
         assert legs_t1[1]['cum_rank'] == 1
         assert legs_t2[1]['cum_rank'] == 2
 
     def test_leg_rank_none_si_temps_manquant(self):
-        """Une équipe sans temps de fraction (runner absent) reçoit leg_rank=None."""
         t1 = self._make_team(1, rt=10000)
         t2 = self._make_team(2, rt=-1, stat=4)
         m1 = self._make_member(team_id=1, rid=101, leg=1)
-        # Pas de membre pour t2 → runner=None dans la vue
         c1 = make_competitor(101, rt=10000)
 
         ctx = self._run_view([t1, t2], [m1], [c1])
@@ -875,7 +972,6 @@ class TestRelayResultsRanking:
         assert legs_t2[0]['cum_rank'] is None
 
     def test_leg_rank_exaequo_meme_rang(self):
-        """Deux équipes avec le même temps de fraction reçoivent le même leg_rank."""
         t1 = self._make_team(1, rt=10000)
         t2 = self._make_team(2, rt=10000)
         m1 = self._make_member(team_id=1, rid=101, leg=1)
@@ -886,10 +982,9 @@ class TestRelayResultsRanking:
         ctx = self._run_view([t1, t2], [m1, m2], [c1, c2])
         legs = {td['team'].id: td['legs'][0] for td in ctx['teams_data']}
         assert legs[1]['leg_rank'] == 1
-        assert legs[2]['leg_rank'] == 1   # ex-æquo → même rang
+        assert legs[2]['leg_rank'] == 1
 
     def test_legs_data_contient_champs_rang(self):
-        """Chaque fraction doit exposer leg_rank et cum_rank (même si None)."""
         t = self._make_team(1, rt=10000)
         m = self._make_member(team_id=1, rid=101, leg=1)
         c = make_competitor(101, rt=10000)
@@ -900,7 +995,6 @@ class TestRelayResultsRanking:
         assert 'cum_rank' in leg
 
     def test_leg_time_raw_et_cum_time_raw_presents(self):
-        """leg_time_raw et cum_time_raw doivent être présents pour le calcul."""
         t = self._make_team(1, rt=10000)
         m = self._make_member(team_id=1, rid=101, leg=1)
         c = make_competitor(101, rt=10000)
@@ -934,7 +1028,6 @@ class TestSupermanWithControls:
             return ctx
 
     def test_points_debut_a_zero(self):
-        """Chaque série commence à 0 (au départ)."""
         c1 = make_competitor(1, rt=3600)
         c2 = make_competitor(2, rt=4000)
         controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
@@ -944,7 +1037,6 @@ class TestSupermanWithControls:
             assert s['points'][0] == 0
 
     def test_leader_perd_moins_que_les_autres(self):
-        """Le coureur le plus rapide a la perte finale la plus faible."""
         c1 = make_competitor(1, rt=3600, name='Rapide')
         c2 = make_competitor(2, rt=5000, name='Lent')
         controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
@@ -954,7 +1046,6 @@ class TestSupermanWithControls:
         assert series_by_id[1]['points'][-1] <= series_by_id[2]['points'][-1]
 
     def test_series_json_serialisable(self):
-        """series_json doit être du JSON valide."""
         import json
         c1 = make_competitor(1, rt=3600)
         controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
@@ -964,21 +1055,17 @@ class TestSupermanWithControls:
         assert isinstance(parsed, list)
 
     def test_exaequo_leg_data_contient_plusieurs_noms(self):
-        """Deux coureurs ex-æquo sur un tronçon → les deux apparaissent dans leg_data."""
         c1 = make_competitor(1, rt=3600, name='Alice')
         c2 = make_competitor(2, rt=3600, name='Bob')
         controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
-        # Même temps sur P31 → ex-æquo
         radio_map = {1: {31: 1200}, 2: {31: 1200}}
         ctx = self._run([c1, c2], controls_seq, radio_map)
-        # Tronçon P31 : les deux coureurs ont le meilleur temps
         leg = ctx['superman_leg_data'][0]
         assert len(leg['names']) == 2
         assert 'Alice' in leg['names']
         assert 'Bob'   in leg['names']
 
     def test_un_seul_meilleur_troncon(self):
-        """Quand un seul coureur est le meilleur, names a une seule entrée."""
         c1 = make_competitor(1, rt=3600, name='Alice')
         c2 = make_competitor(2, rt=5000, name='Bob')
         controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
@@ -988,11 +1075,10 @@ class TestSupermanWithControls:
         assert leg['names'] == ['Alice']
 
     def test_coureur_sans_radio_points_none(self):
-        """Un coureur sans temps radio doit avoir des points None après le départ."""
         c1 = make_competitor(1, rt=3600, name='Avec radio')
         c2 = make_competitor(2, rt=4000, name='Sans radio')
         controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
-        radio_map    = {1: {31: 1200}}   # c2 n'a pas de radio
+        radio_map    = {1: {31: 1200}}
         ctx = self._run([c1, c2], controls_seq, radio_map)
         series_by_id = {s['id']: s for s in ctx['series']}
         assert None in series_by_id[2]['points']
@@ -1008,7 +1094,6 @@ class TestClassResultsErrorEstimates:
         comp = make_competition()
         cls  = make_cls()
 
-        # Valeur par défaut de error_map si non fournie
         if error_map is None:
             error_map = {
                 c.id: [{'error_time': 500, 'error_pct': 15.0}]
@@ -1018,6 +1103,7 @@ class TestClassResultsErrorEstimates:
         with patch('results.views.Mopteam') as MockTeam, \
              patch('results.views.Mopcompetitor') as MockComp, \
              patch('results.views.get_object_or_404', side_effect=[comp, cls]), \
+             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
              patch('results.views.get_org_map', return_value={}), \
              patch('results.views.get_class_controls', return_value=(controls_seq, {})), \
              patch('results.views.get_radio_map', return_value=radio_map), \
@@ -1034,7 +1120,6 @@ class TestClassResultsErrorEstimates:
             return ctx, mock_err
 
     def test_compute_error_estimates_appele_si_controles(self):
-        """compute_error_estimates doit être appelé quand il y a des contrôles."""
         c = make_competitor(1, rt=5000)
         controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
         radio_map    = {1: {31: 1200}}
@@ -1042,16 +1127,13 @@ class TestClassResultsErrorEstimates:
         assert mock_err.called
 
     def test_compute_error_estimates_non_appele_sans_controles(self):
-        """Sans contrôles, compute_error_estimates ne doit pas être appelé."""
         c = make_competitor(1, rt=5000)
         _, mock_err = self._run([c], controls_seq=[], radio_map={},
                                 error_map={})
         assert not mock_err.called
 
     def test_error_time_injecte_dans_splits(self):
-        """error_time doit être présent dans chaque split après traitement."""
         c = make_competitor(1, rt=5000)
-        # On doit pré-créer des splits sur le coureur pour que la vue puisse les parcourir
         c.splits = [{'ctrl_name': 'P31', 'abs_time': '02:00', 'leg_time': '02:00',
                      'leg_raw': 1200, 'abs_raw': 1200, 'is_best': False,
                      'leg_rank': None, 'abs_rank': None}]
@@ -1062,13 +1144,11 @@ class TestClassResultsErrorEstimates:
 
         ctx, _ = self._run([c], controls_seq, radio_map, error_map)
 
-        # Trouver le coureur dans les résultats
         runner = next(r for r in ctx['results'] if r.id == 1)
         assert 'error_time' in runner.splits[0]
         assert 'error_pct'  in runner.splits[0]
 
     def test_error_time_arrondi_en_dixiemes(self):
-        """error_time est stocké arrondi (round) en dixièmes MeOS."""
         c = make_competitor(1, rt=5000)
         c.splits = [{'ctrl_name': 'P31', 'abs_time': '02:00', 'leg_time': '02:00',
                      'leg_raw': 1200, 'abs_raw': 1200, 'is_best': False,
@@ -1080,11 +1160,10 @@ class TestClassResultsErrorEstimates:
 
         ctx, _ = self._run([c], controls_seq, radio_map, error_map)
         runner = next(r for r in ctx['results'] if r.id == 1)
-        assert runner.splits[0]['error_time'] == 504    # round(503.7)
+        assert runner.splits[0]['error_time'] == 504
         assert runner.splits[0]['error_pct']  == pytest.approx(12.5)
 
     def test_error_none_si_calcul_impossible(self):
-        """Quand error_time=None dans error_map, le split doit aussi avoir None."""
         c = make_competitor(1, rt=5000)
         c.splits = [{'ctrl_name': 'P31', 'abs_time': '-', 'leg_time': '-',
                      'leg_raw': None, 'abs_raw': None, 'is_best': False,
@@ -1115,7 +1194,6 @@ class TestDuelAnalysisView:
         self, MockTeam, MockCompetitor, mock_get404, mock_render,
         mock_splits, mock_radio, mock_ctrl, mock_org,
     ):
-        """La vue duel doit retourner le bon template et les clés attendues."""
         MockTeam.objects.filter.return_value.exists.return_value = False
         competition = make_competition(); cls = make_cls()
         mock_get404.side_effect = [competition, cls]
@@ -1144,7 +1222,6 @@ class TestDuelAnalysisView:
         self, MockTeam, MockCompetitor, mock_get404, mock_render,
         mock_splits, mock_radio, mock_ctrl, mock_org,
     ):
-        """runners_json doit être du JSON valide contenant les deux coureurs."""
         import json
         MockTeam.objects.filter.return_value.exists.return_value = False
         competition = make_competition(); cls = make_cls()
@@ -1176,7 +1253,6 @@ class TestDuelAnalysisView:
         self, MockTeam, MockCompetitor, mock_get404, mock_render,
         mock_radio, mock_ctrl, mock_org,
     ):
-        """Chaque entrée de runners_json doit avoir une clé 'splits' avec les bons champs."""
         import json
         MockTeam.objects.filter.return_value.exists.return_value = False
         competition = make_competition(); cls = make_cls()
@@ -1204,7 +1280,6 @@ class TestDuelAnalysisView:
     def test_no_data_si_aucun_coureur(
         self, MockTeam, MockCompetitor, mock_get404, mock_render,
     ):
-        """Quand il n'y a aucun coureur, no_data doit être True."""
         MockTeam.objects.filter.return_value.exists.return_value = False
         competition = make_competition(); cls = make_cls()
         mock_get404.side_effect = [competition, cls]
@@ -1220,7 +1295,6 @@ class TestDuelAnalysisView:
     @patch('results.views.redirect')
     @patch('results.views.Mopteam')
     def test_redirige_vers_relay_si_relais(self, MockTeam, mock_redirect):
-        """La vue duel doit rediriger vers relay_results pour les courses de relais."""
         MockTeam.objects.filter.return_value.exists.return_value = True
 
         from results.views import duel_analysis
@@ -1242,7 +1316,6 @@ class TestDuelAnalysisView:
         self, MockTeam, MockCompetitor, mock_get404, mock_render,
         mock_splits, mock_radio, mock_ctrl, mock_org,
     ):
-        """n_runners doit correspondre au nombre total de coureurs (classés + non classés)."""
         MockTeam.objects.filter.return_value.exists.return_value = False
         competition = make_competition(); cls = make_cls()
         mock_get404.side_effect = [competition, cls]
@@ -1277,14 +1350,12 @@ class TestSlugifyNoPrefix:
         assert self._call('1.1 Créer la compétition') == 'créer-la-compétition'
 
     def test_sans_prefixe_inchange(self):
-        """Un titre sans numéro doit rester identique après slugification."""
         result = self._call('Introduction')
         assert result == 'introduction'
 
     def test_accents_preserves(self):
-        """Les caractères accentués doivent être conservés (slugify_unicode)."""
         result = self._call('2 Résultats généraux')
-        assert 'sultats' in result    # "résultats" slugifié
+        assert 'sultats' in result
         assert result.startswith('r')
 
     def test_prefixe_multi_niveaux(self):
@@ -1298,7 +1369,6 @@ class TestMarkdownView:
     @patch('results.views.MeosTutorial')
     @patch('results.views.render')
     def test_retourne_contenu_converti(self, mock_render, MockTutorial):
-        """MarkdownView doit convertir le texte Markdown et passer content."""
         article        = MagicMock()
         article.text   = '# Titre\n\nParagraphe de test.'
         article.title  = 'Tutoriel'
@@ -1312,13 +1382,11 @@ class TestMarkdownView:
         _, template, context = mock_render.call_args[0]
         assert template == 'results/markdown_content.html'
         assert 'markdown_content' in context
-        # Le champ .content doit avoir été injecté sur l'objet
         assert hasattr(context['markdown_content'], 'content')
 
     @patch('results.views.MeosTutorial')
     @patch('results.views.render')
     def test_contenu_est_html(self, mock_render, MockTutorial):
-        """Le contenu converti doit contenir des balises HTML."""
         article       = MagicMock()
         article.text  = '# Mon titre'
         MockTutorial.objects.get.return_value = article
@@ -1327,13 +1395,11 @@ class TestMarkdownView:
         MarkdownView(rf_get(), article_id=1)
 
         _, _, context = mock_render.call_args[0]
-        # Le Markdown '# Mon titre' doit devenir une balise <h1>
         assert '<h1' in context['markdown_content'].content
 
     @patch('results.views.MeosTutorial')
     @patch('results.views.render')
     def test_table_of_contents_generee(self, mock_render, MockTutorial):
-        """L'extension toc doit produire un attribut toc sur l'objet Markdown."""
         article       = MagicMock()
         article.text  = '## Section A\n\n## Section B'
         MockTutorial.objects.get.return_value = article
@@ -1343,7 +1409,6 @@ class TestMarkdownView:
 
         _, _, context = mock_render.call_args[0]
         content_html = context['markdown_content'].content
-        # Chaque section doit générer un lien ancre
         assert 'section-a' in content_html or 'section' in content_html
 
 
@@ -1361,7 +1426,6 @@ class TestEtiquettesView:
 
     @patch('results.views.render')
     def test_status_200(self, mock_render):
-        """La vue ne doit pas lever d'exception."""
         mock_render.return_value = MagicMock(status_code=200)
         from results.views import etiquettes
         etiquettes(rf_get())
@@ -1394,11 +1458,8 @@ class TestCompetitionDetailView:
 
     def _run(self, cid=1, classes=None, teams_cls_ids=None,
              competitors_count=5, finishers_count=3, relay_count=2, relay_finishers=1):
-        """Lance competition_detail avec tous les mocks."""
         competition = make_competition(cid)
         classes     = classes or [make_cls(cid, 10), make_cls(cid, 11)]
-
-        # mock relay detection
         relay_cls_ids = teams_cls_ids if teams_cls_ids is not None else set()
 
         with patch('results.views.get_object_or_404', return_value=competition), \
@@ -1409,21 +1470,15 @@ class TestCompetitionDetailView:
 
             MockClass.objects.filter.return_value.order_by.return_value = classes
 
-            # Mopteam.objects.filter(...).values_list(...).distinct() → relay class ids
             MockTeam.objects.filter.return_value \
                 .values_list.return_value \
                 .distinct.return_value = list(relay_cls_ids)
 
-            # Pour chaque classe, les counts de competitor ou team
             comp_qs  = MagicMock()
             comp_qs.count.return_value = competitors_count
             comp_qs.filter.return_value.exclude.return_value.count.return_value = finishers_count
             MockCompetitor.objects.filter.return_value = comp_qs
 
-            team_qs  = MagicMock()
-            team_qs.count.return_value = relay_count
-            team_qs.filter.return_value.exclude.return_value.count.return_value = relay_finishers
-            # Quand c'est une classe relais
             MockTeam.objects.filter.return_value.count.return_value = relay_count
             MockTeam.objects.filter.return_value.filter.return_value.exclude.return_value.count.return_value = relay_finishers
 
@@ -1448,7 +1503,6 @@ class TestCompetitionDetailView:
         assert len(context['class_stats']) == 2
 
     def test_class_stats_champs_individuels(self):
-        """Chaque entrée doit avoir cls, total, finishers, is_relay."""
         cls1 = make_cls(1, 10)
         _, context = self._run(classes=[cls1])
         stat = context['class_stats'][0]
@@ -1458,24 +1512,20 @@ class TestCompetitionDetailView:
         assert 'is_relay'  in stat
 
     def test_classe_individuelle_marquee_false(self):
-        """Une catégorie sans équipe de relais doit avoir is_relay=False."""
         cls1 = make_cls(1, 10)
         _, context = self._run(classes=[cls1], teams_cls_ids=set())
         stat = context['class_stats'][0]
         assert stat['is_relay'] is False
 
     def test_classe_relais_marquee_true(self):
-        """Une catégorie avec des équipes de relais doit avoir is_relay=True."""
         cls1 = make_cls(1, 10)
         _, context = self._run(classes=[cls1], teams_cls_ids={10})
         stat = context['class_stats'][0]
         assert stat['is_relay'] is True
 
     def test_total_et_finishers_transmis(self):
-        """total et finishers doivent refléter les counts du mock."""
         cls1 = make_cls(1, 10)
         _, context = self._run(classes=[cls1], competitors_count=8, finishers_count=5)
         stat = context['class_stats'][0]
-        # Pour une classe individuelle (non-relay), on utilise Mopcompetitor
         assert stat['total'] == 8
         assert stat['finishers'] == 5
