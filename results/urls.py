@@ -26,5 +26,6 @@ urlpatterns = [
     path('tuto/<int:article_id>/', views.MarkdownView, name='markdown'),
     path('etiquettes/', views.etiquettes, name='etiquettes'),
     path('drivers/', views.drivers, name='drivers'),
+    path('mop/update', mop_update),
     path('mop/update/', mop_update, name='mop_update'),
 ]
