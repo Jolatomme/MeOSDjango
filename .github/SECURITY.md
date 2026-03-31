@@ -8,7 +8,7 @@ We take the security of MeOSDjango seriously. If you discover a security vulnera
 
 ### How to Report
 
-1. **Email** your vulnerability report to: security@example.com
+1. **Email** your vulnerability report
 2. **Include the following details:**
    - Description of the vulnerability
    - Steps to reproduce (if applicable)
