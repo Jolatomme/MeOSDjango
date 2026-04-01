@@ -9,7 +9,7 @@
       <ol class="breadcrumb mb-2 small">
         {% include 'results/_breadcrumb_home_comp.html' %}
         <li class="breadcrumb-item">
-          <a href="{% url 'results:class_results' competition.cid cls.id %}">{{ cls.name }}</a>
+          <a href="{% url 'results:class_results' competition.cid cls.name %}">{{ cls.name }}</a>
         </li>
         <li class="breadcrumb-item active">Lièvre / Suiveur</li>
       </ol>
