@@ -13,7 +13,10 @@ import json
 from django.test import RequestFactory
 from django.http import Http404
 
-from results.models import STAT_OK
+from results.models import (
+    STAT_OK, STAT_MP, STAT_DNF, STAT_DNS, STAT_NP, STAT_CANCEL,
+    STAT_OCC, STAT_NT, STAT_OT, STAT_DQ,
+)
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -47,9 +50,178 @@ def make_competitor(id=1, rt=6000, stat=STAT_OK, org=1, cls=10, name=None):
     return c
 
 
+def make_nf(id, stat, name, rt=-1):
+    """Construit un non-classé avec le statut et le nom donnés."""
+    c = MagicMock()
+    c.id           = id
+    c.stat         = stat
+    c.name         = name
+    c.rt           = rt
+    c.is_ok        = False
+    c.status_label = 'non-classé'
+    return c
+
+
 def rf_get(url='/'):
     """Retourne un GET request via RequestFactory."""
     return RequestFactory().get(url)
+
+
+# ─── Tests _sort_non_finishers ────────────────────────────────────────────────
+
+class TestSortNonFinishers:
+    """Tests unitaires du helper _sort_non_finishers (sans DB)."""
+
+    def _call(self, competitors):
+        from results.views import _sort_non_finishers
+        return _sort_non_finishers(competitors)
+
+    # ── Ordre des groupes ─────────────────────────────────────────────────────
+
+    def test_pm_apres_nc(self):
+        """PM (STAT_MP) doit venir après NC (STAT_OCC)."""
+        nc = make_nf(1, STAT_OCC, 'Alice')
+        pm = make_nf(2, STAT_MP, 'Bob')
+        result = self._call([pm, nc])
+        assert result[0].id == nc.id
+        assert result[1].id == pm.id
+
+    def test_abandon_apres_pm(self):
+        """Abandon (STAT_DNF) doit venir après PM (STAT_MP)."""
+        pm  = make_nf(1, STAT_MP,  'Alice')
+        dnf = make_nf(2, STAT_DNF, 'Bob')
+        result = self._call([dnf, pm])
+        assert result[0].id == pm.id
+        assert result[1].id == dnf.id
+
+    def test_dns_apres_abandon(self):
+        """Non-partant (STAT_DNS) doit venir après Abandon (STAT_DNF)."""
+        dnf = make_nf(1, STAT_DNF, 'Alice')
+        dns = make_nf(2, STAT_DNS, 'Bob')
+        result = self._call([dns, dnf])
+        assert result[0].id == dnf.id
+        assert result[1].id == dns.id
+
+    def test_np_groupe_avec_dns(self):
+        """STAT_NP et STAT_DNS sont dans le même groupe (groupe 4)."""
+        dns = make_nf(1, STAT_DNS, 'Alice')
+        np_ = make_nf(2, STAT_NP,  'Bob')
+        result = self._call([np_, dns])
+        # Même groupe → tri alpha : Alice avant Bob
+        noms = [r.name for r in result]
+        assert noms == ['Alice', 'Bob']
+
+    def test_cancel_groupe_avec_dns(self):
+        """STAT_CANCEL est dans le même groupe que DNS."""
+        dns    = make_nf(1, STAT_DNS,    'Zara')
+        cancel = make_nf(2, STAT_CANCEL, 'Alice')
+        result = self._call([dns, cancel])
+        # Même groupe → alpha : Alice avant Zara
+        assert result[0].name == 'Alice'
+        assert result[1].name == 'Zara'
+
+    def test_ordre_complet_nc_pm_dnf_dns(self):
+        """Ordre global : NC → PM → Abandon → Non-partants."""
+        dns = make_nf(1, STAT_DNS, 'DNS')
+        dnf = make_nf(2, STAT_DNF, 'DNF')
+        pm  = make_nf(3, STAT_MP,  'PM')
+        nc  = make_nf(4, STAT_OCC, 'NC')
+        result = self._call([dns, dnf, pm, nc])
+        assert [r.id for r in result] == [4, 3, 2, 1]
+
+    # ── Tri alphabétique dans chaque groupe ──────────────────────────────────
+
+    def test_alpha_dans_groupe_pm(self):
+        """Dans le groupe PM, tri alphabétique."""
+        pm1 = make_nf(1, STAT_MP, 'Zara')
+        pm2 = make_nf(2, STAT_MP, 'Alice')
+        pm3 = make_nf(3, STAT_MP, 'Martin')
+        result = self._call([pm1, pm2, pm3])
+        noms = [r.name for r in result]
+        assert noms == ['Alice', 'Martin', 'Zara']
+
+    def test_alpha_dans_groupe_dnf(self):
+        """Dans le groupe Abandon, tri alphabétique."""
+        d1 = make_nf(1, STAT_DNF, 'Zorro')
+        d2 = make_nf(2, STAT_DNF, 'Alice')
+        result = self._call([d1, d2])
+        assert result[0].name == 'Alice'
+
+    def test_alpha_dans_groupe_nc(self):
+        """Dans le groupe NC, tri alphabétique."""
+        n1 = make_nf(1, STAT_OCC, 'Zara')
+        n2 = make_nf(2, STAT_OCC, 'Alice')
+        n3 = make_nf(3, STAT_NT,  'Martin')  # NT = groupe NC aussi
+        result = self._call([n1, n2, n3])
+        noms = [r.name for r in result]
+        assert noms == ['Alice', 'Martin', 'Zara']
+
+    def test_alpha_insensible_a_la_casse(self):
+        """Le tri alphabétique est insensible à la casse."""
+        d1 = make_nf(1, STAT_DNF, 'alice')
+        d2 = make_nf(2, STAT_DNF, 'Bob')
+        d3 = make_nf(3, STAT_DNF, 'CHARLIE')
+        result = self._call([d3, d2, d1])
+        noms = [r.name for r in result]
+        assert noms == ['alice', 'Bob', 'CHARLIE']
+
+    # ── Cas limites ───────────────────────────────────────────────────────────
+
+    def test_liste_vide(self):
+        assert self._call([]) == []
+
+    def test_un_seul_element(self):
+        c = make_nf(1, STAT_DNF, 'Alice')
+        assert self._call([c]) == [c]
+
+    def test_ne_modifie_pas_liste_originale(self):
+        """L'original ne doit pas être muté."""
+        original = [make_nf(1, STAT_DNS, 'B'), make_nf(2, STAT_MP, 'A')]
+        ids_avant = [c.id for c in original]
+        self._call(original)
+        assert [c.id for c in original] == ids_avant
+
+    def test_statut_inconnu_en_dernier(self):
+        """Un statut non référencé (groupe 5) passe après tous les autres."""
+        dnf     = make_nf(1, STAT_DNF, 'Alice')
+        inconnu = make_nf(2, 99,       'Zara')  # STAT_NP = 99 → groupe 4
+        # STAT_NP est groupe 4 (DNS), donc Zara vient après Alice (DNF, groupe 3)
+        result = self._call([inconnu, dnf])
+        assert result[0].id == dnf.id
+        assert result[1].id == inconnu.id
+
+    # ── Statuts spéciaux du groupe NC ────────────────────────────────────────
+
+    def test_nt_groupe_nc(self):
+        """STAT_NT est dans le groupe NC (groupe 1)."""
+        nt = make_nf(1, STAT_NT, 'Alice')
+        pm = make_nf(2, STAT_MP, 'Bob')
+        result = self._call([pm, nt])
+        assert result[0].id == nt.id   # NT avant PM
+
+    def test_ot_groupe_nc(self):
+        """STAT_OT est dans le groupe NC (groupe 1)."""
+        ot = make_nf(1, STAT_OT, 'Alice')
+        pm = make_nf(2, STAT_MP, 'Bob')
+        result = self._call([pm, ot])
+        assert result[0].id == ot.id   # OT avant PM
+
+    def test_dq_groupe_nc(self):
+        """STAT_DQ est dans le groupe NC (groupe 1)."""
+        dq = make_nf(1, STAT_DQ, 'Alice')
+        pm = make_nf(2, STAT_MP, 'Bob')
+        result = self._call([pm, dq])
+        assert result[0].id == dq.id   # DQ avant PM
+
+    # ── Mélange groupes et alpha ──────────────────────────────────────────────
+
+    def test_mixte_meme_groupe_alpha_pas_id(self):
+        """Dans un groupe, c'est le nom (alpha) qui tranche, pas l'id."""
+        pm_z = make_nf(10, STAT_MP, 'Zara')
+        pm_a = make_nf(99, STAT_MP, 'Alice')
+        result = self._call([pm_z, pm_a])
+        assert result[0].name == 'Alice'
+        assert result[1].name == 'Zara'
 
 
 # ─── Tests _load_class_context ───────────────────────────────────────────────
@@ -331,6 +503,140 @@ class TestClassResultsView:
         assert context['next_cls'].id   == 15
         assert context['prev_cls'].name == 'H20'
         assert context['next_cls'].name == 'D21'
+
+
+# ─── Tests class_results — ordre des non-classés ──────────────────────────────
+
+class TestClassResultsNonFinisherOrdering:
+    """Vérifie que les non-classés sont triés dans le contexte :
+    NC/DSQ → PM → Abandon → Non-partants, puis alpha dans chaque groupe.
+    """
+
+    def _run(self, competitors):
+        """Lance class_results avec des mocks minimaux et retourne le contexte."""
+        comp = make_competition()
+        cls  = make_cls()
+        with patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views.get_object_or_404', side_effect=[comp, cls]), \
+             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views.get_org_map', return_value={}), \
+             patch('results.views.get_class_controls', return_value=([], {})), \
+             patch('results.views.get_radio_map', return_value={}), \
+             patch('results.views.compute_splits', return_value=[]), \
+             patch('results.views.mark_best_splits'), \
+             patch('results.views.rank_splits'), \
+             patch('results.views.render') as mock_render:
+            MockTeam.objects.filter.return_value.exists.return_value = False
+            MockComp.objects.filter.return_value = competitors
+            from results.views import class_results
+            class_results(rf_get(), cid=1, class_id=10)
+            _, _, ctx = mock_render.call_args[0]
+            return ctx
+
+    def test_classés_en_premier(self):
+        """Les coureurs classés (OK) apparaissent avant tous les non-classés."""
+        ok1 = make_competitor(1, rt=5000, stat=STAT_OK, name='Alice')
+        ok2 = make_competitor(2, rt=6000, stat=STAT_OK, name='Bob')
+        dnf = make_nf(3, STAT_DNF, 'Charlie')
+        ctx = self._run([dnf, ok1, ok2])
+        noms = [r.name for r in ctx['results']]
+        assert noms.index('Alice') < noms.index('Charlie')
+        assert noms.index('Bob')   < noms.index('Charlie')
+
+    def test_nc_avant_pm(self):
+        """STAT_OCC (NC) apparaît avant STAT_MP (PM)."""
+        pm = make_nf(1, STAT_MP,  'Alice PM')
+        nc = make_nf(2, STAT_OCC, 'Bob NC')
+        ctx = self._run([pm, nc])
+        noms = [r.name for r in ctx['results']]
+        assert noms.index('Bob NC') < noms.index('Alice PM')
+
+    def test_pm_avant_abandon(self):
+        """STAT_MP (PM) apparaît avant STAT_DNF (Abandon)."""
+        dnf = make_nf(1, STAT_DNF, 'Alice DNF')
+        pm  = make_nf(2, STAT_MP,  'Bob PM')
+        ctx = self._run([dnf, pm])
+        noms = [r.name for r in ctx['results']]
+        assert noms.index('Bob PM') < noms.index('Alice DNF')
+
+    def test_abandon_avant_dns(self):
+        """STAT_DNF (Abandon) apparaît avant STAT_DNS (Non partant)."""
+        dns = make_nf(1, STAT_DNS, 'Alice DNS')
+        dnf = make_nf(2, STAT_DNF, 'Bob DNF')
+        ctx = self._run([dns, dnf])
+        noms = [r.name for r in ctx['results']]
+        assert noms.index('Bob DNF') < noms.index('Alice DNS')
+
+    def test_ordre_complet_quatre_groupes(self):
+        """Ordre complet : NC → PM → Abandon → Non-partants."""
+        dns = make_nf(1, STAT_DNS, 'DNS')
+        dnf = make_nf(2, STAT_DNF, 'DNF')
+        pm  = make_nf(3, STAT_MP,  'PM')
+        nc  = make_nf(4, STAT_OCC, 'NC')
+        # On ajoute aussi un classé
+        ok  = make_competitor(5, rt=5000, name='OK')
+        ctx = self._run([dns, dnf, pm, nc, ok])
+        noms = [r.name for r in ctx['results']]
+        idx  = {n: noms.index(n) for n in ['OK', 'NC', 'PM', 'DNF', 'DNS']}
+        assert idx['OK']  < idx['NC']
+        assert idx['NC']  < idx['PM']
+        assert idx['PM']  < idx['DNF']
+        assert idx['DNF'] < idx['DNS']
+
+    def test_alpha_dans_groupe_pm(self):
+        """Dans le groupe PM, les coureurs sont triés alphabétiquement."""
+        pm_z = make_nf(1, STAT_MP, 'Zara')
+        pm_a = make_nf(2, STAT_MP, 'Alice')
+        pm_m = make_nf(3, STAT_MP, 'Martin')
+        ctx = self._run([pm_z, pm_a, pm_m])
+        noms = [r.name for r in ctx['results']]
+        assert noms == ['Alice', 'Martin', 'Zara']
+
+    def test_alpha_dans_groupe_dnf(self):
+        """Dans le groupe Abandon, tri alphabétique."""
+        d1 = make_nf(1, STAT_DNF, 'Zorro')
+        d2 = make_nf(2, STAT_DNF, 'Alice')
+        ctx = self._run([d1, d2])
+        noms = [r.name for r in ctx['results']]
+        assert noms[0] == 'Alice'
+        assert noms[1] == 'Zorro'
+
+    def test_alpha_dans_groupe_dns(self):
+        """Dans le groupe Non-partants, tri alphabétique (DNS + NP mélangés)."""
+        dns = make_nf(1, STAT_DNS, 'Zara DNS')
+        np_ = make_nf(2, STAT_NP,  'Alice NP')
+        ctx = self._run([dns, np_])
+        noms = [r.name for r in ctx['results']]
+        assert noms[0] == 'Alice NP'
+        assert noms[1] == 'Zara DNS'
+
+    def test_sans_non_classes_ordre_inchange(self):
+        """Sans non-classés, l'ordre des classés est préservé (par rt)."""
+        ok1 = make_competitor(1, rt=5000, name='Alice')
+        ok2 = make_competitor(2, rt=6000, name='Bob')
+        ctx = self._run([ok2, ok1])   # ORM retourne dans un ordre quelconque
+        noms = [r.name for r in ctx['results']]
+        assert noms[0] == 'Alice'  # plus rapide → 1er
+        assert noms[1] == 'Bob'
+
+    def test_seulement_non_classes(self):
+        """Avec uniquement des non-classés, le tri fonctionne quand même."""
+        dnf = make_nf(1, STAT_DNF, 'Bob')
+        dns = make_nf(2, STAT_DNS, 'Alice')
+        pm  = make_nf(3, STAT_MP,  'Charlie')
+        ctx = self._run([dnf, dns, pm])
+        noms = [r.name for r in ctx['results']]
+        # PM (groupe 2) → DNF (groupe 3) → DNS (groupe 4)
+        assert noms == ['Charlie', 'Bob', 'Alice']
+
+    def test_n_results_correct(self):
+        """Le nombre total de résultats (classés + non-classés) est correct."""
+        ok  = make_competitor(1, rt=5000, name='OK')
+        dnf = make_nf(2, STAT_DNF, 'DNF')
+        dns = make_nf(3, STAT_DNS, 'DNS')
+        ctx = self._run([ok, dnf, dns])
+        assert len(ctx['results']) == 3
 
 
 # ─── Tests competitor_detail ──────────────────────────────────────────────────

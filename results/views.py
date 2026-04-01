@@ -10,6 +10,8 @@ from .models import (
     Mopcompetition, Mopclass, Moporganization, Mopcompetitor,
     Mopteam, Mopteammember, MeosTutorial,
     format_time, STAT_OK, STATUS_LABELS,
+    STAT_NT, STAT_MP, STAT_DNF, STAT_DQ, STAT_OT,
+    STAT_OCC, STAT_DNS, STAT_CANCEL, STAT_NP,
 )
 from .services import (
     get_org_map, get_class_controls, get_controls_by_leg,
@@ -21,6 +23,26 @@ from .services import (
 )
 from .meos_checker import check_meos_file
 from .verifie_moi import generate_verifie_moi_csv
+
+
+# ─── Ordre de tri des non-classés ─────────────────────────────────────────────
+# Groupe 1 : NC / Hors compét. / No Timing / H.T. / DSQ
+# Groupe 2 : PM (poinçons manquants)
+# Groupe 3 : Abandon (DNF)
+# Groupe 4 : Non-partants (DNS, NP, Cancel)
+# Groupe 5 : tout autre statut inconnu
+
+_NON_FINISHER_ORDER = {
+    STAT_OCC:    1,   # Hors compét. (NC)
+    STAT_NT:     1,   # No Timing
+    STAT_OT:     1,   # H.T.
+    STAT_DQ:     1,   # DSQ
+    STAT_MP:     2,   # PM
+    STAT_DNF:    3,   # Abandon
+    STAT_DNS:    4,   # Non partant
+    STAT_NP:     4,   # Non participant
+    STAT_CANCEL: 4,   # Cancel
+}
 
 
 # ─── Helpers internes ─────────────────────────────────────────────────────────
@@ -50,6 +72,28 @@ def _get_adjacent_classes(cid, class_id):
     prev_cls = all_classes[current_idx - 1] if current_idx > 0 else None
     next_cls = all_classes[current_idx + 1] if current_idx < len(all_classes) - 1 else None
     return prev_cls, next_cls
+
+
+def _sort_non_finishers(non_finishers):
+    """Trie les non-classés par groupe de statut puis par ordre alphabétique.
+
+    Ordre des groupes :
+      1 – NC / Hors compét. / No Timing / H.T. / DSQ
+      2 – PM (poinçons manquants)
+      3 – Abandon (DNF)
+      4 – Non-partants (DNS, NP, Cancel)
+      5 – tout autre statut
+
+    Args:
+        non_finishers: liste de Mopcompetitor non classés.
+
+    Returns:
+        Nouvelle liste triée (l'originale n'est pas modifiée).
+    """
+    return sorted(
+        non_finishers,
+        key=lambda c: (_NON_FINISHER_ORDER.get(c.stat, 5), c.name.lower()),
+    )
 
 
 # ─── Pages statiques ──────────────────────────────────────────────────────────
@@ -189,7 +233,10 @@ def class_results(request, cid, class_id):
         c.org_obj = org_map.get(c.org)
 
     finishers, non_finishers, leader_time = rank_finishers(competitors)
-    results = finishers + non_finishers
+
+    # Tri des non-classés : NC → PM → Abandon → Non-partants, puis alpha
+    non_finishers_sorted = _sort_non_finishers(non_finishers)
+    results = finishers + non_finishers_sorted
 
     controls_seq, _ = get_class_controls(cid, class_id)
     radio_map       = get_radio_map(cid, [c.id for c in results])

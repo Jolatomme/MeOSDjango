@@ -100,7 +100,6 @@
           <th>Club</th>
           <th class="text-end">Temps</th>
           <th class="text-end d-none d-md-table-cell">Écart</th>
-          <th class="text-center">Statut</th>
           {% if has_splits %}
           <th class="text-center" style="width:2.5rem" title="Intermédiaires">
             <i class="bi bi-clock-history"></i>
@@ -132,7 +131,11 @@
             {% else %}—{% endif %}
           </td>
           <td class="text-end time-col">
-            {% if comp.is_ok %}{{ comp.rt|meos_time }}{% else %}<span class="text-muted">—</span>{% endif %}
+            {% if comp.is_ok %}
+              {{ comp.rt|meos_time }}
+            {% else %}
+              <span class="badge bg-{{ comp.stat|status_badge }}">{{ comp.stat|status_label }}</span>
+            {% endif %}
           </td>
           <td class="text-end behind-col d-none d-md-table-cell">
             {% if comp.time_behind is not None and comp.time_behind > 0 %}
@@ -140,9 +143,6 @@
             {% elif comp.time_behind == 0 %}
               <span class="text-success fw-bold">◆</span>
             {% else %}—{% endif %}
-          </td>
-          <td class="text-center">
-            <span class="badge bg-{{ comp.stat|status_badge }}">{{ comp.stat|status_label }}</span>
           </td>
           {% if has_splits %}
           <td class="text-center">
@@ -165,7 +165,7 @@
             class="splits-row d-none result-row {% if not comp.is_ok %}non-finisher{% endif %}"
             data-name="{{ comp.name|lower }}"
             data-org="{% if comp.org_obj %}{{ comp.org_obj.name|lower }}{% endif %}">
-          <td colspan="{% if has_splits %}7{% else %}6{% endif %}" class="splits-td">
+          <td colspan="{% if has_splits %}6{% else %}5{% endif %}" class="splits-td">
             <div class="splits-detail">
               <div class="splits-grid">
                 <div class="split-cell split-start">
@@ -202,7 +202,7 @@
 
         {% empty %}
         <tr>
-          <td colspan="{% if has_splits %}7{% else %}6{% endif %}" class="text-center text-muted p-4">
+          <td colspan="{% if has_splits %}6{% else %}5{% endif %}" class="text-center text-muted p-4">
             <i class="bi bi-inbox me-2"></i>Aucun résultat pour cette catégorie.
           </td>
         </tr>
