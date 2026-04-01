@@ -10,7 +10,7 @@
         {% include 'results/_breadcrumb_home_comp.html' %}
         {% if cls %}
         <li class="breadcrumb-item">
-          <a href="{% url 'results:class_results' competition.cid cls.id %}">{{ cls.name }}</a>
+          <a href="{% url 'results:class_results' competition.cid cls.name %}">{{ cls.name }}</a>
         </li>
         {% endif %}
         <li class="breadcrumb-item active">{{ competitor.name }}</li>
@@ -32,7 +32,7 @@
         <dl class="row mb-0 small">
           <dt class="col-5 text-muted">Catégorie</dt>
           <dd class="col-7">
-            {% if cls %}<a href="{% url 'results:class_results' competition.cid cls.id %}">{{ cls.name }}</a>
+            {% if cls %}<a href="{% url 'results:class_results' competition.cid cls.name %}">{{ cls.name }}</a>
             {% else %}—{% endif %}
           </dd>
 

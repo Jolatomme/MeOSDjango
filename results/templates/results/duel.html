@@ -13,7 +13,7 @@
           <a href="{% url 'results:competition_detail' competition.cid %}">{{ competition.name }}</a>
         </li>
         <li class="breadcrumb-item">
-          <a href="{% url 'results:class_results' competition.cid cls.id %}">{{ cls.name }}</a>
+          <a href="{% url 'results:class_results' competition.cid cls.name %}">{{ cls.name }}</a>
         </li>
         <li class="breadcrumb-item active">Duel de coureurs</li>
       </ol>

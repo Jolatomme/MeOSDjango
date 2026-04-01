@@ -47,9 +47,17 @@ _NON_FINISHER_ORDER = {
 
 # ─── Helpers internes ─────────────────────────────────────────────────────────
 
+def _resolve_class_id(cid, class_id):
+    if isinstance(class_id, str) and not class_id.isdigit():
+        cls = get_object_or_404(Mopclass, cid=cid, name=class_id)
+        return cls.id
+    return int(class_id) if isinstance(class_id, str) else class_id
+
+
 def _load_class_context(cid, class_id):
     competition = get_object_or_404(Mopcompetition, cid=cid)
-    cls         = get_object_or_404(Mopclass, cid=cid, id=class_id)
+    class_id = _resolve_class_id(cid, class_id)
+    cls = get_object_or_404(Mopclass, cid=cid, id=class_id)
     competitors = list(Mopcompetitor.objects.filter(cid=cid, cls=class_id))
     return competition, cls, competitors
 
@@ -220,13 +228,14 @@ def competition_detail(request, cid):
 # ─── Classement individuel ────────────────────────────────────────────────────
 
 def class_results(request, cid, class_id):
-    if Mopteam.objects.filter(cid=cid, cls=class_id).exists():
+    resolved_class_id = _resolve_class_id(cid, class_id)
+    if Mopteam.objects.filter(cid=cid, cls=resolved_class_id).exists():
         return redirect('results:relay_results', cid=cid, class_id=class_id)
 
-    competition, cls, competitors = _load_class_context(cid, class_id)
+    competition, cls, competitors = _load_class_context(cid, resolved_class_id)
 
     # Navigation précédent / suivant
-    prev_cls, next_cls = _get_adjacent_classes(cid, class_id)
+    prev_cls, next_cls = _get_adjacent_classes(cid, cls.id)
 
     org_map = get_org_map(cid, as_objects=True)
     for c in competitors:
@@ -238,7 +247,7 @@ def class_results(request, cid, class_id):
     non_finishers_sorted = _sort_non_finishers(non_finishers)
     results = finishers + non_finishers_sorted
 
-    controls_seq, _ = get_class_controls(cid, class_id)
+    controls_seq, _ = get_class_controls(cid, cls.id)
     radio_map       = get_radio_map(cid, [c.id for c in results])
 
     for c in results:
@@ -359,6 +368,7 @@ def statistics(request, cid):
 # ─── API JSON ─────────────────────────────────────────────────────────────────
 
 def api_class_results(request, cid, class_id):
+    class_id = _resolve_class_id(cid, class_id)
     competitors     = list(Mopcompetitor.objects.filter(cid=cid, cls=class_id))
     org_map         = get_org_map(cid)
     finishers, _, _ = rank_finishers(competitors)
@@ -390,7 +400,7 @@ def superman_analysis(request, cid, class_id):
         })
 
     org_map         = get_org_map(cid)
-    controls_seq, _ = get_class_controls(cid, class_id)
+    controls_seq, _ = get_class_controls(cid, cls.id)
     controls_labels = [c['ctrl_name'] for c in controls_seq]
     radio_map       = get_radio_map(cid, [c.id for c in finishers])
 
@@ -474,7 +484,7 @@ def superman_analysis(request, cid, class_id):
     })
 
 
-# ─── Indice de performance ────────────────────────────────────────────────────
+# ─── Indice de performance ───────────────────────────────────────────────────────────────
 
 def performance_analysis(request, cid, class_id):
     competition, cls, competitors = _load_class_context(cid, class_id)
@@ -487,7 +497,7 @@ def performance_analysis(request, cid, class_id):
         })
 
     org_map         = get_org_map(cid)
-    controls_seq, _ = get_class_controls(cid, class_id)
+    controls_seq, _ = get_class_controls(cid, cls.id)
     controls_labels = [c['ctrl_name'] for c in controls_seq]
     radio_map       = get_radio_map(cid, [c.id for c in finishers])
 
@@ -549,7 +559,7 @@ def regularity_analysis(request, cid, class_id):
         })
 
     org_map         = get_org_map(cid)
-    controls_seq, _ = get_class_controls(cid, class_id)
+    controls_seq, _ = get_class_controls(cid, cls.id)
     controls_labels = [c['ctrl_name'] for c in controls_seq]
     radio_map       = get_radio_map(cid, [c.id for c in finishers])
 
@@ -603,7 +613,7 @@ def grouping_analysis(request, cid, class_id):
         })
 
     org_map         = get_org_map(cid)
-    controls_seq, _ = get_class_controls(cid, class_id)
+    controls_seq, _ = get_class_controls(cid, cls.id)
     controls_labels = [c['ctrl_name'] for c in controls_seq]
     radio_map       = get_radio_map(cid, [c.id for c in runners_with_start])
 
@@ -649,7 +659,7 @@ def grouping_index_analysis(request, cid, class_id):
         t1, t2 = 7, 20
 
     org_map         = get_org_map(cid)
-    controls_seq, _ = get_class_controls(cid, class_id)
+    controls_seq, _ = get_class_controls(cid, cls.id)
     radio_map       = get_radio_map(cid, [c.id for c in runners])
 
     finishers, _, _ = rank_finishers(competitors)
@@ -694,10 +704,11 @@ def grouping_index_analysis(request, cid, class_id):
 # ─── Duel ─────────────────────────────────────────────────────────────────────
 
 def duel_analysis(request, cid, class_id):
-    if Mopteam.objects.filter(cid=cid, cls=class_id).exists():
+    resolved_class_id = _resolve_class_id(cid, class_id)
+    if Mopteam.objects.filter(cid=cid, cls=resolved_class_id).exists():
         return redirect('results:relay_results', cid=cid, class_id=class_id)
 
-    competition, cls, competitors = _load_class_context(cid, class_id)
+    competition, cls, competitors = _load_class_context(cid, resolved_class_id)
     finishers, non_finishers, _   = rank_finishers(competitors)
     all_results = finishers + non_finishers
 
@@ -708,7 +719,7 @@ def duel_analysis(request, cid, class_id):
         })
 
     org_map         = get_org_map(cid)
-    controls_seq, _ = get_class_controls(cid, class_id)
+    controls_seq, _ = get_class_controls(cid, cls.id)
     radio_map       = get_radio_map(cid, [c.id for c in all_results])
 
     runners_data = []
@@ -740,6 +751,7 @@ def duel_analysis(request, cid, class_id):
 
 def relay_results(request, cid, class_id):
     competition = get_object_or_404(Mopcompetition, cid=cid)
+    class_id = _resolve_class_id(cid, class_id)
     cls         = get_object_or_404(Mopclass, cid=cid, id=class_id)
 
     teams_qs = list(Mopteam.objects.filter(cid=cid, cls=class_id))

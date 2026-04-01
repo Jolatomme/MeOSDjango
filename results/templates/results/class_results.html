@@ -217,7 +217,7 @@
 
   {# Catégorie précédente #}
   {% if prev_cls %}
-    <a href="{% url 'results:class_results' competition.cid prev_cls.id %}"
+    <a href="{% url 'results:class_results' competition.cid prev_cls.name %}"
        class="btn btn-outline-success"
        title="Catégorie précédente : {{ prev_cls.name }}">
       <i class="bi bi-chevron-left me-1"></i>{{ prev_cls.name }}
@@ -235,7 +235,7 @@
 
   {# Catégorie suivante #}
   {% if next_cls %}
-    <a href="{% url 'results:class_results' competition.cid next_cls.id %}"
+    <a href="{% url 'results:class_results' competition.cid next_cls.name %}"
        class="btn btn-outline-success"
        title="Catégorie suivante : {{ next_cls.name }}">
       {{ next_cls.name }}<i class="bi bi-chevron-right ms-1"></i>

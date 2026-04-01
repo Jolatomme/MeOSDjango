@@ -9,49 +9,49 @@
   <div class="container">
     <nav class="analysis-tabs" aria-label="Navigation analyses">
 
-      <a href="{% url 'results:class_results' competition.cid cls.id %}"
+      <a href="{% url 'results:class_results' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'results' %}active{% endif %}"
          title="Résultats">
         <i class="bi bi-list-ol"></i>
         <span>Résultats</span>
       </a>
 
-      <a href="{% url 'results:superman' competition.cid cls.id %}"
+      <a href="{% url 'results:superman' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'superman' %}active{% endif %}"
          title="Analyse Superman">
         <i class="bi bi-lightning-charge-fill"></i>
         <span>Superman</span>
       </a>
 
-      <a href="{% url 'results:performance' competition.cid cls.id %}"
+      <a href="{% url 'results:performance' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'performance' %}active{% endif %}"
          title="Indice de performance">
         <i class="bi bi-speedometer2"></i>
         <span>Indice perf.</span>
       </a>
 
-      <a href="{% url 'results:regularity' competition.cid cls.id %}"
+      <a href="{% url 'results:regularity' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'regularity' %}active{% endif %}"
          title="Régularité">
         <i class="bi bi-activity"></i>
         <span>Régularité</span>
       </a>
 
-      <a href="{% url 'results:grouping' competition.cid cls.id %}"
+      <a href="{% url 'results:grouping' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'grouping' %}active{% endif %}"
          title="Regroupement des coureurs">
         <i class="bi bi-diagram-3"></i>
         <span>Regroupement</span>
       </a>
 
-      <a href="{% url 'results:grouping_index' competition.cid cls.id %}"
+      <a href="{% url 'results:grouping_index' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'grouping_index' %}active{% endif %}"
          title="Indice lièvre / suiveur">
         <i class="bi bi-collection"></i>
         <span>Lièvre / Suiveur</span>
       </a>
 
-      <a href="{% url 'results:duel' competition.cid cls.id %}"
+      <a href="{% url 'results:duel' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'duel' %}active{% endif %}"
          title="Duel de coureurs">
         <i class="bi bi-people"></i>
