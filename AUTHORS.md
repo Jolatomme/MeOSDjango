@@ -6,7 +6,7 @@ MeOSDjango is a Django-based application aimed at displaying Orienteering races 
 
 ## Contributors
 
-- Contributor 1 - [GitHub Profile Link](https://github.com/Jolatomme)
+- Jolatomme - [GitHub Profile Link](https://github.com/Jolatomme)
 - Contributor 2 - [GitHub Profile Link]
 - Contributor 3 - [GitHub Profile Link]
 
