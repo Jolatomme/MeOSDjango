@@ -100,11 +100,6 @@
           <th>Club</th>
           <th class="text-end">Temps</th>
           <th class="text-end d-none d-md-table-cell">Écart</th>
-          {% if has_splits %}
-          <th class="text-center" style="width:2.5rem" title="Intermédiaires">
-            <i class="bi bi-clock-history"></i>
-          </th>
-          {% endif %}
         </tr>
       </thead>
       <tbody>
@@ -130,6 +125,25 @@
                  class="text-muted text-decoration-none">{{ comp.org_obj.name }}</a>
             {% else %}—{% endif %}
           </td>
+          {% if has_splits and comp.splits %}
+          <td class="text-end time-col time-col-splits"
+              onclick="toggleSplits('{{ comp.id }}', this.querySelector('.split-toggle'))"
+              title="Afficher les intermédiaires">
+            {% if comp.is_ok %}
+              <span class="time-with-toggle">
+                {{ comp.rt|meos_time }}
+                <button class="btn btn-sm btn-link p-0 ms-1 split-toggle"
+                        data-target="splits-{{ comp.id }}"
+                        title="Afficher les intermédiaires"
+                        onclick="event.stopPropagation(); toggleSplits('{{ comp.id }}', this)">
+                  <i class="bi bi-chevron-down text-primary" style="font-size:.75rem"></i>
+                </button>
+              </span>
+            {% else %}
+              <span class="badge bg-{{ comp.stat|status_badge }}">{{ comp.stat|status_label }}</span>
+            {% endif %}
+          </td>
+          {% else %}
           <td class="text-end time-col">
             {% if comp.is_ok %}
               {{ comp.rt|meos_time }}
@@ -137,6 +151,7 @@
               <span class="badge bg-{{ comp.stat|status_badge }}">{{ comp.stat|status_label }}</span>
             {% endif %}
           </td>
+          {% endif %}
           <td class="text-end behind-col d-none d-md-table-cell">
             {% if comp.time_behind is not None and comp.time_behind > 0 %}
               +{{ comp.time_behind|meos_time }}
@@ -144,20 +159,6 @@
               <span class="text-success fw-bold">◆</span>
             {% else %}—{% endif %}
           </td>
-          {% if has_splits %}
-          <td class="text-center">
-            {% if comp.splits %}
-            <button class="btn btn-sm btn-link p-0 split-toggle"
-                    data-target="splits-{{ comp.id }}"
-                    title="Afficher les intermédiaires"
-                    onclick="toggleSplits('{{ comp.id }}', this)">
-              <i class="bi bi-chevron-down text-primary"></i>
-            </button>
-            {% else %}
-            <span class="text-muted small">—</span>
-            {% endif %}
-          </td>
-          {% endif %}
         </tr>
 
         {% if has_splits and comp.splits %}
@@ -165,7 +166,7 @@
             class="splits-row d-none result-row {% if not comp.is_ok %}non-finisher{% endif %}"
             data-name="{{ comp.name|lower }}"
             data-org="{% if comp.org_obj %}{{ comp.org_obj.name|lower }}{% endif %}">
-          <td colspan="{% if has_splits %}6{% else %}5{% endif %}" class="splits-td">
+          <td colspan="5" class="splits-td">
             <div class="splits-detail">
               <div class="splits-grid">
                 <div class="split-cell split-start">
@@ -202,7 +203,7 @@
 
         {% empty %}
         <tr>
-          <td colspan="{% if has_splits %}6{% else %}5{% endif %}" class="text-center text-muted p-4">
+          <td colspan="5" class="text-center text-muted p-4">
             <i class="bi bi-inbox me-2"></i>Aucun résultat pour cette catégorie.
           </td>
         </tr>
@@ -266,8 +267,23 @@
   .split-error-flag { background: #fde8e8 !important; border-color: #f5a0a0 !important; }
   .split-error-flag .split-ctrl-name { color: #c0392b; }
   .split-error { font-size: .68rem; color: #c0392b; font-weight: 700; margin-top: .1rem; text-align: center; }
-  /* Bouton chevron */
-  .split-toggle { border: none; background: transparent; }
+
+  /* Cellule temps cliquable (quand des intermédiaires existent) */
+  .time-col-splits {
+    cursor: pointer;
+    user-select: none;
+  }
+  .time-col-splits:hover { background: #f0f7f2; }
+
+  /* Cellule temps + bouton chevron inline */
+  .time-with-toggle {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  /* Bouton chevron inline (dans la cellule du temps) */
+  .split-toggle { border: none; background: transparent; vertical-align: middle; }
   .split-toggle .bi { transition: transform .2s; display: inline-block; }
   .split-toggle.open .bi { transform: rotate(180deg); }
 </style>
@@ -438,8 +454,6 @@
     const chevron = document.getElementById('errorChartChevron');
     body.style.display      = errorChartOpen ? '' : 'none';
     chevron.style.transform = errorChartOpen ? 'rotate(180deg)' : '';
-    // Laisser le navigateur recalculer le layout avant que Chart.js
-    // mesure les dimensions du canvas (sinon canvas = 0×0 px).
     if (errorChartOpen) requestAnimationFrame(() => requestAnimationFrame(renderErrorChart));
   }
 
