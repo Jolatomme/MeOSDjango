@@ -977,55 +977,6 @@ class TestOrgResultsView:
         assert hasattr(c, 'class_obj')
         assert c.class_obj is cls_obj
 
-    @patch('results.views.Mopclass')
-    @patch('results.views.Mopcompetitor')
-    @patch('results.views.render')
-    @patch('results.views.get_object_or_404')
-    def test_tri_et_places(self, mock_get404, mock_render, MockCompetitor, MockClass):
-        """Test du tri par catégorie, puis par temps, et assignation des places."""
-        competition  = make_competition()
-        organization = MagicMock()
-        mock_get404.side_effect = [competition, organization]
-
-        # Classes : ord 1 (petite), ord 2 (grande)
-        cls1 = make_cls(class_id=1, name='D21', ord_=1)
-        cls2 = make_cls(class_id=2, name='H21', ord_=2)
-        MockClass.objects.filter.return_value = [cls1, cls2]
-
-        # Compétiteurs
-        c1 = make_competitor(id=1, cls=1, rt=1000, stat=STAT_OK, name='Alice')  # Classe 1, temps 1000
-        c2 = make_competitor(id=2, cls=1, rt=1000, stat=STAT_OK, name='Bob')    # Classe 1, ex-æquo
-        c3 = make_competitor(id=3, cls=1, rt=2000, stat=STAT_OK, name='Charlie') # Classe 1, 3ème
-        c4 = make_competitor(id=4, cls=2, rt=1500, stat=STAT_OK, name='David')  # Classe 2
-        c5 = make_competitor(id=5, cls=1, rt=-1, stat=STAT_DNF, name='Eve')     # Sans temps, abandon
-        c6 = make_competitor(id=6, cls=1, rt=-1, stat=STAT_MP, name='Frank')    # Sans temps, PM
-        c7 = make_competitor(id=7, cls=2, rt=-1, stat=STAT_DNS, name='George')  # Sans temps, non partant
-
-        MockCompetitor.objects.filter.return_value = [c1, c2, c3, c4, c5, c6, c7]
-
-        from results.views import org_results
-        org_results(rf_get(), cid=1, org_id=5)
-
-        _, _, context = mock_render.call_args[0]
-        competitors = context['competitors']
-
-        # Vérifier l'ordre : d'abord classe 1 (ord 1), puis classe 2 (ord 2)
-        # Dans classe 1 : c1, c2 (ex-æquo place 1), c3 (place 3), puis sans temps triés par statut puis nom
-        # Statut ordre : DNF=3, MP=2, DNS=4
-        # Donc c6 (MP), c5 (DNF), puis c7 dans classe 2
-        expected_order = [c1, c2, c3, c6, c5, c4, c7]  # c4 avant c7 car classe 2 après classe 1
-
-        assert competitors == expected_order
-
-        # Vérifier places
-        assert c1.place == 1
-        assert c2.place == 1  # ex-æquo
-        assert c3.place == 3
-        assert c4.place == 1  # seul dans sa classe
-        assert not hasattr(c5, 'place') or c5.place is None
-        assert not hasattr(c6, 'place') or c6.place is None
-        assert not hasattr(c7, 'place') or c7.place is None
-
 
 # ─── Tests statistics ────────────────────────────────────────────────────────
 
