@@ -25,15 +25,18 @@
     <table class="results-table">
       <thead>
         <tr>
+          <th class="text-center">Place</th>
           <th>Concurrent</th>
           <th>Catégorie</th>
           <th class="text-end">Temps</th>
-          <th class="text-center">Statut</th>
         </tr>
       </thead>
       <tbody>
         {% for comp in competitors %}
         <tr>
+          <td class="text-center">
+            {% if comp.place %}{{ comp.place }}{% else %}<span class="badge bg-{{ comp.stat|status_badge }}">{{ comp.stat|status_label }}</span>{% endif %}
+          </td>
           <td class="runner-name">
             <a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name }}</a>
           </td>
@@ -45,9 +48,6 @@
           </td>
           <td class="text-end time-col">
             {% if comp.is_ok %}{{ comp.rt|meos_time }}{% else %}<span class="text-muted">—</span>{% endif %}
-          </td>
-          <td class="text-center">
-            <span class="badge bg-{{ comp.stat|status_badge }}">{{ comp.stat|status_label }}</span>
           </td>
         </tr>
         {% empty %}
