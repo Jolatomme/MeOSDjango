@@ -322,18 +322,63 @@ def competitor_detail(request, cid, competitor_id):
 # ─── Résultats par organisation ───────────────────────────────────────────────
 
 def org_results(request, cid, org_id):
+    from collections import defaultdict
+    from .models import STAT_UNKNOWN, STAT_MP, STAT_DNF, STAT_DNS
+
     competition  = get_object_or_404(Mopcompetition, cid=cid)
     organization = get_object_or_404(Moporganization, cid=cid, id=org_id)
 
-    competitors = Mopcompetitor.objects.filter(cid=cid, org=org_id).order_by('cls', 'rt')
+    competitors = Mopcompetitor.objects.filter(cid=cid, org=org_id)
     class_map   = {c.id: c for c in Mopclass.objects.filter(cid=cid)}
     for c in competitors:
         c.class_obj = class_map.get(c.cls)
 
+    # Grouper par classe
+    by_class = defaultdict(list)
+    for comp in competitors:
+        by_class[comp.cls].append(comp)
+
+    # Trier les classes par ord ascendant
+    classes = sorted(class_map.values(), key=lambda c: c.ord)
+
+    # Ordre des statuts pour ceux sans temps
+    status_order = {
+        STAT_UNKNOWN: 1,  # NC
+        STAT_MP: 2,       # PM
+        STAT_DNF: 3,      # Abandons
+        STAT_DNS: 4,      # Non partants
+    }
+
+    sorted_competitors = []
+    for cls in classes:
+        comps = by_class[cls.id]
+        with_time = [c for c in comps if c.is_ok]
+        without_time = [c for c in comps if not c.is_ok]
+
+        # Trier with_time par rt asc
+        with_time.sort(key=lambda c: c.rt)
+
+        # Assigner places
+        place = 1
+        i = 0
+        while i < len(with_time):
+            current_rt = with_time[i].rt
+            start = i
+            while i < len(with_time) and with_time[i].rt == current_rt:
+                with_time[i].place = place
+                i += 1
+            place += (i - start)
+
+        # Trier without_time par status_order puis nom
+        without_time.sort(key=lambda c: (status_order.get(c.stat, 99), c.name))
+
+        # Ajouter à la liste
+        sorted_competitors.extend(with_time + without_time)
+
     return render(request, 'results/org_results.html', {
         'competition':  competition,
         'organization': organization,
-        'competitors':  competitors,
+        'competitors':  sorted_competitors,
     })
 
 
