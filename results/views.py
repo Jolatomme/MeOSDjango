@@ -63,16 +63,7 @@ def _load_class_context(cid, class_id):
 
 
 def _get_adjacent_classes(cid, class_id):
-    """Retourne (prev_cls, next_cls) dans l'ordre (ord, name) de la compétition.
-
-    Args:
-        cid:      identifiant de la compétition.
-        class_id: identifiant de la catégorie courante.
-
-    Returns:
-        Tuple (prev_cls, next_cls) où chaque élément est un objet Mopclass
-        ou None si la catégorie est la première / dernière.
-    """
+    """Retourne (prev_cls, next_cls) dans l'ordre (ord, name) de la compétition."""
     all_classes = list(Mopclass.objects.filter(cid=cid).order_by('ord', 'name'))
     current_idx = next((i for i, c in enumerate(all_classes) if c.id == class_id), None)
     if current_idx is None:
@@ -151,13 +142,7 @@ def meos_checker_view(request):
 
 
 def verifie_moi_view(request):
-    """Génère la liste de départ CSV pour l'application Android O Checklist (Vérifie moi).
-
-    Sur POST avec un fichier valide : affiche la prévisualisation et injecte
-    le contenu CSV en JSON pour que le JS puisse proposer le téléchargement.
-    Sur POST avec un fichier invalide : affiche le message d'erreur.
-    Sur GET : affiche le formulaire vide.
-    """
+    """Génère la liste de départ CSV pour l'application Android O Checklist."""
     parse_error      = None
     result           = None
     csv_content_json = None
@@ -168,7 +153,6 @@ def verifie_moi_view(request):
             xml_bytes        = request.FILES['meosfile'].read()
             result           = generate_verifie_moi_csv(xml_bytes)
             csv_content_json = json.dumps(result.csv_content)
-            # Nom de fichier : nom de la compétition, caractères invalides nettoyés
             safe_name = re.sub(r'[^\w\-\.\s]', '_', result.competition_name).strip() or 'verifie_moi'
             filename_json = json.dumps(safe_name + '.csv')
         except ValueError as exc:
@@ -234,7 +218,6 @@ def class_results(request, cid, class_id):
 
     competition, cls, competitors = _load_class_context(cid, resolved_class_id)
 
-    # Navigation précédent / suivant
     prev_cls, next_cls = _get_adjacent_classes(cid, cls.id)
 
     org_map = get_org_map(cid, as_objects=True)
@@ -243,7 +226,6 @@ def class_results(request, cid, class_id):
 
     finishers, non_finishers, leader_time = rank_finishers(competitors)
 
-    # Tri des non-classés : NC → PM → Abandon → Non-partants, puis alpha
     non_finishers_sorted = _sort_non_finishers(non_finishers)
     results = finishers + non_finishers_sorted
 
@@ -325,15 +307,44 @@ def org_results(request, cid, org_id):
     competition  = get_object_or_404(Mopcompetition, cid=cid)
     organization = get_object_or_404(Moporganization, cid=cid, id=org_id)
 
-    competitors = Mopcompetitor.objects.filter(cid=cid, org=org_id).order_by('cls', 'rt')
-    class_map   = {c.id: c for c in Mopclass.objects.filter(cid=cid)}
-    for c in competitors:
+    # Récupérer les coureurs du club
+    org_competitors = list(Mopcompetitor.objects.filter(cid=cid, org=org_id))
+
+    # Associer l'objet catégorie à chaque coureur
+    class_map = {c.id: c for c in Mopclass.objects.filter(cid=cid)}
+    for c in org_competitors:
         c.class_obj = class_map.get(c.cls)
+
+    # Calculer le classement de chaque coureur dans SA catégorie (tous compétiteurs,
+    # pas seulement ceux du club)
+    class_ids = {c.cls for c in org_competitors}
+    class_rank_maps = {}   # {cls_id: {competitor_id: rank}}
+    for cls_id in class_ids:
+        all_in_class = list(Mopcompetitor.objects.filter(cid=cid, cls=cls_id))
+        finishers_in_class, _, _ = rank_finishers(all_in_class)
+        # rank_finishers assigne .rank sur chaque objet finisher
+        class_rank_maps[cls_id] = {c.id: c.rank for c in finishers_in_class}
+
+    for c in org_competitors:
+        c.cat_rank = class_rank_maps.get(c.cls, {}).get(c.id)  # None si non classé
+
+    # ── Classés : triés par rang, puis pour les ex-æquo par ord/nom de catégorie ──
+    finishers = sorted(
+        [c for c in org_competitors if c.is_ok],
+        key=lambda c: (
+            c.cat_rank if c.cat_rank is not None else 9999,
+            c.class_obj.ord  if c.class_obj else 9999,
+            c.class_obj.name if c.class_obj else '',
+        ),
+    )
+
+    # ── Non-classés : NC → PM → Abandon → Non-partants, puis alpha ──
+    non_finishers = _sort_non_finishers([c for c in org_competitors if not c.is_ok])
 
     return render(request, 'results/org_results.html', {
         'competition':  competition,
         'organization': organization,
-        'competitors':  competitors,
+        'competitors':  finishers + non_finishers,
     })
 
 
@@ -484,7 +495,7 @@ def superman_analysis(request, cid, class_id):
     })
 
 
-# ─── Indice de performance ───────────────────────────────────────────────────────────────
+# ─── Indice de performance ────────────────────────────────────────────────────
 
 def performance_analysis(request, cid, class_id):
     competition, cls, competitors = _load_class_context(cid, class_id)

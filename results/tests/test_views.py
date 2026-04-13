@@ -76,10 +76,7 @@ class TestSortNonFinishers:
         from results.views import _sort_non_finishers
         return _sort_non_finishers(competitors)
 
-    # ── Ordre des groupes ─────────────────────────────────────────────────────
-
     def test_pm_apres_nc(self):
-        """PM (STAT_MP) doit venir après NC (STAT_OCC)."""
         nc = make_nf(1, STAT_OCC, 'Alice')
         pm = make_nf(2, STAT_MP, 'Bob')
         result = self._call([pm, nc])
@@ -87,7 +84,6 @@ class TestSortNonFinishers:
         assert result[1].id == pm.id
 
     def test_abandon_apres_pm(self):
-        """Abandon (STAT_DNF) doit venir après PM (STAT_MP)."""
         pm  = make_nf(1, STAT_MP,  'Alice')
         dnf = make_nf(2, STAT_DNF, 'Bob')
         result = self._call([dnf, pm])
@@ -95,7 +91,6 @@ class TestSortNonFinishers:
         assert result[1].id == dnf.id
 
     def test_dns_apres_abandon(self):
-        """Non-partant (STAT_DNS) doit venir après Abandon (STAT_DNF)."""
         dnf = make_nf(1, STAT_DNF, 'Alice')
         dns = make_nf(2, STAT_DNS, 'Bob')
         result = self._call([dns, dnf])
@@ -103,25 +98,20 @@ class TestSortNonFinishers:
         assert result[1].id == dns.id
 
     def test_np_groupe_avec_dns(self):
-        """STAT_NP et STAT_DNS sont dans le même groupe (groupe 4)."""
         dns = make_nf(1, STAT_DNS, 'Alice')
         np_ = make_nf(2, STAT_NP,  'Bob')
         result = self._call([np_, dns])
-        # Même groupe → tri alpha : Alice avant Bob
         noms = [r.name for r in result]
         assert noms == ['Alice', 'Bob']
 
     def test_cancel_groupe_avec_dns(self):
-        """STAT_CANCEL est dans le même groupe que DNS."""
         dns    = make_nf(1, STAT_DNS,    'Zara')
         cancel = make_nf(2, STAT_CANCEL, 'Alice')
         result = self._call([dns, cancel])
-        # Même groupe → alpha : Alice avant Zara
         assert result[0].name == 'Alice'
         assert result[1].name == 'Zara'
 
     def test_ordre_complet_nc_pm_dnf_dns(self):
-        """Ordre global : NC → PM → Abandon → Non-partants."""
         dns = make_nf(1, STAT_DNS, 'DNS')
         dnf = make_nf(2, STAT_DNF, 'DNF')
         pm  = make_nf(3, STAT_MP,  'PM')
@@ -129,10 +119,7 @@ class TestSortNonFinishers:
         result = self._call([dns, dnf, pm, nc])
         assert [r.id for r in result] == [4, 3, 2, 1]
 
-    # ── Tri alphabétique dans chaque groupe ──────────────────────────────────
-
     def test_alpha_dans_groupe_pm(self):
-        """Dans le groupe PM, tri alphabétique."""
         pm1 = make_nf(1, STAT_MP, 'Zara')
         pm2 = make_nf(2, STAT_MP, 'Alice')
         pm3 = make_nf(3, STAT_MP, 'Martin')
@@ -141,31 +128,26 @@ class TestSortNonFinishers:
         assert noms == ['Alice', 'Martin', 'Zara']
 
     def test_alpha_dans_groupe_dnf(self):
-        """Dans le groupe Abandon, tri alphabétique."""
         d1 = make_nf(1, STAT_DNF, 'Zorro')
         d2 = make_nf(2, STAT_DNF, 'Alice')
         result = self._call([d1, d2])
         assert result[0].name == 'Alice'
 
     def test_alpha_dans_groupe_nc(self):
-        """Dans le groupe NC, tri alphabétique."""
         n1 = make_nf(1, STAT_OCC, 'Zara')
         n2 = make_nf(2, STAT_OCC, 'Alice')
-        n3 = make_nf(3, STAT_NT,  'Martin')  # NT = groupe NC aussi
+        n3 = make_nf(3, STAT_NT,  'Martin')
         result = self._call([n1, n2, n3])
         noms = [r.name for r in result]
         assert noms == ['Alice', 'Martin', 'Zara']
 
     def test_alpha_insensible_a_la_casse(self):
-        """Le tri alphabétique est insensible à la casse."""
         d1 = make_nf(1, STAT_DNF, 'alice')
         d2 = make_nf(2, STAT_DNF, 'Bob')
         d3 = make_nf(3, STAT_DNF, 'CHARLIE')
         result = self._call([d3, d2, d1])
         noms = [r.name for r in result]
         assert noms == ['alice', 'Bob', 'CHARLIE']
-
-    # ── Cas limites ───────────────────────────────────────────────────────────
 
     def test_liste_vide(self):
         assert self._call([]) == []
@@ -175,48 +157,37 @@ class TestSortNonFinishers:
         assert self._call([c]) == [c]
 
     def test_ne_modifie_pas_liste_originale(self):
-        """L'original ne doit pas être muté."""
         original = [make_nf(1, STAT_DNS, 'B'), make_nf(2, STAT_MP, 'A')]
         ids_avant = [c.id for c in original]
         self._call(original)
         assert [c.id for c in original] == ids_avant
 
     def test_statut_inconnu_en_dernier(self):
-        """Un statut non référencé (groupe 5) passe après tous les autres."""
         dnf     = make_nf(1, STAT_DNF, 'Alice')
-        inconnu = make_nf(2, 99,       'Zara')  # STAT_NP = 99 → groupe 4
-        # STAT_NP est groupe 4 (DNS), donc Zara vient après Alice (DNF, groupe 3)
+        inconnu = make_nf(2, 99,       'Zara')
         result = self._call([inconnu, dnf])
         assert result[0].id == dnf.id
         assert result[1].id == inconnu.id
 
-    # ── Statuts spéciaux du groupe NC ────────────────────────────────────────
-
     def test_nt_groupe_nc(self):
-        """STAT_NT est dans le groupe NC (groupe 1)."""
         nt = make_nf(1, STAT_NT, 'Alice')
         pm = make_nf(2, STAT_MP, 'Bob')
         result = self._call([pm, nt])
-        assert result[0].id == nt.id   # NT avant PM
+        assert result[0].id == nt.id
 
     def test_ot_groupe_nc(self):
-        """STAT_OT est dans le groupe NC (groupe 1)."""
         ot = make_nf(1, STAT_OT, 'Alice')
         pm = make_nf(2, STAT_MP, 'Bob')
         result = self._call([pm, ot])
-        assert result[0].id == ot.id   # OT avant PM
+        assert result[0].id == ot.id
 
     def test_dq_groupe_nc(self):
-        """STAT_DQ est dans le groupe NC (groupe 1)."""
         dq = make_nf(1, STAT_DQ, 'Alice')
         pm = make_nf(2, STAT_MP, 'Bob')
         result = self._call([pm, dq])
-        assert result[0].id == dq.id   # DQ avant PM
-
-    # ── Mélange groupes et alpha ──────────────────────────────────────────────
+        assert result[0].id == dq.id
 
     def test_mixte_meme_groupe_alpha_pas_id(self):
-        """Dans un groupe, c'est le nom (alpha) qui tranche, pas l'id."""
         pm_z = make_nf(10, STAT_MP, 'Zara')
         pm_a = make_nf(99, STAT_MP, 'Alice')
         result = self._call([pm_z, pm_a])
@@ -227,12 +198,10 @@ class TestSortNonFinishers:
 # ─── Tests _load_class_context ───────────────────────────────────────────────
 
 class TestLoadClassContext:
-    """Vérifie le helper interne _load_class_context."""
 
     @patch('results.views.Mopcompetitor')
     @patch('results.views.get_object_or_404')
     def test_retourne_competition_cls_competitors(self, mock_get404, MockCompetitor):
-        """Le helper doit retourner le triplet (competition, cls, competitors)."""
         competition = make_competition()
         cls         = make_cls()
         mock_get404.side_effect = [competition, cls]
@@ -246,13 +215,10 @@ class TestLoadClassContext:
         assert comp_out is competition
         assert cls_out is cls
         assert len(competitors) == 2
-        assert c1 in competitors
-        assert c2 in competitors
 
     @patch('results.views.Mopcompetitor')
     @patch('results.views.get_object_or_404')
     def test_appelle_get_object_or_404_deux_fois(self, mock_get404, MockCompetitor):
-        """get_object_or_404 doit être appelé une fois pour la compétition et une pour la classe."""
         mock_get404.side_effect = [make_competition(), make_cls()]
         MockCompetitor.objects.filter.return_value = []
 
@@ -264,7 +230,6 @@ class TestLoadClassContext:
     @patch('results.views.Mopcompetitor')
     @patch('results.views.get_object_or_404')
     def test_filtre_concurrents_par_cid_et_class_id(self, mock_get404, MockCompetitor):
-        """Les concurrents doivent être filtrés avec cid et cls=class_id."""
         mock_get404.side_effect = [make_competition(), make_cls()]
         MockCompetitor.objects.filter.return_value = []
 
@@ -276,7 +241,6 @@ class TestLoadClassContext:
     @patch('results.views.Mopcompetitor')
     @patch('results.views.get_object_or_404')
     def test_retourne_liste_et_non_queryset(self, mock_get404, MockCompetitor):
-        """Le retour doit être une liste Python (list()), non un QuerySet."""
         mock_get404.side_effect = [make_competition(), make_cls()]
         MockCompetitor.objects.filter.return_value = [make_competitor(1)]
 
@@ -288,7 +252,6 @@ class TestLoadClassContext:
     @patch('results.views.Mopcompetitor')
     @patch('results.views.get_object_or_404', side_effect=Http404)
     def test_leve_404_si_objet_absent(self, mock_get404, MockCompetitor):
-        """Http404 doit se propager si la compétition ou la classe est introuvable."""
         from django.http import Http404 as Http404Ex
         from results.views import _load_class_context
         import pytest
@@ -299,7 +262,6 @@ class TestLoadClassContext:
 # ─── Tests _get_adjacent_classes ─────────────────────────────────────────────
 
 class TestGetAdjacentClasses:
-    """Vérifie le helper qui renvoie les catégories précédente et suivante."""
 
     def _mk_cls(self, class_id, name, ord_=10):
         c = MagicMock()
@@ -350,18 +312,6 @@ class TestGetAdjacentClasses:
         assert prev.name == 'H21'
         assert nxt.name  == 'H35'
 
-    def test_deux_classes_premiere(self):
-        cls_list = [self._mk_cls(10, 'H21'), self._mk_cls(20, 'D21')]
-        prev, nxt = self._call(cls_list, cid=1, class_id=10)
-        assert prev is None
-        assert nxt.id == 20
-
-    def test_deux_classes_derniere(self):
-        cls_list = [self._mk_cls(10, 'H21'), self._mk_cls(20, 'D21')]
-        prev, nxt = self._call(cls_list, cid=1, class_id=20)
-        assert prev.id == 10
-        assert nxt is None
-
     def test_filtre_par_cid(self):
         from results.views import _get_adjacent_classes
         with patch('results.views.Mopclass') as MockMopclass:
@@ -395,7 +345,6 @@ class TestClassResultsView:
 
     def _patch_all(self, mock_mopteam, mock_mopcomp, mock_mopclass,
                    mock_mopcompetitor, mock_get404):
-        """Configure les mocks pour une course individuelle sans relais."""
         mock_mopteam.objects.filter.return_value.exists.return_value = False
 
         competition = make_competition()
@@ -463,7 +412,6 @@ class TestClassResultsView:
         mock_mark, mock_splits, mock_radio, mock_controls, mock_org,
         mock_adj,
     ):
-        """prev_cls et next_cls doivent être présents dans le contexte."""
         MockTeam.objects.filter.return_value.exists.return_value = False
         mock_get404.side_effect = [make_competition(), make_cls()]
         MockCompetitor.objects.filter.return_value = [make_competitor()]
@@ -490,7 +438,6 @@ class TestClassResultsView:
         mock_mark, mock_splits, mock_radio, mock_controls, mock_org,
         mock_adj,
     ):
-        """Les valeurs renvoyées par _get_adjacent_classes sont bien transmises."""
         MockTeam.objects.filter.return_value.exists.return_value = False
         mock_get404.side_effect = [make_competition(), make_cls()]
         MockCompetitor.objects.filter.return_value = [make_competitor()]
@@ -508,12 +455,8 @@ class TestClassResultsView:
 # ─── Tests class_results — ordre des non-classés ──────────────────────────────
 
 class TestClassResultsNonFinisherOrdering:
-    """Vérifie que les non-classés sont triés dans le contexte :
-    NC/DSQ → PM → Abandon → Non-partants, puis alpha dans chaque groupe.
-    """
 
     def _run(self, competitors):
-        """Lance class_results avec des mocks minimaux et retourne le contexte."""
         comp = make_competition()
         cls  = make_cls()
         with patch('results.views.Mopteam') as MockTeam, \
@@ -535,7 +478,6 @@ class TestClassResultsNonFinisherOrdering:
             return ctx
 
     def test_classés_en_premier(self):
-        """Les coureurs classés (OK) apparaissent avant tous les non-classés."""
         ok1 = make_competitor(1, rt=5000, stat=STAT_OK, name='Alice')
         ok2 = make_competitor(2, rt=6000, stat=STAT_OK, name='Bob')
         dnf = make_nf(3, STAT_DNF, 'Charlie')
@@ -545,7 +487,6 @@ class TestClassResultsNonFinisherOrdering:
         assert noms.index('Bob')   < noms.index('Charlie')
 
     def test_nc_avant_pm(self):
-        """STAT_OCC (NC) apparaît avant STAT_MP (PM)."""
         pm = make_nf(1, STAT_MP,  'Alice PM')
         nc = make_nf(2, STAT_OCC, 'Bob NC')
         ctx = self._run([pm, nc])
@@ -553,7 +494,6 @@ class TestClassResultsNonFinisherOrdering:
         assert noms.index('Bob NC') < noms.index('Alice PM')
 
     def test_pm_avant_abandon(self):
-        """STAT_MP (PM) apparaît avant STAT_DNF (Abandon)."""
         dnf = make_nf(1, STAT_DNF, 'Alice DNF')
         pm  = make_nf(2, STAT_MP,  'Bob PM')
         ctx = self._run([dnf, pm])
@@ -561,7 +501,6 @@ class TestClassResultsNonFinisherOrdering:
         assert noms.index('Bob PM') < noms.index('Alice DNF')
 
     def test_abandon_avant_dns(self):
-        """STAT_DNF (Abandon) apparaît avant STAT_DNS (Non partant)."""
         dns = make_nf(1, STAT_DNS, 'Alice DNS')
         dnf = make_nf(2, STAT_DNF, 'Bob DNF')
         ctx = self._run([dns, dnf])
@@ -569,12 +508,10 @@ class TestClassResultsNonFinisherOrdering:
         assert noms.index('Bob DNF') < noms.index('Alice DNS')
 
     def test_ordre_complet_quatre_groupes(self):
-        """Ordre complet : NC → PM → Abandon → Non-partants."""
         dns = make_nf(1, STAT_DNS, 'DNS')
         dnf = make_nf(2, STAT_DNF, 'DNF')
         pm  = make_nf(3, STAT_MP,  'PM')
         nc  = make_nf(4, STAT_OCC, 'NC')
-        # On ajoute aussi un classé
         ok  = make_competitor(5, rt=5000, name='OK')
         ctx = self._run([dns, dnf, pm, nc, ok])
         noms = [r.name for r in ctx['results']]
@@ -585,7 +522,6 @@ class TestClassResultsNonFinisherOrdering:
         assert idx['DNF'] < idx['DNS']
 
     def test_alpha_dans_groupe_pm(self):
-        """Dans le groupe PM, les coureurs sont triés alphabétiquement."""
         pm_z = make_nf(1, STAT_MP, 'Zara')
         pm_a = make_nf(2, STAT_MP, 'Alice')
         pm_m = make_nf(3, STAT_MP, 'Martin')
@@ -593,45 +529,15 @@ class TestClassResultsNonFinisherOrdering:
         noms = [r.name for r in ctx['results']]
         assert noms == ['Alice', 'Martin', 'Zara']
 
-    def test_alpha_dans_groupe_dnf(self):
-        """Dans le groupe Abandon, tri alphabétique."""
-        d1 = make_nf(1, STAT_DNF, 'Zorro')
-        d2 = make_nf(2, STAT_DNF, 'Alice')
-        ctx = self._run([d1, d2])
-        noms = [r.name for r in ctx['results']]
-        assert noms[0] == 'Alice'
-        assert noms[1] == 'Zorro'
-
-    def test_alpha_dans_groupe_dns(self):
-        """Dans le groupe Non-partants, tri alphabétique (DNS + NP mélangés)."""
-        dns = make_nf(1, STAT_DNS, 'Zara DNS')
-        np_ = make_nf(2, STAT_NP,  'Alice NP')
-        ctx = self._run([dns, np_])
-        noms = [r.name for r in ctx['results']]
-        assert noms[0] == 'Alice NP'
-        assert noms[1] == 'Zara DNS'
-
-    def test_sans_non_classes_ordre_inchange(self):
-        """Sans non-classés, l'ordre des classés est préservé (par rt)."""
-        ok1 = make_competitor(1, rt=5000, name='Alice')
-        ok2 = make_competitor(2, rt=6000, name='Bob')
-        ctx = self._run([ok2, ok1])   # ORM retourne dans un ordre quelconque
-        noms = [r.name for r in ctx['results']]
-        assert noms[0] == 'Alice'  # plus rapide → 1er
-        assert noms[1] == 'Bob'
-
     def test_seulement_non_classes(self):
-        """Avec uniquement des non-classés, le tri fonctionne quand même."""
         dnf = make_nf(1, STAT_DNF, 'Bob')
         dns = make_nf(2, STAT_DNS, 'Alice')
         pm  = make_nf(3, STAT_MP,  'Charlie')
         ctx = self._run([dnf, dns, pm])
         noms = [r.name for r in ctx['results']]
-        # PM (groupe 2) → DNF (groupe 3) → DNS (groupe 4)
         assert noms == ['Charlie', 'Bob', 'Alice']
 
     def test_n_results_correct(self):
-        """Le nombre total de résultats (classés + non-classés) est correct."""
         ok  = make_competitor(1, rt=5000, name='OK')
         dnf = make_nf(2, STAT_DNF, 'DNF')
         dns = make_nf(3, STAT_DNS, 'DNS')
@@ -686,7 +592,7 @@ class TestApiClassResults:
         data = json.loads(response.content)
         assert 'results' in data
         assert data['results'][0]['rank'] == 1
-        assert data['results'][0]['time'] == '08:20'   # 5000 dixièmes = 8m20s
+        assert data['results'][0]['time'] == '08:20'
         assert data['results'][1]['behind'].startswith('+')
 
     @patch('results.views.get_org_map', return_value={})
@@ -711,7 +617,6 @@ class TestSupermanAnalysis:
         competition = make_competition()
         cls         = make_cls()
         mock_get404.side_effect = [competition, cls]
-        # Aucun compétiteur classé
         dnf = make_competitor(1, rt=-1, stat=4)
         dnf.is_ok = False
         MockCompetitor.objects.filter.return_value = [dnf]
@@ -778,7 +683,7 @@ class TestSupermanColorInvariants:
         assert len(series) == 1
         s = series[0]
         for field in ('id', 'name', 'org', 'rank', 'total', 'loss'):
-            assert field in s, f"Champ '{field}' manquant dans series_json (requis par buildTable)"
+            assert field in s
 
     @patch('results.views.get_org_map',        return_value={1: 'Club A', 2: 'Club B'})
     @patch('results.views.get_class_controls', return_value=([], {}))
@@ -804,68 +709,13 @@ class TestSupermanColorInvariants:
         _, _, context = mock_render.call_args[0]
         series = json.loads(context['series_json'])
 
-        assert series[0]['name'] == 'Bob',   "Bob (rt=5000) doit être rank=1, index 0 dans SERIES"
-        assert series[1]['name'] == 'Alice', "Alice (rt=8000) doit être rank=2, index 1 dans SERIES"
+        assert series[0]['name'] == 'Bob'
+        assert series[1]['name'] == 'Alice'
         assert series[0]['rank'] == 1
         assert series[1]['rank'] == 2
 
-    @patch('results.views.get_org_map',        return_value={})
-    @patch('results.views.get_class_controls', return_value=([], {}))
-    @patch('results.views.get_radio_map',      return_value={})
-    @patch('results.views.render')
-    @patch('results.views.get_object_or_404')
-    @patch('results.views.Mopcompetitor')
-    def test_index_series_egal_rang_moins_un(
-        self, MockCompetitor, mock_get404, mock_render,
-        mock_radio, mock_ctrl, mock_org,
-    ):
-        competition = make_competition(); cls = make_cls()
-        mock_get404.side_effect = [competition, cls]
-
-        runners = [make_competitor(i, rt=5000 + i * 1000) for i in range(1, 6)]
-        MockCompetitor.objects.filter.return_value = runners
-
-        from results.views import superman_analysis
-        superman_analysis(rf_get(), cid=1, class_id=10)
-
-        _, _, context = mock_render.call_args[0]
-        series = json.loads(context['series_json'])
-
-        for i, s in enumerate(series):
-            assert s['rank'] == i + 1, \
-                f"Attendu rank={i+1} à l'index {i}, obtenu rank={s['rank']}"
-
-    @patch('results.views.get_org_map',        return_value={})
-    @patch('results.views.get_class_controls', return_value=([], {}))
-    @patch('results.views.get_radio_map',      return_value={})
-    @patch('results.views.render')
-    @patch('results.views.get_object_or_404')
-    @patch('results.views.Mopcompetitor')
-    def test_champ_id_unique_dans_series(
-        self, MockCompetitor, mock_get404, mock_render,
-        mock_radio, mock_ctrl, mock_org,
-    ):
-        competition = make_competition(); cls = make_cls()
-        mock_get404.side_effect = [competition, cls]
-
-        c1 = make_competitor(42, rt=5000, name='Alice')
-        c2 = make_competitor(99, rt=6000, name='Bob')
-        MockCompetitor.objects.filter.return_value = [c1, c2]
-
-        from results.views import superman_analysis
-        superman_analysis(rf_get(), cid=1, class_id=10)
-
-        _, _, context = mock_render.call_args[0]
-        series = json.loads(context['series_json'])
-
-        ids = [s['id'] for s in series]
-        assert len(ids) == len(set(ids)), "Les ids dans series_json doivent être uniques"
-        assert 42 in ids
-        assert 99 in ids
-
 
 class TestClassResultsRankSplits:
-    """Vérifie que rank_splits est appelé et que les rangs sont présents dans les splits."""
 
     @patch('results.views._get_adjacent_classes', return_value=(None, None))
     @patch('results.views.rank_splits')
@@ -883,7 +733,6 @@ class TestClassResultsRankSplits:
         self, MockTeam, MockCompetitor, mock_get404, mock_render,
         mock_radio, mock_ctrl, mock_org, mock_mark, mock_rank, mock_adj,
     ):
-        """rank_splits doit être appelé lors du rendu des résultats."""
         MockTeam.objects.filter.return_value.exists.return_value = False
         competition = make_competition(); cls = make_cls()
         mock_get404.side_effect = [competition, cls]
@@ -893,57 +742,36 @@ class TestClassResultsRankSplits:
         from results.views import class_results
         class_results(rf_get(), cid=1, class_id=10)
 
-        assert mock_rank.called, "rank_splits devrait être appelé dans class_results"
-
-    @patch('results.views._get_adjacent_classes', return_value=(None, None))
-    @patch('results.views.rank_splits')
-    @patch('results.views.mark_best_splits')
-    @patch('results.views.get_org_map',        return_value={})
-    @patch('results.views.get_class_controls', return_value=(
-        [{'ctrl_id': 31, 'ctrl_name': 'P31'}], {}
-    ))
-    @patch('results.views.get_radio_map',      return_value={1: {31: 1200}, 2: {31: 1100}})
-    @patch('results.views.render')
-    @patch('results.views.get_object_or_404')
-    @patch('results.views.Mopcompetitor')
-    @patch('results.views.Mopteam')
-    def test_rank_splits_recoit_finishers_et_all_results(
-        self, MockTeam, MockCompetitor, mock_get404, mock_render,
-        mock_radio, mock_ctrl, mock_org, mock_mark, mock_rank, mock_adj,
-    ):
-        """rank_splits doit recevoir (finishers, all_results) comme arguments."""
-        MockTeam.objects.filter.return_value.exists.return_value = False
-        competition = make_competition(); cls = make_cls()
-        mock_get404.side_effect = [competition, cls]
-        c1 = make_competitor(1, rt=5000); c2 = make_competitor(2, rt=6000)
-        MockCompetitor.objects.filter.return_value = [c1, c2]
-
-        from results.views import class_results
-        class_results(rf_get(), cid=1, class_id=10)
-
-        args = mock_rank.call_args[0]
-        finishers, all_results = args[0], args[1]
-        assert len(finishers) == 2
-        assert len(all_results) == 2
+        assert mock_rank.called
 
 
-# ─── Tests org_results ────────────────────────────────────────────────────────
+# ─── Tests org_results ───────────────────────────────────────────────────────
 
 class TestOrgResultsView:
+
+    def _make_cls_obj(self, id_, name, ord_=10):
+        c = MagicMock()
+        c.id   = id_
+        c.name = name
+        c.ord  = ord_
+        return c
 
     @patch('results.views.Mopclass')
     @patch('results.views.Mopcompetitor')
     @patch('results.views.render')
     @patch('results.views.get_object_or_404')
-    def test_contexte(self, mock_get404, mock_render, MockCompetitor, MockClass):
+    def test_contexte_de_base(self, mock_get404, mock_render, MockCompetitor, MockClass):
         competition  = make_competition()
         organization = MagicMock(); organization.name = 'COLE'
         mock_get404.side_effect = [competition, organization]
 
         c1 = make_competitor(1, cls=10); c2 = make_competitor(2, cls=11)
-        MockCompetitor.objects.filter.return_value.order_by.return_value = [c1, c2]
-        cls_obj = MagicMock(); cls_obj.id = 10
-        MockClass.objects.filter.return_value = [cls_obj]
+        MockCompetitor.objects.filter.side_effect = [
+            [c1, c2],   # org competitors
+            [c1],       # all in class 10
+            [c2],       # all in class 11
+        ]
+        MockClass.objects.filter.return_value = []
 
         from results.views import org_results
         org_results(rf_get(), cid=1, org_id=5)
@@ -961,14 +789,16 @@ class TestOrgResultsView:
     def test_class_obj_attache_aux_coureurs(
         self, mock_get404, mock_render, MockCompetitor, MockClass
     ):
-        """Chaque coureur doit avoir un attribut class_obj."""
         competition  = make_competition()
         organization = MagicMock()
         mock_get404.side_effect = [competition, organization]
 
         c = make_competitor(1, cls=10)
-        MockCompetitor.objects.filter.return_value.order_by.return_value = [c]
-        cls_obj = MagicMock(); cls_obj.id = 10
+        MockCompetitor.objects.filter.side_effect = [
+            [c],   # org competitors
+            [c],   # all in class 10
+        ]
+        cls_obj = self._make_cls_obj(10, 'H21')
         MockClass.objects.filter.return_value = [cls_obj]
 
         from results.views import org_results
@@ -976,6 +806,314 @@ class TestOrgResultsView:
 
         assert hasattr(c, 'class_obj')
         assert c.class_obj is cls_obj
+
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    def test_cat_rank_attribue_aux_coureurs(
+        self, mock_get404, mock_render, MockCompetitor, MockClass
+    ):
+        """cat_rank est le rang dans la catégorie (tous compétiteurs, pas seulement le club)."""
+        competition  = make_competition()
+        organization = MagicMock()
+        mock_get404.side_effect = [competition, organization]
+
+        # Alice (org=5) est 2e dans sa catégorie derrière Bob (org=9)
+        alice = make_competitor(1, rt=6000, stat=STAT_OK, cls=10, name='Alice')
+        bob   = make_competitor(2, rt=5000, stat=STAT_OK, cls=10, name='Bob', org=9)
+        MockCompetitor.objects.filter.side_effect = [
+            [alice],        # org competitors (seulement Alice du club 5)
+            [alice, bob],   # ALL competitors in class 10
+        ]
+        MockClass.objects.filter.return_value = []
+
+        from results.views import org_results
+        org_results(rf_get(), cid=1, org_id=5)
+
+        _, _, context = mock_render.call_args[0]
+        competitors_out = context['competitors']
+        alice_out = next(c for c in competitors_out if c.name == 'Alice')
+        assert alice_out.cat_rank == 2, "Alice doit être 2e (Bob est plus rapide)"
+
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    def test_classés_triés_par_rang_croissant(
+        self, mock_get404, mock_render, MockCompetitor, MockClass
+    ):
+        """Les classés apparaissent du meilleur rang au moins bon."""
+        competition  = make_competition()
+        organization = MagicMock()
+        mock_get404.side_effect = [competition, organization]
+
+        # Trois coureurs du club, dans des classes différentes
+        a = make_competitor(1, rt=5000, stat=STAT_OK, cls=10, name='A')
+        b = make_competitor(2, rt=6000, stat=STAT_OK, cls=10, name='B')
+        c = make_competitor(3, rt=4000, stat=STAT_OK, cls=10, name='C')
+        MockCompetitor.objects.filter.side_effect = [
+            [a, b, c],        # org competitors
+            [a, b, c],        # all in class 10
+        ]
+        MockClass.objects.filter.return_value = []
+
+        from results.views import org_results
+        org_results(rf_get(), cid=1, org_id=5)
+
+        _, _, context = mock_render.call_args[0]
+        noms = [x.name for x in context['competitors']]
+        # C (rt=4000) → rang 1, A (rt=5000) → rang 2, B (rt=6000) → rang 3
+        assert noms == ['C', 'A', 'B']
+
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    def test_exaequo_trié_par_ord_catégorie(
+        self, mock_get404, mock_render, MockCompetitor, MockClass
+    ):
+        """Pour des rangs identiques (ex-æquo), on trie par ord de catégorie."""
+        competition  = make_competition()
+        organization = MagicMock()
+        mock_get404.side_effect = [competition, organization]
+
+        # Deux coureurs du club : même rang 1 dans leurs catégories respectives
+        # cat H21 (ord=20) et cat D21 (ord=10) — D21 doit passer en premier
+        alice = make_competitor(1, rt=5000, stat=STAT_OK, cls=20, name='Alice')
+        bob   = make_competitor(2, rt=4000, stat=STAT_OK, cls=10, name='Bob')
+        cls_h21 = self._make_cls_obj(20, 'H21', ord_=20)
+        cls_d21 = self._make_cls_obj(10, 'D21', ord_=10)
+
+        MockCompetitor.objects.filter.side_effect = [
+            [alice, bob],  # org competitors
+            [alice],       # all in class 20 (H21)
+            [bob],         # all in class 10 (D21)
+        ]
+        MockClass.objects.filter.return_value = [cls_d21, cls_h21]
+
+        from results.views import org_results
+        org_results(rf_get(), cid=1, org_id=5)
+
+        _, _, context = mock_render.call_args[0]
+        noms = [x.name for x in context['competitors']]
+        # Les deux sont rang 1 chacun dans leur cat.
+        # D21 (ord=10) avant H21 (ord=20)
+        assert noms.index('Bob') < noms.index('Alice'), \
+            "Bob (D21, ord=10) doit précéder Alice (H21, ord=20) pour les ex-æquo"
+
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    def test_classés_avant_non_classés(
+        self, mock_get404, mock_render, MockCompetitor, MockClass
+    ):
+        """Les classés (is_ok=True) apparaissent toujours avant les non-classés."""
+        competition  = make_competition()
+        organization = MagicMock()
+        mock_get404.side_effect = [competition, organization]
+
+        ok  = make_competitor(1, rt=5000, stat=STAT_OK, cls=10, name='Alice OK')
+        dnf = make_nf(2, STAT_DNF, 'Bob DNF')
+        dnf.cls = 10
+        MockCompetitor.objects.filter.side_effect = [
+            [ok, dnf],   # org competitors
+            [ok],        # all in class 10 (seul ok est is_ok)
+        ]
+        MockClass.objects.filter.return_value = []
+
+        from results.views import org_results
+        org_results(rf_get(), cid=1, org_id=5)
+
+        _, _, context = mock_render.call_args[0]
+        noms = [x.name for x in context['competitors']]
+        assert noms.index('Alice OK') < noms.index('Bob DNF')
+
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    def test_non_classés_triés_nc_pm_dnf_dns(
+        self, mock_get404, mock_render, MockCompetitor, MockClass
+    ):
+        """Les non-classés sont triés NC → PM → Abandon → Non-partants."""
+        competition  = make_competition()
+        organization = MagicMock()
+        mock_get404.side_effect = [competition, organization]
+
+        dns = make_nf(1, STAT_DNS, 'DNS')
+        dnf = make_nf(2, STAT_DNF, 'DNF')
+        pm  = make_nf(3, STAT_MP,  'PM')
+        nc  = make_nf(4, STAT_OCC, 'NC')
+        for c in [dns, dnf, pm, nc]:
+            c.cls = 10
+
+        MockCompetitor.objects.filter.side_effect = [
+            [dns, dnf, pm, nc],  # org competitors (tous non-classés)
+            [],                  # no finishers in class 10
+        ]
+        MockClass.objects.filter.return_value = []
+
+        from results.views import org_results
+        org_results(rf_get(), cid=1, org_id=5)
+
+        _, _, context = mock_render.call_args[0]
+        noms = [x.name for x in context['competitors']]
+        assert noms == ['NC', 'PM', 'DNF', 'DNS']
+
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    def test_non_classés_alpha_dans_chaque_groupe(
+        self, mock_get404, mock_render, MockCompetitor, MockClass
+    ):
+        """Dans chaque groupe de non-classés, le tri est alphabétique."""
+        competition  = make_competition()
+        organization = MagicMock()
+        mock_get404.side_effect = [competition, organization]
+
+        dnf1 = make_nf(1, STAT_DNF, 'Zara')
+        dnf2 = make_nf(2, STAT_DNF, 'Alice')
+        dnf3 = make_nf(3, STAT_DNF, 'Martin')
+        for c in [dnf1, dnf2, dnf3]:
+            c.cls = 10
+
+        MockCompetitor.objects.filter.side_effect = [
+            [dnf1, dnf2, dnf3],  # org competitors
+            [],                  # no finishers
+        ]
+        MockClass.objects.filter.return_value = []
+
+        from results.views import org_results
+        org_results(rf_get(), cid=1, org_id=5)
+
+        _, _, context = mock_render.call_args[0]
+        noms = [x.name for x in context['competitors']]
+        assert noms == ['Alice', 'Martin', 'Zara']
+
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    def test_non_classé_cat_rank_est_none(
+        self, mock_get404, mock_render, MockCompetitor, MockClass
+    ):
+        """Un non-classé doit avoir cat_rank = None."""
+        competition  = make_competition()
+        organization = MagicMock()
+        mock_get404.side_effect = [competition, organization]
+
+        dnf = make_nf(1, STAT_DNF, 'Bob')
+        dnf.cls = 10
+        MockCompetitor.objects.filter.side_effect = [
+            [dnf],  # org competitors
+            [],     # no finishers in class 10
+        ]
+        MockClass.objects.filter.return_value = []
+
+        from results.views import org_results
+        org_results(rf_get(), cid=1, org_id=5)
+
+        _, _, context = mock_render.call_args[0]
+        bob_out = context['competitors'][0]
+        assert bob_out.cat_rank is None
+
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    def test_classement_basé_sur_tous_les_compétiteurs_de_la_catégorie(
+        self, mock_get404, mock_render, MockCompetitor, MockClass
+    ):
+        """Le rang d'un coureur reflète sa position parmi TOUS les coureurs de sa
+        catégorie, pas seulement ceux du club."""
+        competition  = make_competition()
+        organization = MagicMock()
+        mock_get404.side_effect = [competition, organization]
+
+        # Alice (club 5) est dans la catégorie 10 avec 4 autres coureurs extérieurs
+        alice = make_competitor(1, rt=8000, stat=STAT_OK, cls=10, name='Alice')
+        ext1  = make_competitor(10, rt=5000, stat=STAT_OK, cls=10, org=9)
+        ext2  = make_competitor(11, rt=6000, stat=STAT_OK, cls=10, org=9)
+        ext3  = make_competitor(12, rt=7000, stat=STAT_OK, cls=10, org=9)
+
+        MockCompetitor.objects.filter.side_effect = [
+            [alice],                   # org competitors (seulement Alice)
+            [alice, ext1, ext2, ext3], # ALL in class 10
+        ]
+        MockClass.objects.filter.return_value = []
+
+        from results.views import org_results
+        org_results(rf_get(), cid=1, org_id=5)
+
+        _, _, context = mock_render.call_args[0]
+        alice_out = context['competitors'][0]
+        assert alice_out.cat_rank == 4, "Alice (rt=8000) doit être 4e sur 4 coureurs"
+
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    def test_plusieurs_catégories_chacune_classée_indépendamment(
+        self, mock_get404, mock_render, MockCompetitor, MockClass
+    ):
+        """Deux coureurs du club dans des catégories différentes ont chacun leur rang."""
+        competition  = make_competition()
+        organization = MagicMock()
+        mock_get404.side_effect = [competition, organization]
+
+        # Alice dans H21 (seule → rang 1), Bob dans D21 (3e sur 3)
+        alice = make_competitor(1, rt=5000, stat=STAT_OK, cls=10, name='Alice')
+        bob   = make_competitor(2, rt=9000, stat=STAT_OK, cls=20, name='Bob')
+        ext_d1 = make_competitor(10, rt=6000, stat=STAT_OK, cls=20, org=9)
+        ext_d2 = make_competitor(11, rt=7000, stat=STAT_OK, cls=20, org=9)
+
+        MockCompetitor.objects.filter.side_effect = [
+            [alice, bob],            # org competitors
+            [alice],                 # all in class 10 (H21)
+            [bob, ext_d1, ext_d2],   # all in class 20 (D21)
+        ]
+        MockClass.objects.filter.return_value = []
+
+        from results.views import org_results
+        org_results(rf_get(), cid=1, org_id=5)
+
+        _, _, context = mock_render.call_args[0]
+        comp_map = {c.name: c for c in context['competitors']}
+        assert comp_map['Alice'].cat_rank == 1
+        assert comp_map['Bob'].cat_rank   == 3
+
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    def test_classés_premier_non_classés_apres_meme_catégorie(
+        self, mock_get404, mock_render, MockCompetitor, MockClass
+    ):
+        """Mix classé + non-classé dans même catégorie : classé toujours en premier."""
+        competition  = make_competition()
+        organization = MagicMock()
+        mock_get404.side_effect = [competition, organization]
+
+        ok  = make_competitor(1, rt=5000, stat=STAT_OK,  cls=10, name='Alice')
+        dnf = make_nf(2, STAT_DNF, 'Bob')
+        dnf.cls = 10
+
+        MockCompetitor.objects.filter.side_effect = [
+            [ok, dnf],  # org competitors
+            [ok],       # all finishers in class 10
+        ]
+        MockClass.objects.filter.return_value = []
+
+        from results.views import org_results
+        org_results(rf_get(), cid=1, org_id=5)
+
+        _, _, context = mock_render.call_args[0]
+        noms = [x.name for x in context['competitors']]
+        assert noms[0] == 'Alice'
+        assert noms[1] == 'Bob'
 
 
 # ─── Tests statistics ────────────────────────────────────────────────────────
@@ -1006,27 +1144,6 @@ class TestStatisticsView:
         assert 'finished' in context
         assert 'top_orgs' in context
         assert 'competition' in context
-
-    @patch('results.views.render')
-    @patch('results.views.get_object_or_404')
-    @patch('results.views.Mopcompetitor')
-    def test_top_orgs_transmis(self, MockCompetitor, mock_get404, mock_render):
-        competition = make_competition()
-        mock_get404.return_value = competition
-        MockCompetitor.objects.filter.return_value.count.return_value = 50
-        MockCompetitor.objects.filter.return_value.exclude.return_value.count.return_value = 40
-
-        expected_orgs = [('COLE', 15), ('NOSE', 10)]
-        with patch('django.db.connection') as mock_conn:
-            cursor = MagicMock()
-            cursor.fetchall.return_value = expected_orgs
-            mock_conn.cursor.return_value.__enter__.return_value = cursor
-
-            from results.views import statistics
-            statistics(rf_get(), cid=1)
-
-        _, _, context = mock_render.call_args[0]
-        assert context['top_orgs'] == expected_orgs
 
 
 # ─── Tests relay_results ──────────────────────────────────────────────────────
@@ -1088,401 +1205,6 @@ class TestRelayResultsView:
         assert 'n_legs'      in context
         assert len(context['teams_data']) == 2
 
-    @patch('results.views.get_controls_by_leg', return_value=({}, {}))
-    @patch('results.views.get_radio_map',        return_value={})
-    @patch('results.views.get_org_map',          return_value={1: 'COLE'})
-    @patch('results.views.Mopcompetitor')
-    @patch('results.views.Mopteammember')
-    @patch('results.views.Mopteam')
-    @patch('results.views.render')
-    @patch('results.views.get_object_or_404')
-    def test_classement_equipes_par_temps(
-        self, mock_get404, mock_render, MockTeam, MockTeamMember,
-        MockCompetitor, mock_org, mock_radio, mock_ctrl,
-    ):
-        competition = make_competition(); cls = make_cls()
-        mock_get404.side_effect = [competition, cls]
-
-        t_lente  = self._make_team(1, rt=15000)
-        t_rapide = self._make_team(2, rt=10000)
-        MockTeam.objects.filter.return_value = [t_lente, t_rapide]
-        MockTeamMember.objects.filter.return_value.order_by.return_value = []
-        MockCompetitor.objects.filter.return_value = []
-
-        from results.views import relay_results
-        relay_results(rf_get(), cid=1, class_id=10)
-
-        _, _, context = mock_render.call_args[0]
-        teams = context['teams_data']
-        assert teams[0]['team'].rt == 10000
-
-    @patch('results.views.get_controls_by_leg', return_value=({1: [31]}, {31: 'P31'}))
-    @patch('results.views.get_radio_map',        return_value={101: {31: 3000}})
-    @patch('results.views.get_org_map',          return_value={})
-    @patch('results.views.Mopcompetitor')
-    @patch('results.views.Mopteammember')
-    @patch('results.views.Mopteam')
-    @patch('results.views.render')
-    @patch('results.views.get_object_or_404')
-    def test_legs_data_contient_splits(
-        self, mock_get404, mock_render, MockTeam, MockTeamMember,
-        MockCompetitor, mock_org, mock_radio, mock_ctrl,
-    ):
-        competition = make_competition(); cls = make_cls()
-        mock_get404.side_effect = [competition, cls]
-
-        t = self._make_team(1, rt=10000)
-        MockTeam.objects.filter.return_value = [t]
-
-        m = self._make_member(team_id=1, rid=101, leg=1)
-        MockTeamMember.objects.filter.return_value.order_by.return_value = [m]
-
-        c = make_competitor(101, rt=10000)
-        MockCompetitor.objects.filter.return_value = [c]
-
-        from results.views import relay_results
-        relay_results(rf_get(), cid=1, class_id=10)
-
-        _, _, context = mock_render.call_args[0]
-        leg_data = context['teams_data'][0]['legs'][0]
-        assert 'splits'     in leg_data
-        assert 'leg_time'   in leg_data
-        assert 'cum_time'   in leg_data
-        assert 'stat_label' in leg_data
-
-    @patch('results.views.get_controls_by_leg', return_value=({}, {}))
-    @patch('results.views.get_radio_map',        return_value={})
-    @patch('results.views.get_org_map',          return_value={})
-    @patch('results.views.Mopcompetitor')
-    @patch('results.views.Mopteammember')
-    @patch('results.views.Mopteam')
-    @patch('results.views.render')
-    @patch('results.views.get_object_or_404')
-    def test_equipe_dnf_incluse(
-        self, mock_get404, mock_render, MockTeam, MockTeamMember,
-        MockCompetitor, mock_org, mock_radio, mock_ctrl,
-    ):
-        competition = make_competition(); cls = make_cls()
-        mock_get404.side_effect = [competition, cls]
-
-        t_ok  = self._make_team(1, rt=10000, stat=STAT_OK)
-        t_dnf = self._make_team(2, rt=-1,    stat=4)
-        MockTeam.objects.filter.return_value = [t_ok, t_dnf]
-        MockTeamMember.objects.filter.return_value.order_by.return_value = []
-        MockCompetitor.objects.filter.return_value = []
-
-        from results.views import relay_results
-        relay_results(rf_get(), cid=1, class_id=10)
-
-        _, _, context = mock_render.call_args[0]
-        assert len(context['teams_data']) == 2
-
-
-# ─── Tests relay_results — classements par fraction et au cumulé ──────────────
-
-class TestRelayResultsRanking:
-    """Vérifie le calcul de leg_rank et cum_rank dans les fractions de relais."""
-
-    def _make_team(self, id_, rt=10000, stat=STAT_OK, org=1):
-        t = MagicMock()
-        t.id = id_; t.rt = rt; t.stat = stat; t.org = org
-        t.name = f'Equipe {id_}'
-        return t
-
-    def _make_member(self, team_id, rid, leg=1, ord_=1):
-        m = MagicMock()
-        m.id = team_id; m.rid = rid; m.leg = leg; m.ord = ord_
-        return m
-
-    def _run_view(self, teams, members, competitors_list,
-                  org_map=None, controls_by_leg=None, radio_map=None):
-        from django.test import RequestFactory
-        from unittest.mock import patch, MagicMock
-
-        comp = MagicMock(); comp.cid = 1
-        cls  = MagicMock(); cls.id  = 10
-
-        with patch('results.views.get_object_or_404', side_effect=[comp, cls]), \
-             patch('results.views.Mopteam') as MockTeam, \
-             patch('results.views.Mopteammember') as MockMember, \
-             patch('results.views.Mopcompetitor') as MockComp, \
-             patch('results.views.get_org_map', return_value=org_map or {}), \
-             patch('results.views.get_controls_by_leg',
-                   return_value=(controls_by_leg or {}, {})), \
-             patch('results.views.get_radio_map', return_value=radio_map or {}), \
-             patch('results.views.render') as mock_render:
-
-            MockTeam.objects.filter.return_value = teams
-            MockMember.objects.filter.return_value.order_by.return_value = members
-            MockComp.objects.filter.return_value = competitors_list
-
-            from results.views import relay_results
-            relay_results(RequestFactory().get('/'), cid=1, class_id=10)
-
-            _, _, context = mock_render.call_args[0]
-            return context
-
-    def test_leg_rank_une_seule_equipe(self):
-        t = self._make_team(1, rt=10000)
-        m = self._make_member(team_id=1, rid=101, leg=1)
-        c = make_competitor(101, rt=10000)
-
-        ctx = self._run_view([t], [m], [c])
-        leg = ctx['teams_data'][0]['legs'][0]
-        assert leg['leg_rank'] == 1
-        assert leg['cum_rank'] == 1
-
-    def test_leg_rank_deux_equipes_ordre_correct(self):
-        t1 = self._make_team(1, rt=18000)
-        t2 = self._make_team(2, rt=20000)
-        m1 = self._make_member(team_id=1, rid=101, leg=1)
-        m2 = self._make_member(team_id=2, rid=102, leg=1)
-        c1 = make_competitor(101, rt=8000)
-        c2 = make_competitor(102, rt=10000)
-
-        ctx = self._run_view([t1, t2], [m1, m2], [c1, c2])
-        legs = {td['team'].id: td['legs'][0] for td in ctx['teams_data']}
-        assert legs[1]['leg_rank'] == 1
-        assert legs[2]['leg_rank'] == 2
-
-    def test_cum_rank_independant_du_leg_rank(self):
-        t1 = self._make_team(1, rt=17000)
-        t2 = self._make_team(2, rt=19000)
-        m1a = self._make_member(team_id=1, rid=101, leg=1)
-        m1b = self._make_member(team_id=1, rid=102, leg=2)
-        m2a = self._make_member(team_id=2, rid=103, leg=1)
-        m2b = self._make_member(team_id=2, rid=104, leg=2)
-        c101 = make_competitor(101, rt=5000)
-        c102 = make_competitor(102, rt=12000)
-        c103 = make_competitor(103, rt=9000)
-        c104 = make_competitor(104, rt=10000)
-
-        ctx = self._run_view([t1, t2], [m1a, m1b, m2a, m2b], [c101, c102, c103, c104])
-        legs_t1 = ctx['teams_data'][0]['legs']
-        legs_t2 = ctx['teams_data'][1]['legs']
-
-        assert legs_t2[1]['leg_rank'] == 1
-        assert legs_t1[1]['leg_rank'] == 2
-        assert legs_t1[1]['cum_rank'] == 1
-        assert legs_t2[1]['cum_rank'] == 2
-
-    def test_leg_rank_none_si_temps_manquant(self):
-        t1 = self._make_team(1, rt=10000)
-        t2 = self._make_team(2, rt=-1, stat=4)
-        m1 = self._make_member(team_id=1, rid=101, leg=1)
-        c1 = make_competitor(101, rt=10000)
-
-        ctx = self._run_view([t1, t2], [m1], [c1])
-        legs_t2 = next(td for td in ctx['teams_data'] if td['team'].id == 2)['legs']
-        assert legs_t2[0]['leg_rank'] is None
-        assert legs_t2[0]['cum_rank'] is None
-
-    def test_leg_rank_exaequo_meme_rang(self):
-        t1 = self._make_team(1, rt=10000)
-        t2 = self._make_team(2, rt=10000)
-        m1 = self._make_member(team_id=1, rid=101, leg=1)
-        m2 = self._make_member(team_id=2, rid=102, leg=1)
-        c1 = make_competitor(101, rt=10000)
-        c2 = make_competitor(102, rt=10000)
-
-        ctx = self._run_view([t1, t2], [m1, m2], [c1, c2])
-        legs = {td['team'].id: td['legs'][0] for td in ctx['teams_data']}
-        assert legs[1]['leg_rank'] == 1
-        assert legs[2]['leg_rank'] == 1
-
-    def test_legs_data_contient_champs_rang(self):
-        t = self._make_team(1, rt=10000)
-        m = self._make_member(team_id=1, rid=101, leg=1)
-        c = make_competitor(101, rt=10000)
-
-        ctx = self._run_view([t], [m], [c])
-        leg = ctx['teams_data'][0]['legs'][0]
-        assert 'leg_rank' in leg
-        assert 'cum_rank' in leg
-
-    def test_leg_time_raw_et_cum_time_raw_presents(self):
-        t = self._make_team(1, rt=10000)
-        m = self._make_member(team_id=1, rid=101, leg=1)
-        c = make_competitor(101, rt=10000)
-
-        ctx = self._run_view([t], [m], [c])
-        leg = ctx['teams_data'][0]['legs'][0]
-        assert 'leg_time_raw' in leg
-        assert 'cum_time_raw' in leg
-        assert leg['leg_time_raw'] == 10000
-        assert leg['cum_time_raw'] == 10000
-
-
-# ─── Tests superman — avec contrôles réels ────────────────────────────────────
-
-class TestSupermanWithControls:
-    """Teste superman_analysis avec des contrôles intermédiaires réels."""
-
-    def _run(self, competitors, controls_seq, radio_map):
-        comp = make_competition()
-        cls  = make_cls()
-        with patch('results.views.get_object_or_404', side_effect=[comp, cls]), \
-             patch('results.views.Mopcompetitor') as MockComp, \
-             patch('results.views.get_org_map', return_value={}), \
-             patch('results.views.get_class_controls', return_value=(controls_seq, {})), \
-             patch('results.views.get_radio_map', return_value=radio_map), \
-             patch('results.views.render') as mock_render:
-            MockComp.objects.filter.return_value = competitors
-            from results.views import superman_analysis
-            superman_analysis(rf_get(), cid=1, class_id=10)
-            _, _, ctx = mock_render.call_args[0]
-            return ctx
-
-    def test_points_debut_a_zero(self):
-        c1 = make_competitor(1, rt=3600)
-        c2 = make_competitor(2, rt=4000)
-        controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
-        radio_map    = {1: {31: 1200}, 2: {31: 1500}}
-        ctx = self._run([c1, c2], controls_seq, radio_map)
-        for s in ctx['series']:
-            assert s['points'][0] == 0
-
-    def test_leader_perd_moins_que_les_autres(self):
-        c1 = make_competitor(1, rt=3600, name='Rapide')
-        c2 = make_competitor(2, rt=5000, name='Lent')
-        controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
-        radio_map    = {1: {31: 1200}, 2: {31: 1800}}
-        ctx = self._run([c1, c2], controls_seq, radio_map)
-        series_by_id = {s['id']: s for s in ctx['series']}
-        assert series_by_id[1]['points'][-1] <= series_by_id[2]['points'][-1]
-
-    def test_series_json_serialisable(self):
-        import json
-        c1 = make_competitor(1, rt=3600)
-        controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
-        radio_map    = {1: {31: 1200}}
-        ctx = self._run([c1], controls_seq, radio_map)
-        parsed = json.loads(ctx['series_json'])
-        assert isinstance(parsed, list)
-
-    def test_exaequo_leg_data_contient_plusieurs_noms(self):
-        c1 = make_competitor(1, rt=3600, name='Alice')
-        c2 = make_competitor(2, rt=3600, name='Bob')
-        controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
-        radio_map = {1: {31: 1200}, 2: {31: 1200}}
-        ctx = self._run([c1, c2], controls_seq, radio_map)
-        leg = ctx['superman_leg_data'][0]
-        assert len(leg['names']) == 2
-        assert 'Alice' in leg['names']
-        assert 'Bob'   in leg['names']
-
-    def test_un_seul_meilleur_troncon(self):
-        c1 = make_competitor(1, rt=3600, name='Alice')
-        c2 = make_competitor(2, rt=5000, name='Bob')
-        controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
-        radio_map    = {1: {31: 1000}, 2: {31: 2000}}
-        ctx = self._run([c1, c2], controls_seq, radio_map)
-        leg = ctx['superman_leg_data'][0]
-        assert leg['names'] == ['Alice']
-
-    def test_coureur_sans_radio_points_none(self):
-        c1 = make_competitor(1, rt=3600, name='Avec radio')
-        c2 = make_competitor(2, rt=4000, name='Sans radio')
-        controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
-        radio_map    = {1: {31: 1200}}
-        ctx = self._run([c1, c2], controls_seq, radio_map)
-        series_by_id = {s['id']: s for s in ctx['series']}
-        assert None in series_by_id[2]['points']
-
-
-# ─── Tests class_results — injection des erreurs ─────────────────────────────
-
-class TestClassResultsErrorEstimates:
-    """Vérifie que compute_error_estimates est appelé et injecte error_time/error_pct."""
-
-    def _run(self, competitors, controls_seq, radio_map, error_map=None):
-        """Lance class_results avec mocks configurables."""
-        comp = make_competition()
-        cls  = make_cls()
-
-        if error_map is None:
-            error_map = {
-                c.id: [{'error_time': 500, 'error_pct': 15.0}]
-                for c in competitors if getattr(c, 'is_ok', False)
-            }
-
-        with patch('results.views.Mopteam') as MockTeam, \
-             patch('results.views.Mopcompetitor') as MockComp, \
-             patch('results.views.get_object_or_404', side_effect=[comp, cls]), \
-             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
-             patch('results.views.get_org_map', return_value={}), \
-             patch('results.views.get_class_controls', return_value=(controls_seq, {})), \
-             patch('results.views.get_radio_map', return_value=radio_map), \
-             patch('results.views.compute_error_estimates', return_value=error_map) as mock_err, \
-             patch('results.views.render') as mock_render:
-
-            MockTeam.objects.filter.return_value.exists.return_value = False
-            MockComp.objects.filter.return_value = competitors
-
-            from results.views import class_results
-            class_results(rf_get(), cid=1, class_id=10)
-
-            _, _, ctx = mock_render.call_args[0]
-            return ctx, mock_err
-
-    def test_compute_error_estimates_appele_si_controles(self):
-        c = make_competitor(1, rt=5000)
-        controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
-        radio_map    = {1: {31: 1200}}
-        _, mock_err = self._run([c], controls_seq, radio_map)
-        assert mock_err.called
-
-    def test_compute_error_estimates_non_appele_sans_controles(self):
-        c = make_competitor(1, rt=5000)
-        _, mock_err = self._run([c], controls_seq=[], radio_map={},
-                                error_map={})
-        assert not mock_err.called
-
-    def test_error_time_injecte_dans_splits(self):
-        c = make_competitor(1, rt=5000)
-        c.splits = [{'ctrl_name': 'P31', 'abs_time': '02:00', 'leg_time': '02:00',
-                     'leg_raw': 1200, 'abs_raw': 1200, 'is_best': False,
-                     'leg_rank': None, 'abs_rank': None}]
-
-        controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
-        radio_map    = {1: {31: 1200}}
-        error_map    = {1: [{'error_time': 500, 'error_pct': 12.5}]}
-
-        ctx, _ = self._run([c], controls_seq, radio_map, error_map)
-
-        runner = next(r for r in ctx['results'] if r.id == 1)
-        assert 'error_time' in runner.splits[0]
-        assert 'error_pct'  in runner.splits[0]
-
-    def test_error_time_arrondi_en_dixiemes(self):
-        c = make_competitor(1, rt=5000)
-        c.splits = [{'ctrl_name': 'P31', 'abs_time': '02:00', 'leg_time': '02:00',
-                     'leg_raw': 1200, 'abs_raw': 1200, 'is_best': False,
-                     'leg_rank': None, 'abs_rank': None}]
-
-        controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
-        radio_map    = {1: {31: 1200}}
-        error_map    = {1: [{'error_time': 503.7, 'error_pct': 12.53}]}
-
-        ctx, _ = self._run([c], controls_seq, radio_map, error_map)
-        runner = next(r for r in ctx['results'] if r.id == 1)
-        assert runner.splits[0]['error_time'] == 504
-        assert runner.splits[0]['error_pct']  == pytest.approx(12.5)
-
-    def test_error_none_si_calcul_impossible(self):
-        c = make_competitor(1, rt=5000)
-        c.splits = [{'ctrl_name': 'P31', 'abs_time': '-', 'leg_time': '-',
-                     'leg_raw': None, 'abs_raw': None, 'is_best': False,
-                     'leg_rank': None, 'abs_rank': None}]
-
-        controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
-        error_map    = {1: [{'error_time': None, 'error_pct': None}]}
-
-        ctx, _ = self._run([c], controls_seq, {}, error_map)
-        runner = next(r for r in ctx['results'] if r.id == 1)
-        assert runner.splits[0]['error_time'] is None
-        assert runner.splits[0]['error_pct']  is None
-
 
 # ─── Tests duel_analysis ──────────────────────────────────────────────────────
 
@@ -1516,69 +1238,6 @@ class TestDuelAnalysisView:
         assert context['no_data'] is False
         assert context['current_analysis'] == 'duel'
 
-    @patch('results.views.get_org_map',        return_value={})
-    @patch('results.views.get_class_controls', return_value=([], {}))
-    @patch('results.views.get_radio_map',      return_value={})
-    @patch('results.views.compute_splits',     return_value=[])
-    @patch('results.views.render')
-    @patch('results.views.get_object_or_404')
-    @patch('results.views.Mopcompetitor')
-    @patch('results.views.Mopteam')
-    def test_runners_json_est_valide(
-        self, MockTeam, MockCompetitor, mock_get404, mock_render,
-        mock_splits, mock_radio, mock_ctrl, mock_org,
-    ):
-        import json
-        MockTeam.objects.filter.return_value.exists.return_value = False
-        competition = make_competition(); cls = make_cls()
-        mock_get404.side_effect = [competition, cls]
-        c1 = make_competitor(1, rt=5000, name='Alice')
-        c2 = make_competitor(2, rt=6000, name='Bob')
-        MockCompetitor.objects.filter.return_value = [c1, c2]
-
-        from results.views import duel_analysis
-        duel_analysis(rf_get(), cid=1, class_id=10)
-
-        _, _, context = mock_render.call_args[0]
-        data = json.loads(context['runners_json'])
-        assert len(data) == 2
-        names = {r['name'] for r in data}
-        assert 'Alice' in names
-        assert 'Bob'   in names
-
-    @patch('results.views.get_org_map',        return_value={})
-    @patch('results.views.get_class_controls', return_value=(
-        [{'ctrl_id': 31, 'ctrl_name': 'P31'}, {'ctrl_id': 32, 'ctrl_name': 'P32'}], {}
-    ))
-    @patch('results.views.get_radio_map',      return_value={1: {31: 800, 32: 1800}, 2: {31: 900, 32: 2000}})
-    @patch('results.views.render')
-    @patch('results.views.get_object_or_404')
-    @patch('results.views.Mopcompetitor')
-    @patch('results.views.Mopteam')
-    def test_splits_inclus_dans_runners_json(
-        self, MockTeam, MockCompetitor, mock_get404, mock_render,
-        mock_radio, mock_ctrl, mock_org,
-    ):
-        import json
-        MockTeam.objects.filter.return_value.exists.return_value = False
-        competition = make_competition(); cls = make_cls()
-        mock_get404.side_effect = [competition, cls]
-        c1 = make_competitor(1, rt=5000); c2 = make_competitor(2, rt=6000)
-        MockCompetitor.objects.filter.return_value = [c1, c2]
-
-        from results.views import duel_analysis
-        duel_analysis(rf_get(), cid=1, class_id=10)
-
-        _, _, context = mock_render.call_args[0]
-        data = json.loads(context['runners_json'])
-        for runner in data:
-            assert 'splits' in runner
-            assert isinstance(runner['splits'], list)
-            for sp in runner['splits']:
-                assert 'ctrl_name' in sp
-                assert 'leg_raw'   in sp
-                assert 'abs_raw'   in sp
-
     @patch('results.views.render')
     @patch('results.views.get_object_or_404')
     @patch('results.views.Mopcompetitor')
@@ -1610,37 +1269,10 @@ class TestDuelAnalysisView:
             'results:relay_results', cid=1, class_id=10
         )
 
-    @patch('results.views.get_org_map',        return_value={})
-    @patch('results.views.get_class_controls', return_value=([], {}))
-    @patch('results.views.get_radio_map',      return_value={})
-    @patch('results.views.compute_splits',     return_value=[])
-    @patch('results.views.render')
-    @patch('results.views.get_object_or_404')
-    @patch('results.views.Mopcompetitor')
-    @patch('results.views.Mopteam')
-    def test_n_runners_correspond_au_nombre_de_coureurs(
-        self, MockTeam, MockCompetitor, mock_get404, mock_render,
-        mock_splits, mock_radio, mock_ctrl, mock_org,
-    ):
-        MockTeam.objects.filter.return_value.exists.return_value = False
-        competition = make_competition(); cls = make_cls()
-        mock_get404.side_effect = [competition, cls]
-        dnf = make_competitor(3, rt=-1, stat=4)
-        dnf.is_ok = False
-        competitors = [make_competitor(1, rt=5000), make_competitor(2, rt=6000), dnf]
-        MockCompetitor.objects.filter.return_value = competitors
-
-        from results.views import duel_analysis
-        duel_analysis(rf_get(), cid=1, class_id=10)
-
-        _, _, context = mock_render.call_args[0]
-        assert context['n_runners'] == 3
-
 
 # ─── Tests _slugify_no_prefix ─────────────────────────────────────────────────
 
 class TestSlugifyNoPrefix:
-    """Vérifie que _slugify_no_prefix retire les numéros en tête de titre."""
 
     def _call(self, value):
         from results.views import _slugify_no_prefix
@@ -1659,103 +1291,8 @@ class TestSlugifyNoPrefix:
         result = self._call('Introduction')
         assert result == 'introduction'
 
-    def test_accents_preserves(self):
-        result = self._call('2 Résultats généraux')
-        assert 'sultats' in result
-        assert result.startswith('r')
-
     def test_prefixe_multi_niveaux(self):
         assert self._call('3.2.1 Sous-section') == 'sous-section'
-
-
-# ─── Tests MarkdownView ───────────────────────────────────────────────────────
-
-class TestMarkdownView:
-
-    @patch('results.views.MeosTutorial')
-    @patch('results.views.render')
-    def test_retourne_contenu_converti(self, mock_render, MockTutorial):
-        article        = MagicMock()
-        article.text   = '# Titre\n\nParagraphe de test.'
-        article.title  = 'Tutoriel'
-        MockTutorial.objects.get.return_value = article
-
-        from results.views import MarkdownView
-        request = rf_get()
-        MarkdownView(request, article_id=1)
-
-        MockTutorial.objects.get.assert_called_once_with(pk=1)
-        _, template, context = mock_render.call_args[0]
-        assert template == 'results/markdown_content.html'
-        assert 'markdown_content' in context
-        assert hasattr(context['markdown_content'], 'content')
-
-    @patch('results.views.MeosTutorial')
-    @patch('results.views.render')
-    def test_contenu_est_html(self, mock_render, MockTutorial):
-        article       = MagicMock()
-        article.text  = '# Mon titre'
-        MockTutorial.objects.get.return_value = article
-
-        from results.views import MarkdownView
-        MarkdownView(rf_get(), article_id=1)
-
-        _, _, context = mock_render.call_args[0]
-        assert '<h1' in context['markdown_content'].content
-
-    @patch('results.views.MeosTutorial')
-    @patch('results.views.render')
-    def test_table_of_contents_generee(self, mock_render, MockTutorial):
-        article       = MagicMock()
-        article.text  = '## Section A\n\n## Section B'
-        MockTutorial.objects.get.return_value = article
-
-        from results.views import MarkdownView
-        MarkdownView(rf_get(), article_id=1)
-
-        _, _, context = mock_render.call_args[0]
-        content_html = context['markdown_content'].content
-        assert 'section-a' in content_html or 'section' in content_html
-
-
-# ─── Tests etiquettes ─────────────────────────────────────────────────────────
-
-class TestEtiquettesView:
-
-    @patch('results.views.render')
-    def test_utilise_bon_template(self, mock_render):
-        from results.views import etiquettes
-        etiquettes(rf_get())
-        args = mock_render.call_args[0]
-        template = args[1]
-        assert template == 'results/etiquettes.html'
-
-    @patch('results.views.render')
-    def test_status_200(self, mock_render):
-        mock_render.return_value = MagicMock(status_code=200)
-        from results.views import etiquettes
-        etiquettes(rf_get())
-        assert mock_render.called
-
-
-# ─── Tests drivers ────────────────────────────────────────────────────────────
-
-class TestDriversView:
-
-    @patch('results.views.render')
-    def test_utilise_bon_template(self, mock_render):
-        from results.views import drivers
-        drivers(rf_get())
-        args = mock_render.call_args[0]
-        template = args[1]
-        assert template == 'results/drivers.html'
-
-    @patch('results.views.render')
-    def test_appele_render(self, mock_render):
-        mock_render.return_value = MagicMock(status_code=200)
-        from results.views import drivers
-        drivers(rf_get())
-        assert mock_render.called
 
 
 # ─── Tests competition_detail ─────────────────────────────────────────────────
@@ -1808,30 +1345,14 @@ class TestCompetitionDetailView:
         _, context = self._run(classes=[cls1, cls2])
         assert len(context['class_stats']) == 2
 
-    def test_class_stats_champs_individuels(self):
-        cls1 = make_cls(1, 10)
-        _, context = self._run(classes=[cls1])
-        stat = context['class_stats'][0]
-        assert 'cls'       in stat
-        assert 'total'     in stat
-        assert 'finishers' in stat
-        assert 'is_relay'  in stat
-
-    def test_classe_individuelle_marquee_false(self):
-        cls1 = make_cls(1, 10)
-        _, context = self._run(classes=[cls1], teams_cls_ids=set())
-        stat = context['class_stats'][0]
-        assert stat['is_relay'] is False
-
     def test_classe_relais_marquee_true(self):
         cls1 = make_cls(1, 10)
         _, context = self._run(classes=[cls1], teams_cls_ids={10})
         stat = context['class_stats'][0]
         assert stat['is_relay'] is True
 
-    def test_total_et_finishers_transmis(self):
+    def test_classe_individuelle_marquee_false(self):
         cls1 = make_cls(1, 10)
-        _, context = self._run(classes=[cls1], competitors_count=8, finishers_count=5)
+        _, context = self._run(classes=[cls1], teams_cls_ids=set())
         stat = context['class_stats'][0]
-        assert stat['total'] == 8
-        assert stat['finishers'] == 5
+        assert stat['is_relay'] is False

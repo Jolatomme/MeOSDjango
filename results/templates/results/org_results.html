@@ -1,5 +1,6 @@
 {% extends "results/base.html" %}
 {% load meos_tags %}
+{% load static %}
 {% block title %}{{ organization.name }} — {{ competition.name }}{% endblock %}
 
 {% block page_header %}
@@ -11,7 +12,12 @@
         <li class="breadcrumb-item active">{{ organization.name }}</li>
       </ol>
     </nav>
-    <h1><i class="bi bi-building me-2 opacity-75"></i>{{ organization.name }}</h1>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h1><i class="bi bi-building me-2 opacity-75"></i>{{ organization.name }}</h1>
+      <span class="badge bg-light text-dark fs-6">
+        {{ competitors|length }} concurrent{{ competitors|length|pluralize }}
+      </span>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -25,36 +31,72 @@
     <table class="results-table">
       <thead>
         <tr>
+          <th style="width:3rem">#</th>
           <th>Concurrent</th>
           <th>Catégorie</th>
-          <th class="text-end">Temps</th>
-          <th class="text-center">Statut</th>
+          <th class="text-end">Temps&nbsp;/&nbsp;Statut</th>
         </tr>
       </thead>
       <tbody>
         {% for comp in competitors %}
         <tr>
-          <td class="runner-name">
-            <a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name }}</a>
+          {# ── Colonne rang dans la catégorie ── #}
+          <td>
+            {% if comp.cat_rank == 1 %}
+              <img src="{% static 'results/img/medal-gold.svg' %}" width="22" height="22" alt="1er">
+            {% elif comp.cat_rank == 2 %}
+              <img src="{% static 'results/img/medal-silver.svg' %}" width="22" height="22" alt="2e">
+            {% elif comp.cat_rank == 3 %}
+              <img src="{% static 'results/img/medal-bronze.svg' %}" width="22" height="22" alt="3e">
+            {% elif comp.cat_rank %}
+              <span class="rank-n">{{ comp.cat_rank }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
           </td>
+
+          {# ── Nom avec lien vers la fiche individuelle ── #}
+          <td class="runner-name">
+            <a href="{% url 'results:competitor_detail' competition.cid comp.id %}">
+              {{ comp.name }}
+            </a>
+          </td>
+
+          {# ── Catégorie avec lien vers le classement ── #}
           <td>
             {% if comp.class_obj %}
-              <a href="{% url 'results:class_results' competition.cid comp.cls %}"
+              <a href="{% url 'results:class_results' competition.cid comp.class_obj.name %}"
                  class="text-muted text-decoration-none">{{ comp.class_obj.name }}</a>
             {% else %}—{% endif %}
           </td>
-          <td class="text-end time-col">
-            {% if comp.is_ok %}{{ comp.rt|meos_time }}{% else %}<span class="text-muted">—</span>{% endif %}
-          </td>
-          <td class="text-center">
-            <span class="badge bg-{{ comp.stat|status_badge }}">{{ comp.stat|status_label }}</span>
+
+          {# ── Temps si classé, sinon badge statut ── #}
+          <td class="text-end">
+            {% if comp.is_ok %}
+              <span class="time-col">{{ comp.rt|meos_time }}</span>
+            {% else %}
+              <span class="badge bg-{{ comp.stat|status_badge }}">
+                {{ comp.stat|status_label }}
+              </span>
+            {% endif %}
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="4" class="text-center text-muted p-4">Aucun concurrent.</td></tr>
+        <tr>
+          <td colspan="4" class="text-center text-muted p-4">
+            <i class="bi bi-inbox me-2"></i>Aucun concurrent pour ce club.
+          </td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+</div>
+
+<div class="mt-3">
+  <a href="{% url 'results:competition_detail' competition.cid %}"
+     class="btn btn-outline-success">
+    <i class="bi bi-arrow-left me-2"></i>Toutes les catégories
+  </a>
 </div>
 {% endblock %}
