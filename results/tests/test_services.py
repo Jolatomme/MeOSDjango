@@ -522,8 +522,8 @@ class TestGetClassControls:
         seq, name_map = get_class_controls(cid=1, class_id=10)
 
         assert len(seq) == 2
-        assert seq[0] == {'ctrl_id': 31, 'ctrl_name': 'P31'}
-        assert seq[1] == {'ctrl_id': 32, 'ctrl_name': 'P32'}
+        assert seq[0] == {'ctrl_id': 31, 'ctrl_name': '2-P31'}
+        assert seq[1] == {'ctrl_id': 32, 'ctrl_name': '3-P32'}
         assert name_map[31] == 'P31'
         assert name_map[32] == 'P32'
 
@@ -547,7 +547,7 @@ class TestGetClassControls:
         MockCtrl.objects.filter.return_value = []  # aucun contrôle connu
         from results.services import get_class_controls
         seq, _ = get_class_controls(cid=1, class_id=10)
-        assert seq[0]['ctrl_name'] == '99'
+        assert seq[0]['ctrl_name'] == '2-99'
 
     @patch('results.services.Mopcontrol')
     @patch('results.services.Mopclasscontrol')
