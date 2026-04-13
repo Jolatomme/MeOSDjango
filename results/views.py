@@ -805,8 +805,8 @@ def relay_results(request, cid, class_id):
                 cum_time    += leg_time_raw or 0
                 cum_time_raw = cum_time if leg_time_raw else None
                 ctrl_seq     = [
-                    {'ctrl_id': cv, 'ctrl_name': control_name_map.get(cv, str(cv))}
-                    for cv in controls_by_leg.get(leg_num, [])
+                    {'ctrl_id': cv, 'ctrl_name': f"{idx+1}-{control_name_map.get(cv, str(cv))}"}
+                    for idx, cv in enumerate(controls_by_leg.get(leg_num, []))
                 ]
                 splits = compute_splits(runner.id, ctrl_seq, radio_map)
                 legs_data.append({

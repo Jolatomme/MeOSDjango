@@ -57,7 +57,7 @@ def get_class_controls(cid, class_id, *, leg=None):
     controls_seq = [
         {
             'ctrl_id':   cc.ctrl,
-            'ctrl_name': control_name_map.get(cc.ctrl, str(cc.ctrl)),
+            'ctrl_name': f"{cc.ord + 1}-{control_name_map.get(cc.ctrl, str(cc.ctrl))}",
         }
         for cc in class_controls
     ]

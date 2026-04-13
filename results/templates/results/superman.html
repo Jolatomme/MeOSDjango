@@ -87,8 +87,7 @@
 <th style="width:3rem">#</th>
 <th>Concurrent</th>
 <th>Club</th>
-<th class="text-end">Temps total</th>
-<th class="text-end">Retard Superman</th>
+<th class="text-end">Temps</th>
 {% endblock %}
 {% block tbody_id %}supermanTableBody{% endblock %}
 
@@ -143,16 +142,15 @@ function buildTable() {
   if (!tbody) return;
   tbody.innerHTML = SERIES.map((s, i) => {
     const color    = PALETTE[i % PALETTE.length];
-    const lossBadge = s.rank === 1
-      ? `<span class="badge bg-warning text-dark fw-bold">+${s.loss}</span>`
-      : `<span class="badge bg-light text-dark fw-bold">+${s.loss}</span>`;
+    const lossHtml = s.loss && s.loss !== '+00:00'
+      ? `<small>+${s.loss}</small>`
+      : '';
     return `
       <tr>
         <td>${COUtils.renderMedal(s.rank)}</td>
         <td class="runner-name fw-bold">${COUtils.renderRunnerDot(color, s.name)}</td>
         <td class="club-name text-muted">${s.org}</td>
-        <td class="text-end time-col">${s.total}</td>
-        <td class="text-end">${lossBadge}</td>
+        <td class="text-end time-col">${s.total}${lossHtml ? '<br>' + lossHtml : ''}</td>
       </tr>`;
   }).join('');
 }
