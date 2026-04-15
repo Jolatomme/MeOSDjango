@@ -1,4 +1,5 @@
 {% extends "results/base.html" %}
+{% load static %}
 {% block title %}{{ SITE_NAME }} — Accueil{% endblock %}
 {% block nav_home %}active{% endblock %}
 
@@ -6,7 +7,10 @@
 <div class="co-hero">
   <div class="container position-relative">
     <span class="hero-badge mb-2 d-inline-block">{{ CLUB_NAME }}</span>
-    <h1 class="hero-title mt-1">{{ SITE_NAME }}</h1>
+    <h1 class="hero-title mt-1 d-flex align-items-center gap-3">
+      <img src="{% static 'results/img/logo-cocs.svg' %}" alt="{{ CLUB_NAME }}" height="48">
+      {{ SITE_NAME }}
+    </h1>
     <p class="hero-sub mb-0">{{ SITE_SUBTITLE }}</p>
   </div>
 </div>

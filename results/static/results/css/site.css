@@ -68,6 +68,7 @@ body { font-family: var(--font-body); background: var(--co-light); color: #1a1a1
   font-family: var(--font-display); font-weight: 800; font-size: 1.5rem;
   letter-spacing: 0.03em; color: #fff !important;
 }
+.co-navbar .navbar-brand img { height: 32px; width: auto; }
 .co-navbar .brand-accent { color: var(--co-gold); }
 .co-navbar .nav-link { color: rgba(255,255,255,.75) !important; font-weight: 500; transition: color .2s; }
 .co-navbar .nav-link:hover,

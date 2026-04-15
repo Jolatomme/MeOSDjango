@@ -112,7 +112,7 @@
   </div>
 </div>
 
-{# ── Tableau récapitulatif ────────────────────────────────────────────────── #}
+{# ── Tableau récapitulatif (4 colonnes sur mobile) ────────────────────── #}
 <div class="co-card mb-4">
   <div class="co-card-header">
     <i class="bi bi-table me-2"></i>Indice global par coureur
@@ -121,11 +121,10 @@
     <table class="results-table">
       <thead>
         <tr>
-          <th style="width:3rem">#</th>
+          <th style="width:2.5rem">#</th>
           <th>Coureur</th>
           <th>Club</th>
-          <th class="text-end">Indice global</th>
-          <th class="text-center" style="width:10rem">Profil</th>
+          <th class="text-center" style="width:8rem">Indice / Profil</th>
         </tr>
       </thead>
       <tbody id="summaryBody"></tbody>
@@ -206,10 +205,17 @@
     background: #1e2a1e !important;
   }
 
-  /* ── Barre de progression indice global (tableau récap) ─────────────────── */
-  .gi-bar-wrap { position: relative; height: 6px; border-radius: 3px;
-                 background: #e9ecef; overflow: hidden; width: 100%; }
-  .gi-bar      { position: absolute; top: 0; height: 100%; border-radius: 3px; }
+  /* ── Cellule indice / profil fusionnée (tableau récap) ─────────────────────── */
+  .gi-cell-profil { padding: .3rem .5rem !important; vertical-align: top; }
+  .gi-profil-pct { font-size: .85rem; line-height: 1.1; margin-bottom: .2rem; }
+  .gi-bar-wrap  { position: relative; height: 6px; border-radius: 3px;
+                  background: #e9ecef; overflow: hidden; width: 100%; }
+  .gi-bar       { position: absolute; top: 0; height: 100%; border-radius: 3px; }
+  .gi-bar-center { position: absolute; left: 50%; top: 0; height: 100%;
+                  width: 1px; background: rgba(0,0,0,.3); }
+
+  html[data-theme="dark"] .gi-bar-wrap { background: #2a2a2a; }
+  html[data-theme="dark"] .gi-bar-center { background: rgba(255,255,255,.3); }
 
   /* ── Légende swatches ──────────────────────────────────────────────────── */
   .gi-legend-swatch {
@@ -236,19 +242,30 @@ function indexColor(v) {
   if (v === null || v === undefined) return '#e9ecef';
   const clamped = Math.max(-1, Math.min(1, v));
   if (clamped <= 0) {
-    // vert → gris
-    const t   = 1 + clamped;          // 0 (lièvre pur) → 1 (neutre)
+    const t   = 1 + clamped;
     const r   = Math.round(26  + t * (224 - 26));
     const g   = Math.round(107 + t * (224 - 107));
     const b   = Math.round(60  + t * (224 - 60));
     return `rgb(${r},${g},${b})`;
   } else {
-    // gris → rouge
     const t   = clamped;
     const r   = Math.round(224 + t * (192 - 224));
     const g   = Math.round(224 + t * (57  - 224));
-    const b   = Math.round(224 + t * (43  - 224));
+    const b   = Math.round(224 + t * (43 - 224));
     return `rgb(${r},${g},${b})`;
+  }
+}
+
+// Version plus saturée pour la barre de profil du tableau récapitulatif
+function profileBarColor(v) {
+  if (v === null || v === undefined) return '#ccc';
+  const clamped = Math.max(-1, Math.min(1, v));
+  if (clamped <= 0) {
+    const t = 1 + clamped;
+    return `rgb(${Math.round(10 + t * 170)},${Math.round(100 + t * 80)},${Math.round(30 + t * 120)})`;
+  } else {
+    const t = clamped;
+    return `rgb(${Math.round(220 + t * 30)},${Math.round(50 + t * 20)},${Math.round(40 + t * 20)})`;
   }
 }
 
@@ -319,8 +336,8 @@ function buildSummary() {
   body.innerHTML = sorted.map((r, i) => {
     const color    = `hsl(${(GI_DATA.indexOf(r) * 47) % 360},55%,45%)`;
     const gv       = r.global_index;
-    const barColor = indexColor(gv);
-    // La barre : centrée sur 50% (neutre), s'étale vers la gauche (lièvre) ou droite (suiveur)
+    const textCol  = Math.abs(gv ?? 0) > 0.15 ? '#333' : '#666';
+    const barColor = profileBarColor(gv);
     const pct   = gv !== null ? Math.abs(gv) * 50 : 0;
     const left  = gv !== null && gv < 0 ? (50 - pct) + '%' : '50%';
     const width = pct + '%';
@@ -329,14 +346,11 @@ function buildSummary() {
       <td>${COUtils.renderMedal(r.rank)}</td>
       <td class="runner-name fw-bold">${COUtils.renderRunnerDot(color, r.name)}</td>
       <td class="club-name text-muted">${r.org || '—'}</td>
-      <td class="text-end fw-bold" style="color:${barColor}">
-        ${fmtIndex(gv)}
-      </td>
-      <td>
+      <td class="gi-cell-profil">
+        <div class="gi-profil-pct fw-bold" style="color:${textCol}">${fmtIndex(gv)}</div>
         <div class="gi-bar-wrap">
           <div class="gi-bar" style="left:${left};width:${width};background:${barColor}"></div>
-          <div style="position:absolute;left:50%;top:0;height:100%;
-                      width:1px;background:rgba(0,0,0,.2)"></div>
+          <div class="gi-bar-center"></div>
         </div>
       </td>
     </tr>`;
