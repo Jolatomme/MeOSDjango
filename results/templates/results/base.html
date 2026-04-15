@@ -47,8 +47,9 @@
 
   <nav class="navbar navbar-expand-lg co-navbar">
     <div class="container">
-      <a class="navbar-brand" href="{% url 'results:home' %}">
-        <i class="bi bi-compass me-2"></i>{{ SITE_NAME }}<span class="brand-accent">.</span>
+      <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'results:home' %}">
+        <img src="{% static 'results/img/logo-cocs.svg' %}" alt="{{ CLUB_NAME }}" height="32">
+        <span>{{ SITE_NAME }}<span class="brand-accent">.</span></span>
       </a>
       <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse"
               data-bs-target="#mainNav" aria-label="Menu">
