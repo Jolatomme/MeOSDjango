@@ -1,0 +1,125 @@
+{% extends "results/base.html" %}
+{% load meos_tags %}
+{% load static %}
+{% block title %}{{ course.display_name }} — {{ competition.name }}{% endblock %}
+
+{% block page_header %}
+<div class="co-page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="co-breadcrumb">
+      <ol class="breadcrumb mb-2 small">
+        {% include 'results/_breadcrumb_home_comp.html' %}
+        <li class="breadcrumb-item active">{{ course.display_name }}</li>
+      </ol>
+    </nav>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h1><i class="bi bi-map me-2 opacity-75"></i>{{ course.display_name }}</h1>
+        <div class="opacity-75 small mt-1 d-flex align-items-center gap-2 flex-wrap">
+          <span>{{ competition.name }}</span>
+          {% for cls in course.classes %}
+            <a href="{% url 'results:class_results' competition.cid cls.name %}"
+               class="badge bg-light text-dark text-decoration-none">{{ cls.name }}</a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% include 'results/course_analysis_tabs.html' %}
+{% endblock %}
+
+{% block content %}
+
+<div class="mb-3 d-flex gap-2 align-items-center flex-wrap">
+  <div class="position-relative" style="max-width:320px;flex:1">
+    <span class="position-absolute top-50 translate-middle-y ms-2 ps-1 text-muted" style="pointer-events:none;">
+      <img src="{% static 'results/img/search.svg' %}" width="16" height="16" alt="">
+    </span>
+    <input type="text" id="runnerSearch" class="form-control ps-5" placeholder="Nom ou club…">
+  </div>
+  <button class="btn btn-outline-secondary btn-sm" onclick="toggleNonFinishers()">
+    <i class="bi bi-eye me-1"></i><span id="toggleLabel">Masquer abandons</span>
+  </button>
+</div>
+
+<div class="co-card">
+  <div class="co-card-header d-flex justify-content-between">
+    <span><i class="bi bi-trophy me-2"></i>Classement circuit — {{ course.display_name }}</span>
+    <span class="badge bg-warning text-dark">{{ competition.date|date:"d/m/Y" }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="results-table" id="resultsTable">
+      <thead>
+        <tr>
+          <th style="width:3rem">#</th>
+          <th>Concurrent</th>
+          <th class="d-none d-md-table-cell">Catégorie</th>
+          <th>Club</th>
+          <th class="text-end">Temps</th>
+          <th class="text-end d-none d-md-table-cell">Écart</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for comp in results %}
+        <tr class="result-row {% if not comp.is_ok %}non-finisher{% endif %}"
+            data-name="{{ comp.name|lower }}"
+            data-org="{% if comp.org_obj %}{{ comp.org_obj.name|lower }}{% endif %}">
+          <td>
+            {% if comp.rank == 1 %}<img src="{% static 'results/img/medal-gold.svg' %}" width="22" height="22" alt="1er">
+            {% elif comp.rank == 2 %}<img src="{% static 'results/img/medal-silver.svg' %}" width="22" height="22" alt="2e">
+            {% elif comp.rank == 3 %}<img src="{% static 'results/img/medal-bronze.svg' %}" width="22" height="22" alt="3e">
+            {% elif comp.rank %}<span class="rank-n">{{ comp.rank }}</span>
+            {% else %}<span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="runner-name">
+            <a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name }}</a>
+          </td>
+          <td class="d-none d-md-table-cell">
+            {% if comp.class_obj %}
+              <a href="{% url 'results:class_results' competition.cid comp.class_obj.name %}"
+                 class="badge bg-light text-dark border text-decoration-none">{{ comp.class_obj.name }}</a>
+            {% else %}—{% endif %}
+          </td>
+          <td class="club-name">
+            {% if comp.org_obj %}
+              <a href="{% url 'results:org_results' competition.cid comp.org %}"
+                 class="text-muted text-decoration-none">{{ comp.org_obj.name }}</a>
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-end time-col">
+            {% if comp.is_ok %}{{ comp.rt|meos_time }}
+            {% else %}<span class="badge bg-{{ comp.stat|status_badge }}">{{ comp.stat|status_label }}</span>
+            {% endif %}
+          </td>
+          <td class="text-end behind-col d-none d-md-table-cell">
+            {% if comp.time_behind is not None and comp.time_behind > 0 %}+{{ comp.time_behind|meos_time }}
+            {% elif comp.time_behind == 0 %}<span class="text-success fw-bold">◆</span>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted p-4">
+          <i class="bi bi-inbox me-2"></i>Aucun résultat pour ce circuit.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mt-3">
+  <a href="{% url 'results:competition_detail' competition.cid %}" class="btn btn-outline-success">
+    <i class="bi bi-arrow-left me-2"></i>Toutes les catégories
+  </a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const _toggleNF = COUtils.makeNonFinisherToggle('toggleLabel');
+  function toggleNonFinishers() { _toggleNF(); }
+  COUtils.bindRowSearch('runnerSearch', 'tr.result-row', null);
+</script>
+{% endblock %}

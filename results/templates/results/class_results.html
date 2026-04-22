@@ -1,7 +1,10 @@
 {% extends "results/base.html" %}
 {% load meos_tags %}
 {% load static %}
-{% block title %}{{ cls.name }} — {{ competition.name }}{% endblock %}
+{% block title %}
+  {% if course %}Circuit {{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
+  — {{ competition.name }}
+{% endblock %}
 
 {% block page_header %}
 <div class="co-page-header">
@@ -9,11 +12,24 @@
     <nav aria-label="breadcrumb" class="co-breadcrumb">
       <ol class="breadcrumb mb-2 small">
         {% include 'results/_breadcrumb_home_comp.html' %}
-        <li class="breadcrumb-item active">{{ cls.name }}</li>
+        <li class="breadcrumb-item active">
+          {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
+        </li>
       </ol>
     </nav>
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <h1><i class="bi bi-list-ol me-2 opacity-75"></i>{{ cls.name }}</h1>
+      <div>
+        <h1>
+          <i class="{% if course %}bi bi-signpost-2{% else %}bi bi-list-ol{% endif %} me-2 opacity-75"></i>
+          {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
+        </h1>
+        {% if course %}
+          <div class="opacity-75 small mt-1">
+            Circuit · {{ course.n_controls }} poste{{ course.n_controls|pluralize }}
+            &bull; {{ course.classes|length }} catégorie{{ course.classes|length|pluralize }}
+          </div>
+        {% endif %}
+      </div>
       <div class="d-flex gap-2 align-items-center flex-wrap">
         {% if leader_time != '-' %}
           <span class="badge bg-warning text-dark fs-6 fw-bold">
@@ -29,13 +45,28 @@
 {% endblock %}
 
 {% block content %}
+
+{# ── Pastilles catégories (vue circuit uniquement) ─────────────────────────── #}
+{% if course %}
+<div class="co-card mb-3">
+  <div class="co-card-header"><i class="bi bi-tags me-2"></i>Catégories sur ce circuit</div>
+  <div class="p-3 d-flex flex-wrap gap-2">
+    {% for cat in course.classes %}
+    <a href="{% url 'results:class_results' competition.cid cat.name %}"
+       class="badge bg-success text-white text-decoration-none fs-6">{{ cat.name }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# ── Filtres ────────────────────────────────────────────────────────────────── #}
 <div class="mb-3 d-flex gap-2 align-items-center flex-wrap">
   <div class="position-relative" style="max-width:320px;flex:1">
     <span class="position-absolute top-50 translate-middle-y ms-2 ps-1 text-muted" style="pointer-events:none;">
       <img src="{% static 'results/img/search.svg' %}" width="16" height="16" alt="">
     </span>
     <input type="text" id="runnerSearch" class="form-control ps-5"
-           placeholder="Nom ou club…">
+           placeholder="{% if course %}Nom, club ou catégorie…{% else %}Nom ou club…{% endif %}">
   </div>
   <button class="btn btn-outline-secondary btn-sm" onclick="toggleNonFinishers()">
     <i class="bi bi-eye me-1"></i><span id="toggleLabel">Masquer abandons</span>
@@ -64,31 +95,22 @@
 <div class="co-card mb-3" id="errorChartCard">
   <div class="co-card-header d-flex justify-content-between align-items-center"
        style="cursor:pointer" onclick="toggleErrorChart()">
-    <span>
-      <i class="bi bi-bar-chart-fill me-2" style="color:var(--co-gold)"></i>
-      Taux d'erreur par tronçon
-    </span>
-    <i class="bi bi-chevron-down text-muted" id="errorChartChevron"
-       style="transition:transform .2s"></i>
+    <span><i class="bi bi-bar-chart-fill me-2" style="color:var(--co-gold)"></i>Taux d'erreur par tronçon</span>
+    <i class="bi bi-chevron-down text-muted" id="errorChartChevron" style="transition:transform .2s"></i>
   </div>
   <div id="errorChartBody" class="p-3" style="display:none">
-    <p class="small text-muted mb-2">
-      <i class="bi bi-info-circle me-1"></i>
-      Les seuils ci-dessus (secondes / %) déterminent quand un tronçon est considéré
-      comme une erreur. La <strong>barre bleue</strong> indique le pourcentage de
-      coureurs classés dépassant ce seuil ; la <strong>ligne orange</strong> leur
-      erreur moyenne en secondes.
-    </p>
-    <div style="position:relative;height:260px">
-      <canvas id="errorChart"></canvas>
-    </div>
+    <div style="position:relative;height:260px"><canvas id="errorChart"></canvas></div>
   </div>
 </div>
 {% endif %}
 
+{# ── Tableau ────────────────────────────────────────────────────────────────── #}
 <div class="co-card">
   <div class="co-card-header d-flex justify-content-between">
-    <span><i class="bi bi-trophy me-2"></i>Classement — {{ cls.name }}</span>
+    <span><i class="bi bi-trophy me-2"></i>
+      Classement —
+      {% if course %}Circuit {{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
+    </span>
     <span class="badge bg-warning text-dark">{{ competition.date|date:"d/m/Y" }}</span>
   </div>
   <div class="table-responsive">
@@ -97,17 +119,18 @@
         <tr>
           <th style="width:3rem">#</th>
           <th>Concurrent</th>
+          {% if course %}<th>Catégorie</th>{% endif %}
           <th>Club</th>
           <th class="text-end">Temps</th>
           <th class="text-end d-none d-md-table-cell">Écart</th>
+          {% if course %}<th class="text-end d-none d-md-table-cell" title="Rang dans la catégorie">Rg. cat.</th>{% endif %}
         </tr>
       </thead>
       <tbody>
         {% for comp in results %}
-
         <tr class="result-row {% if not comp.is_ok %}non-finisher{% endif %}"
-            data-name="{{ comp.name|lower }}"
-            data-org="{% if comp.org_obj %}{{ comp.org_obj.name|lower }}{% endif %}">
+            data-name="{{ comp.name|lower }}{% if course and comp.class_obj %} {{ comp.class_obj.name|lower }}{% endif %}{% if comp.org_obj %} {{ comp.org_obj.name|lower }}{% endif %}">
+
           <td>
             {% if comp.rank == 1 %}<img src="{% static 'results/img/medal-gold.svg' %}" width="22" height="22" alt="1er">
             {% elif comp.rank == 2 %}<img src="{% static 'results/img/medal-silver.svg' %}" width="22" height="22" alt="2e">
@@ -116,15 +139,28 @@
             {% else %}<span class="text-muted">—</span>
             {% endif %}
           </td>
+
           <td class="runner-name">
             <a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name }}</a>
           </td>
+
+          {% if course %}
+          <td>
+            {% if comp.class_obj %}
+            <a href="{% url 'results:class_results' competition.cid comp.class_obj.name %}"
+               class="badge bg-light text-dark border text-decoration-none"
+               style="font-family:var(--font-display)">{{ comp.class_obj.name }}</a>
+            {% else %}—{% endif %}
+          </td>
+          {% endif %}
+
           <td class="club-name">
             {% if comp.org_obj %}
               <a href="{% url 'results:org_results' competition.cid comp.org %}"
                  class="text-muted text-decoration-none">{{ comp.org_obj.name }}</a>
             {% else %}—{% endif %}
           </td>
+
           {% if has_splits and comp.splits %}
           <td class="text-end time-col time-col-splits"
               onclick="toggleSplits('{{ comp.id }}', this.querySelector('.split-toggle'))"
@@ -133,8 +169,6 @@
               <span class="time-with-toggle">
                 {{ comp.rt|meos_time }}
                 <button class="btn btn-sm btn-link p-0 ms-1 split-toggle"
-                        data-target="splits-{{ comp.id }}"
-                        title="Afficher les intermédiaires"
                         onclick="event.stopPropagation(); toggleSplits('{{ comp.id }}', this)">
                   <i class="bi bi-chevron-down text-primary" style="font-size:.75rem"></i>
                 </button>
@@ -145,28 +179,31 @@
           </td>
           {% else %}
           <td class="text-end time-col">
-            {% if comp.is_ok %}
-              {{ comp.rt|meos_time }}
-            {% else %}
-              <span class="badge bg-{{ comp.stat|status_badge }}">{{ comp.stat|status_label }}</span>
+            {% if comp.is_ok %}{{ comp.rt|meos_time }}
+            {% else %}<span class="badge bg-{{ comp.stat|status_badge }}">{{ comp.stat|status_label }}</span>
             {% endif %}
           </td>
           {% endif %}
+
           <td class="text-end behind-col d-none d-md-table-cell">
-            {% if comp.time_behind is not None and comp.time_behind > 0 %}
-              +{{ comp.time_behind|meos_time }}
-            {% elif comp.time_behind == 0 %}
-              <span class="text-success fw-bold">◆</span>
+            {% if comp.time_behind is not None and comp.time_behind > 0 %}+{{ comp.time_behind|meos_time }}
+            {% elif comp.time_behind == 0 %}<span class="text-success fw-bold">◆</span>
             {% else %}—{% endif %}
           </td>
+
+          {% if course %}
+          <td class="text-end d-none d-md-table-cell">
+            {% if comp.cat_rank %}<span class="badge bg-light text-dark border">{{ comp.cat_rank }}</span>
+            {% else %}<span class="text-muted small">—</span>{% endif %}
+          </td>
+          {% endif %}
         </tr>
 
         {% if has_splits and comp.splits %}
         <tr id="splits-{{ comp.id }}"
             class="splits-row d-none result-row {% if not comp.is_ok %}non-finisher{% endif %}"
-            data-name="{{ comp.name|lower }}"
-            data-org="{% if comp.org_obj %}{{ comp.org_obj.name|lower }}{% endif %}">
-          <td colspan="5" class="splits-td">
+            data-name="{{ comp.name|lower }}">
+          <td colspan="{% if course %}7{% else %}5{% endif %}" class="splits-td">
             <div class="splits-detail">
               <div class="splits-grid">
                 <div class="split-cell split-start">
@@ -202,87 +239,61 @@
         {% endif %}
 
         {% empty %}
-        <tr>
-          <td colspan="5" class="text-center text-muted p-4">
-            <i class="bi bi-inbox me-2"></i>Aucun résultat pour cette catégorie.
-          </td>
-        </tr>
+        <tr><td colspan="{% if course %}7{% else %}5{% endif %}" class="text-center text-muted p-4">
+          <i class="bi bi-inbox me-2"></i>Aucun résultat.
+        </td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
 
-{# ── Navigation catégories ────────────────────────────────────────────────── #}
+{# ── Navigation catégories (seulement pour les vraies catégories) ───────────── #}
+{% if not course %}
 <div class="mt-3 d-flex gap-2 align-items-center flex-wrap">
-
-  {# Catégorie précédente #}
   {% if prev_cls %}
     <a href="{% url 'results:class_results' competition.cid prev_cls.name %}"
-       class="btn btn-outline-success"
-       title="Catégorie précédente : {{ prev_cls.name }}">
+       class="btn btn-outline-success" title="{{ prev_cls.name }}">
       <i class="bi bi-chevron-left me-1"></i>{{ prev_cls.name }}
     </a>
   {% else %}
-    <button class="btn btn-outline-secondary" disabled>
-      <i class="bi bi-chevron-left me-1"></i>Début
-    </button>
+    <button class="btn btn-outline-secondary" disabled><i class="bi bi-chevron-left me-1"></i>Début</button>
   {% endif %}
-
-  {# Retour à toutes les catégories #}
   <a href="{% url 'results:competition_detail' competition.cid %}" class="btn btn-outline-success">
     <i class="bi bi-arrow-left me-2"></i>Toutes les catégories
   </a>
-
-  {# Catégorie suivante #}
   {% if next_cls %}
     <a href="{% url 'results:class_results' competition.cid next_cls.name %}"
-       class="btn btn-outline-success"
-       title="Catégorie suivante : {{ next_cls.name }}">
+       class="btn btn-outline-success" title="{{ next_cls.name }}">
       {{ next_cls.name }}<i class="bi bi-chevron-right ms-1"></i>
     </a>
   {% else %}
-    <button class="btn btn-outline-secondary" disabled>
-      Fin<i class="bi bi-chevron-right ms-1"></i>
-    </button>
+    <button class="btn btn-outline-secondary" disabled>Fin<i class="bi bi-chevron-right ms-1"></i></button>
   {% endif %}
-
 </div>
+{% else %}
+<div class="mt-3">
+  <a href="{% url 'results:competition_detail' competition.cid %}" class="btn btn-outline-success">
+    <i class="bi bi-arrow-left me-2"></i>Toutes les catégories
+  </a>
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block extra_head %}
 <style>
-  /* Conteneur et fond de la grille — spécifique à cette page */
-  .splits-td     { padding: 0 !important; }
-  .splits-detail {
-    background: #f0f7f2; border-top: 1px solid #c8e6d0;
-    border-bottom: 2px solid #c8e6d0; padding: .5rem .75rem .65rem;
-    width: 100%; box-sizing: border-box;
-  }
-  /* Meilleur tronçon */
+  .splits-td { padding: 0 !important; }
+  .splits-detail { background: #f0f7f2; border-top: 1px solid #c8e6d0; border-bottom: 2px solid #c8e6d0; padding: .5rem .75rem .65rem; }
   .split-best { background: #fffbe6; border-color: #f0c040; }
   .split-leg-best { font-weight: 800; color: #9a6700 !important; }
   .split-best .split-ctrl-name::after { content: ' ★'; color: #f0a500; font-size: .7rem; }
-  /* Erreur estimée */
   .split-error-flag { background: #fde8e8 !important; border-color: #f5a0a0 !important; }
   .split-error-flag .split-ctrl-name { color: #c0392b; }
   .split-error { font-size: .68rem; color: #c0392b; font-weight: 700; margin-top: .1rem; text-align: center; }
-
-  /* Cellule temps cliquable (quand des intermédiaires existent) */
-  .time-col-splits {
-    cursor: pointer;
-    user-select: none;
-  }
+  .time-col-splits { cursor: pointer; user-select: none; }
   .time-col-splits:hover { background: #f0f7f2; }
-
-  /* Cellule temps + bouton chevron inline */
-  .time-with-toggle {
-    display: inline-flex;
-    align-items: center;
-    white-space: nowrap;
-  }
-
-  /* Bouton chevron inline (dans la cellule du temps) */
+  .time-with-toggle { display: inline-flex; align-items: center; white-space: nowrap; }
   .split-toggle { border: none; background: transparent; vertical-align: middle; }
   .split-toggle .bi { transition: transform .2s; display: inline-block; }
   .split-toggle.open .bi { transform: rotate(180deg); }
@@ -292,177 +303,106 @@
 {% block extra_js %}
 <script src="{% static 'results/js/chart.umd.min.js' %}"></script>
 <script>
-  // ── Toggle non-classés ──────────────────────────────────────────────────────
   const _toggleNF = COUtils.makeNonFinisherToggle('toggleLabel');
   function toggleNonFinishers() { _toggleNF(); }
-
-  // ── Recherche coureur ───────────────────────────────────────────────────────
   COUtils.bindRowSearch('runnerSearch', 'tr.result-row:not(.splits-row)', 'splits-row');
-
-  // ── Toggle intermédiaires d'un coureur ──────────────────────────────────────
-  function toggleSplits(compId, btn) {
-    COUtils.toggleDetailRow('splits-' + compId, btn, applyErrorThresholds);
-  }
-
-  // ── Toggle tous les intermédiaires ─────────────────────────────────────────
+  function toggleSplits(compId, btn) { COUtils.toggleDetailRow('splits-' + compId, btn, applyErrorThresholds); }
   const _allSplitsToggle = COUtils.makeAllToggle({
-    rowSelector: '.splits-row',
-    btnSelector: '.split-toggle',
-    labelId:     'allSplitsLabel',
-    openText:    'Réduire tous les intermédiaires',
-    closeText:   'Développer tous les intermédiaires',
-    onOpen:      () => applyErrorThresholds(),
+    rowSelector: '.splits-row', btnSelector: '.split-toggle',
+    labelId: 'allSplitsLabel',
+    openText: 'Réduire tous les intermédiaires',
+    closeText: 'Développer tous les intermédiaires',
+    onOpen: () => applyErrorThresholds(),
   });
   function toggleAllSplits() { _allSplitsToggle(); }
 
-  // ── Détection des erreurs ───────────────────────────────────────────────────
   function applyErrorThresholds() {
-    const thSec = parseFloat(document.getElementById('thresholdSec').value) || 0;
-    const thPct = parseFloat(document.getElementById('thresholdPct').value) || 0;
-    const thRaw = thSec * 10;   // dixièmes de seconde (unité interne MeOS)
-
+    const thSec = parseFloat(document.getElementById('thresholdSec')?.value) || 0;
+    const thPct = parseFloat(document.getElementById('thresholdPct')?.value) || 0;
+    const thRaw = thSec * 10;
     document.querySelectorAll('.split-cell[data-error-time]').forEach(cell => {
-      const et       = parseFloat(cell.dataset.errorTime);
-      const ep       = parseFloat(cell.dataset.errorPct);
-      const errSpan  = cell.querySelector('.split-error');
-      // Erreur si le seuil temps OU le seuil % est dépassé (et valeurs valides)
-      const isError  = !isNaN(et) && !isNaN(ep) && (et > thRaw || ep > thPct);
-
+      const et = parseFloat(cell.dataset.errorTime);
+      const ep = parseFloat(cell.dataset.errorPct);
+      const isError = !isNaN(et) && !isNaN(ep) && (et > thRaw || ep > thPct);
+      const errSpan = cell.querySelector('.split-error');
       if (isError) {
         cell.classList.add('split-error-flag');
-        if (errSpan) {
-          const secs = (et / 10).toFixed(0);
-          errSpan.textContent = `+${secs}s / +${ep.toFixed(1)}%`;
-          errSpan.classList.remove('d-none');
-        }
+        if (errSpan) { errSpan.textContent = `+${(et/10).toFixed(0)}s / +${ep.toFixed(1)}%`; errSpan.classList.remove('d-none'); }
       } else {
         cell.classList.remove('split-error-flag');
         if (errSpan) { errSpan.textContent = ''; errSpan.classList.add('d-none'); }
       }
     });
   }
-
   document.getElementById('thresholdSec')?.addEventListener('input', applyErrorThresholds);
   document.getElementById('thresholdPct')?.addEventListener('input', applyErrorThresholds);
   document.addEventListener('DOMContentLoaded', applyErrorThresholds);
 
-  // ── Graphique taux d'erreur par tronçon ────────────────────────────────────
   const LEG_ERROR_DATA = {{ leg_error_data_json|default:"[]"|safe }};
   let errorChart = null;
-
   function buildErrorChartData(thSec, thPct) {
-    const thRaw = thSec * 10;  // dixièmes de seconde
-    const labels = [], rateData = [], avgData = [];
-    LEG_ERROR_DATA.forEach(leg => {
-      labels.push(leg.ctrl_name);
-      const total    = leg.errors.length;
-      const inError  = leg.errors.filter(e => e.et > thRaw || e.ep > thPct);
-      const rate     = total > 0 ? (inError.length / total) * 100 : 0;
-      const avgSec   = inError.length > 0
-        ? inError.reduce((s, e) => s + e.et / 10, 0) / inError.length
-        : 0;
-      rateData.push(parseFloat(rate.toFixed(1)));
-      avgData.push(parseFloat(avgSec.toFixed(1)));
+    const thRaw = thSec * 10;
+    return LEG_ERROR_DATA.map(leg => {
+      const inError = leg.errors.filter(e => e.et > thRaw || e.ep > thPct);
+      return {
+        label: leg.ctrl_name,
+        rate:  leg.errors.length > 0 ? (inError.length / leg.errors.length * 100).toFixed(1) : 0,
+        avg:   inError.length > 0 ? (inError.reduce((s,e) => s + e.et/10, 0) / inError.length).toFixed(1) : 0,
+      };
     });
-    return { labels, rateData, avgData };
   }
-
   function renderErrorChart() {
     if (!LEG_ERROR_DATA.length) return;
     const thSec = parseFloat(document.getElementById('thresholdSec')?.value) || 0;
     const thPct = parseFloat(document.getElementById('thresholdPct')?.value) || 0;
-    const { labels, rateData, avgData } = buildErrorChartData(thSec, thPct);
-
+    const data  = buildErrorChartData(thSec, thPct);
     if (errorChart) {
-      errorChart.data.labels              = labels;
-      errorChart.data.datasets[0].data   = rateData;
-      errorChart.data.datasets[1].data   = avgData;
-      errorChart.update();
-      return;
+      errorChart.data.labels = data.map(d => d.label);
+      errorChart.data.datasets[0].data = data.map(d => d.rate);
+      errorChart.data.datasets[1].data = data.map(d => d.avg);
+      errorChart.update(); return;
     }
-
     const ctx = document.getElementById('errorChart');
     if (!ctx) return;
     errorChart = new Chart(ctx.getContext('2d'), {
       type: 'bar',
       data: {
-        labels,
+        labels: data.map(d => d.label),
         datasets: [
-          {
-            type: 'bar',
-            label: 'Coureurs en erreur (%)',
-            data: rateData,
-            backgroundColor: 'rgba(67,99,216,0.65)',
-            borderColor: 'rgba(67,99,216,0.9)',
-            borderWidth: 1,
-            yAxisID: 'yRate',
-            order: 2,
-          },
-          {
-            type: 'line',
-            label: 'Erreur moyenne (s)',
-            data: avgData,
-            borderColor: '#f58231',
-            backgroundColor: 'rgba(245,130,49,0.15)',
-            borderWidth: 2.5,
-            pointRadius: 4,
-            pointBackgroundColor: '#f58231',
-            tension: 0.3,
-            yAxisID: 'yAvg',
-            order: 1,
-          },
+          { type: 'bar', label: 'Coureurs en erreur (%)', data: data.map(d => d.rate),
+            backgroundColor: 'rgba(67,99,216,0.65)', borderColor: 'rgba(67,99,216,0.9)',
+            borderWidth: 1, yAxisID: 'yRate', order: 2 },
+          { type: 'line', label: 'Erreur moyenne (s)', data: data.map(d => d.avg),
+            borderColor: '#f58231', backgroundColor: 'rgba(245,130,49,0.15)',
+            borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#f58231',
+            tension: 0.3, yAxisID: 'yAvg', order: 1 },
         ],
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        responsive: true, maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { position: 'top', labels: { boxWidth: 14, font: { size: 12 } } },
-          tooltip: {
-            callbacks: {
-              label: ctx => {
-                if (ctx.datasetIndex === 0) return ` ${ctx.parsed.y.toFixed(1)} % en erreur`;
-                return ` Erreur moy. : ${ctx.parsed.y.toFixed(1)} s`;
-              },
-            },
-          },
-        },
+        plugins: { legend: { position: 'top' } },
         scales: {
-          x: { ticks: { maxRotation: 45, font: { size: 11 } } },
-          yRate: {
-            type: 'linear', position: 'left',
-            min: 0, max: 100,
-            title: { display: true, text: 'Coureurs en erreur (%)', font: { size: 11 } },
-            grid: { color: 'rgba(0,0,0,0.06)' },
-          },
-          yAvg: {
-            type: 'linear', position: 'right',
-            min: 0,
-            title: { display: true, text: 'Erreur moy. (s)', font: { size: 11 } },
-            grid: { drawOnChartArea: false },
-          },
+          yRate: { type: 'linear', position: 'left', min: 0, max: 100,
+            title: { display: true, text: 'Coureurs en erreur (%)' } },
+          yAvg: { type: 'linear', position: 'right', min: 0,
+            title: { display: true, text: 'Erreur moy. (s)' },
+            grid: { drawOnChartArea: false } },
         },
       },
     });
   }
-
   let errorChartOpen = false;
   function toggleErrorChart() {
     errorChartOpen = !errorChartOpen;
-    const body    = document.getElementById('errorChartBody');
+    const body = document.getElementById('errorChartBody');
     const chevron = document.getElementById('errorChartChevron');
-    body.style.display      = errorChartOpen ? '' : 'none';
+    body.style.display = errorChartOpen ? '' : 'none';
     chevron.style.transform = errorChartOpen ? 'rotate(180deg)' : '';
     if (errorChartOpen) requestAnimationFrame(() => requestAnimationFrame(renderErrorChart));
   }
-
-  // Re-render quand les seuils changent
   ['thresholdSec', 'thresholdPct'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', () => {
-      if (errorChartOpen) renderErrorChart();
-    });
+    document.getElementById(id)?.addEventListener('input', () => { if (errorChartOpen) renderErrorChart(); });
   });
-
 </script>
 {% endblock %}

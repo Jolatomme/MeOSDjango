@@ -1,10 +1,11 @@
 import json
 import re
+from types import SimpleNamespace
 import markdown
 from markdown.extensions.toc import slugify_unicode
 
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 
 from .models import (
     Mopcompetition, Mopclass, Moporganization, Mopcompetitor,
@@ -20,32 +21,28 @@ from .services import (
     build_leg_matrix, compute_leg_refs,
     build_abs_time_series, compute_error_estimates,
     compute_grouping_index, compute_regularity_analysis,
+    compute_course_hash, get_courses_map,
 )
 from .meos_checker import check_meos_file
 from .verifie_moi import generate_verifie_moi_csv
 
 
 # ─── Ordre de tri des non-classés ─────────────────────────────────────────────
-# Groupe 1 : NC / Hors compét. / No Timing / H.T. / DSQ
-# Groupe 2 : PM (poinçons manquants)
-# Groupe 3 : Abandon (DNF)
-# Groupe 4 : Non-partants (DNS, NP, Cancel)
-# Groupe 5 : tout autre statut inconnu
 
 _NON_FINISHER_ORDER = {
-    STAT_OCC:    1,   # Hors compét. (NC)
-    STAT_NT:     1,   # No Timing
-    STAT_OT:     1,   # H.T.
-    STAT_DQ:     1,   # DSQ
-    STAT_MP:     2,   # PM
-    STAT_DNF:    3,   # Abandon
-    STAT_DNS:    4,   # Non partant
-    STAT_NP:     4,   # Non participant
-    STAT_CANCEL: 4,   # Cancel
+    STAT_OCC: 1, STAT_NT: 1, STAT_OT: 1, STAT_DQ: 1,
+    STAT_MP:  2,
+    STAT_DNF: 3,
+    STAT_DNS: 4, STAT_NP: 4, STAT_CANCEL: 4,
 }
 
+# Hash de circuit : exactement 8 caractères hexadécimaux minuscules
+_COURSE_HASH_RE = re.compile(r'^[0-9a-f]{8}$')
 
-# ─── Helpers internes ─────────────────────────────────────────────────────────
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Helpers internes
+# ══════════════════════════════════════════════════════════════════════════════
 
 def _resolve_class_id(cid, class_id):
     if isinstance(class_id, str) and not class_id.isdigit():
@@ -55,15 +52,52 @@ def _resolve_class_id(cid, class_id):
 
 
 def _load_class_context(cid, class_id):
+    """Charge le contexte commun à toutes les vues catégorie **et circuit**.
+
+    Si ``class_id`` est un hash de circuit (8 chars hex), charge automatiquement
+    tous les coureurs du circuit et renvoie un ``cls`` pseudo-objet compatible
+    avec les templates.
+
+    Returns
+    -------
+    (competition, cls, competitors, course)
+        - ``course`` : dict issu de ``get_courses_map``, ou ``None`` pour une
+          vraie catégorie.
+        - ``cls``    : Mopclass réel, ou SimpleNamespace(id, name, cid,
+          display_name) pour un circuit (``name`` = hash, utilisé dans les
+          URLs).
+    """
     competition = get_object_or_404(Mopcompetition, cid=cid)
-    class_id = _resolve_class_id(cid, class_id)
-    cls = get_object_or_404(Mopclass, cid=cid, id=class_id)
+
+    # ── Cas circuit ───────────────────────────────────────────────────────────
+    if isinstance(class_id, str) and _COURSE_HASH_RE.match(class_id):
+        courses_map = get_courses_map(cid)
+        course      = courses_map.get(class_id)
+        if not course:
+            raise Http404("Circuit non trouvé")
+
+        cls = SimpleNamespace(
+            id=class_id, name=class_id, cid=cid,
+            display_name=course['display_name'],
+        )
+        competitors = []
+        for cls_id in course['class_ids']:
+            competitors.extend(list(Mopcompetitor.objects.filter(cid=cid, cls=cls_id)))
+
+        cls_map = {c.id: c for c in course['classes']}
+        for comp in competitors:
+            comp.class_obj = cls_map.get(comp.cls)
+
+        return competition, cls, competitors, course
+
+    # ── Cas catégorie normale ──────────────────────────────────────────────────
+    class_id    = _resolve_class_id(cid, class_id)
+    cls         = get_object_or_404(Mopclass, cid=cid, id=class_id)
     competitors = list(Mopcompetitor.objects.filter(cid=cid, cls=class_id))
-    return competition, cls, competitors
+    return competition, cls, competitors, None
 
 
 def _get_adjacent_classes(cid, class_id):
-    """Retourne (prev_cls, next_cls) dans l'ordre (ord, name) de la compétition."""
     all_classes = list(Mopclass.objects.filter(cid=cid).order_by('ord', 'name'))
     current_idx = next((i for i, c in enumerate(all_classes) if c.id == class_id), None)
     if current_idx is None:
@@ -74,28 +108,23 @@ def _get_adjacent_classes(cid, class_id):
 
 
 def _sort_non_finishers(non_finishers):
-    """Trie les non-classés par groupe de statut puis par ordre alphabétique.
-
-    Ordre des groupes :
-      1 – NC / Hors compét. / No Timing / H.T. / DSQ
-      2 – PM (poinçons manquants)
-      3 – Abandon (DNF)
-      4 – Non-partants (DNS, NP, Cancel)
-      5 – tout autre statut
-
-    Args:
-        non_finishers: liste de Mopcompetitor non classés.
-
-    Returns:
-        Nouvelle liste triée (l'originale n'est pas modifiée).
-    """
     return sorted(
         non_finishers,
         key=lambda c: (_NON_FINISHER_ORDER.get(c.stat, 5), c.name.lower()),
     )
 
 
-# ─── Pages statiques ──────────────────────────────────────────────────────────
+def _controls_for(cid, cls, course):
+    """Retourne controls_seq selon qu'on est en mode catégorie ou circuit."""
+    if course is not None:
+        return course['controls_seq']
+    seq, _ = get_class_controls(cid, cls.id)
+    return seq
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Pages statiques
+# ══════════════════════════════════════════════════════════════════════════════
 
 _PREFIX_RE = re.compile(r'^\d+(\.\d+)*\.?\s+')
 
@@ -124,67 +153,49 @@ def drivers(request):
 
 
 def meos_checker_view(request):
-    """Vérificateur de conformité réglementaire pour les fichiers .meosxml."""
-    report      = None
-    parse_error = None
-
+    report = None; parse_error = None
     if request.method == 'POST' and 'meosfile' in request.FILES:
         try:
             xml_bytes = request.FILES['meosfile'].read()
             report = check_meos_file(xml_bytes)
         except ValueError as exc:
             parse_error = str(exc)
-
-    return render(request, 'results/meos_checker.html', {
-        'report':      report,
-        'parse_error': parse_error,
-    })
+    return render(request, 'results/meos_checker.html',
+                  {'report': report, 'parse_error': parse_error})
 
 
 def verifie_moi_view(request):
-    """Génère la liste de départ CSV pour l'application Android O Checklist."""
-    parse_error      = None
-    result           = None
-    csv_content_json = None
-    filename_json    = None
-
+    parse_error = None; result = None; csv_content_json = None; filename_json = None
     if request.method == 'POST' and 'meosfile' in request.FILES:
         try:
             xml_bytes        = request.FILES['meosfile'].read()
             result           = generate_verifie_moi_csv(xml_bytes)
             csv_content_json = json.dumps(result.csv_content)
-            safe_name = re.sub(r'[^\w\-\.\s]', '_', result.competition_name).strip() or 'verifie_moi'
-            filename_json = json.dumps(safe_name + '.csv')
+            safe_name        = re.sub(r'[^\w\-\.\s]', '_', result.competition_name).strip() or 'verifie_moi'
+            filename_json    = json.dumps(safe_name + '.csv')
         except ValueError as exc:
             parse_error = str(exc)
-
     return render(request, 'results/verifie_moi.html', {
-        'parse_error':      parse_error,
-        'result':           result,
-        'csv_content_json': csv_content_json,
-        'filename_json':    filename_json,
+        'parse_error': parse_error, 'result': result,
+        'csv_content_json': csv_content_json, 'filename_json': filename_json,
     })
 
 
-# ─── Accueil ──────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# Accueil & détail compétition
+# ══════════════════════════════════════════════════════════════════════════════
 
 def home(request):
     competitions = Mopcompetition.objects.all()
     return render(request, 'results/home.html', {'competitions': competitions})
 
 
-# ─── Détail compétition ───────────────────────────────────────────────────────
-
 def competition_detail(request, cid):
-    competition = get_object_or_404(Mopcompetition, cid=cid)
-    classes     = Mopclass.objects.filter(cid=cid).order_by('ord', 'name')
-
+    competition     = get_object_or_404(Mopcompetition, cid=cid)
+    classes         = Mopclass.objects.filter(cid=cid).order_by('ord', 'name')
     relay_class_ids = set(
-        Mopteam.objects.filter(cid=cid)
-        .values_list('cls', flat=True)
-        .distinct()
+        Mopteam.objects.filter(cid=cid).values_list('cls', flat=True).distinct()
     )
-
     class_stats = []
     for cls in classes:
         is_relay = cls.id in relay_class_ids
@@ -196,29 +207,33 @@ def competition_detail(request, cid):
             qs        = Mopcompetitor.objects.filter(cid=cid, cls=cls.id)
             total     = qs.count()
             finishers = qs.filter(stat=STAT_OK).exclude(rt__lte=0).count()
-        class_stats.append({
-            'cls':       cls,
-            'total':     total,
-            'finishers': finishers,
-            'is_relay':  is_relay,
-        })
+        class_stats.append({'cls': cls, 'total': total, 'finishers': finishers,
+                            'is_relay': is_relay})
 
+    courses_map = get_courses_map(cid)
     return render(request, 'results/competition_detail.html', {
         'competition': competition,
         'class_stats': class_stats,
+        'courses_map': courses_map,
     })
 
 
-# ─── Classement individuel ────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# Résultats — catégorie ET circuit
+# (class_id peut être un nom/identifiant de catégorie OU un hash de circuit)
+# ══════════════════════════════════════════════════════════════════════════════
 
 def class_results(request, cid, class_id):
-    resolved_class_id = _resolve_class_id(cid, class_id)
-    if Mopteam.objects.filter(cid=cid, cls=resolved_class_id).exists():
+    competition, cls, competitors, course = _load_class_context(cid, class_id)
+
+    # Redirect vers relais seulement pour les vraies catégories
+    if course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists():
         return redirect('results:relay_results', cid=cid, class_id=class_id)
 
-    competition, cls, competitors = _load_class_context(cid, resolved_class_id)
-
-    prev_cls, next_cls = _get_adjacent_classes(cid, cls.id)
+    # Navigation catégorie adjacente (non pertinent pour un circuit)
+    prev_cls, next_cls = (None, None)
+    if course is None:
+        prev_cls, next_cls = _get_adjacent_classes(cid, cls.id)
 
     org_map = get_org_map(cid, as_objects=True)
     for c in competitors:
@@ -226,11 +241,20 @@ def class_results(request, cid, class_id):
 
     finishers, non_finishers, leader_time = rank_finishers(competitors)
 
-    non_finishers_sorted = _sort_non_finishers(non_finishers)
-    results = finishers + non_finishers_sorted
+    # Rang dans la catégorie d'origine pour les vues circuit
+    if course is not None:
+        class_rank_cache: dict = {}
+        for c in competitors:
+            cls_id = c.cls
+            if cls_id not in class_rank_cache:
+                all_in_cls = [x for x in competitors if x.cls == cls_id]
+                fin, _, _  = rank_finishers(all_in_cls)
+                class_rank_cache[cls_id] = {x.id: x.rank for x in fin}
+            c.cat_rank = class_rank_cache[cls_id].get(c.id)
 
-    controls_seq, _ = get_class_controls(cid, cls.id)
-    radio_map       = get_radio_map(cid, [c.id for c in results])
+    results      = finishers + _sort_non_finishers(non_finishers)
+    controls_seq = _controls_for(cid, cls, course)
+    radio_map    = get_radio_map(cid, [c.id for c in results])
 
     for c in results:
         c.splits = compute_splits(c.id, controls_seq, radio_map)
@@ -246,7 +270,7 @@ def class_results(request, cid, class_id):
             for idx, sp in enumerate(c.splits):
                 e = errs[idx] if idx < len(errs) else None
                 sp['error_time'] = round(e['error_time']) if e and e['error_time'] is not None else None
-                sp['error_pct']  = round(e['error_pct'], 1) if e and e['error_pct']  is not None else None
+                sp['error_pct']  = round(e['error_pct'], 1) if e and e['error_pct'] is not None else None
 
     leg_error_data = []
     if controls_seq and finishers:
@@ -261,9 +285,12 @@ def class_results(request, cid, class_id):
                     })
             leg_error_data.append(entry)
 
-    return render(request, 'results/class_results.html', {
+    # ← Le seul branchement template : circuit ou catégorie
+    template = 'results/course_results.html' if course else 'results/class_results.html'
+    return render(request, template, {
         'competition':         competition,
         'cls':                 cls,
+        'course':              course,
         'results':             results,
         'leader_time':         format_time(leader_time) if leader_time else '-',
         'controls_seq':        controls_seq,
@@ -272,63 +299,47 @@ def class_results(request, cid, class_id):
         'leg_error_data_json': json.dumps(leg_error_data),
         'prev_cls':            prev_cls,
         'next_cls':            next_cls,
+        'course_hash':         course['hash'] if course else compute_course_hash(controls_seq),
     })
 
 
-# ─── Fiche concurrent ─────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# Fiche concurrent & organisation
+# ══════════════════════════════════════════════════════════════════════════════
 
 def competitor_detail(request, cid, competitor_id):
     competition = get_object_or_404(Mopcompetition, cid=cid)
     competitor  = get_object_or_404(Mopcompetitor, cid=cid, id=competitor_id)
-
     org = Moporganization.objects.filter(cid=cid, id=competitor.org).first()
     cls = Mopclass.objects.filter(cid=cid, id=competitor.cls).first()
-
     controls_seq, _ = get_class_controls(cid, competitor.cls)
     radio_map       = get_radio_map(cid, [competitor_id])
     splits          = compute_splits(competitor_id, controls_seq, radio_map)
-
     return render(request, 'results/competitor_detail.html', {
-        'competition': competition,
-        'competitor':  competitor,
-        'org':         org,
-        'cls':         cls,
-        'splits':      splits,
-        'total_time':  (
-            format_time(competitor.rt) if competitor.is_ok
-            else competitor.status_label
-        ),
+        'competition': competition, 'competitor': competitor,
+        'org': org, 'cls': cls, 'splits': splits,
+        'total_time': format_time(competitor.rt) if competitor.is_ok else competitor.status_label,
     })
 
-
-# ─── Résultats par organisation ───────────────────────────────────────────────
 
 def org_results(request, cid, org_id):
     competition  = get_object_or_404(Mopcompetition, cid=cid)
     organization = get_object_or_404(Moporganization, cid=cid, id=org_id)
-
-    # Récupérer les coureurs du club
     org_competitors = list(Mopcompetitor.objects.filter(cid=cid, org=org_id))
-
-    # Associer l'objet catégorie à chaque coureur
     class_map = {c.id: c for c in Mopclass.objects.filter(cid=cid)}
     for c in org_competitors:
         c.class_obj = class_map.get(c.cls)
 
-    # Calculer le classement de chaque coureur dans SA catégorie (tous compétiteurs,
-    # pas seulement ceux du club)
     class_ids = {c.cls for c in org_competitors}
-    class_rank_maps = {}   # {cls_id: {competitor_id: rank}}
+    class_rank_maps = {}
     for cls_id in class_ids:
         all_in_class = list(Mopcompetitor.objects.filter(cid=cid, cls=cls_id))
         finishers_in_class, _, _ = rank_finishers(all_in_class)
-        # rank_finishers assigne .rank sur chaque objet finisher
         class_rank_maps[cls_id] = {c.id: c.rank for c in finishers_in_class}
 
     for c in org_competitors:
-        c.cat_rank = class_rank_maps.get(c.cls, {}).get(c.id)  # None si non classé
+        c.cat_rank = class_rank_maps.get(c.cls, {}).get(c.id)
 
-    # ── Classés : triés par rang, puis pour les ex-æquo par ord/nom de catégorie ──
     finishers = sorted(
         [c for c in org_competitors if c.is_ok],
         key=lambda c: (
@@ -337,24 +348,21 @@ def org_results(request, cid, org_id):
             c.class_obj.name if c.class_obj else '',
         ),
     )
-
-    # ── Non-classés : NC → PM → Abandon → Non-partants, puis alpha ──
     non_finishers = _sort_non_finishers([c for c in org_competitors if not c.is_ok])
-
     return render(request, 'results/org_results.html', {
-        'competition':  competition,
-        'organization': organization,
-        'competitors':  finishers + non_finishers,
+        'competition': competition, 'organization': organization,
+        'competitors': finishers + non_finishers,
     })
 
 
-# ─── Statistiques ─────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# Statistiques & API
+# ══════════════════════════════════════════════════════════════════════════════
 
 def statistics(request, cid):
     competition = get_object_or_404(Mopcompetition, cid=cid)
     total    = Mopcompetitor.objects.filter(cid=cid).count()
     finished = Mopcompetitor.objects.filter(cid=cid, stat=STAT_OK).exclude(rt__lte=0).count()
-
     from django.db import connection
     with connection.cursor() as cursor:
         cursor.execute("""
@@ -362,59 +370,55 @@ def statistics(request, cid):
             FROM mopCompetitor c
             JOIN mopOrganization o ON o.cid = c.cid AND o.id = c.org
             WHERE c.cid = %s AND c.stat = %s AND c.rt > 0
-            GROUP BY o.id, o.name
-            ORDER BY cnt DESC
-            LIMIT 10
+            GROUP BY o.id, o.name ORDER BY cnt DESC LIMIT 10
         """, [cid, STAT_OK])
         top_orgs = cursor.fetchall()
-
     return render(request, 'results/statistics.html', {
-        'competition': competition,
-        'total':       total,
-        'finished':    finished,
-        'top_orgs':    top_orgs,
+        'competition': competition, 'total': total,
+        'finished': finished, 'top_orgs': top_orgs,
     })
 
 
-# ─── API JSON ─────────────────────────────────────────────────────────────────
-
 def api_class_results(request, cid, class_id):
-    class_id = _resolve_class_id(cid, class_id)
+    class_id        = _resolve_class_id(cid, class_id)
     competitors     = list(Mopcompetitor.objects.filter(cid=cid, cls=class_id))
     org_map         = get_org_map(cid)
     finishers, _, _ = rank_finishers(competitors)
     leader          = finishers[0].rt if finishers else None
-
     data = [
-        {
-            'rank':   i + 1,
-            'name':   c.name,
-            'org':    org_map.get(c.org, ''),
-            'time':   format_time(c.rt),
-            'behind': f'+{format_time(c.rt - leader)}' if i > 0 else '',
-        }
+        {'rank': i + 1, 'name': c.name, 'org': org_map.get(c.org, ''),
+         'time': format_time(c.rt),
+         'behind': f'+{format_time(c.rt - leader)}' if i > 0 else ''}
         for i, c in enumerate(finishers)
     ]
     return JsonResponse({'results': data})
 
 
-# ─── Superman ─────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# Analyses — catégorie ET circuit via _load_class_context unifié
+#
+# class_id peut être :
+#   - un nom ou identifiant entier de catégorie → mode catégorie
+#   - un hash 8-char hex                        → mode circuit
+#
+# Aucune vue dupliquée : les templates utilisent {% if course %} pour adapter
+# l'affichage (fil d'Ariane, onglets de navigation).
+# ══════════════════════════════════════════════════════════════════════════════
 
 def superman_analysis(request, cid, class_id):
-    competition, cls, competitors = _load_class_context(cid, class_id)
+    competition, cls, competitors, course = _load_class_context(cid, class_id)
+    org_map      = get_org_map(cid)
+    controls_seq = _controls_for(cid, cls, course)
+    controls_labels = [c['ctrl_name'] for c in controls_seq]
     finishers, _, _ = rank_finishers(competitors)
 
     if not finishers:
         return render(request, 'results/superman.html', {
-            'competition': competition, 'cls': cls,
+            'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'superman',
         })
 
-    org_map         = get_org_map(cid)
-    controls_seq, _ = get_class_controls(cid, cls.id)
-    controls_labels = [c['ctrl_name'] for c in controls_seq]
-    radio_map       = get_radio_map(cid, [c.id for c in finishers])
-
+    radio_map  = get_radio_map(cid, [c.id for c in finishers])
     leg_matrix = build_leg_matrix(finishers, controls_seq, radio_map)
     n_legs     = len(controls_seq) + 1
 
@@ -425,16 +429,12 @@ def superman_analysis(request, cid, class_id):
             v = legs[j] if j < len(legs) else None
             if v is not None and v > 0 and (best is None or v < best):
                 best = v
-        best_names = [
-            finishers[i].name
-            for i, legs in enumerate(leg_matrix)
-            if j < len(legs) and legs[j] == best
-        ] if best is not None else ['-']
+        best_names = [finishers[i].name for i, legs in enumerate(leg_matrix)
+                      if j < len(legs) and legs[j] == best] if best is not None else ['-']
         superman_legs.append(best)
         superman_leg_names.append(best_names)
 
     superman_total = sum(v for v in superman_legs if v is not None)
-
     superman_cum, acc = [], 0
     for v in superman_legs:
         acc += v if v is not None else 0
@@ -444,28 +444,21 @@ def superman_analysis(request, cid, class_id):
     series   = []
     for i, c in enumerate(finishers):
         radios = radio_map.get(c.id, {})
-        points = [0]
-        labels = ['+0:00']
-        valid  = True
-
+        points = [0]; labels = ['+0:00']; valid = True
         for j, ctrl in enumerate(controls_seq):
             abs_t = radios.get(ctrl['ctrl_id'], -1)
             if abs_t <= 0:
-                valid = False
-                break
+                valid = False; break
             loss = int(abs_t - superman_cum[j])
             points.append(loss)
             labels.append(('+' if loss >= 0 else '') + format_time(loss))
-
         if valid:
             final_loss = int(c.rt - superman_total)
             points.append(final_loss)
             labels.append(('+' if final_loss >= 0 else '') + format_time(final_loss))
         else:
             while len(points) < len(x_labels):
-                points.append(None)
-                labels.append(None)
-
+                points.append(None); labels.append(None)
         series.append({
             'id': c.id, 'name': c.name, 'org': org_map.get(c.org, ''),
             'rank': i + 1, 'total': format_time(c.rt),
@@ -473,49 +466,41 @@ def superman_analysis(request, cid, class_id):
             'points': points, 'labels': labels,
         })
 
-    leg_labels        = controls_labels + ['Arrivée']
+    leg_labels = controls_labels + ['Arrivée']
     superman_leg_data = [
-        {
-            'ctrl':  leg_labels[j],
-            'time':  format_time(superman_legs[j]) if superman_legs[j] else '-',
-            'names': superman_leg_names[j],
-        }
+        {'ctrl': leg_labels[j],
+         'time': format_time(superman_legs[j]) if superman_legs[j] else '-',
+         'names': superman_leg_names[j]}
         for j in range(n_legs)
     ]
-
     return render(request, 'results/superman.html', {
-        'competition': competition, 'cls': cls,
+        'competition': competition, 'cls': cls, 'course': course,
         'series': series, 'series_json': json.dumps(series),
         'x_labels_json': json.dumps(x_labels),
         'superman_total': format_time(superman_total),
-        'current_analysis': 'superman',
         'superman_leg_data': superman_leg_data,
         'controls_labels': controls_labels,
         'no_data': False, 'n_finishers': len(finishers),
+        'current_analysis': 'superman',
     })
 
 
-# ─── Indice de performance ────────────────────────────────────────────────────
-
 def performance_analysis(request, cid, class_id):
-    competition, cls, competitors = _load_class_context(cid, class_id)
+    competition, cls, competitors, course = _load_class_context(cid, class_id)
     finishers, _, _ = rank_finishers(competitors)
-
     if not finishers:
         return render(request, 'results/performance.html', {
-            'competition': competition, 'cls': cls,
+            'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'performance',
         })
-
     org_map         = get_org_map(cid)
-    controls_seq, _ = get_class_controls(cid, cls.id)
+    controls_seq    = _controls_for(cid, cls, course)
     controls_labels = [c['ctrl_name'] for c in controls_seq]
     radio_map       = get_radio_map(cid, [c.id for c in finishers])
-
-    leg_matrix = build_leg_matrix(finishers, controls_seq, radio_map)
-    n_legs     = len(controls_seq) + 1
-    leg_labels = controls_labels + ['Arrivée']
-    leg_refs   = compute_leg_refs(leg_matrix, n_legs, top_fraction=0.25)
+    leg_matrix      = build_leg_matrix(finishers, controls_seq, radio_map)
+    n_legs          = len(controls_seq) + 1
+    leg_labels      = controls_labels + ['Arrivée']
+    leg_refs        = compute_leg_refs(leg_matrix, n_legs, top_fraction=0.25)
 
     series = []
     for i, c in enumerate(finishers):
@@ -526,7 +511,6 @@ def performance_analysis(request, cid, class_id):
                 indices.append(round(ref / t, 5)); weights.append(round(ref))
             else:
                 indices.append(None); weights.append(None)
-
         valid = [(pi, w) for pi, w in zip(indices, weights) if pi is not None]
         if valid:
             total_w  = sum(w for _, w in valid)
@@ -535,7 +519,6 @@ def performance_analysis(request, cid, class_id):
             std_pi   = variance ** 0.5
         else:
             mean_pi = std_pi = None
-
         series.append({
             'id': c.id, 'name': c.name, 'org': org_map.get(c.org, ''),
             'rank': i + 1, 'time': format_time(c.rt),
@@ -543,39 +526,32 @@ def performance_analysis(request, cid, class_id):
             'mean_pi': round(mean_pi, 4) if mean_pi is not None else None,
             'std_pi':  round(std_pi, 4)  if std_pi  is not None else None,
         })
-
     leg_info = [
-        {'label': leg_labels[j], 'ref': format_time(leg_refs[j]) if leg_refs[j] else '-'}
+        {'label': leg_labels[j], 'ref': format_time(round(leg_refs[j])) if leg_refs[j] else '-'}
         for j in range(n_legs)
     ]
-
     return render(request, 'results/performance.html', {
-        'competition': competition, 'cls': cls,
+        'competition': competition, 'cls': cls, 'course': course,
         'series_json': json.dumps(series), 'leg_info_json': json.dumps(leg_info),
         'n_legs': n_legs, 'n_finishers': len(finishers),
         'no_data': False, 'current_analysis': 'performance',
     })
 
 
-# ─── Régularité ───────────────────────────────────────────────────────────────
-
 def regularity_analysis(request, cid, class_id):
-    competition, cls, competitors = _load_class_context(cid, class_id)
+    competition, cls, competitors, course = _load_class_context(cid, class_id)
     finishers, _, _ = rank_finishers(competitors)
-
     if len(finishers) < 2:
         return render(request, 'results/regularity.html', {
-            'competition': competition, 'cls': cls,
+            'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'regularity',
         })
-
     org_map         = get_org_map(cid)
-    controls_seq, _ = get_class_controls(cid, cls.id)
+    controls_seq    = _controls_for(cid, cls, course)
     controls_labels = [c['ctrl_name'] for c in controls_seq]
     radio_map       = get_radio_map(cid, [c.id for c in finishers])
-
-    reg_data   = compute_regularity_analysis(finishers, controls_seq, radio_map)
-    leg_labels = controls_labels + ['Arrivée']
+    reg_data        = compute_regularity_analysis(finishers, controls_seq, radio_map)
+    leg_labels      = controls_labels + ['Arrivée']
 
     series = []
     for i, c in enumerate(finishers):
@@ -588,19 +564,15 @@ def regularity_analysis(request, cid, class_id):
             'leg_pis':      [round(pi, 4) if pi is not None else None for pi in reg['leg_pis']],
             'leg_weights':  [round(w) if w is not None else None for w in reg['leg_weights']],
         })
-
     leg_info = [
-        {
-            'label':   leg_labels[j],
-            'ref':     format_time(round(reg_data['leg_refs'][j])) if reg_data['leg_refs'][j] else '-',
-            'leg_std': round(reg_data['leg_stds'][j], 4) if reg_data['leg_stds'][j] is not None else None,
-        }
+        {'label':   leg_labels[j],
+         'ref':     format_time(round(reg_data['leg_refs'][j])) if reg_data['leg_refs'][j] else '-',
+         'leg_std': round(reg_data['leg_stds'][j], 4) if reg_data['leg_stds'][j] is not None else None}
         for j in range(reg_data['n_legs'])
     ]
-
     cat_reg = reg_data['category_regularity']
     return render(request, 'results/regularity.html', {
-        'competition': competition, 'cls': cls,
+        'competition': competition, 'cls': cls, 'course': course,
         'series_json': json.dumps(series), 'leg_info_json': json.dumps(leg_info),
         'category_regularity': round(cat_reg, 4) if cat_reg is not None else None,
         'n_legs': reg_data['n_legs'], 'n_finishers': len(finishers),
@@ -608,31 +580,22 @@ def regularity_analysis(request, cid, class_id):
     })
 
 
-# ─── Regroupement ─────────────────────────────────────────────────────────────
-
 def grouping_analysis(request, cid, class_id):
-    competition, cls, competitors = _load_class_context(cid, class_id)
-
-    runners_with_start = sorted(
-        [c for c in competitors if c.st > 0], key=lambda c: c.st
-    )
-
+    competition, cls, competitors, course = _load_class_context(cid, class_id)
+    runners_with_start = sorted([c for c in competitors if c.st > 0], key=lambda c: c.st)
     if not runners_with_start:
         return render(request, 'results/grouping.html', {
-            'competition': competition, 'cls': cls,
+            'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'grouping',
         })
-
     org_map         = get_org_map(cid)
-    controls_seq, _ = get_class_controls(cid, cls.id)
+    controls_seq    = _controls_for(cid, cls, course)
     controls_labels = [c['ctrl_name'] for c in controls_seq]
     radio_map       = get_radio_map(cid, [c.id for c in runners_with_start])
 
     series = build_abs_time_series(runners_with_start, controls_seq, radio_map)
-
     finishers_rank, _, _ = rank_finishers(competitors)
     result_rank = {c.id: c.rank for c in finishers_rank}
-
     for s in series:
         runner = next((c for c in runners_with_start if c.id == s['id']), None)
         s['org']      = org_map.get(runner.org, '') if runner else ''
@@ -641,60 +604,49 @@ def grouping_analysis(request, cid, class_id):
         s['time_fmt'] = format_time(s['time']) if s['time'] > 0 else '—'
 
     x_labels = ['Départ'] + controls_labels + ['Arrivée']
-
     return render(request, 'results/grouping.html', {
-        'competition': competition, 'cls': cls,
+        'competition': competition, 'cls': cls, 'course': course,
         'series_json': json.dumps(series), 'x_labels_json': json.dumps(x_labels),
         'n_runners': len(series), 'n_controls': len(controls_seq),
         'no_data': False, 'current_analysis': 'grouping',
     })
 
 
-# ─── Indice lièvre / suiveur ──────────────────────────────────────────────────
-
 def grouping_index_analysis(request, cid, class_id):
-    competition, cls, competitors = _load_class_context(cid, class_id)
-
+    competition, cls, competitors, course = _load_class_context(cid, class_id)
     runners = sorted([c for c in competitors if c.st > 0], key=lambda c: c.st)
-
     if not runners:
         return render(request, 'results/grouping_index.html', {
-            'competition': competition, 'cls': cls,
+            'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'grouping_index',
         })
-
     try:
-        t1 = max(1,      min(int(request.GET.get('t1', 7)),  30))
+        t1 = max(1, min(int(request.GET.get('t1', 7)), 30))
         t2 = max(t1 + 1, min(int(request.GET.get('t2', 20)), 60))
     except (ValueError, TypeError):
         t1, t2 = 7, 20
 
-    org_map         = get_org_map(cid)
-    controls_seq, _ = get_class_controls(cid, cls.id)
-    radio_map       = get_radio_map(cid, [c.id for c in runners])
-
+    org_map      = get_org_map(cid)
+    controls_seq = _controls_for(cid, cls, course)
+    radio_map    = get_radio_map(cid, [c.id for c in runners])
     finishers, _, _ = rank_finishers(competitors)
-    rank_map = {c.id: c.rank for c in finishers}
+    rank_map     = {c.id: c.rank for c in finishers}
     for c in runners:
         c.rank = rank_map.get(c.id)
 
     raw = compute_grouping_index(runners, controls_seq, radio_map, t1, t2)
-
-    runner_map      = {c.id: c for c in runners}
-    id_to_name      = {c.id: c.name for c in runners}
+    runner_map = {c.id: c for c in runners}
+    id_to_name = {c.id: c.name for c in runners}
     for r in raw:
         c = runner_map.get(r['id'])
         if c:
-            r['name'] = c.name
-            r['rank'] = getattr(c, 'rank', None)
+            r['name'] = c.name; r['rank'] = getattr(c, 'rank', None)
             r['org']  = org_map.get(c.org, '')
         r['leg_ref_names'] = [
             id_to_name.get(rid) if rid is not None else None
             for rid in r.get('leg_ref_ids', [])
         ]
-
     raw.sort(key=lambda r: (r['rank'] is None, r['rank'] or 0, r.get('name', '')))
-
     for r in raw:
         r['leg_indices']  = [round(v, 3) if v is not None else None for v in r['leg_indices']]
         r['global_index'] = round(r['global_index'], 3) if r['global_index'] is not None else None
@@ -705,34 +657,30 @@ def grouping_index_analysis(request, cid, class_id):
     leg_labels = [f"{all_names[j]}\u2192{all_names[j+1]}" for j in range(len(all_names) - 1)]
 
     return render(request, 'results/grouping_index.html', {
-        'competition': competition, 'cls': cls,
+        'competition': competition, 'cls': cls, 'course': course,
         'results_json': json.dumps(raw), 'leg_labels_json': json.dumps(leg_labels),
         'n_runners': len(raw), 'n_legs': len(leg_labels),
         't1': t1, 't2': t2, 'no_data': False, 'current_analysis': 'grouping_index',
     })
 
 
-# ─── Duel ─────────────────────────────────────────────────────────────────────
-
 def duel_analysis(request, cid, class_id):
-    resolved_class_id = _resolve_class_id(cid, class_id)
-    if Mopteam.objects.filter(cid=cid, cls=resolved_class_id).exists():
+    competition, cls, competitors, course = _load_class_context(cid, class_id)
+
+    # Redirect vers relais seulement pour les vraies catégories
+    if course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists():
         return redirect('results:relay_results', cid=cid, class_id=class_id)
 
-    competition, cls, competitors = _load_class_context(cid, resolved_class_id)
-    finishers, non_finishers, _   = rank_finishers(competitors)
+    finishers, non_finishers, _ = rank_finishers(competitors)
     all_results = finishers + non_finishers
-
     if not all_results:
         return render(request, 'results/duel.html', {
-            'competition': competition, 'cls': cls,
+            'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'duel',
         })
-
-    org_map         = get_org_map(cid)
-    controls_seq, _ = get_class_controls(cid, cls.id)
-    radio_map       = get_radio_map(cid, [c.id for c in all_results])
-
+    org_map      = get_org_map(cid)
+    controls_seq = _controls_for(cid, cls, course)
+    radio_map    = get_radio_map(cid, [c.id for c in all_results])
     runners_data = []
     for c in all_results:
         splits = compute_splits(c.id, controls_seq, radio_map)
@@ -741,38 +689,31 @@ def duel_analysis(request, cid, class_id):
             'rank': getattr(c, 'rank', None),
             'rt_raw': c.rt if c.is_ok else None,
             'rt_fmt': format_time(c.rt) if c.is_ok else '—',
-            'splits': [
-                {
-                    'ctrl_name': sp['ctrl_name'],
-                    'leg_raw': sp['leg_raw'], 'leg_fmt': sp['leg_time'],
-                    'abs_raw': sp['abs_raw'], 'abs_fmt': sp['abs_time'],
-                }
-                for sp in splits
-            ],
+            'splits': [{'ctrl_name': sp['ctrl_name'], 'leg_raw': sp['leg_raw'],
+                        'leg_fmt': sp['leg_time'], 'abs_raw': sp['abs_raw'],
+                        'abs_fmt': sp['abs_time']} for sp in splits],
         })
-
     return render(request, 'results/duel.html', {
-        'competition': competition, 'cls': cls,
+        'competition': competition, 'cls': cls, 'course': course,
         'no_data': False, 'current_analysis': 'duel',
         'runners_json': json.dumps(runners_data), 'n_runners': len(runners_data),
     })
 
 
-# ─── Relais ───────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# Relais (catégories uniquement)
+# ══════════════════════════════════════════════════════════════════════════════
 
 def relay_results(request, cid, class_id):
     competition = get_object_or_404(Mopcompetition, cid=cid)
-    class_id = _resolve_class_id(cid, class_id)
+    class_id    = _resolve_class_id(cid, class_id)
     cls         = get_object_or_404(Mopclass, cid=cid, id=class_id)
-
-    teams_qs = list(Mopteam.objects.filter(cid=cid, cls=class_id))
-    org_map  = get_org_map(cid)
-
+    teams_qs    = list(Mopteam.objects.filter(cid=cid, cls=class_id))
+    org_map     = get_org_map(cid)
     finishers, non_finishers, leader_time = rank_finishers(
         teams_qs, ok_predicate=lambda t: t.stat == STAT_OK and t.rt > 0,
     )
-    all_teams = finishers + non_finishers
-
+    all_teams   = finishers + non_finishers
     team_ids    = [t.id for t in all_teams]
     all_members = list(
         Mopteammember.objects.filter(cid=cid, id__in=team_ids).order_by('id', 'leg', 'ord')
@@ -780,11 +721,9 @@ def relay_results(request, cid, class_id):
     members_by_team = {}
     for m in all_members:
         members_by_team.setdefault(m.id, []).append(m)
-
     runner_ids  = [m.rid for m in all_members]
     competitors = {c.id: c for c in Mopcompetitor.objects.filter(cid=cid, id__in=runner_ids)}
     n_legs      = max((m.leg for m in all_members), default=0)
-
     controls_by_leg, control_name_map = get_controls_by_leg(cid, class_id)
     radio_map = get_radio_map(cid, runner_ids)
 
@@ -793,13 +732,9 @@ def relay_results(request, cid, class_id):
         members = members_by_team.get(t.id, [])
         legs_data = []
         cum_time  = 0
-
         for leg_num in range(1, n_legs + 1):
-            leg_members = sorted(
-                [m for m in members if m.leg == leg_num], key=lambda m: m.ord
-            )
+            leg_members = sorted([m for m in members if m.leg == leg_num], key=lambda m: m.ord)
             runner = competitors.get(leg_members[0].rid) if leg_members else None
-
             if runner:
                 leg_time_raw = runner.rt if runner.rt > 0 else None
                 cum_time    += leg_time_raw or 0
@@ -827,7 +762,6 @@ def relay_results(request, cid, class_id):
                     'stat': 0, 'stat_label': '-', 'stat_badge': 'secondary',
                     'splits': [], 'leg_rank': None, 'cum_rank': None,
                 })
-
         teams_data.append({'team': t, 'org_name': org_map.get(t.org, ''), 'legs': legs_data})
 
     for leg_num in range(1, n_legs + 1):
