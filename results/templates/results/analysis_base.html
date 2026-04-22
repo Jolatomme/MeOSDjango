@@ -2,25 +2,10 @@
 {% load meos_tags %}
 {% load static %}
 {#
-  Gabarit commun pour Superman, Performance, Regroupement.
-  Blocs à surcharger dans les templates enfants :
-    analysis_title         → texte du <h1>
-    analysis_breadcrumb    → libellé du dernier fil d'Ariane
-    analysis_icon          → classe BI de l'icône (ex: "bi bi-lightning-charge-fill")
-    analysis_header_right  → badges côté droit du header
-    analysis_explanation   → bloc <div class="alert"> d'explication
-    extra_filters          → contrôles additionnels dans la barre de filtres
-    chart_icon / chart_title
-    canvas_id              → id du <canvas>   (défaut : analysisChart)
-    chart_height           → hauteur en px     (défaut : 420)
-    between_chart_and_table
-    summary_card_title
-    table_headers          → <th> du tableau
-    table_body             → tbody complet (défaut : <tbody id="tbody_id">)
-    tbody_id               → id du tbody     (défaut : analysisTableBody)
-    extra_css              → règles CSS supplémentaires (dans le <style> partagé)
-    chart_init_js          → JS spécifique ; doit définir function initChart()
-    extra_dom_ready        → code JS après initChart() dans DOMContentLoaded
+  Gabarit commun pour Superman, Performance, Regroupement, etc.
+  Fonctionne pour les CATÉGORIES et les CIRCUITS via la variable de contexte
+  `course` (None → catégorie, dict → circuit).
+  Les onglets et le fil d'Ariane s'adaptent automatiquement.
 #}
 
 {% block page_header %}
@@ -29,9 +14,18 @@
     <nav aria-label="breadcrumb" class="co-breadcrumb">
       <ol class="breadcrumb mb-2 small">
         {% include 'results/_breadcrumb_home_comp.html' %}
+
+        {# ← Lien parent : catégorie ou circuit selon le contexte #}
+        {% if course %}
+        <li class="breadcrumb-item">
+          <a href="{% url 'results:course_results' competition.cid course.hash %}">{{ course.display_name }}</a>
+        </li>
+        {% else %}
         <li class="breadcrumb-item">
           <a href="{% url 'results:class_results' competition.cid cls.name %}">{{ cls.name }}</a>
         </li>
+        {% endif %}
+
         <li class="breadcrumb-item active">{% block analysis_breadcrumb %}Analyse{% endblock %}</li>
       </ol>
     </nav>
@@ -41,13 +35,28 @@
           <i class="{% block analysis_icon %}bi bi-bar-chart{% endblock %} me-2 opacity-75"
              style="color:var(--co-gold)"></i>{% block analysis_title %}Analyse{% endblock %}
         </h1>
+        {# Sous-titre : nom du circuit ou de la catégorie #}
+        {% if course %}
+        <div class="opacity-75 small mt-1">
+          {{ course.display_name }} — {{ competition.name }}
+          <span class="ms-2 badge bg-secondary">{{ course.classes|length }} catégorie{{ course.classes|length|pluralize }}</span>
+        </div>
+        {% else %}
         <div class="opacity-75 small mt-1">{{ cls.name }} — {{ competition.name }}</div>
+        {% endif %}
       </div>
       {% block analysis_header_right %}{% endblock %}
     </div>
   </div>
 </div>
-{% include 'results/analysis_tabs.html' %}
+
+{# ← Onglets de navigation : circuit ou catégorie #}
+{% if course %}
+  {% include "results/course_analysis_tabs.html" %}
+{% else %}
+  {% include "results/analysis_tabs.html" %}
+{% endif %}
+
 {% endblock %}
 
 
@@ -61,10 +70,8 @@
 
 {% else %}
 
-{# ── Explication ────────────────────────────────────────────────────────── #}
 {% block analysis_explanation %}{% endblock %}
 
-{# ── Filtres ────────────────────────────────────────────────────────────── #}
 <div class="co-card mb-3">
   <div class="p-3 d-flex gap-3 align-items-center flex-wrap">
     <div>
@@ -88,7 +95,6 @@
   </div>
 </div>
 
-{# ── Graphique ───────────────────────────────────────────────────────────── #}
 <div class="co-card mb-4">
   <div class="co-card-header">
     <i class="{% block chart_icon %}bi bi-graph-up{% endblock %} me-2"></i>{% block chart_title %}Graphique{% endblock %}
@@ -101,10 +107,8 @@
   </div>
 </div>
 
-{# ── Bloc optionnel entre graphique et tableau ────────────────────────────── #}
 {% block between_chart_and_table %}{% endblock %}
 
-{# ── Tableau récapitulatif ────────────────────────────────────────────────── #}
 <div class="co-card mb-4">
   <div class="co-card-header">
     <i class="bi bi-table me-2"></i>{% block summary_card_title %}Récapitulatif{% endblock %}
@@ -142,7 +146,6 @@ const PALETTE = [
 ];
 let chart = null;
 
-// ── Contrôles de visibilité ───────────────────────────────────────────────
 function showTop(n) {
   chart.data.datasets.forEach((_, i) => { chart.getDatasetMeta(i).hidden = i >= n; });
   chart.update();
@@ -170,25 +173,15 @@ function filterRunner(q) {
   });
   chart.update();
 }
-
-// ── Légende ───────────────────────────────────────────────────────────────
-// Ces deux fonctions peuvent être redéfinies dans chart_init_js pour personnaliser la légende
-function getLegendItemClass(ds, i) {
-  return 'legend-item' + (chart.getDatasetMeta(i).hidden ? ' hidden' : '');
-}
-function getLegendItemInnerHTML(ds) {
-  return `<div class="legend-color" style="background:${ds.borderColor}"></div>
-          <span>${ds.label}</span>`;
-}
 function buildLegend() {
   const box = document.getElementById('legendBox');
   if (!box) return;
   box.innerHTML = '';
   chart.data.datasets.forEach((ds, i) => {
     const item       = document.createElement('div');
-    item.className   = getLegendItemClass(ds, i);
+    item.className   = chart.getDatasetMeta(i).hidden ? 'legend-item hidden' : 'legend-item';
     item.dataset.idx = i;
-    item.innerHTML   = getLegendItemInnerHTML(ds, i);
+    item.innerHTML   = `<div class="legend-color" style="background:${ds.borderColor}"></div><span>${ds.label}</span>`;
     item.addEventListener('click', () => {
       const meta  = chart.getDatasetMeta(i);
       meta.hidden = !meta.hidden;
@@ -199,7 +192,6 @@ function buildLegend() {
   });
 }
 
-// ── Code spécifique à la page (doit définir initChart) ────────────────────
 {% block chart_init_js %}
 function initChart() {}
 {% endblock %}

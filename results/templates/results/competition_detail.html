@@ -29,7 +29,9 @@
 {% endblock %}
 
 {% block content %}
-<!-- Stats rapides -->
+{% load static %}
+
+{# ── Stats rapides ──────────────────────────────────────────────────────────── #}
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
     <div class="stat-card">
@@ -37,72 +39,148 @@
       <div class="stat-label"><i class="bi bi-tag me-1"></i>Catégories</div>
     </div>
   </div>
+  {% if courses_map %}
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="border-left-color:var(--co-gold)">
+      <div class="stat-value" style="color:var(--co-gold)">{{ courses_map|length }}</div>
+      <div class="stat-label"><i class="bi bi-signpost-2 me-1"></i>Circuits distincts</div>
+    </div>
+  </div>
+  {% endif %}
 </div>
 
-<!-- Filtre -->
-{% load static %}
-<div class="mb-3">
-  <div class="position-relative" style="max-width:320px;">
+{# ── Bascule catégories / circuits ──────────────────────────────────────────── #}
+<div class="mb-3 d-flex gap-2 align-items-center flex-wrap justify-content-between">
+  <div class="btn-group" role="group">
+    <input type="radio" class="btn-check" name="viewMode" id="viewCats" value="cats" checked autocomplete="off">
+    <label class="btn btn-sm btn-outline-success" for="viewCats">
+      <i class="bi bi-tags me-1"></i>Par catégorie
+    </label>
+    {% if courses_map %}
+    <input type="radio" class="btn-check" name="viewMode" id="viewCourses" value="courses" autocomplete="off">
+    <label class="btn btn-sm btn-outline-warning" for="viewCourses">
+      <i class="bi bi-signpost-2 me-1"></i>Par circuit
+    </label>
+    {% endif %}
+  </div>
+  <div class="position-relative" style="max-width:280px;flex:1">
     <span class="position-absolute top-50 translate-middle-y ms-2 ps-1 text-muted" style="pointer-events:none;">
       <img src="{% static 'results/img/search.svg' %}" width="16" height="16" alt="">
     </span>
-    <input type="text" id="classSearch" class="form-control ps-5"
-           placeholder="Filtrer les catégories…">
+    <input type="text" id="classSearch" class="form-control ps-5 form-control-sm" placeholder="Filtrer…">
   </div>
 </div>
 
-<!-- Grille catégories -->
-<div class="row g-3" id="classGrid">
-  {% for cs in class_stats %}
-  <div class="col-12 col-sm-6 col-md-4 col-lg-3 class-item" data-name="{{ cs.cls.name|lower }}">
-    {% if cs.is_relay %}
-    <a href="{% url 'results:relay_results' competition.cid cs.cls.name %}" class="class-card">
-    {% else %}
-    <a href="{% url 'results:class_results' competition.cid cs.cls.name %}" class="class-card">
-    {% endif %}
-      <div class="d-flex justify-content-between align-items-start">
-        <div class="class-name">
-          {% if cs.is_relay %}
-            <i class="bi bi-people-fill me-1" style="color:var(--co-gold);font-size:.9rem"
-               title="Relais"></i>
-          {% endif %}
-          {{ cs.cls.name }}
+{# ══ VUE PAR CATÉGORIE ═══════════════════════════════════════════════════════ #}
+<div id="viewCatsPanel">
+  <div class="row g-3" id="classGrid">
+    {% for cs in class_stats %}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 class-item" data-name="{{ cs.cls.name|lower }}">
+      {% if cs.is_relay %}
+      <a href="{% url 'results:relay_results' competition.cid cs.cls.name %}" class="class-card">
+      {% else %}
+      <a href="{% url 'results:class_results' competition.cid cs.cls.name %}" class="class-card">
+      {% endif %}
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="class-name">
+            {% if cs.is_relay %}<i class="bi bi-people-fill me-1" style="color:var(--co-gold);font-size:.9rem" title="Relais"></i>{% endif %}
+            {{ cs.cls.name }}
+          </div>
+          <span class="badge rounded-pill {% if cs.finishers > 0 %}bg-success{% else %}bg-secondary{% endif %}">
+            {{ cs.finishers }}/{{ cs.total }}
+          </span>
         </div>
-        <span class="badge rounded-pill {% if cs.finishers > 0 %}bg-success{% else %}bg-secondary{% endif %}">
-          {{ cs.finishers }}/{{ cs.total }}
-        </span>
-      </div>
-      <div class="class-finishers mt-1">
-        {% if cs.finishers > 0 %}
-          <i class="bi bi-check-circle text-success me-1"></i>
-          {{ cs.finishers }} classé{{ cs.finishers|pluralize:"s" }}
-        {% else %}
-          <i class="bi bi-clock text-muted me-1"></i>
-          En attente
-        {% endif %}
-      </div>
-      <div class="class-meta mt-1">
-        {% if cs.is_relay %}
-          <i class="bi bi-people me-1"></i>{{ cs.total }} équipe{{ cs.total|pluralize }}
-        {% else %}
-          {{ cs.total }} partant{{ cs.total|pluralize }}
-        {% endif %}
-      </div>
-    </a>
-  </div>
-  {% empty %}
-  <div class="col-12">
-    <div class="co-card text-center p-5 text-muted">
-      <i class="bi bi-inbox fs-1 d-block mb-3 opacity-25"></i>
-      Aucune catégorie trouvée pour cette compétition (cid={{ competition.cid }}).
+        <div class="class-finishers mt-1">
+          {% if cs.finishers > 0 %}<i class="bi bi-check-circle text-success me-1"></i>{{ cs.finishers }} classé{{ cs.finishers|pluralize:"s" }}
+          {% else %}<i class="bi bi-clock text-muted me-1"></i>En attente{% endif %}
+        </div>
+        <div class="class-meta mt-1">
+          {% if cs.is_relay %}<i class="bi bi-people me-1"></i>{{ cs.total }} équipe{{ cs.total|pluralize }}
+          {% else %}{{ cs.total }} partant{{ cs.total|pluralize }}{% endif %}
+        </div>
+      </a>
     </div>
+    {% empty %}
+    <div class="col-12">
+      <div class="co-card text-center p-5 text-muted">
+        <i class="bi bi-inbox fs-1 d-block mb-3 opacity-25"></i>
+        Aucune catégorie trouvée (cid={{ competition.cid }}).
+      </div>
+    </div>
+    {% endfor %}
   </div>
-  {% endfor %}
 </div>
+
+{# ══ VUE PAR CIRCUIT ═════════════════════════════════════════════════════════ #}
+{# Les URLs utilisent le hash comme class_id — les mêmes vues gèrent les deux  #}
+{% if courses_map %}
+<div id="viewCoursesPanel" style="display:none">
+  <div class="row g-3" id="courseGrid">
+    {% for hash, course in courses_map.items %}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 course-item" data-name="{{ course.display_name|lower }}">
+      <div class="class-card" style="cursor:default">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <div class="class-name" style="font-size:1.1rem">
+            <i class="bi bi-signpost-2 me-1" style="color:var(--co-gold)"></i>
+            {{ course.display_name }}
+          </div>
+          <span class="badge bg-light text-dark border">{{ course.n_controls }} poste{{ course.n_controls|pluralize }}</span>
+        </div>
+        {# Pastilles catégories cliquables #}
+        <div class="d-flex flex-wrap gap-1 mb-2">
+          {% for cat in course.classes %}
+          <a href="{% url 'results:class_results' competition.cid cat.name %}"
+             class="badge bg-light text-dark border text-decoration-none"
+             style="font-family:var(--font-display);font-size:.78rem">{{ cat.name }}</a>
+          {% endfor %}
+        </div>
+        {# Liens d'analyse — même URL pattern que pour les catégories #}
+        <div class="d-flex flex-wrap gap-1 mt-2 pt-2" style="border-top:1px solid var(--co-border)">
+          <a href="{% url 'results:class_results' competition.cid hash %}"
+             class="btn btn-sm btn-outline-success py-0 px-2" style="font-size:.75rem">
+            <i class="bi bi-list-ol me-1"></i>Résultats
+          </a>
+          <a href="{% url 'results:superman' competition.cid hash %}"
+             class="btn btn-sm btn-outline-warning py-0 px-2" style="font-size:.75rem">
+            <i class="bi bi-lightning-charge-fill me-1"></i>Superman
+          </a>
+          <a href="{% url 'results:performance' competition.cid hash %}"
+             class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.75rem">
+            <i class="bi bi-speedometer2 me-1"></i>Perf.
+          </a>
+          <a href="{% url 'results:grouping' competition.cid hash %}"
+             class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:.75rem">
+            <i class="bi bi-diagram-3 me-1"></i>Regroupement
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  COUtils.bindSimpleSearch('classSearch', '.class-item', 'name');
+  document.querySelectorAll('input[name="viewMode"]').forEach(radio => {
+    radio.addEventListener('change', e => {
+      const isCats = e.target.value === 'cats';
+      document.getElementById('viewCatsPanel').style.display = isCats ? '' : 'none';
+      const cp = document.getElementById('viewCoursesPanel');
+      if (cp) cp.style.display = isCats ? 'none' : '';
+      const inp = document.getElementById('classSearch');
+      if (inp) { inp.value = ''; inp.dispatchEvent(new Event('input')); }
+    });
+  });
+  document.getElementById('classSearch')?.addEventListener('input', function () {
+    const q = this.value.toLowerCase();
+    const isCats = document.getElementById('viewCats')?.checked;
+    const sel = isCats ? '.class-item' : '.course-item';
+    document.querySelectorAll(sel).forEach(el => {
+      el.style.display = (el.dataset.name || '').includes(q) ? '' : 'none';
+    });
+  });
 </script>
 {% endblock %}

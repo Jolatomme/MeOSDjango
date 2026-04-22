@@ -1,45 +1,45 @@
-<!-- Barre de navigation entre les analyses ──────────────────────────────────
-   Fonctionne pour les catégories ET les circuits.
-   cls.name = nom réel (ex: 'H21') OU hash de circuit (ex: 'abc12345').
-   Dans les deux cas, les URLs <str:class_id> acceptent les deux formes.
+<!-- Onglets de navigation entre les analyses d'un CIRCUIT
+     Paramètres attendus : competition, course (dict avec .hash et .display_name)
+     current_analysis : 'results' | 'superman' | 'performance' | 'regularity'
+                      | 'grouping' | 'grouping_index' | 'duel'
 -->
 <div class="analysis-tabs-bar">
   <div class="container">
-    <nav class="analysis-tabs" aria-label="Navigation analyses">
+    <nav class="analysis-tabs" aria-label="Navigation analyses circuit">
 
-      <a href="{% url 'results:class_results' competition.cid cls.name %}"
+      <a href="{% url 'results:course_results' competition.cid course.hash %}"
          class="analysis-tab {% if current_analysis == 'results' %}active{% endif %}">
         <i class="bi bi-list-ol"></i><span>Résultats</span>
       </a>
 
-      <a href="{% url 'results:superman' competition.cid cls.name %}"
+      <a href="{% url 'results:course_superman' competition.cid course.hash %}"
          class="analysis-tab {% if current_analysis == 'superman' %}active{% endif %}">
         <i class="bi bi-lightning-charge-fill"></i><span>Superman</span>
       </a>
 
-      <a href="{% url 'results:performance' competition.cid cls.name %}"
+      <a href="{% url 'results:course_performance' competition.cid course.hash %}"
          class="analysis-tab {% if current_analysis == 'performance' %}active{% endif %}">
         <i class="bi bi-speedometer2"></i><span>Indice perf.</span>
       </a>
 
-      <a href="{% url 'results:regularity' competition.cid cls.name %}"
+      <a href="{% url 'results:course_regularity' competition.cid course.hash %}"
          class="analysis-tab {% if current_analysis == 'regularity' %}active{% endif %}">
         <i class="bi bi-activity"></i><span>Régularité</span>
       </a>
 
-      <a href="{% url 'results:grouping' competition.cid cls.name %}"
+      <a href="{% url 'results:course_grouping' competition.cid course.hash %}"
          class="analysis-tab {% if current_analysis == 'grouping' %}active{% endif %}">
         <i class="bi bi-diagram-3"></i><span>Regroupement</span>
       </a>
 
-      <a href="{% url 'results:grouping_index' competition.cid cls.name %}"
+      <a href="{% url 'results:course_grouping_index' competition.cid course.hash %}"
          class="analysis-tab {% if current_analysis == 'grouping_index' %}active{% endif %}">
         <i class="bi bi-collection"></i><span>Lièvre / Suiveur</span>
       </a>
 
-      <a href="{% url 'results:duel' competition.cid cls.name %}"
+      <a href="{% url 'results:course_duel' competition.cid course.hash %}"
          class="analysis-tab {% if current_analysis == 'duel' %}active{% endif %}">
-        <i class="bi bi-people"></i><span>Duel coureurs</span>
+        <i class="bi bi-people"></i><span>Duel</span>
       </a>
 
     </nav>
