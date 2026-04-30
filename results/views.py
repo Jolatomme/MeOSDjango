@@ -203,12 +203,17 @@ def competition_detail(request, cid):
             qs        = Mopteam.objects.filter(cid=cid, cls=cls.id)
             total     = qs.count()
             finishers = qs.filter(stat=STAT_OK).exclude(rt__lte=0).count()
+            class_stats.append({'cls': cls, 'total': total, 'finishers': finishers,
+                                'is_relay': is_relay})
         else:
             qs        = Mopcompetitor.objects.filter(cid=cid, cls=cls.id)
             total     = qs.count()
             finishers = qs.filter(stat=STAT_OK).exclude(rt__lte=0).count()
-        class_stats.append({'cls': cls, 'total': total, 'finishers': finishers,
-                            'is_relay': is_relay})
+            # Get number of controls for this class
+            controls_seq, _ = get_class_controls(cid, cls.id)
+            n_controls = len(controls_seq)
+            class_stats.append({'cls': cls, 'total': total, 'finishers': finishers,
+                                'is_relay': is_relay, 'n_controls': n_controls})
 
     courses_map = get_courses_map(cid)
     return render(request, 'results/competition_detail.html', {

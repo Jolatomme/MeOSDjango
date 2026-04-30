@@ -267,6 +267,7 @@ class TestCompetitionDetailView:
              patch('results.views.Mopteam') as MockTeam, \
              patch('results.views.Mopcompetitor') as MockComp, \
              patch('results.views.get_courses_map', return_value=courses_map or {}), \
+             patch('results.views.get_class_controls', return_value=([{'ctrl_id': 1}, {'ctrl_id': 2}], {})), \
              patch('results.views.render') as mock_render:
             MockClass.objects.filter.return_value.order_by.return_value = classes
             MockTeam.objects.filter.return_value.values_list.return_value.distinct.return_value = list(relay_cls_ids)
