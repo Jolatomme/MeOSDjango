@@ -59,7 +59,7 @@ ROOT_URLCONF = 'MeOSDjango.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates"],
+        'DIRS': [], # Les templates sont dans results/templates/ via APP_DIRS
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
