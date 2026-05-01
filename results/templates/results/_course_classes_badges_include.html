@@ -1,0 +1,10 @@
+
+{% if course and course.classes %}
+<div class="d-flex flex-wrap gap-1 mt-2">
+  {% for cat in course.classes %}
+  <a href="{% url 'results:class_results' competition.cid cat.name %}"
+     class="badge bg-light text-dark border text-decoration-none"
+     style="font-family:var(--font-display);font-size:.78rem">{{ cat.name }}</a>
+  {% endfor %}
+</div>
+{% endif %}

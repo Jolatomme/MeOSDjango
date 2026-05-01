@@ -1,6 +1,8 @@
-{% extends "results/base.html" %}
+{% extends "results/analysis_base.html" %}
 {% load static %}
-{% block title %}Régularité — {{ cls.name }} — {{ competition.name }}{% endblock %}
+{% block analysis_breadcrumb %}Régularité{% endblock %}
+{% block analysis_icon %}bi bi-activity{% endblock %}
+{% block analysis_title %}Régularité{% endblock %}
 
 {% block page_header %}
 <div class="co-page-header">
@@ -20,7 +22,15 @@
           <i class="bi bi-activity me-2 opacity-75" style="color:var(--co-gold)"></i>
           Régularité
         </h1>
-        <div class="opacity-75 small mt-1">{{ cls.name }} — {{ competition.name }}</div>
+         {% if course %}
+         <div class="opacity-75 small mt-1">
+           {{ course.display_name }} — {{ competition.name }}
+           <span class="ms-2 badge bg-secondary">{{ course.classes|length }} catégorie{{ course.classes|length|pluralize }}</span>
+         </div>
+         {% include "results/_course_classes_badges_include.html" %}
+         {% else %}
+         <div class="opacity-75 small mt-1">{{ cls.name }} — {{ competition.name }}</div>
+         {% endif %}
       </div>
       {% if not no_data %}
       <div class="d-flex align-items-center gap-2 flex-wrap">
