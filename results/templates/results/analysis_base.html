@@ -29,24 +29,28 @@
         <li class="breadcrumb-item active">{% block analysis_breadcrumb %}Analyse{% endblock %}</li>
       </ol>
     </nav>
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <div>
-        <h1>
-          <i class="{% block analysis_icon %}bi bi-bar-chart{% endblock %} me-2 opacity-75"
-             style="color:var(--co-gold)"></i>{% block analysis_title %}Analyse{% endblock %}
-        </h1>
-        {# Sous-titre : nom du circuit ou de la catégorie #}
-        {% if course %}
-        <div class="opacity-75 small mt-1">
-          {{ course.display_name }} — {{ competition.name }}
-          <span class="ms-2 badge bg-secondary">{{ course.classes|length }} catégorie{{ course.classes|length|pluralize }}</span>
-        </div>
-        {% else %}
-        <div class="opacity-75 small mt-1">{{ cls.name }} — {{ competition.name }}</div>
-        {% endif %}
-      </div>
-      {% block analysis_header_right %}{% endblock %}
-    </div>
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+       <div>
+         <h1>
+           <i class="{% block analysis_icon %}bi bi-bar-chart{% endblock %} me-2 opacity-75"
+              style="color:var(--co-gold)"></i>{% block analysis_title %}Analyse{% endblock %}
+         </h1>
+          {# Sous-titre : nom du circuit ou de la catégorie #}
+         {% if course %}
+         <div class="opacity-75 small mt-1">
+           {{ course.display_name }} — {{ competition.name }}
+           <span class="ms-2 badge bg-secondary">{{ course.classes|length }} catégorie{{ course.classes|length|pluralize }}</span>
+         </div>
+         {# Pastilles catégories cliquables #}
+         {% if course %}
+         {% include "results/_course_classes_badges_include.html" %}
+         {% endif %}
+         {% else %}
+         <div class="opacity-75 small mt-1">{{ cls.name }} — {{ competition.name }}</div>
+         {% endif %}
+       </div>
+       {% block analysis_header_right %}{% endblock %}
+     </div>
   </div>
 </div>
 
