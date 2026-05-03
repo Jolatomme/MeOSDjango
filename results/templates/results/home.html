@@ -50,6 +50,13 @@
                   <i class="bi bi-globe me-1"></i>Site web
                 </a>
               {% endif %}
+              {% if comp.has_individual_competitors %}
+                <a href="{% url 'results:start_list' comp.cid %}"
+                   class="badge bg-info rounded-pill text-decoration-none"
+                   onclick="event.stopPropagation()">
+                  <i class="bi bi-clock me-1"></i>Horaire
+                </a>
+              {% endif %}
             </div>
           </div>
         </div>

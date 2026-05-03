@@ -186,7 +186,21 @@ def verifie_moi_view(request):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def home(request):
-    competitions = Mopcompetition.objects.all()
+    competitions = list(Mopcompetition.objects.all())
+    for comp in competitions:
+        # Get relay class IDs for this competition
+        relay_class_ids = set(
+            Mopteam.objects.filter(cid=comp.cid).values_list('cls', flat=True).distinct()
+        )
+        # Check for individual competitors (excluding relay classes)
+        if relay_class_ids:
+            comp.has_individual_competitors = Mopcompetitor.objects.filter(
+                cid=comp.cid, st__gt=0
+            ).exclude(cls__in=relay_class_ids).exists()
+        else:
+            comp.has_individual_competitors = Mopcompetitor.objects.filter(
+                cid=comp.cid, st__gt=0
+            ).exists()
     return render(request, 'results/home.html', {'competitions': competitions})
 
 
@@ -196,6 +210,14 @@ def competition_detail(request, cid):
     relay_class_ids = set(
         Mopteam.objects.filter(cid=cid).values_list('cls', flat=True).distinct()
     )
+    # Check if competition has individual competitors (excluding relay classes)
+    if relay_class_ids:
+        has_individual_competitors = Mopcompetitor.objects.filter(
+            cid=cid, st__gt=0
+        ).exclude(cls__in=relay_class_ids).exists()
+    else:
+        has_individual_competitors = Mopcompetitor.objects.filter(cid=cid, st__gt=0).exists()
+
     class_stats = []
     for cls in classes:
         is_relay = cls.id in relay_class_ids
@@ -220,6 +242,96 @@ def competition_detail(request, cid):
         'competition': competition,
         'class_stats': class_stats,
         'courses_map': courses_map,
+        'has_individual_competitors': has_individual_competitors,
+    })
+
+
+def start_list(request, cid):
+    """Display start list for a competition."""
+    competition = get_object_or_404(Mopcompetition, cid=cid)
+
+    # Get all competitors with start times
+    competitors = Mopcompetitor.objects.filter(cid=cid, st__gt=0).select_related()
+
+    # Get class and org maps
+    class_map = {c.id: c for c in Mopclass.objects.filter(cid=cid)}
+    org_map = get_org_map(cid, as_objects=True)
+
+    # Build rows
+    rows = []
+    for comp in competitors:
+        cls_obj = class_map.get(comp.cls)
+        org_obj = org_map.get(comp.org)
+
+        # Parse name (assume "FAMILY Given" format)
+        name_parts = comp.name.split(' ', 1)
+        family = name_parts[0] if name_parts else comp.name
+        given = name_parts[1] if len(name_parts) > 1 else ''
+
+        # Format start time (seconds since midnight to HH:MM)
+        start_time = ''
+        start_time_sort = '99:99'
+        if comp.st and comp.st > 0:
+            total_seconds = comp.st // 10  # convert tenths to seconds
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            start_time = f"{hours:02d}:{minutes:02d}"
+            start_time_sort = f"{hours:02d}:{minutes:02d}"
+
+        rows.append({
+            'family': family,
+            'given': given,
+            'full_name': comp.name,
+            'category': cls_obj.name if cls_obj else '',
+            'club_id': comp.org,
+            'club_short': f"{comp.org:04d}" if comp.org else '',
+            'club_name': org_obj.name if org_obj else '',
+            'club_display': f"{comp.org:04d} - {org_obj.name}" if org_obj else 'Sans club',
+            'start_time': start_time,
+            'start_time_sort': start_time_sort,
+            'control_card': '',  # Not available in model
+        })
+
+    # Sort by start time
+    rows.sort(key=lambda r: r['start_time_sort'])
+
+    # Group by category
+    from collections import defaultdict
+    by_category = defaultdict(list)
+    for row in rows:
+        by_category[row['category']].append(row)
+
+    # Group by club
+    by_club = defaultdict(list)
+    for row in rows:
+        by_club[row['club_display']].append(row)
+
+    def make_groups(group_dict, name_key='category'):
+        groups = []
+        for key, items in sorted(group_dict.items()):
+            if not key:
+                continue
+            groups.append({
+                'name': key,
+                'slug': key.lower().replace(' ', '-'),
+                'rows': items,
+            })
+        return groups
+
+    data = {
+        'meta': {
+            'event_name': competition.name,
+            'event_date': competition.date.strftime('%Y-%m-%d') if competition.date else '',
+        },
+        'groups': {
+            'category': make_groups(by_category),
+            'club': make_groups(by_club, 'club'),
+        }
+    }
+
+    return render(request, 'results/start_list.html', {
+        'competition': competition,
+        'start_list_data': json.dumps(data),
     })
 
 

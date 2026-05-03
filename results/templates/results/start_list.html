@@ -1,0 +1,610 @@
+{% extends "results/base.html" %}
+{% block title %}Horaire de départ — {{ competition.name }} — {{ SITE_NAME }}{% endblock %}
+
+{% block page_header %}
+<div class="co-page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="co-breadcrumb">
+      <ol class="breadcrumb mb-2 small">
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'results:competition_detail' competition.cid %}">{{ competition.name }}</a></li>
+        <li class="breadcrumb-item active">Horaire de départ</li>
+      </ol>
+    </nav>
+    <h1><i class="bi bi-clock me-2 opacity-75"></i>Horaire de départ</h1>
+    {% if competition.date %}
+      <div class="mt-1 opacity-75 small">
+        <i class="bi bi-calendar me-1"></i>{{ competition.date|date:"l d F Y" }}
+        {% if competition.organizer %} &bull; <i class="bi bi-building me-1"></i>{{ competition.organizer }}{% endif %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --bg: #fffdfd;
+    --panel: #ffffff;
+    --text: #161214;
+    --muted: #6f6366;
+    --line: #edd9dd;
+    --red: #b3121d;
+    --red-2: #d51f2f;
+    --shadow: 0 10px 28px rgba(60,12,18,.08);
+    --hero-offset: 240px;
+    --radius-xl: 24px;
+    --radius-lg: 18px;
+    --radius-md: 14px;
+  }
+
+  .page-start {
+    width: min(1280px, calc(100% - 24px));
+    margin: 0 auto;
+    padding: 16px 0 40px;
+  }
+
+  .hero-start {
+    background: linear-gradient(180deg, rgba(213,31,47,.06), rgba(255,255,255,.98));
+    border: 1px solid var(--line);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    backdrop-filter: blur(10px);
+  }
+
+  .hero-inner {
+    padding: 18px;
+  }
+
+  .notice {
+    color: var(--red);
+    font-weight: 600;
+    margin-bottom: 12px;
+    font-size: .95rem;
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+
+  .toolbar-left {
+    flex: 0 1 440px;
+    min-width: 260px;
+    max-width: 440px;
+  }
+
+  .toolbar-right {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 11px 14px;
+    min-height: 48px;
+  }
+
+  .search-wrap svg { flex: 0 0 auto; }
+
+  .search-wrap input {
+    width: 100%;
+    min-width: 0;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    outline: none;
+  }
+
+  .view-switch {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    width: 100%;
+  }
+
+  .btn-view {
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, #fff, #fff6f7);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: .2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+    min-height: 44px;
+    font-size: .9rem;
+  }
+
+  .btn-view:hover {
+    transform: translateY(-1px);
+    border-color: #d9b3ba;
+    background: linear-gradient(180deg, #fff5f6, #ffecee);
+  }
+
+  .btn-view.active {
+    color: #fff;
+    border-color: var(--red);
+    background: linear-gradient(180deg, var(--red-2), var(--red));
+    outline: 2px solid rgba(213,31,47,.18);
+  }
+
+  .summary {
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: .95rem;
+  }
+
+  .groups {
+    margin-top: 18px;
+    display: grid;
+    gap: 18px;
+  }
+
+  .quick-links {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .quick-links a {
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: #fff;
+    font-size: .85rem;
+    text-decoration: none;
+    white-space: nowrap;
+    color: inherit;
+  }
+
+  .quick-links a:hover { background: #fff3f4; }
+
+  .group {
+    border-radius: 22px;
+    background: linear-gradient(180deg, #fff, #fffdfd);
+    border: 1px solid var(--line);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    scroll-margin-top: calc(var(--hero-offset) + 22px);
+  }
+
+  .group-head {
+    padding: 18px 18px 10px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    background: linear-gradient(180deg, rgba(213,31,47,.08), transparent);
+  }
+
+  .group-title {
+    margin: 0;
+    font-size: clamp(1.08rem, .8vw + 1rem, 1.4rem);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .copy-link {
+    opacity: .78;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .copy-link:hover { opacity: 1; }
+
+  .helper {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: .94rem;
+  }
+
+  .table-wrap {
+    overflow: auto;
+    padding: 0 12px 12px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 880px;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 12px 10px;
+    border-bottom: 1px solid #f2e2e5;
+    vertical-align: top;
+  }
+
+  th {
+    font-size: .84rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #5d4046;
+    position: sticky;
+    top: 0;
+    background: #fff5f6;
+    z-index: 1;
+  }
+
+  tbody tr:hover { background: #fff7f8; }
+
+  .clickable-link {
+    color: var(--red);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+
+  .empty {
+    padding: 28px 18px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    background: #181214;
+    color: #fff;
+    border: 1px solid #402127;
+    border-radius: 999px;
+    padding: 10px 14px;
+    box-shadow: var(--shadow);
+    opacity: 0;
+    pointer-events: none;
+    transition: .25s ease;
+    z-index: 50;
+  }
+
+  .toast.show { opacity: 1; }
+
+  @media (max-width: 900px) {
+    .hero-inner { padding: 12px; }
+    .toolbar { flex-direction: column; align-items: stretch; gap: 12px; }
+    .toolbar-left, .toolbar-right { min-width: 0; max-width: none; width: 100%; flex: 0 0 auto; }
+    .toolbar-right { justify-content: flex-start; }
+    .view-switch { justify-content: flex-start; flex-wrap: wrap; }
+  }
+
+  @media (max-width: 760px) {
+    .page-start { width: min(100%, calc(100% - 14px)); padding-top: 10px; }
+    .hero-start { position: sticky; top: 0; z-index: 30; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+    .toolbar { grid-template-columns: 1fr; gap: 8px; }
+    .toolbar-left, .toolbar-right { flex: none; width: 100%; max-width: none; min-width: 0; }
+    .view-switch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; width: 100%; }
+    .btn-view { width: 100%; min-height: 36px; padding: 7px 6px; font-size: .82rem; }
+    .label-full { display: none; }
+    .label-short { display: inline; }
+    .groups { gap: 12px; margin-top: 12px; }
+    .group { border-radius: var(--radius-lg); scroll-margin-top: calc(var(--hero-offset) + 12px); }
+    .group-head { padding: 14px 14px 8px; }
+    .helper { margin-top: 6px; font-size: .88rem; }
+    .table-wrap { overflow: visible; padding: 0 8px 8px; }
+    table, thead, tbody, tr, th, td { display: block; }
+    table { min-width: 0; }
+    thead { display: none; }
+    tbody { display: grid; gap: 8px; }
+    tr { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid #f0dde1; border-radius: 14px; background: #fff; }
+    td { border: 0; padding: 0; display: grid; grid-template-columns: minmax(84px, 110px) minmax(0, 1fr); gap: 8px; align-items: baseline; }
+    td::before { content: attr(data-label); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: #7a6468; }
+  }
+
+  @media (max-width: 420px) {
+    .toolbar { grid-template-columns: 1fr; }
+    .view-switch { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  @media print {
+    body { background: #fff !important; color: #000 !important; }
+    .hero-start, .view-switch, .search-wrap, .copy-link, .toast { display: none !important; }
+    .page-start { width: 100%; max-width: none; padding: 0; }
+    .group { box-shadow: none; border: 1px solid #bbb; break-inside: avoid; }
+    .group-head { background: transparent; }
+    th { position: static; background: transparent; color: #000; }
+  }
+</style>
+
+<div class="page-start">
+  <header class="hero-start">
+    <div class="hero-inner">
+      <div class="notice">Merci de nous signaler tout changement de puce.</div>
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <div class="search-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 21l-4.35-4.35m1.35-5.15a6.5 6.5 0 11-13 0a6.5 6.5 0 0113 0z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <input id="searchInput" type="search" placeholder="Recherche : nom, prénom, club, circuit, catégorie, puce…">
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <div class="view-switch" id="viewSwitch">
+            <button class="btn-view active" data-view-btn="category" type="button"><span class="label-full">Par catégorie</span></button>
+            <button class="btn-view" data-view-btn="club" type="button"><span class="label-full">Par club</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="summary" id="summaryBar"></div>
+    </div>
+  </header>
+
+  <div class="quick-links" id="quickLinks"></div>
+  <main class="groups" id="groupsContainer"></main>
+</div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  const DATA = {{ start_list_data|safe }};
+  const state = { view: 'category', search: '' };
+  const groupsContainer = document.getElementById('groupsContainer');
+  const summaryBar = document.getElementById('summaryBar');
+  const toast = document.getElementById('toast');
+  const searchInput = document.getElementById('searchInput');
+  const hero = document.querySelector('.hero-start');
+
+  function isMobileView() {
+    return window.matchMedia('(max-width: 760px)').matches;
+  }
+
+  function updateMobileCondensedHeader() {
+    if (!isMobileView()) {
+      document.body.classList.remove('mobile-condensed');
+      return;
+    }
+    document.body.classList.toggle('mobile-condensed', window.scrollY > 36);
+  }
+
+  function updateHeroOffset() {
+    const heroHeight = hero ? Math.ceil(hero.getBoundingClientRect().height) : 0;
+    document.documentElement.style.setProperty('--hero-offset', `${heroHeight + 18}px`);
+    return heroHeight;
+  }
+
+  function scrollToGroup(slug) {
+    if (!slug) return;
+    const target = document.getElementById(`group-${slug}`);
+    if (!target) return;
+    const heroHeight = updateHeroOffset();
+    const extraGap = heroHeight ? 22 : 10;
+    const y = target.getBoundingClientRect().top + window.pageYOffset - heroHeight - extraGap;
+    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+  }
+
+  function showToast(message) {
+    toast.textContent = message;
+    toast.classList.add('show');
+    window.clearTimeout(showToast._t);
+    showToast._t = window.setTimeout(() => toast.classList.remove('show'), 1800);
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  function slugify(value) {
+    return (value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'sans-nom';
+  }
+
+  function setView(view, anchorSlug = '') {
+    state.view = view;
+    document.querySelectorAll('[data-view-btn]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.viewBtn === view);
+    });
+    render(anchorSlug);
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', view);
+    if (anchorSlug) { url.hash = `group-${anchorSlug}`; }
+    else { url.hash = ''; }
+    window.history.replaceState(null, '', url.toString());
+  }
+
+  function currentGroups() {
+    return DATA.groups[state.view] || [];
+  }
+
+  function filterRows(rows) {
+    const q = state.search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(row => [
+      row.full_name, row.family, row.given, row.club_display,
+      row.category, row.control_card, row.start_time
+    ].join(' ').toLowerCase().includes(q));
+  }
+
+  function copyAnchorLink(slug) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', state.view);
+    url.hash = `group-${slug}`;
+    navigator.clipboard.writeText(url.toString())
+      .then(() => showToast('Lien copié'))
+      .catch(() => showToast('Impossible de copier le lien'));
+  }
+
+  function td(label, value) {
+    return `<td data-label="${escapeHtml(label)}">${value}</td>`;
+  }
+
+  function getGroupLabelPlural() {
+    if (state.view === 'category') return 'catégories';
+    return 'clubs';
+  }
+
+  function render(anchorSlug = '') {
+    const groups = currentGroups();
+    let totalGroupsVisible = 0;
+    let totalRowsVisible = 0;
+
+    const html = groups.map(group => {
+      const rows = filterRows(group.rows);
+      if (!rows.length) return '';
+      totalGroupsVisible += 1;
+      totalRowsVisible += rows.length;
+      const groupId = `group-${group.slug}`;
+
+      let headers = '';
+      let rowsHtml = '';
+
+      if (state.view === 'club') {
+        headers = `<tr>
+          <th>Nom / Prénom</th>
+          <th>Heure de départ</th>
+          <th>Catégorie</th>
+          <th>Puce</th>
+        </tr>`;
+        rowsHtml = rows.map(row => `<tr>
+          ${td('Nom / Prénom', escapeHtml(row.full_name))}
+          ${td('Heure de départ', escapeHtml(row.start_time || ''))}
+          ${td('Catégorie', `<span class="clickable-link" data-switch-view="category" data-target-slug="${slugify(row.category)}">${escapeHtml(row.category || '')}</span>`)}
+          ${td('Puce', escapeHtml(row.control_card || ''))}
+        </tr>`).join('');
+      } else {
+        headers = `<tr>
+          <th>Heure de départ</th>
+          <th>Nom / Prénom</th>
+          <th>Club</th>
+          <th>Puce</th>
+        </tr>`;
+        rowsHtml = rows.map(row => `<tr>
+          ${td('Heure de départ', escapeHtml(row.start_time || ''))}
+          ${td('Nom / Prénom', escapeHtml(row.full_name))}
+          ${td('Club', escapeHtml(row.club_display || ''))}
+          ${td('Puce', escapeHtml(row.control_card || ''))}
+        </tr>`).join('');
+      }
+
+      return `<section class="group" id="${groupId}" data-group-slug="${group.slug}">
+        <div class="group-head">
+          <div>
+            <h2 class="group-title">
+              <span>${escapeHtml(group.name)}</span>
+              <span class="copy-link" role="button" tabindex="0" title="Copier le lien vers ce regroupement" data-copy-anchor="${group.slug}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10 13a5 5 0 007.07 0l2.83-2.83a5 5 0 00-7.07-7.07L11 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M14 11a5 5 0 00-7.07 0L4.1 13.83a5 5 0 107.07 7.07L13 20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+              </span>
+            </h2>
+            <div class="helper">Merci de signaler tout changement de puce.</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>${headers}</thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
+      </section>`;
+    }).join('');
+
+    groupsContainer.innerHTML = html || `<div class="empty">Aucun résultat pour cette recherche.</div>`;
+    summaryBar.textContent = `${totalRowsVisible} partants affichés dans ${totalGroupsVisible} ${getGroupLabelPlural()}.`;
+
+    const quick = document.getElementById("quickLinks");
+    quick.innerHTML = groups.map(g =>
+      `<a href="#group-${g.slug}" onclick="setView('${state.view}','${g.slug}')">${escapeHtml(g.name)}</a>`
+    ).join('');
+
+    bindDynamicEvents();
+    updateMobileCondensedHeader();
+    updateHeroOffset();
+
+    const targetSlug = anchorSlug || (window.location.hash || '').replace(/^#group-/, '');
+    if (targetSlug) {
+      window.setTimeout(() => scrollToGroup(targetSlug), 40);
+    }
+  }
+
+  function bindDynamicEvents() {
+    document.querySelectorAll('[data-copy-anchor]').forEach(el => {
+      el.addEventListener('click', () => copyAnchorLink(el.dataset.copyAnchor));
+      el.addEventListener('keypress', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          copyAnchorLink(el.dataset.copyAnchor);
+        }
+      });
+    });
+    document.querySelectorAll('[data-switch-view]').forEach(el => {
+      el.addEventListener('click', () => setView(el.dataset.switchView, el.dataset.targetSlug));
+    });
+  }
+
+  document.querySelectorAll('[data-view-btn]').forEach(btn => {
+    btn.addEventListener('click', () => setView(btn.dataset.viewBtn));
+  });
+
+  searchInput.addEventListener('input', () => {
+    state.search = searchInput.value;
+    render();
+  });
+
+  window.addEventListener('resize', () => {
+    updateMobileCondensedHeader();
+    updateHeroOffset();
+  });
+
+  window.addEventListener('load', () => {
+    updateMobileCondensedHeader();
+    updateHeroOffset();
+  });
+
+  window.addEventListener('scroll', updateMobileCondensedHeader, { passive: true });
+
+  window.addEventListener('hashchange', () => {
+    const slug = (window.location.hash || '').replace(/^#group-/, '');
+    if (slug) window.setTimeout(() => scrollToGroup(slug), 40);
+  });
+
+  (function initFromUrl() {
+    const url = new URL(window.location.href);
+    const view = url.searchParams.get('view');
+    if (['category', 'course', 'club'].includes(view)) state.view = view;
+    document.querySelectorAll('[data-view-btn]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.viewBtn === state.view);
+    });
+    const hash = (url.hash || '').replace(/^#group-/, '');
+    updateMobileCondensedHeader();
+    updateHeroOffset();
+    render(hash);
+  })();
+</script>
+{% endblock %}
