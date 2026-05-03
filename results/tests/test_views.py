@@ -239,15 +239,24 @@ class TestGetAdjacentClasses:
 
 class TestHomeView:
     @patch('results.views.Mopcompetition')
+    @patch('results.views.Mopteam')
+    @patch('results.views.Mopcompetitor')
     @patch('results.views.render')
-    def test_passe_competitions(self, mock_render, MockComp):
+    def test_passe_competitions(self, mock_render, MockCompetitor, MockTeam, MockComp):
         comps = [make_competition(1), make_competition(2)]
         MockComp.objects.all.return_value = comps
+        # Mock relay class IDs (empty = no relay)
+        MockTeam.objects.filter.return_value.values_list.return_value.distinct.return_value = []
+        # Mock individual competitors exist
+        MockCompetitor.objects.filter.return_value.exclude.return_value.exists.return_value = True
         from results.views import home
         home(rf_get())
         _, template, ctx = mock_render.call_args[0]
         assert template == 'results/home.html'
         assert ctx['competitions'] == comps
+        # Check that has_individual_competitors was set
+        for comp in comps:
+            assert hasattr(comp, 'has_individual_competitors')
 
 
 # ══════════════════════════════════════════════════════════════════════════════

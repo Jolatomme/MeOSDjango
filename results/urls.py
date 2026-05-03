@@ -11,6 +11,7 @@ urlpatterns = [
 
     # ── Compétition ────────────────────────────────────────────────────────
     path('competition/<int:cid>/', views.competition_detail, name='competition_detail'),
+    path('competition/<int:cid>/start-list/', views.start_list, name='start_list'),
     path('competition/<int:cid>/stats/', views.statistics, name='statistics'),
 
     # ── Catégories ─────────────────────────────────────────────────────────
