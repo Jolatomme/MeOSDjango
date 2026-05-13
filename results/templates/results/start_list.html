@@ -152,6 +152,8 @@
     outline: 2px solid rgba(213,31,47,.18);
   }
 
+  .label-short { display: none; }
+
   .summary {
     margin-top: 14px;
     color: var(--muted);
@@ -350,8 +352,9 @@
         </div>
         <div class="toolbar-right">
           <div class="view-switch" id="viewSwitch">
-            <button class="btn-view active" data-view-btn="category" type="button"><span class="label-full">Par catégorie</span></button>
-            <button class="btn-view" data-view-btn="club" type="button"><span class="label-full">Par club</span></button>
+            <button class="btn-view active" data-view-btn="category" type="button"><span class="label-full">Par catégorie</span><span class="label-short">Catégorie</span></button>
+            <button class="btn-view" data-view-btn="club" type="button"><span class="label-full">Par club</span><span class="label-short">Club</span></button>
+            <button class="btn-view" data-view-btn="start_time" type="button"><span class="label-full">Par heure</span><span class="label-short">Heure</span></button>
           </div>
         </div>
       </div>
@@ -449,7 +452,7 @@
     if (!q) return rows;
     return rows.filter(row => [
       row.full_name, row.family, row.given, row.club_display,
-      row.category, row.control_card, row.start_time
+      row.category, row.start_time
     ].join(' ').toLowerCase().includes(q));
   }
 
@@ -468,6 +471,7 @@
 
   function getGroupLabelPlural() {
     if (state.view === 'category') return 'catégories';
+    if (state.view === 'start_time') return 'heures de départ';
     return 'clubs';
   }
 
@@ -491,26 +495,33 @@
           <th>Nom / Prénom</th>
           <th>Heure de départ</th>
           <th>Catégorie</th>
-          <th>Puce</th>
         </tr>`;
         rowsHtml = rows.map(row => `<tr>
           ${td('Nom / Prénom', escapeHtml(row.full_name))}
           ${td('Heure de départ', escapeHtml(row.start_time || ''))}
           ${td('Catégorie', `<span class="clickable-link" data-switch-view="category" data-target-slug="${slugify(row.category)}">${escapeHtml(row.category || '')}</span>`)}
-          ${td('Puce', escapeHtml(row.control_card || ''))}
+        </tr>`).join('');
+      } else if (state.view === 'start_time') {
+        headers = `<tr>
+          <th>Nom / Prénom</th>
+          <th>Club</th>
+          <th>Catégorie</th>
+        </tr>`;
+        rowsHtml = rows.map(row => `<tr>
+          ${td('Nom / Prénom', escapeHtml(row.full_name))}
+          ${td('Club', escapeHtml(row.club_display || ''))}
+          ${td('Catégorie', `<span class="clickable-link" data-switch-view="category" data-target-slug="${slugify(row.category)}">${escapeHtml(row.category || '')}</span>`)}
         </tr>`).join('');
       } else {
         headers = `<tr>
           <th>Heure de départ</th>
           <th>Nom / Prénom</th>
           <th>Club</th>
-          <th>Puce</th>
         </tr>`;
         rowsHtml = rows.map(row => `<tr>
           ${td('Heure de départ', escapeHtml(row.start_time || ''))}
           ${td('Nom / Prénom', escapeHtml(row.full_name))}
           ${td('Club', escapeHtml(row.club_display || ''))}
-          ${td('Puce', escapeHtml(row.control_card || ''))}
         </tr>`).join('');
       }
 
@@ -597,7 +608,7 @@
   (function initFromUrl() {
     const url = new URL(window.location.href);
     const view = url.searchParams.get('view');
-    if (['category', 'course', 'club'].includes(view)) state.view = view;
+    if (['category', 'course', 'club', 'start_time'].includes(view)) state.view = view;
     document.querySelectorAll('[data-view-btn]').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.viewBtn === state.view);
     });
