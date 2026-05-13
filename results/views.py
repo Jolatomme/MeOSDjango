@@ -306,16 +306,27 @@ def start_list(request, cid):
     for row in rows:
         by_club[row['club_display']].append(row)
 
-    def make_groups(group_dict, name_key='category'):
+    # Group by exact start time
+    by_start_time = defaultdict(list)
+    for row in rows:
+        if row['start_time']:
+            by_start_time[row['start_time']].append(row)
+
+    def make_groups(group_dict, sort_key=None):
         groups = []
-        for key, items in sorted(group_dict.items()):
+        for key, items in group_dict.items():
             if not key:
                 continue
+            slug = re.sub(r'[^a-z0-9]+', '-', key.lower()).strip('-')
             groups.append({
                 'name': key,
-                'slug': key.lower().replace(' ', '-'),
+                'slug': slug,
                 'rows': items,
             })
+        if sort_key:
+            groups.sort(key=sort_key)
+        else:
+            groups.sort(key=lambda g: g['name'])
         return groups
 
     data = {
@@ -325,7 +336,8 @@ def start_list(request, cid):
         },
         'groups': {
             'category': make_groups(by_category),
-            'club': make_groups(by_club, 'club'),
+            'club': make_groups(by_club),
+            'start_time': make_groups(by_start_time, sort_key=lambda g: g['name']),
         }
     }
 
