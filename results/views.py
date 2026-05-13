@@ -388,6 +388,33 @@ def class_results(request, cid, class_id):
     for c in results:
         c.splits = compute_splits(c.id, controls_seq, radio_map)
 
+    # Ajout du tronçon arrivée pour tous (cohérence mark_best_splits / rank_splits)
+    for c in results:
+        if c.rt > 0:
+            last_abs = c.splits[-1]['abs_raw'] if c.splits else None
+            leg_raw = c.rt - last_abs if last_abs else c.rt
+            c.splits.append({
+                'ctrl_name': 'Arrivée',
+                'abs_time':  format_time(c.rt),
+                'leg_time':  format_time(leg_raw) if leg_raw else '-',
+                'leg_raw':   leg_raw,
+                'abs_raw':   c.rt,
+                'is_best':   False,
+                'leg_rank':  None,
+                'abs_rank':  None,
+            })
+        else:
+            c.splits.append({
+                'ctrl_name': 'Arrivée',
+                'abs_time':  '-',
+                'leg_time':  '-',
+                'leg_raw':   None,
+                'abs_raw':   None,
+                'is_best':   False,
+                'leg_rank':  None,
+                'abs_rank':  None,
+            })
+
     mark_best_splits(finishers, results)
     rank_splits(finishers, results)
 
@@ -444,6 +471,20 @@ def competitor_detail(request, cid, competitor_id):
     controls_seq, _ = get_class_controls(cid, competitor.cls)
     radio_map       = get_radio_map(cid, [competitor_id])
     splits          = compute_splits(competitor_id, controls_seq, radio_map)
+    # Ajout du tronçon arrivée
+    if competitor.is_ok and splits and competitor.rt > 0:
+        last_abs = splits[-1]['abs_raw']
+        leg_raw = competitor.rt - last_abs if last_abs else competitor.rt
+        splits.append({
+            'ctrl_name': 'Arrivée',
+            'abs_time':  format_time(competitor.rt),
+            'leg_time':  format_time(leg_raw) if leg_raw else '-',
+            'leg_raw':   leg_raw,
+            'abs_raw':   competitor.rt,
+            'is_best':   False,
+            'leg_rank':  None,
+            'abs_rank':  None,
+        })
     return render(request, 'results/competitor_detail.html', {
         'competition': competition, 'competitor': competitor,
         'org': org, 'cls': cls, 'splits': splits,
