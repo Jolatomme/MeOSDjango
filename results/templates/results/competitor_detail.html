@@ -99,19 +99,23 @@
               <td class="text-end split-leg">—</td>
             </tr>
             {% for sp in splits %}
+            {% if sp.ctrl_name != "Arrivée" %}
             <tr class="split-row">
               <td>{{ sp.ctrl_name }}</td>
               <td class="text-end split-abs">{{ sp.abs_time }}</td>
               <td class="text-end split-leg">{{ sp.leg_time }}</td>
             </tr>
+            {% endif %}
             {% endfor %}
-            {% if competitor.is_ok %}
+            {% with last=splits|last %}
+            {% if competitor.is_ok and last.ctrl_name == "Arrivée" %}
             <tr class="split-row" style="border-top:2px solid var(--co-green)">
               <td><i class="bi bi-flag-fill text-danger"></i> Arrivée</td>
-              <td class="text-end split-abs fw-bold" style="color:var(--co-green)">{{ total_time }}</td>
-              <td class="text-end split-leg">—</td>
+              <td class="text-end split-abs fw-bold" style="color:var(--co-green)">{{ last.abs_time }}</td>
+              <td class="text-end split-leg">{{ last.leg_time }}</td>
             </tr>
             {% endif %}
+            {% endwith %}
           </tbody>
         </table>
       </div>

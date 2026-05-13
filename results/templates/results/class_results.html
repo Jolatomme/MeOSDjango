@@ -212,6 +212,7 @@
                   <span class="split-time-leg">—</span>
                 </div>
                 {% for sp in comp.splits %}
+                {% if sp.ctrl_name != "Arrivée" %}
                 <div class="split-cell {% if sp.is_best %}split-best{% endif %}"
                      data-error-time="{{ sp.error_time|default:'' }}"
                      data-error-pct="{{ sp.error_pct|default:'' }}">
@@ -224,14 +225,17 @@
                   </span>
                   <span class="split-error d-none"></span>
                 </div>
+                {% endif %}
                 {% endfor %}
-                {% if comp.is_ok %}
+                {% with last=comp.splits|last %}
+                {% if comp.is_ok and last.ctrl_name == "Arrivée" %}
                 <div class="split-cell split-finish">
                   <span class="split-ctrl-name">Arrivée</span>
-                  <span class="split-time-abs">{{ comp.rt|meos_time }}</span>
-                  <span class="split-time-leg">—</span>
+                  <span class="split-time-abs">{{ last.abs_time }}{% if last.abs_rank %} <span class="split-rank">{{ last.abs_rank }}</span>{% endif %}</span>
+                  <span class="split-time-leg {% if last.is_best %}split-leg-best{% endif %}">{{ last.leg_time }}{% if last.leg_rank %} <span class="split-rank split-rank-leg">{{ last.leg_rank }}</span>{% endif %}</span>
                 </div>
                 {% endif %}
+                {% endwith %}
               </div>
             </div>
           </td>
