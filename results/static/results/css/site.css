@@ -249,8 +249,25 @@ footer a { color: var(--co-gold); }
 .split-rank-leg { color: var(--co-green-dark); }
 
 /* Meilleur tronçon */
-.split-best { background: #fffbe6; border-color: var(--co-gold); }
-.split-leg-best { color: var(--co-gold); font-weight: 700; }
+.split-best { background: #fffbe6; border-color: #f0c040; }
+.split-leg-best { font-weight: 800; color: #9a6700; }
+.split-best .split-ctrl-name::after { content: ' ★'; color: #f0a500; font-size: .7rem; }
+
+/* Podium tronçon (2e/3e) */
+.split-podium { background: #e8f0fe; border-color: #b3cff5; }
+
+/* Détail splits (résultats) */
+.splits-td { padding: 0 !important; }
+.splits-detail { background: #f0f7f2; border-top: 1px solid #c8e6d0; border-bottom: 2px solid #c8e6d0; padding: .5rem .75rem .65rem; }
+.split-error-flag { background: #fde8e8 !important; border-color: #f5a0a0 !important; }
+.split-error-flag .split-ctrl-name { color: #c0392b; }
+.split-error { font-size: .68rem; color: #c0392b; font-weight: 700; margin-top: .1rem; text-align: center; }
+.time-col-splits { cursor: pointer; user-select: none; }
+.time-col-splits:hover { background: #f0f7f2; }
+.time-with-toggle { display: inline-flex; align-items: center; white-space: nowrap; }
+.split-toggle { border: none; background: transparent; vertical-align: middle; }
+.split-toggle .bi { transition: transform .2s; display: inline-block; }
+.split-toggle.open .bi { transform: rotate(180deg); }
 
 /* ─── Barre d'onglets analyses ───────────────────────────────────────────────── */
 
