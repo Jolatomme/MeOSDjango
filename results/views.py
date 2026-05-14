@@ -377,8 +377,11 @@ def class_results(request, cid, class_id):
             cls_id = c.cls
             if cls_id not in class_rank_cache:
                 all_in_cls = [x for x in competitors if x.cls == cls_id]
-                fin, _, _  = rank_finishers(all_in_cls)
-                class_rank_cache[cls_id] = {x.id: x.rank for x in fin}
+                cls_finishers = sorted(
+                    [x for x in all_in_cls if x.is_ok],
+                    key=lambda x: x.rt,
+                )
+                class_rank_cache[cls_id] = {x.id: i+1 for i, x in enumerate(cls_finishers)}
             c.cat_rank = class_rank_cache[cls_id].get(c.id)
 
     results      = finishers + _sort_non_finishers(non_finishers)

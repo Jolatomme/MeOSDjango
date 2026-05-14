@@ -499,6 +499,132 @@ class TestClassResultsTemplateSelection:
         assert ctx['prev_cls'] is None
         assert ctx['next_cls'] is None
 
+    def test_scratch_rank_preserve_avec_categories_differentes(self):
+        """cat_rank ne doit pas écraser c.rank (scratch circuit)."""
+        course = _make_course()
+        # alice : cls=10 (H21), rt=4000 → scratch 1er, cat H21 1ère
+        # bob   : cls=11 (D21), rt=5000 → scratch 2e,  cat D21 1ère
+        alice = make_competitor(1, rt=4000, cls=10)
+        bob   = make_competitor(2, rt=5000, cls=11)
+        _, ctx = self._run(course=course, competitors=[alice, bob])
+        alice_out = next(r for r in ctx['results'] if r.id == 1)
+        bob_out   = next(r for r in ctx['results'] if r.id == 2)
+        assert alice_out.rank == 1        # scratch circuit
+        assert bob_out.rank   == 2        # scratch circuit
+        assert alice_out.cat_rank == 1    # rang catégorie H21
+        assert bob_out.cat_rank   == 1    # rang catégorie D21
+
+    def test_time_behind_preserve_apres_cat_rank(self):
+        """time_behind (écart au leader scratch) n'est pas écrasé par cat_rank."""
+        course = _make_course()
+        # leader : rt=4000, 2e : rt=5000 → time_behind = 1000
+        alice = make_competitor(1, rt=4000, cls=10)
+        bob   = make_competitor(2, rt=5000, cls=11)
+        _, ctx = self._run(course=course, competitors=[alice, bob])
+        bob_out = next(r for r in ctx['results'] if r.id == 2)
+        # 5000 - 4000 = 1000 dixièmes
+        assert bob_out.time_behind == 1000
+
+    def test_cat_rank_none_pour_non_classe_en_circuit(self):
+        """Un non-classé en mode circuit a cat_rank=None."""
+        course = _make_course()
+        dnf = make_competitor(1, rt=-1, stat=STAT_DNF, cls=10)
+        dnf.is_ok = False
+        _, ctx = self._run(course=course, competitors=[dnf])
+        dnf_out = ctx['results'][0]
+        assert dnf_out.cat_rank is None
+
+    def test_splits_calcules_en_mode_circuit(self):
+        """En mode circuit, chaque résultat a des splits calculés."""
+        course = _make_course(controls_seq=[{'ctrl_id': 31, 'ctrl_name': 'P31'}])
+        c = make_competitor(1, rt=5000)
+        # On ne mocke pas compute_splits ici → utilise le vrai compute_splits
+        # Mais _run mocke compute_splits... on doit override
+        competition = MagicMock(); competition.cid = 1
+        cls_obj = make_cls(10, 'abc12345')
+        with patch('results.views._load_class_context',
+                   return_value=(competition, cls_obj, [c], course)), \
+             patch('results.views.Mopclass') as MockClass, \
+             patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views.get_org_map', return_value={}), \
+             patch('results.views.get_radio_map', return_value={}), \
+             patch('results.views.get_class_controls', return_value=([], {})), \
+             patch('results.views.mark_best_splits'), \
+             patch('results.views.rank_splits'), \
+             patch('results.views.render') as mock_render:
+            MockClass.objects.filter.return_value.order_by.return_value = []
+            MockTeam.objects.filter.return_value.exists.return_value = False
+            from results.views import class_results
+            class_results(rf_get(), cid=1, class_id='abc12345')
+            _, _, ctx = mock_render.call_args[0]
+        assert ctx['has_splits'] is True
+        assert all(hasattr(r, 'splits') for r in ctx['results'] if r.is_ok)
+
+    def test_has_splits_faux_sans_controles_en_circuit(self):
+        """Sans contrôles, has_splits=False même en mode circuit."""
+        course = _make_course(controls_seq=[])
+        c = make_competitor(1, rt=5000)
+        competition = MagicMock(); competition.cid = 1
+        cls_obj = make_cls(10, 'abc12345')
+        with patch('results.views._load_class_context',
+                   return_value=(competition, cls_obj, [c], course)), \
+             patch('results.views.Mopclass') as MockClass, \
+             patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views.get_org_map', return_value={}), \
+             patch('results.views.get_radio_map', return_value={}), \
+             patch('results.views.get_class_controls', return_value=([], {})), \
+             patch('results.views.compute_splits', return_value=[]), \
+             patch('results.views.mark_best_splits'), \
+             patch('results.views.rank_splits'), \
+             patch('results.views.render') as mock_render:
+            MockClass.objects.filter.return_value.order_by.return_value = []
+            MockTeam.objects.filter.return_value.exists.return_value = False
+            from results.views import class_results
+            class_results(rf_get(), cid=1, class_id='abc12345')
+            _, _, ctx = mock_render.call_args[0]
+        assert ctx['has_splits'] is False
+
+    def test_leader_time_en_mode_circuit(self):
+        """leader_time est le temps du leader scratch du circuit."""
+        from results.models import format_time
+        course = _make_course()
+        alice = make_competitor(1, rt=4000, cls=10)
+        bob   = make_competitor(2, rt=5000, cls=11)
+        _, ctx = self._run(course=course, competitors=[alice, bob])
+        assert ctx['leader_time'] == format_time(4000)
+
+    def test_leg_error_data_json_dans_contexte_circuit_avec_splits(self):
+        """leg_error_data_json est présent en mode circuit avec contrôles."""
+        course = _make_course(controls_seq=[{'ctrl_id': 31, 'ctrl_name': 'P31'}])
+        c = make_competitor(1, rt=5000)
+        competition = MagicMock(); competition.cid = 1
+        cls_obj = make_cls(10, 'abc12345')
+        with patch('results.views._load_class_context',
+                   return_value=(competition, cls_obj, [c], course)), \
+             patch('results.views.Mopclass') as MockClass, \
+             patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views.get_org_map', return_value={}), \
+             patch('results.views.get_radio_map', return_value={1: {31: 1200}}), \
+             patch('results.views.get_class_controls', return_value=([], {})), \
+             patch('results.views.compute_splits', return_value=[
+                 {'ctrl_name': 'P31', 'abs_time': '2:00', 'leg_time': '2:00',
+                  'leg_raw': 1200, 'abs_raw': 1200, 'is_best': False, 'leg_rank': None, 'abs_rank': None}
+             ]), \
+             patch('results.views.mark_best_splits'), \
+             patch('results.views.rank_splits'), \
+             patch('results.views.compute_error_estimates', return_value={
+                 1: [{'error_time': 50, 'error_pct': 5.0}]
+             }), \
+             patch('results.views.render') as mock_render:
+            MockClass.objects.filter.return_value.order_by.return_value = []
+            MockTeam.objects.filter.return_value.exists.return_value = False
+            from results.views import class_results
+            class_results(rf_get(), cid=1, class_id='abc12345')
+            _, _, ctx = mock_render.call_args[0]
+        leg_data = json.loads(ctx['leg_error_data_json'])
+        assert len(leg_data) == 1
+        assert leg_data[0]['ctrl_name'] == 'P31'
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Analyses en mode circuit — tests de fumée (smoke tests)

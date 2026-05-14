@@ -33,7 +33,7 @@ from results.models import (
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def make_competition(cid=1):
-    c = MagicMock(); c.cid = cid; c.name = 'Test'; return c
+    c = MagicMock(); c.cid = cid; c.name = 'Test'; c.date = None; return c
 
 def make_cls(cid=1, class_id=10, name='H21', ord_=10):
     c = MagicMock(); c.cid = cid; c.id = class_id; c.name = name; c.ord = ord_; return c
@@ -1110,3 +1110,212 @@ class TestSlugifyNoPrefix:
     def test_prefixe_compose(self):   assert self._call('1.1 Créer') == 'créer'
     def test_sans_prefixe(self):      assert self._call('Introduction') == 'introduction'
     def test_multi_niveaux(self):     assert self._call('3.2.1 Section') == 'section'
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# start_list
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestStartListView:
+
+    def _mk_competitor(self, id=1, st=100000, name='Martin Luc', org=1, cls=10):
+        c = MagicMock()
+        c.id = id; c.st = st; c.name = name; c.org = org; c.cls = cls
+        return c
+
+    def _mk_cls(self, id=10, name='H21'):
+        c = MagicMock(); c.id = id; c.name = name; return c
+
+    def _mk_org(self, id=1, name='COLE'):
+        c = MagicMock(); c.id = id; c.name = name; return c
+
+    def _run(self, competitors=None, classes=None, orgs=None):
+        competition = make_competition()
+        competitors = competitors or []
+        classes = classes or []
+        org_map = {o.id: o for o in (orgs or [])}
+        with patch('results.views.get_object_or_404', return_value=competition), \
+             patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views.Mopclass') as MockClass, \
+             patch('results.views.get_org_map', return_value=org_map), \
+             patch('results.views.render') as mock_render:
+            MockComp.objects.filter.return_value.select_related.return_value = competitors
+            MockClass.objects.filter.return_value = classes
+            from results.views import start_list
+            start_list(rf_get(), cid=1)
+            _, template, ctx = mock_render.call_args[0]
+            return template, ctx
+
+    def test_template_correct(self):
+        template, _ = self._run()
+        assert template == 'results/start_list.html'
+
+    def test_competition_dans_contexte(self):
+        _, ctx = self._run()
+        assert 'competition' in ctx
+
+    def test_start_list_data_json_present(self):
+        _, ctx = self._run()
+        data = json.loads(ctx['start_list_data'])
+        assert 'meta' in data
+        assert 'groups' in data
+
+    def test_sans_concurrent_listes_vides(self):
+        _, ctx = self._run()
+        data = json.loads(ctx['start_list_data'])
+        assert data['groups']['category'] == []
+        assert data['groups']['club'] == []
+        assert data['groups']['start_time'] == []
+
+    def test_un_concurrent(self):
+        c = self._mk_competitor(id=1, st=36000, name='Martin Luc', org=1, cls=10)
+        cls = self._mk_cls(10, 'H21')
+        org = self._mk_org(1, 'COLE')
+        _, ctx = self._run(competitors=[c], classes=[cls], orgs=[org])
+        data = json.loads(ctx['start_list_data'])
+        assert len(data['groups']['category']) == 1
+        assert data['groups']['category'][0]['name'] == 'H21'
+        assert len(data['groups']['category'][0]['rows']) == 1
+        row = data['groups']['category'][0]['rows'][0]
+        assert row['full_name'] == 'Martin Luc'
+        assert row['family'] == 'Martin'
+        assert row['given'] == 'Luc'
+        assert row['category'] == 'H21'
+
+    def test_heure_depart_formatee(self):
+        """st=36000 dixièmes = 3600 sec = 01:00."""
+        c = self._mk_competitor(id=1, st=36000)
+        cls = self._mk_cls(10, 'H21')
+        _, ctx = self._run(competitors=[c], classes=[cls])
+        data = json.loads(ctx['start_list_data'])
+        row = data['groups']['category'][0]['rows'][0]
+        assert row['start_time'] == '01:00'
+
+    def test_heure_depart_vide_si_st_zero(self):
+        c = self._mk_competitor(id=1, st=0)
+        cls = self._mk_cls(10, 'H21')
+        _, ctx = self._run(competitors=[c], classes=[cls])
+        data = json.loads(ctx['start_list_data'])
+        row = data['groups']['category'][0]['rows'][0]
+        assert row['start_time'] == ''
+
+    def test_tri_par_heure_depart(self):
+        c1 = self._mk_competitor(id=1, st=72000, name='Lent')
+        c2 = self._mk_competitor(id=2, st=36000, name='Rapide')
+        cls = self._mk_cls(10, 'H21')
+        _, ctx = self._run(competitors=[c1, c2], classes=[cls])
+        data = json.loads(ctx['start_list_data'])
+        rows = data['groups']['category'][0]['rows']
+        assert rows[0]['full_name'] == 'Rapide'
+        assert rows[1]['full_name'] == 'Lent'
+
+    def test_groupement_par_categorie(self):
+        c1 = self._mk_competitor(id=1, st=36000, cls=10)
+        c2 = self._mk_competitor(id=2, st=37000, cls=11)
+        cls1 = self._mk_cls(10, 'H21')
+        cls2 = self._mk_cls(11, 'D21')
+        _, ctx = self._run(competitors=[c1, c2], classes=[cls1, cls2])
+        data = json.loads(ctx['start_list_data'])
+        cats = [g['name'] for g in data['groups']['category']]
+        assert 'H21' in cats
+        assert 'D21' in cats
+
+    def test_groupement_par_club(self):
+        c1 = self._mk_competitor(id=1, st=36000, org=1)
+        c2 = self._mk_competitor(id=2, st=37000, org=2)
+        org1 = self._mk_org(1, 'COLE')
+        org2 = self._mk_org(2, 'NOSE')
+        _, ctx = self._run(competitors=[c1, c2], orgs=[org1, org2])
+        data = json.loads(ctx['start_list_data'])
+        clubs = [g['name'] for g in data['groups']['club']]
+        assert any('COLE' in c for c in clubs)
+        assert any('NOSE' in c for c in clubs)
+
+    def test_groupement_par_heure_depart_identique(self):
+        c1 = self._mk_competitor(id=1, st=36000, name='A')
+        c2 = self._mk_competitor(id=2, st=36000, name='B')
+        _, ctx = self._run(competitors=[c1, c2])
+        data = json.loads(ctx['start_list_data'])
+        assert len(data['groups']['start_time']) == 1
+
+    def test_slug_genere(self):
+        c = self._mk_competitor(id=1, st=36000)
+        cls = self._mk_cls(10, 'H21 DÉBUTANT')
+        _, ctx = self._run(competitors=[c], classes=[cls])
+        data = json.loads(ctx['start_list_data'])
+        assert data['groups']['category'][0]['slug'] == 'h21-d-butant'
+
+    def test_concurrent_sans_org(self):
+        c = self._mk_competitor(id=1, st=36000, org=None)
+        cls = self._mk_cls(10, 'H21')
+        _, ctx = self._run(competitors=[c], classes=[cls])
+        data = json.loads(ctx['start_list_data'])
+        row = data['groups']['category'][0]['rows'][0]
+        assert row['club_display'] == 'Sans club'
+
+    def test_concurrent_sans_categorie(self):
+        c = self._mk_competitor(id=1, st=36000, cls=99)
+        _, ctx = self._run(competitors=[c])
+        data = json.loads(ctx['start_list_data'])
+        # cls 99 n'est pas dans classes=[] → category=''
+        # Les groupes de catégorie vide sont ignorés, mais le groupe start_time contient le coureur
+        assert data['groups']['category'] == []
+        assert len(data['groups']['start_time']) == 1
+
+    def test_meta_contient_event_name(self):
+        _, ctx = self._run()
+        data = json.loads(ctx['start_list_data'])
+        assert data['meta']['event_name'] == 'Test'
+
+    def test_meta_date_vide_sans_date(self):
+        _, ctx = self._run()
+        data = json.loads(ctx['start_list_data'])
+        assert data['meta']['event_date'] == ''
+
+    def test_club_short_format(self):
+        c = self._mk_competitor(id=1, st=36000, org=5)
+        cls = self._mk_cls(10, 'H21')
+        _, ctx = self._run(competitors=[c], classes=[cls])
+        data = json.loads(ctx['start_list_data'])
+        row = data['groups']['category'][0]['rows'][0]
+        assert row['club_short'] == '0005'
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Pages statiques
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestStaticPages:
+    @patch('results.views.render')
+    @patch('results.views.MeosTutorial')
+    def test_etiquettes_template(self, MockTuto, mock_render):
+        from results.views import etiquettes
+        etiquettes(rf_get())
+        args = mock_render.call_args[0]
+        assert args[0].method == 'GET'
+        assert args[1] == 'results/etiquettes.html'
+
+    @patch('results.views.render')
+    @patch('results.views.MeosTutorial')
+    def test_drivers_template(self, MockTuto, mock_render):
+        from results.views import drivers
+        drivers(rf_get())
+        args = mock_render.call_args[0]
+        assert args[1] == 'results/drivers.html'
+
+    @patch('results.views.markdown.Markdown')
+    @patch('results.views.render')
+    @patch('results.views.MeosTutorial')
+    def test_markdown_view_contexte(self, MockTuto, mock_render, MockMarkdown):
+        tuto = MagicMock(); tuto.text = '# Hello'; tuto.content = ''
+        MockTuto.objects.get.return_value = tuto
+        mock_md = MagicMock()
+        mock_md.convert.return_value = '<h1>Hello</h1>'
+        MockMarkdown.return_value = mock_md
+        from results.views import MarkdownView
+        MarkdownView(rf_get(), article_id=1)
+        args = mock_render.call_args[0]
+        assert args[1] == 'results/markdown_content.html'
+        assert 'markdown_content' in args[2]
+        MockTuto.objects.get.assert_called_once_with(pk=1)
+        mock_md.convert.assert_called_once_with(tuto.text)
