@@ -1,0 +1,11 @@
+{% if has_splits %}
+<div class="co-card mb-3" id="errorChartCard">
+  <div class="co-card-header d-flex justify-content-between align-items-center" style="cursor:pointer" onclick="COResultsSplits.toggleErrorChart()">
+    <span><i class="bi bi-bar-chart-fill me-2" style="color:var(--co-gold)"></i>Taux d'erreur par tronçon</span>
+    <i class="bi bi-chevron-down text-muted" id="errorChartChevron" style="transition:transform .2s"></i>
+  </div>
+  <div id="errorChartBody" class="p-3" style="display:none">
+    <div style="position:relative;height:260px"><canvas id="errorChart"></canvas></div>
+  </div>
+</div>
+{% endif %}

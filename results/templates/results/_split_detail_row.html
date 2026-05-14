@@ -1,0 +1,42 @@
+{% if has_splits and comp.splits %}
+<tr id="splits-{{ comp.id }}"
+    class="splits-row d-none result-row {% if not comp.is_ok %}non-finisher{% endif %}"
+    data-name="{{ comp.name|lower }}">
+  <td colspan="{{ colspan }}" class="splits-td">
+    <div class="splits-detail">
+      <div class="splits-grid">
+        <div class="split-cell split-start">
+          <span class="split-ctrl-name">Départ</span>
+          <span class="split-time-abs">0:00</span>
+          <span class="split-time-leg">—</span>
+        </div>
+        {% for sp in comp.splits %}
+        {% if sp.ctrl_name != "Arrivée" %}
+        <div class="split-cell {% if sp.is_best %}split-best{% elif sp.leg_rank == 2 or sp.leg_rank == 3 %}split-podium{% endif %}"
+             data-error-time="{{ sp.error_time|default:'' }}"
+             data-error-pct="{{ sp.error_pct|default:'' }}">
+          <span class="split-ctrl-name">{{ sp.ctrl_name }}</span>
+          <span class="split-time-abs">
+            {{ sp.abs_time }}{% if sp.abs_rank %} <span class="split-rank">{{ sp.abs_rank }}</span>{% endif %}
+          </span>
+          <span class="split-time-leg {% if sp.is_best %}split-leg-best{% endif %}">
+            {{ sp.leg_time }}{% if sp.leg_rank %} <span class="split-rank split-rank-leg">{{ sp.leg_rank }}</span>{% endif %}
+          </span>
+          <span class="split-error d-none"></span>
+        </div>
+        {% endif %}
+        {% endfor %}
+        {% with last=comp.splits|last %}
+        {% if comp.is_ok and last.ctrl_name == "Arrivée" %}
+        <div class="split-cell split-finish{% if last.is_best %} split-best{% elif last.leg_rank == 2 or last.leg_rank == 3 %} split-podium{% endif %}">
+          <span class="split-ctrl-name">Arrivée</span>
+          <span class="split-time-abs">{{ last.abs_time }}{% if last.abs_rank %} <span class="split-rank">{{ last.abs_rank }}</span>{% endif %}</span>
+          <span class="split-time-leg {% if last.is_best %}split-leg-best{% endif %}">{{ last.leg_time }}{% if last.leg_rank %} <span class="split-rank split-rank-leg">{{ last.leg_rank }}</span>{% endif %}</span>
+        </div>
+        {% endif %}
+        {% endwith %}
+      </div>
+    </div>
+  </td>
+</tr>
+{% endif %}
