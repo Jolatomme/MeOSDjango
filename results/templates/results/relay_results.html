@@ -68,8 +68,6 @@
           <th>Club</th>
           <th class="text-end">Temps total</th>
           <th class="text-end d-none d-md-table-cell">Écart</th>
-          <th class="text-center">Statut</th>
-          <th class="text-center" style="width:2.5rem"><i class="bi bi-chevron-down"></i></th>
         </tr>
       </thead>
       <tbody>
@@ -87,9 +85,20 @@
           </td>
           <td class="runner-name fw-bold">{{ td.team.name }}</td>
           <td class="club-name text-muted">{{ td.org_name|default:"—" }}</td>
-          <td class="text-end time-col">
-            {% if td.team.stat == 1 and td.team.rt > 0 %}{{ td.team.rt|meos_time }}
-            {% else %}<span class="text-muted">—</span>{% endif %}
+          <td class="text-end time-col"
+              onclick="toggleLegs('{{ td.team.id }}', this.querySelector('.legs-toggle'))">
+            {% if td.team.stat == 1 and td.team.rt > 0 %}
+              <span class="time-with-toggle">
+                {{ td.team.rt|meos_time }}
+                <button class="btn btn-sm btn-link p-0 ms-1 legs-toggle"
+                        onclick="event.stopPropagation(); toggleLegs('{{ td.team.id }}', this)"
+                        title="Afficher les fractions">
+                  <i class="bi bi-chevron-down text-primary" style="font-size:.75rem"></i>
+                </button>
+              </span>
+            {% else %}
+              <span class="badge bg-{{ td.team.stat|status_badge }}">{{ td.team.stat|status_label }}</span>
+            {% endif %}
           </td>
           <td class="text-end behind-col d-none d-md-table-cell">
             {% if td.team.time_behind is not None and td.team.time_behind > 0 %}
@@ -98,24 +107,12 @@
               <span class="text-success fw-bold">◆</span>
             {% else %}—{% endif %}
           </td>
-          <td class="text-center">
-            <span class="badge bg-{{ td.team.stat|status_badge }}">
-              {{ td.team.stat|status_label }}
-            </span>
-          </td>
-          <td class="text-center">
-            <button class="btn btn-sm btn-link p-0 legs-toggle"
-                    onclick="toggleLegs('{{ td.team.id }}', this)"
-                    title="Afficher les fractions">
-              <i class="bi bi-chevron-down text-primary"></i>
-            </button>
-          </td>
         </tr>
 
         <tr id="legs-{{ td.team.id }}"
             class="legs-row d-none result-row {% if not td.team.stat == 1 %}non-finisher{% endif %}"
             data-name="{{ td.team.name|lower }}" data-org="{{ td.org_name|lower }}">
-          <td colspan="7" class="legs-td">
+          <td colspan="6" class="legs-td">
             <div class="legs-detail">
               <div class="legs-grid">
                 {% for leg in td.legs %}
@@ -126,15 +123,16 @@
                   <span class="leg-runner-name">{{ leg.name }}</span>
                 </div>
                 <div class="lg-leg">
-                  <span class="leg-time-badge">{{ leg.leg_time }}</span>
-                  {% if leg.leg_rank %}<span class="leg-rank-badge">({{ leg.leg_rank }})</span>{% else %}<span class="leg-rank-empty"></span>{% endif %}
+                  {% if leg.stat == 1 and leg.leg_time_raw %}
+                    <span class="leg-time-badge">{{ leg.leg_time }}</span>
+                    {% if leg.leg_rank %}<span class="leg-rank-badge">({{ leg.leg_rank }})</span>{% else %}<span class="leg-rank-empty"></span>{% endif %}
+                  {% else %}
+                    <span class="badge bg-{{ leg.stat_badge }}">{{ leg.stat_label }}</span>
+                  {% endif %}
                 </div>
                 <div class="lg-cum">
                   <span class="cum-time-badge">{{ leg.cum_time }}</span>
                   {% if leg.cum_rank %}<span class="leg-rank-badge cum">({{ leg.cum_rank }})</span>{% else %}<span class="leg-rank-empty"></span>{% endif %}
-                </div>
-                <div class="lg-stat">
-                  <span class="badge bg-{{ leg.stat_badge }}">{{ leg.stat_label }}</span>
                 </div>
                 <div class="lg-splits">
                   {% if leg.splits %}
@@ -155,19 +153,12 @@
                       <span class="split-time-leg">—</span>
                     </div>
                     {% for sp in leg.splits %}
-                    <div class="split-cell">
+                    <div class="split-cell{% if sp.ctrl_name == 'Arrivée' %} split-finish{% endif %}">
                       <span class="split-ctrl-name">{{ sp.ctrl_name }}</span>
                       <span class="split-time-abs">{{ sp.abs_time }}</span>
                       <span class="split-time-leg">{{ sp.leg_time }}</span>
                     </div>
                     {% endfor %}
-                    {% if leg.stat == 1 %}
-                    <div class="split-cell split-finish">
-                      <span class="split-ctrl-name">Arrivée</span>
-                      <span class="split-time-abs">{{ leg.leg_time }}</span>
-                      <span class="split-time-leg">—</span>
-                    </div>
-                    {% endif %}
                   </div>
                 </div>
                 {% endif %}
@@ -207,25 +198,36 @@
 
   /* ── Grille tableau des fractions ────────────────────────────────── */
   /*   col 1 : numéro cercle  (fixe)
-       col 2 : nom coureur    (flexible)
-       col 3 : tronçon+rang   (fixe)
-       col 4 : cumulé+rang    (fixe)
-       col 5 : statut         (fixe)
-       col 6 : bouton splits  (fixe)               */
+       col 2 : nom coureur    (auto)
+       col 3 : tronçon+rang   (auto)
+       col 4 : cumulé+rang    (auto)
+       col 5 : bouton splits  (fixe)               */
   .legs-grid {
     display: grid;
-    grid-template-columns: 1.8rem 1fr auto auto auto 1.6rem;
-    align-items: center;
-    gap: .3rem .6rem;
+    grid-template-columns: 1.8rem 2fr auto auto 1.6rem;
+    align-items: start;
+    gap: .2rem .5rem;
   }
 
   /* Chaque cellule de la grille */
-  .lg-num    { display: flex; align-items: center; justify-content: center; }
-  .lg-name   { min-width: 0; }
-  .lg-leg    { display: flex; align-items: center; gap: .25rem; white-space: nowrap; }
-  .lg-cum    { display: flex; align-items: center; gap: .25rem; white-space: nowrap; }
-  .lg-stat   { display: flex; align-items: center; justify-content: center; }
-  .lg-splits { display: flex; align-items: center; justify-content: center; }
+  .lg-num    { display: flex; align-items: flex-start; justify-content: center; padding-top: .3rem; }
+  .lg-name   { min-width: 0; white-space: normal; word-wrap: break-word; }
+  .lg-leg    { display: flex; align-items: center; gap: .2rem; white-space: nowrap; }
+  .lg-cum    { display: flex; align-items: center; gap: .2rem; white-space: nowrap; }
+  .lg-splits { display: flex; align-items: flex-start; justify-content: center; padding-top: .3rem; }
+
+  /* Time column with inline toggle */
+  .time-with-toggle {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  .time-col {
+    cursor: pointer;
+  }
+  .time-col:hover {
+    background-color: rgba(0,0,0,.02);
+  }
 
   /* La grille des intermédiaires s'étale sur toutes les colonnes */
   .lg-splits-content {
@@ -242,7 +244,6 @@
   }
   .leg-runner-name {
     font-weight: 700; font-size: .95rem; color: var(--co-forest);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
 
   /* Badge temps de tronçon — vert */
@@ -273,12 +274,15 @@
   .splits-toggle.open .bi-chevron-down { transform: rotate(180deg); }
   .btn-xs { font-size: .75rem; }
 
-  /* ── Responsive : sur mobile, nom sur ligne entière ──────────────── */
+  /* ── Responsive : sur mobile ───────────────────────────────────────── */
   @media (max-width: 480px) {
     .legs-grid {
-      grid-template-columns: 1.8rem 1fr auto auto 1.6rem;
+      grid-template-columns: 1.6rem 2fr auto auto 1.4rem;
+      gap: .15rem .3rem;
     }
-    .lg-stat { display: none; }
+    .lg-num, .lg-splits {
+      padding-top: .2rem;
+    }
   }
 </style>
 {% endblock %}
