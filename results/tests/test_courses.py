@@ -842,4 +842,4 @@ class TestCompetitionDetailCourses:
 
     def test_get_courses_map_appele_avec_cid(self):
         _, mock_gcm = self._run()
-        mock_gcm.assert_called_once_with(1)
+        mock_gcm.assert_called_once_with(1, set(), {})

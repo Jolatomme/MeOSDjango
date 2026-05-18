@@ -423,10 +423,21 @@ def compute_course_hash(controls_seq):
     return hashlib.md5(key.encode()).hexdigest()[:8]
 
 
-def get_courses_map(cid):
+def get_courses_map(cid, relay_class_ids=None, class_totals=None):
     """Charge tous les circuits d'une compétition (3 requêtes DB).
 
     Un circuit = groupe de catégories partageant la même séquence de postes.
+
+    Args
+    ----
+    cid : int
+        Competition ID.
+    relay_class_ids : set or None
+        If provided, relay classes are excluded from the courses map
+        (relay classes have different circuits per leg, not suitable for course grouping).
+    class_totals : dict or None
+        If provided, courses with no participants (all classes have 0 total) are excluded.
+        Dict mapping class_id -> total number of participants.
 
     Returns
     -------
@@ -434,7 +445,13 @@ def get_courses_map(cid):
     """
     from collections import defaultdict
 
+    if relay_class_ids is None:
+        relay_class_ids = set()
+    if class_totals is None:
+        class_totals = {}
+
     all_classes = list(Mopclass.objects.filter(cid=cid).order_by('ord', 'name'))
+    all_classes = [c for c in all_classes if c.id not in relay_class_ids]
     if not all_classes:
         return {}
 
@@ -480,5 +497,11 @@ def get_courses_map(cid):
         names  = [c.name for c in course['classes'][:4]]
         extra  = len(course['classes']) - 4
         course['display_name'] = ' / '.join(names) + (f' +{extra}' if extra > 0 else '')
+
+    if class_totals:
+        courses = {
+            h: c for h, c in courses.items()
+            if any(class_totals.get(cls.id, 0) > 0 for cls in c['classes'])
+        }
 
     return courses

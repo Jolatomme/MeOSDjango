@@ -224,20 +224,24 @@ def competition_detail(request, cid):
         if is_relay:
             qs        = Mopteam.objects.filter(cid=cid, cls=cls.id)
             total     = qs.count()
+            if total == 0:
+                continue
             finishers = qs.filter(stat=STAT_OK).exclude(rt__lte=0).count()
             class_stats.append({'cls': cls, 'total': total, 'finishers': finishers,
                                 'is_relay': is_relay})
         else:
             qs        = Mopcompetitor.objects.filter(cid=cid, cls=cls.id)
             total     = qs.count()
+            if total == 0:
+                continue
             finishers = qs.filter(stat=STAT_OK).exclude(rt__lte=0).count()
-            # Get number of controls for this class
             controls_seq, _ = get_class_controls(cid, cls.id)
             n_controls = len(controls_seq)
             class_stats.append({'cls': cls, 'total': total, 'finishers': finishers,
                                 'is_relay': is_relay, 'n_controls': n_controls})
 
-    courses_map = get_courses_map(cid)
+    class_totals = {cs['cls'].id: cs['total'] for cs in class_stats}
+    courses_map = get_courses_map(cid, relay_class_ids, class_totals)
     return render(request, 'results/competition_detail.html', {
         'competition': competition,
         'class_stats': class_stats,
@@ -917,6 +921,18 @@ def relay_results(request, cid, class_id):
                     for idx, cv in enumerate(controls_by_leg.get(leg_num, []))
                 ]
                 splits = compute_splits(runner.id, ctrl_seq, radio_map)
+                last_ctrl_abs = splits[-1]['abs_raw'] if splits and splits[-1]['abs_raw'] is not None else None
+                finish_leg_raw = (leg_time_raw - last_ctrl_abs) if leg_time_raw and last_ctrl_abs else None
+                splits.append({
+                    'ctrl_name': 'Arrivée',
+                    'abs_time': format_time(leg_time_raw) if leg_time_raw else '-',
+                    'leg_time': format_time(finish_leg_raw) if finish_leg_raw else '-',
+                    'leg_raw': finish_leg_raw,
+                    'abs_raw': leg_time_raw,
+                    'is_best': False,
+                    'leg_rank': None,
+                    'abs_rank': None,
+                })
                 legs_data.append({
                     'leg': leg_num, 'runner_id': runner.id, 'name': runner.name,
                     'leg_time': format_time(leg_time_raw) if leg_time_raw else '-',
