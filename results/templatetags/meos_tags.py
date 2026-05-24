@@ -1,4 +1,5 @@
 from django import template
+from django.utils.safestring import mark_safe
 from results.models import format_time, STATUS_LABELS
 
 register = template.Library()
@@ -29,6 +30,15 @@ def status_label(stat_code):
         return STATUS_LABELS.get(int(stat_code), ('?', 'secondary'))[0]
     except (TypeError, ValueError):
         return '?'
+
+
+@register.filter(is_safe=True)
+def display_name(name):
+    """Format 'Firstname Lastname' as 'Lastname,<br>Firstname'."""
+    parts = name.strip().split(None, 1)
+    if len(parts) == 2:
+        return mark_safe(f"{parts[1]},<br>{parts[0]}")
+    return name
 
 
 @register.simple_tag

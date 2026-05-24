@@ -37,6 +37,11 @@
         <i class="bi bi-collection"></i><span>Lièvre / Suiveur</span>
       </a>
 
+      <a href="{% url 'results:recapitulatif' competition.cid cls.name %}"
+         class="analysis-tab {% if current_analysis == 'recapitulatif' %}active{% endif %}">
+        <i class="bi bi-table"></i><span>Récapitulatif</span>
+      </a>
+
       <a href="{% url 'results:duel' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'duel' %}active{% endif %}">
         <i class="bi bi-people"></i><span>Duel coureurs</span>

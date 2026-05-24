@@ -5,7 +5,7 @@ import markdown
 from markdown.extensions.toc import slugify_unicode
 
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import Http404, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 
 from .models import (
     Mopcompetition, Mopclass, Moporganization, Mopcompetitor,
@@ -875,6 +875,184 @@ def duel_analysis(request, cid, class_id):
         'no_data': False, 'current_analysis': 'duel',
         'runners_json': json.dumps(runners_data), 'n_runners': len(runners_data),
     })
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Récapitulatif — tableau récapitulatif des temps intermédiaires (style WinSplits)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _load_recapitulatif_data(cid, class_id, context=None):
+    """Charge et prépare les données pour le récapitulatif (HTML et CSV)."""
+    if context is not None:
+        competition, cls, competitors, course = context
+    else:
+        competition, cls, competitors, course = _load_class_context(cid, class_id)
+
+    prev_cls, next_cls = (None, None)
+    if course is None:
+        prev_cls, next_cls = _get_adjacent_classes(cid, cls.id)
+
+    org_map = get_org_map(cid, as_objects=True)
+    for c in competitors:
+        c.org_obj = org_map.get(c.org)
+
+    finishers, non_finishers, leader_time = rank_finishers(competitors)
+
+    if course is not None:
+        class_rank_cache = {}
+        for c in competitors:
+            cls_id = c.cls
+            if cls_id not in class_rank_cache:
+                all_in_cls = [x for x in competitors if x.cls == cls_id]
+                cls_finishers = sorted(
+                    [x for x in all_in_cls if x.is_ok],
+                    key=lambda x: x.rt,
+                )
+                class_rank_cache[cls_id] = {x.id: i + 1 for i, x in enumerate(cls_finishers)}
+            c.cat_rank = class_rank_cache[cls_id].get(c.id)
+
+    results     = finishers + _sort_non_finishers(non_finishers)
+    controls_seq = _controls_for(cid, cls, course)
+    radio_map   = get_radio_map(cid, [c.id for c in results])
+
+    for c in results:
+        c.splits = compute_splits(c.id, controls_seq, radio_map)
+        if c.rt > 0:
+            last_abs = c.splits[-1]['abs_raw'] if c.splits else None
+            leg_raw  = c.rt - last_abs if last_abs else c.rt
+            c.splits.append({
+                'ctrl_name': 'Arrivée',
+                'abs_time':  format_time(c.rt),
+                'leg_time':  format_time(leg_raw) if leg_raw else '-',
+                'leg_raw':   leg_raw,
+                'abs_raw':   c.rt,
+                'is_best':   False,
+                'leg_rank':  None,
+                'abs_rank':  None,
+            })
+        else:
+            c.splits.append({
+                'ctrl_name': 'Arrivée',
+                'abs_time':  '-',
+                'leg_time':  '-',
+                'leg_raw':   None,
+                'abs_raw':   None,
+                'is_best':   False,
+                'leg_rank':  None,
+                'abs_rank':  None,
+            })
+
+    mark_best_splits(finishers, results)
+    rank_splits(finishers, results)
+
+    error_map = {}
+    if controls_seq and finishers:
+        error_map = compute_error_estimates(finishers, controls_seq, radio_map)
+        for c in results:
+            errs = error_map.get(c.id, [])
+            for idx, sp in enumerate(c.splits):
+                e = errs[idx] if idx < len(errs) else None
+                sp['error_time'] = round(e['error_time']) if e and e['error_time'] is not None else None
+                sp['error_pct']  = round(e['error_pct']) if e and e['error_pct'] is not None else None
+
+    leg_error_data = []
+    if controls_seq and finishers:
+        for j, ctrl in enumerate(controls_seq):
+            entry = {'ctrl_name': ctrl['ctrl_name'], 'errors': []}
+            for c in finishers:
+                errs = error_map.get(c.id, [])
+                if j < len(errs) and errs[j]['error_time'] is not None:
+                    entry['errors'].append({
+                        'et': round(errs[j]['error_time']),
+                        'ep': round(errs[j]['error_pct']),
+                    })
+            leg_error_data.append(entry)
+
+    return competition, cls, course, results, controls_seq, prev_cls, next_cls, leader_time, leg_error_data
+
+
+def _is_relay(cid, cls, course):
+    return course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists()
+
+
+def recapitulatif_analysis(request, cid, class_id):
+    context = _load_class_context(cid, class_id)
+    competition, cls, competitors, course = context
+    if _is_relay(cid, cls, course):
+        return redirect('results:relay_results', cid=cid, class_id=class_id)
+
+    _, _, _, results, controls_seq, prev_cls, next_cls, leader_time, leg_error_data = \
+        _load_recapitulatif_data(cid, class_id, context=context)
+
+    return render(request, 'results/recapitulatif.html', {
+        'competition':         competition,
+        'cls':                 cls,
+        'course':              course,
+        'results':             results,
+        'leader_time':         format_time(leader_time) if leader_time else '-',
+        'controls_seq':        controls_seq or [],
+        'has_splits':          bool(controls_seq),
+        'current_analysis':    'recapitulatif',
+        'prev_cls':            prev_cls,
+        'next_cls':            next_cls,
+        'leg_error_data_json': json.dumps(leg_error_data),
+    })
+
+
+def recapitulatif_csv(request, cid, class_id):
+    import csv
+
+    context = _load_class_context(cid, class_id)
+    competition, cls, _competitors, course = context
+    if _is_relay(cid, cls, course):
+        return redirect('results:relay_results', cid=cid, class_id=class_id)
+
+    _comp, _cls, _course, results, controls_seq, _prev, _next, _leader, _leg_error = \
+        _load_recapitulatif_data(cid, class_id, context=context)
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = (
+        f'attachment; filename="recapitulatif_{cls.name}_{competition.cid}.csv"'
+    )
+    writer = csv.writer(response)
+
+    has_splits = bool(controls_seq)
+    header = ['#', 'Concurrent']
+    if course:
+        header.append('Catégorie')
+    header.append('Club')
+    if has_splits:
+        for ctrl in controls_seq:
+            header.append(ctrl['ctrl_name'])
+        header.append('Arr.')
+    writer.writerow(header)
+
+    for c in results:
+        info = [c.rank or '', c.name]
+        if course:
+            info.append(c.class_obj.name if c.class_obj else '')
+        info.append(c.org_obj.name if c.org_obj else '')
+        blanks = [''] * len(info)
+
+        if has_splits and c.is_ok:
+            leg_cells  = []
+            cumul_cells = []
+            for sp in c.splits:
+                l = sp['leg_time']
+                r = sp['leg_rank']
+                leg_cells.append(f'{l} ({r})' if r else l)
+                a = sp['abs_time']
+                ar = sp['abs_rank']
+                cumul_cells.append(f'{a} ({ar})' if ar else a)
+            writer.writerow(info + leg_cells)
+            writer.writerow(blanks + cumul_cells)
+        elif has_splits:
+            dashes = ['—'] * len(c.splits)
+            writer.writerow(info + dashes)
+        else:
+            writer.writerow(info)
+
+    return response
 
 
 # ══════════════════════════════════════════════════════════════════════════════

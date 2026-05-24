@@ -952,6 +952,243 @@ class TestDuelAnalysis:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# recapitulatif_analysis
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestRecapitulatifAnalysis:
+
+    # ── Helpers ─────────────────────────────────────────────────────────────
+    def _setup_splits(self, splits_data=None):
+        """Configure les mocks pour compute_splits / mark_best_splits / rank_splits.
+        Retourne les deux mockers utiles.
+        """
+        return {}
+
+    def _mock_context(self, mock_get404, MockComp, MockTeam, competitors=None,
+                      competition=None, cls_=None, relay_exists=False):
+        competition = competition or make_competition()
+        cls_ = cls_ or make_cls()
+        mock_get404.side_effect = [competition, cls_]
+        MockTeam.objects.filter.return_value.exists.return_value = relay_exists
+        MockComp.objects.filter.return_value = competitors or []
+        return competition, cls_
+
+    def _call_view(self, **extra_kwargs):
+        from results.views import recapitulatif_analysis
+        return recapitulatif_analysis(rf_get(), cid=1, class_id=10, **extra_kwargs)
+
+    # ── Tests ───────────────────────────────────────────────────────────────
+
+    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views.mark_best_splits')
+    @patch('results.views.rank_splits')
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.get_org_map', return_value={})
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.Mopteam')
+    def test_no_data(self, MockTeam, MockComp, mock_get404, mock_render, *args):
+        MockTeam.objects.filter.return_value.exists.return_value = False
+        mock_get404.side_effect = [make_competition(), make_cls()]
+        MockComp.objects.filter.return_value = []
+        from results.views import recapitulatif_analysis
+        recapitulatif_analysis(rf_get(), cid=1, class_id=10)
+        _, template, ctx = mock_render.call_args[0]
+        assert template == 'results/recapitulatif.html'
+        assert ctx['results'] == []
+
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopteam')
+    @patch('results.views.redirect')
+    def test_relay_redirect(self, mock_redirect, MockTeam, mock_get404, MockComp):
+        competition = make_competition()
+        cls_ = make_cls()
+        mock_get404.side_effect = [competition, cls_]
+        MockTeam.objects.filter.return_value.exists.return_value = True
+        MockComp.objects.filter.return_value = []
+        from results.views import recapitulatif_analysis
+        recapitulatif_analysis(rf_get(), cid=1, class_id=10)
+        mock_redirect.assert_called_once()
+
+    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views.mark_best_splits')
+    @patch('results.views.rank_splits')
+    @patch('results.views.get_org_map', return_value={})
+    @patch('results.views.get_class_controls', return_value=([{'ctrl_id': 31, 'ctrl_name': 'P31'}], {}))
+    @patch('results.views.get_radio_map', return_value={1: {31: 1200}})
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.Mopteam')
+    def test_splits_pour_classement(self, MockTeam, MockComp, mock_get404,
+                                    mock_render, *_):
+        MockTeam.objects.filter.return_value.exists.return_value = False
+        mock_get404.side_effect = [make_competition(), make_cls()]
+        MockComp.objects.filter.return_value = [make_competitor(1, rt=5000)]
+        from results.views import recapitulatif_analysis
+        recapitulatif_analysis(rf_get(), cid=1, class_id=10)
+        _, _, ctx = mock_render.call_args[0]
+        for c in ctx['results']:
+            assert hasattr(c, 'splits')
+            assert len(c.splits) == 2  # 1 control + Arrivée
+
+    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views.get_org_map', return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.compute_splits', return_value=[])
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.Mopteam')
+    def test_has_splits_false(self, MockTeam, MockComp, mock_get404,
+                              mock_render, *_):
+        MockTeam.objects.filter.return_value.exists.return_value = False
+        mock_get404.side_effect = [make_competition(), make_cls()]
+        MockComp.objects.filter.return_value = [make_competitor(1)]
+        from results.views import recapitulatif_analysis
+        recapitulatif_analysis(rf_get(), cid=1, class_id=10)
+        _, _, ctx = mock_render.call_args[0]
+        assert ctx['has_splits'] is False
+
+    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views.get_org_map', return_value={})
+    @patch('results.views.get_class_controls', return_value=([{'ctrl_id': 31, 'ctrl_name': 'P31'}], {}))
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.compute_splits', return_value=[])
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.Mopteam')
+    def test_has_splits_true(self, MockTeam, MockComp, mock_get404,
+                             mock_render, *_):
+        MockTeam.objects.filter.return_value.exists.return_value = False
+        mock_get404.side_effect = [make_competition(), make_cls()]
+        MockComp.objects.filter.return_value = [make_competitor(1)]
+        from results.views import recapitulatif_analysis
+        recapitulatif_analysis(rf_get(), cid=1, class_id=10)
+        _, _, ctx = mock_render.call_args[0]
+        assert ctx['has_splits'] is True
+
+    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views.get_org_map', return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.compute_splits', return_value=[])
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.Mopteam')
+    def test_contexte_cles(self, MockTeam, MockComp, mock_get404,
+                           mock_render, *_):
+        MockTeam.objects.filter.return_value.exists.return_value = False
+        mock_get404.side_effect = [make_competition(), make_cls()]
+        MockComp.objects.filter.return_value = [make_competitor(1)]
+        from results.views import recapitulatif_analysis
+        recapitulatif_analysis(rf_get(), cid=1, class_id=10)
+        _, _, ctx = mock_render.call_args[0]
+        assert 'competition' in ctx
+        assert 'cls' in ctx
+        assert 'course' in ctx
+        assert 'results' in ctx
+        assert 'controls_seq' in ctx
+        assert 'has_splits' in ctx
+        assert ctx['current_analysis'] == 'recapitulatif'
+        assert 'prev_cls' in ctx
+        assert 'next_cls' in ctx
+        assert 'leader_time' in ctx
+
+    @patch('results.views._get_adjacent_classes', return_value=(MagicMock(), None))
+    @patch('results.views.get_org_map', return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.compute_splits', return_value=[])
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.Mopteam')
+    def test_navigation_prev_next(self, MockTeam, MockComp, mock_get404,
+                                  mock_render, *_):
+        MockTeam.objects.filter.return_value.exists.return_value = False
+        mock_get404.side_effect = [make_competition(), make_cls()]
+        MockComp.objects.filter.return_value = [make_competitor(1)]
+        from results.views import recapitulatif_analysis
+        recapitulatif_analysis(rf_get(), cid=1, class_id=10)
+        _, _, ctx = mock_render.call_args[0]
+        assert ctx['prev_cls'] is not None
+        assert ctx['next_cls'] is None
+
+    @patch('results.views.get_org_map', return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.render')
+    @patch('results.views._load_class_context')
+    @patch('results.views.Mopteam')
+    def test_course_context(self, MockTeam, mock_load, mock_render, *_):
+        """Mode circuit : course doit être un dict, pas None."""
+        MockTeam.objects.filter.return_value.exists.return_value = False
+        competition = make_competition()
+        cls_ = make_cls()
+        course = {
+            'hash': 'abcd1234', 'display_name': 'Circuit Test',
+            'class_ids': [10], 'classes': [cls_],
+            'controls_seq': [], 'n_controls': 0,
+        }
+        mock_load.return_value = (competition, cls_, [make_competitor(1)], course)
+        from results.views import recapitulatif_analysis
+        recapitulatif_analysis(rf_get(), cid=1, class_id='abcd1234')
+        _, _, ctx = mock_render.call_args[0]
+        assert ctx['course'] is not None
+        assert ctx['course']['hash'] == 'abcd1234'
+
+    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views.get_org_map', return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.compute_splits', return_value=[])
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.Mopteam')
+    def test_leader_time_tiret_si_aucun_classe(self, MockTeam, MockComp,
+                                                mock_get404, mock_render, *_):
+        MockTeam.objects.filter.return_value.exists.return_value = False
+        mock_get404.side_effect = [make_competition(), make_cls()]
+        # Un seul coureur mais stat != OK
+        c = make_competitor(1, rt=-1, stat=STAT_DNF)
+        MockComp.objects.filter.return_value = [c]
+        from results.views import recapitulatif_analysis
+        recapitulatif_analysis(rf_get(), cid=1, class_id=10)
+        _, _, ctx = mock_render.call_args[0]
+        assert ctx['leader_time'] == '-'
+
+    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views.rank_splits')
+    @patch('results.views.mark_best_splits')
+    @patch('results.views.get_org_map', return_value={})
+    @patch('results.views.get_class_controls', return_value=([{'ctrl_id': 31, 'ctrl_name': 'P31'}], {}))
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.Mopteam')
+    def test_mark_best_et_rank_splits_appeles(self, MockTeam, MockComp,
+                                               mock_get404, mock_render, *args):
+        mock_rank = args[0]
+        mock_best = args[1]
+        MockTeam.objects.filter.return_value.exists.return_value = False
+        mock_get404.side_effect = [make_competition(), make_cls()]
+        MockComp.objects.filter.return_value = [make_competitor(1), make_competitor(2)]
+        from results.views import recapitulatif_analysis
+        recapitulatif_analysis(rf_get(), cid=1, class_id=10)
+        assert mock_best.called
+        assert mock_rank.called
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # relay_results
 # ══════════════════════════════════════════════════════════════════════════════
 
