@@ -125,8 +125,8 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
         <tr>
           <th style="width:3rem;min-width:3rem" data-sticky="0">#</th>
           <th style="width:8rem;min-width:8rem" data-sticky="1">Concurrent</th>
-          {% if course %}<th style="width:10rem;min-width:10rem" data-sticky="2">Catégorie</th>{% endif %}
-          <th style="width:9rem;min-width:9rem" data-sticky="{% if course %}3{% else %}2{% endif %}">Club</th>
+          {% if course %}<th style="width:10rem;min-width:10rem" data-sticky="2" class="col-category">Catégorie</th>{% endif %}
+          <th style="width:9rem;min-width:9rem" data-sticky="{% if course %}3{% else %}2{% endif %}" class="col-club">Club</th>
           {% if has_splits %}
             {% for ctrl in controls_seq %}
             <th class="text-end" title="{{ ctrl.ctrl_name }}">{{ ctrl.ctrl_name }}</th>
@@ -145,7 +145,7 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
                 <a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a>
               </td>
               {% if course %}
-              <td rowspan="2" data-sticky="2">
+              <td rowspan="2" data-sticky="2" class="col-category">
                 {% if comp.class_obj %}
                 <a href="{% url 'results:class_results' competition.cid comp.class_obj.name %}"
                    class="badge bg-light text-dark border text-decoration-none"
@@ -153,7 +153,7 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
                 {% else %}—{% endif %}
               </td>
               {% endif %}
-              <td rowspan="2" class="club-name" data-sticky="{% if course %}3{% else %}2{% endif %}">
+              <td rowspan="2" class="club-name col-club" data-sticky="{% if course %}3{% else %}2{% endif %}">
                 {% if comp.org_obj %}
                 <a href="{% url 'results:org_results' competition.cid comp.org %}"
                    class="text-muted text-decoration-none">{{ comp.org_obj.name }}</a>
@@ -179,15 +179,15 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
             <tr class="runner-row">
               <td class="rank-col" data-sticky="0">{{ comp.rank }}</td>
               <td class="runner-name" data-sticky="1"><a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a></td>
-              {% if course %}<td data-sticky="2">{% if comp.class_obj %}{{ comp.class_obj.name }}{% else %}—{% endif %}</td>{% endif %}
-              <td class="club-name" data-sticky="{% if course %}3{% else %}2{% endif %}">{% if comp.org_obj %}{{ comp.org_obj.name }}{% else %}—{% endif %}</td>
+              {% if course %}<td data-sticky="2" class="col-category">{% if comp.class_obj %}{{ comp.class_obj.name }}{% else %}—{% endif %}</td>{% endif %}
+              <td class="club-name col-club" data-sticky="{% if course %}3{% else %}2{% endif %}">{% if comp.org_obj %}{{ comp.org_obj.name }}{% else %}—{% endif %}</td>
             </tr>
             {% else %}
             <tr class="runner-row non-finisher">
               <td class="rank-col" data-sticky="0">{% if comp.rank %}{{ comp.rank }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
               <td class="runner-name" data-sticky="1"><a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a></td>
-              {% if course %}<td data-sticky="2">{% if comp.class_obj %}{{ comp.class_obj.name }}{% else %}—{% endif %}</td>{% endif %}
-              <td class="club-name" data-sticky="{% if course %}3{% else %}2{% endif %}">{% if comp.org_obj %}{{ comp.org_obj.name }}{% else %}—{% endif %}</td>
+              {% if course %}<td data-sticky="2" class="col-category">{% if comp.class_obj %}{{ comp.class_obj.name }}{% else %}—{% endif %}</td>{% endif %}
+              <td class="club-name col-club" data-sticky="{% if course %}3{% else %}2{% endif %}">{% if comp.org_obj %}{{ comp.org_obj.name }}{% else %}—{% endif %}</td>
               {% if has_splits %}
               <td colspan="{{ controls_seq|length|add:1 }}" class="text-end time-col">
                 <span class="badge bg-{{ comp.stat|status_badge }}">{{ comp.stat|status_label }}</span>
