@@ -234,7 +234,7 @@ def _weighted_median(values_weights):
 def compute_error_estimates(finishers, controls_seq, radio_map, top_fraction=0.25):
     import math
     leg_matrix  = build_leg_matrix(finishers, controls_seq, radio_map)
-    n_legs_full = len(controls_seq)
+    n_legs_full = len(controls_seq) + 1
     leg_refs = []
     for j in range(n_legs_full):
         times = sorted(
