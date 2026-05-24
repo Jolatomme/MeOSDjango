@@ -17,12 +17,12 @@ const COResultsSplits = (() => {
     document.querySelectorAll('.split-cell[data-error-time]').forEach(cell => {
       const et = parseFloat(cell.dataset.errorTime);
       const ep = parseFloat(cell.dataset.errorPct);
-      const isError = !isNaN(et) && !isNaN(ep) && (et > thRaw || ep > thPct);
+      const isError = !isNaN(et) && !isNaN(ep) && (et >= thRaw || ep >= thPct);
       const errSpan = cell.querySelector('.split-error');
       if (isError) {
         cell.classList.add('split-error-flag');
         if (errSpan) {
-          errSpan.textContent = `+${(et / 10).toFixed(0)}s / +${ep.toFixed(1)}%`;
+          errSpan.textContent = `+${(et / 10).toFixed(0)}s / +${Math.round(ep)}%`;
           errSpan.classList.remove('d-none');
         }
       } else {

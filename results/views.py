@@ -433,7 +433,7 @@ def class_results(request, cid, class_id):
             for idx, sp in enumerate(c.splits):
                 e = errs[idx] if idx < len(errs) else None
                 sp['error_time'] = round(e['error_time']) if e and e['error_time'] is not None else None
-                sp['error_pct']  = round(e['error_pct'], 1) if e and e['error_pct'] is not None else None
+                sp['error_pct']  = round(e['error_pct']) if e and e['error_pct'] is not None else None
 
     leg_error_data = []
     if controls_seq and finishers:
@@ -444,7 +444,7 @@ def class_results(request, cid, class_id):
                 if j < len(errs) and errs[j]['error_time'] is not None:
                     entry['errors'].append({
                         'et': round(errs[j]['error_time']),
-                        'ep': round(errs[j]['error_pct'], 1),
+                        'ep': round(errs[j]['error_pct']),
                     })
             leg_error_data.append(entry)
 

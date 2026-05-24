@@ -846,7 +846,7 @@ class TestComputeErrorEstimates:
         radio_map    = {1: {31: 1200}}
         errors = self._call([c], controls_seq, radio_map)
         assert 1 in errors
-        assert len(errors[1]) == 1
+        assert len(errors[1]) == 2  # 1 control + finish leg
         # Avec un seul coureur il est sa propre référence → erreur nulle ou quasi
         e = errors[1][0]
         assert e['error_time'] is not None
@@ -880,7 +880,7 @@ class TestComputeErrorEstimates:
         ]
         radio_map = {1: {31: 1200, 32: 2500}}
         errors = self._call([c], controls_seq, radio_map)
-        assert len(errors[1]) == 2
+        assert len(errors[1]) == 3  # 2 controls + finish leg
 
     def test_pas_de_finishers(self):
         """Aucun classé → résultat vide."""
