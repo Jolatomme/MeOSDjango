@@ -24,6 +24,8 @@ urlpatterns = [
     path('competition/<int:cid>/class/<str:class_id>/grouping/',            views.grouping_analysis,       name='grouping'),
     path('competition/<int:cid>/class/<str:class_id>/grouping-index/',      views.grouping_index_analysis, name='grouping_index'),
     path('competition/<int:cid>/class/<str:class_id>/duel/',                views.duel_analysis,           name='duel'),
+    path('competition/<int:cid>/class/<str:class_id>/recapitulatif/',       views.recapitulatif_analysis,  name='recapitulatif'),
+    path('competition/<int:cid>/class/<str:class_id>/recapitulatif/csv/',   views.recapitulatif_csv,       name='recapitulatif_csv'),
 
     # ── Circuits ───────────────────────────────────────────────────────────
     # course_hash : hash MD5 tronqué 8 chars (ex. 'abc12345')
@@ -36,6 +38,8 @@ urlpatterns = [
     path('competition/<int:cid>/course/<str:class_id>/grouping/',           views.grouping_analysis,       name='course_grouping'),
     path('competition/<int:cid>/course/<str:class_id>/grouping-index/',     views.grouping_index_analysis, name='course_grouping_index'),
     path('competition/<int:cid>/course/<str:class_id>/duel/',               views.duel_analysis,           name='course_duel'),
+    path('competition/<int:cid>/course/<str:class_id>/recapitulatif/',      views.recapitulatif_analysis,  name='course_recapitulatif'),
+    path('competition/<int:cid>/course/<str:class_id>/recapitulatif/csv/',  views.recapitulatif_csv,       name='course_recapitulatif_csv'),
 
     # ── Concurrent / Organisation ──────────────────────────────────────────
     path('competition/<int:cid>/competitor/<int:competitor_id>/', views.competitor_detail, name='competitor_detail'),
