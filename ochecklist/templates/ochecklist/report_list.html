@@ -1,0 +1,85 @@
+{% extends "ochecklist/base.html" %}
+{% block content %}
+
+{% if reports %}
+<div class="co-card">
+  <div class="co-card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-list-check me-2"></i>Rapports reçus</span>
+    <span class="badge bg-light text-dark">{{ reports|length }} rapport{{ reports|length|pluralize }}</span>
+  </div>
+  <div class="p-3">
+    <form method="post" action="{% url 'ochecklist_clear_reports' %}" id="clear-form">
+      {% csrf_token %}
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="form-check">
+          <input type="checkbox" class="form-check-input" id="select-all">
+          <label class="form-check-label" for="select-all">Tout sélectionner</label>
+        </div>
+        <button type="submit" class="btn btn-sm btn-outline-danger" id="clear-btn" disabled>
+          <i class="bi bi-trash me-1"></i>Supprimer la sélection
+        </button>
+      </div>
+      <div class="table-responsive">
+        <table class="results-table" id="reportsTable">
+          <thead>
+            <tr>
+              <th style="width:2rem"></th>
+              <th>Événement</th>
+              <th>Créateur</th>
+              <th>Créé le</th>
+              <th>Reçu le</th>
+              <th class="text-end">Coureurs</th>
+              <th style="width:5rem"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for report in reports %}
+            <tr>
+              <td><input type="checkbox" name="report_ids" value="{{ report.id }}" class="report-check form-check-input"></td>
+              <td class="fw-semibold">{{ report.event|default:"N/A" }}</td>
+              <td class="text-muted">{{ report.creator }}</td>
+              <td>{{ report.created|date:"d/m/Y H:i" }}</td>
+              <td>{{ report.received_at|date:"d/m/Y H:i" }}</td>
+              <td class="text-end">{{ report.runners.count }}</td>
+              <td><a href="{% url 'ochecklist_report_detail' report.id %}" class="btn btn-sm btn-outline-primary">Détail</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </form>
+  </div>
+</div>
+{% else %}
+<div class="co-card text-center p-5">
+  <div class="py-4">
+    <i class="bi bi-inbox fs-1 d-block mb-3 opacity-25"></i>
+    <p class="mb-0 text-muted">Aucun rapport O'checklist reçu.</p>
+    <p class="small mt-1 text-muted">Les rapports apparaîtront ici après réception de l'application O'checklist.</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const selectAll = document.getElementById('select-all');
+  const checkboxes = document.querySelectorAll('.report-check');
+  const clearBtn = document.getElementById('clear-btn');
+
+  selectAll.addEventListener('change', function() {
+    checkboxes.forEach(cb => cb.checked = this.checked);
+    clearBtn.disabled = !this.checked && !document.querySelector('.report-check:checked');
+  });
+
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      const anyChecked = document.querySelector('.report-check:checked');
+      clearBtn.disabled = !anyChecked;
+      if (!anyChecked) selectAll.checked = false;
+    });
+  });
+});
+</script>
+{% endblock %}

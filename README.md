@@ -27,6 +27,7 @@ Plus d'informations sur le [Wiki](https://github.com/Jolatomme/MeOSDjango/wiki)
 | **Listes de départ** | Affichage des ordre de départ des coureurs |
 | **Tutoriels** | Articles Markdown intégrés avec table des matières |
 | **Réception MOP** | Endpoint `POST /mop/update/` — MeOS pousse les données en temps réel |
+| **O'checklist** | Réception et consultation des rapports de départ YAML poussés par l'app O'checklist |
 
 ---
 
@@ -53,7 +54,7 @@ MeOSDjango/
 │   ├── wsgi.py
 │   └── urls.py                        # Routage principal
 │
-├── results/                           # Application Django
+├── results/                           # Application Django (résultats MeOS)
 │
 │   ├── models.py                      # Modèles Django (managed=False pour tables MeOS)
 │   │                                  # MopCompetitor, MopClass, MopResult, etc.
@@ -151,7 +152,7 @@ MeOSDjango/
 │   │
 │   └── tests/
 │       ├── __init__.py
-│       ├── test_models.py             # format_time, STATUS_LABELS, modèles
+│       ├── test_models.py             # format_time, STATUS_LABELS, modèles, `__str__`
 │       ├── test_services.py           # Logique métier (splits, classements, etc)
 │       ├── test_views.py              # Vues Django
 │       ├── test_classviews.py         # Vues par classe (TutoView)
@@ -167,10 +168,42 @@ MeOSDjango/
 │       ├── test_courses.py            # Logique parcours
 │       ├── test_regularity.py         # Analyse Régularité
 │       └── test_site_js.test.js       # Tests JavaScript (Jest)
-
+│
+├── ochecklist/                        # Application Django (rapports de départ O'checklist)
+│
+│   ├── models.py                      # Modèles Django (ORM standard)
+│   │                                  # OchecklistReport, OchecklistRunner, OchecklistChangeLog
+│   │                                  # Gérés par Django (managed=True)
+│   │
+│   ├── views.py                       # Vues Django
+│   │                                  # - ochecklist_update : endpoint POST réception YAML
+│   │                                  # - report_list : liste des rapports
+│   │                                  # - report_detail : détail d'un rapport
+│   │                                  # - runner_detail : détail d'un coureur
+│   │                                  # - clear_reports : suppression en masse
+│   │                                  # Supporte Content-Digest (SHA-256/512, MD5)
+│   │                                  # et Content-Encoding: gzip
+│   │
+│   ├── urls.py                        # Routage de l'app ochecklist
+│   ├── admin.py                       # Admin Django (OchecklistReport/Runner/ChangeLog)
+│   ├── apps.py
+│   │
+│   ├── migrations/
+│   │   ├── __init__.py
+│   │   └── 0001_initial.py            # Schéma initial des tables
+│   │
+│   ├── templates/ochecklist/
+│   │   ├── base.html                  # Template de base O'checklist
+│   │   ├── report_list.html           # Liste des rapports
+│   │   ├── report_detail.html         # Détail d'un rapport
+│   │   └── runner_detail.html         # Détail d'un coureur
+│   │
+│   └── tests.py                       # Tests Django (TestCase)
+│
 ├── pytest.ini                         # Configuration pytest
 ├── manage.py                          # Django CLI
 ├── requirements.txt                   # Dépendances Python
+├── test_ochecklist.py                 # Script de test manuel pour l'endpoint O'checklist
 │
 ├── LICENSE                            # GPL-3.0
 ├── AUTHORS.md
@@ -181,6 +214,37 @@ MeOSDjango/
 ├── AGENTS.md                          # Guide pour les agents (documentation technique)
 └── README.md                          # Ce fichier
 ```
+
+---
+
+## Applications Django
+
+Le projet contient **deux applications Django** :
+
+### 1. `results/` — Résultats MeOS
+Application principale : reçoit les données MeOS via MOP, calcule les classements, splits, et propose toutes les analyses (Superman, Performance, Regroupement, etc.). Les tables `mop*` sont **gérées par MeOS** (Django utilise `managed=False`).
+
+### 2. `ochecklist/` — Rapports de départ O'checklist
+Application secondaire : reçoit les rapports YAML de l'application Android **O'checklist** (gestion des départs, statuts coureurs, changements de carte, etc.). Cette app utilise des tables **gérées par Django** (`managed=True`).
+
+**Endpoint** : `POST /ochecklist/update/` (YAML, supporte gzip + Content-Digest)
+**URLs** :
+- `GET  /ochecklist/` — liste des rapports
+- `POST /ochecklist/update/` — réception d'un rapport YAML
+- `POST /ochecklist/clear/` — suppression de rapports sélectionnés
+- `GET  /ochecklist/<id>/` — détail d'un rapport
+- `GET  /ochecklist/runner/<id>/` — détail d'un coureur
+
+**Modèles** :
+- `OchecklistReport` — métadonnées (version, créateur, event, created, received_at)
+- `OchecklistRunner` — données coureurs (nom, club, classe, statut, carte, heure)
+- `OchecklistChangeLog` — journal des changements (DNS, LateStart, NewCard, etc.)
+
+**Sécurité** (variables dans `dev_settings.py` ou env) :
+- `OCHECKLIST_HEADER_KEY` — nom du header d'authentification (ex: `X-Ochecklist-Token`)
+- `OCHECKLIST_HEADER_VALUE` — valeur attendue du header
+- Vérification du header `Content-Digest` (SHA-256/512, MD5)
+- Support de `Content-Encoding: gzip`
 
 ---
 
@@ -228,6 +292,10 @@ ALLOWED_HOSTS = ['results.monclub.fr']
 # Mot de passe MeOS (doit correspondre à la config MeOS Online)
 MOP_PASSWORD = 'mot-de-passe-mop'
 
+# O'checklist (optionnel, pour sécuriser l'endpoint)
+OCHECKLIST_HEADER_KEY = 'X-Ochecklist-Token'
+OCHECKLIST_HEADER_VALUE = 'token-secret-partagé-avec-l-app-android'
+
 # Personnalisation du site (optionnel)
 SITE_NAME          = 'Nom du site'
 SITE_SUBTITLE      = 'Sous titre du site'
@@ -238,7 +306,7 @@ CLUB_COLOR_ACCENT  = '#f0a500'   # couleur d'accent (highlights)
 
 ### 3. Initialiser la base de données
 
-Les tables `mop*` sont créées et gérées par MeOS (`managed=False`). Django ne touche pas à leur schéma. Seules les tables Django standard doivent être migrées :
+Les tables `mop*` sont créées et gérées par MeOS (`managed=False`). Django ne touche pas à leur schéma. Les tables de l'app `ochecklist` sont gérées par Django :
 
 ```bash
 python manage.py migrate
@@ -261,6 +329,14 @@ Dans MeOS → *Online Results* :
 - **URL** : `http://results.monclub.fr/mop/update/`
 - **Password** : la valeur de `MOP_PASSWORD`
 - **Intervalle** : 5–10 secondes recommandé
+
+### 7. Configurer O'checklist (optionnel)
+
+Dans l'application Android O'checklist :
+- **URL** : `https://results.monclub.fr/ochecklist/update/`
+- **Header** (si configuré) : `X-Ochecklist-Token: <valeur partagée>`
+- **Content-Encoding** : `gzip` (recommandé)
+- **Content-Digest** : `sha-256=<base64>` (recommandé)
 
 ---
 
@@ -288,6 +364,22 @@ pytest results/tests/test_services.py -v
 pytest results/tests/test_mop_receiver.py -v
 ```
 
+### Tester l'endpoint O'checklist manuellement
+
+Un script de test est fourni pour valider l'endpoint `POST /ochecklist/update/` :
+
+```bash
+# Démarrer le serveur dans un terminal
+python manage.py runserver
+
+# Dans un autre terminal
+python test_ochecklist.py
+# ou avec un fichier YAML réel
+python test_ochecklist.py http://localhost:8000
+```
+
+Le script teste 4 cas : POST basique, avec Content-Digest SHA-256, avec gzip + digest, et digest invalide.
+
 ### Tests JavaScript (Jest)
 
 ```bash
@@ -299,18 +391,19 @@ npm test
 
 | Fichier | Tests |
 |---|---|
-| `models.py` | `test_models.py` — format_time, STATUS_LABELS, modèles, `__str__` |
-| `services.py` | `test_services.py` — logique métier (splits, classements) |
-| `views.py` | `test_views.py` — toutes les vues principales |
-| `classViews.py` | `test_classviews.py` — vues par classe |
-| `context_processors.py` | `test_context_processors.py` — injection de contexte |
-| `mop_receiver.py` | `test_mop_receiver.py` — parser XML MOP |
-| `mop_views.py` | `test_mop_views.py` — endpoint MOP |
-| `meos_checker.py` | `test_meos_checker.py` — validation MeOS |
-| `verifie_moi.py` | `test_verifie_moi.py` — vérification données |
-| `templatetags/meos_tags.py` | `test_meos_tags.py` — filtres/tags template |
+| `results/models.py` | `test_models.py` — format_time, STATUS_LABELS, modèles, `__str__` |
+| `results/services.py` | `test_services.py` — logique métier (splits, classements) |
+| `results/views.py` | `test_views.py` — toutes les vues principales |
+| `results/classViews.py` | `test_classviews.py` — vues par classe |
+| `results/context_processors.py` | `test_context_processors.py` — injection de contexte |
+| `results/mop_receiver.py` | `test_mop_receiver.py` — parser XML MOP |
+| `results/mop_views.py` | `test_mop_views.py` — endpoint MOP |
+| `results/meos_checker.py` | `test_meos_checker.py` — validation MeOS |
+| `results/verifie_moi.py` | `test_verifie_moi.py` — vérification données |
+| `results/templatetags/meos_tags.py` | `test_meos_tags.py` — filtres/tags template |
 | Services spécialisés | `test_performance.py`, `test_grouping.py`, `test_grouping_index.py`, `test_courses.py`, `test_regularity.py` |
 | `site.js` | `test_site_js.test.js` |
+| `ochecklist/` | `ochecklist/tests.py` + `test_ochecklist.py` (script manuel) |
 
 ---
 
@@ -324,16 +417,20 @@ npm test
 | `CLUB_NAME` | `COCS` | Nom du club |
 | `CLUB_COLOR_PRIMARY` | `#1a6b3c` | Couleur principale (CSS `--co-green`) |
 | `CLUB_COLOR_ACCENT` | `#f0a500` | Couleur d'accent (CSS `--co-gold`) |
+| `OCHECKLIST_HEADER_KEY` | *(vide)* | Nom du header d'authentification O'checklist (optionnel) |
+| `OCHECKLIST_HEADER_VALUE` | *(vide)* | Valeur attendue du header (optionnel) |
 
 ---
 
 ## Architecture
 
-- **Single Django app**: `results/` à la racine du projet
-- **MeOS tables are NOT managed by Django** — models.py utilise `managed=False`. MeOS crée et gère directement les tables `mop*`. Django gère uniquement ses propres tables (auth, content_types, etc.)
-- **MOP endpoint**: `POST /mop/update/` reçoit l'XML de MeOS et l'insère en base de données
-- **Business logic**: `services.py` contient la logique métier pure (sans dépendances HTTP)
-- **Templating**: Templates Django + JavaScript vanilla (pas de framework front-end)
+- **Deux applications Django** : `results/` (résultats MeOS) et `ochecklist/` (rapports de départ)
+- **`results/`** : tables `mop*` **non gérées par Django** (`managed=False`). MeOS crée et gère directement ces tables. Django gère uniquement ses propres tables (auth, content_types, etc.) et celles d'`ochecklist/`.
+- **`ochecklist/`** : tables **gérées par Django** (`managed=True`). Migrations standards (`0001_initial.py`).
+- **MOP endpoint** : `POST /mop/update/` (XML, app `results/`)
+- **O'checklist endpoint** : `POST /ochecklist/update/` (YAML, app `ochecklist/`, supporte gzip + Content-Digest)
+- **Logique métier** : `services.py` (results) contient la logique métier pure (sans dépendances HTTP)
+- **Templating** : Templates Django + JavaScript vanilla (pas de framework front-end)
 
 ---
 

@@ -1,0 +1,141 @@
+{% extends "ochecklist/base.html" %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="co-card">
+      <div class="co-card-header"><i class="bi bi-info-circle me-2"></i>Rapport</div>
+      <div class="card-body">
+        <table class="results-table mb-0">
+          <tbody>
+            <tr><td class="fw-semibold pe-3" style="width:8rem">Version</td><td>{{ report.version }}</td></tr>
+            <tr><td class="fw-semibold">Créateur</td><td>{{ report.creator }}</td></tr>
+            <tr><td class="fw-semibold">Créé le</td><td>{{ report.created|date:"d/m/Y H:i:s" }}</td></tr>
+            <tr><td class="fw-semibold">Reçu le</td><td>{{ report.received_at|date:"d/m/Y H:i:s" }}</td></tr>
+            {% if report.event %}
+            <tr><td class="fw-semibold">Événement</td><td>{{ report.event }}</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="co-card">
+      <div class="co-card-header"><i class="bi bi-bar-chart me-2"></i>Résumé</div>
+      <div class="card-body">
+        <div class="row g-2">
+          <div class="col-6">
+            <div class="stat-card">
+              <div class="stat-value">{{ report.runners.count }}</div>
+              <div class="stat-label">Total coureurs</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="stat-card" style="border-left-color:var(--co-green)">
+              <div class="stat-value text-success">{{ started_ok_count }}</div>
+              <div class="stat-label">Partis OK</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="stat-card" style="border-left-color:#dc3545">
+              <div class="stat-value text-danger">{{ dns_count }}</div>
+              <div class="stat-label">DNS</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="stat-card" style="border-left-color:#ffc107">
+              <div class="stat-value text-warning">{{ late_start_count }}</div>
+              <div class="stat-label">Départ retardé</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="stat-card" style="border-left-color:#0dcaf0">
+              <div class="stat-value text-info">{{ new_card_count }}</div>
+              <div class="stat-label">Changement puce</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if runners %}
+<div class="co-card">
+  <div class="co-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <span><i class="bi bi-people me-2"></i>Liste des coureurs</span>
+    <div class="d-flex align-items-center gap-1">
+      <small class="text-muted me-1">Trier :</small>
+      <div class="btn-group btn-group-sm" role="group">
+        <a href="." class="btn btn-sm btn-outline-secondary {% if not current_sort %}active{% endif %}">Horaire</a>
+        <a href="?sort={% if current_sort == 'status' %}-{% endif %}status" class="btn btn-sm btn-outline-secondary {% if current_sort == 'status' or current_sort == '-status' %}active{% endif %}">Statut</a>
+        <a href="?sort={% if current_sort == 'card' %}-{% endif %}card" class="btn btn-sm btn-outline-secondary {% if current_sort == 'card' or current_sort == '-card' %}active{% endif %}">Puce</a>
+      </div>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="results-table" id="runnersTable">
+      <thead>
+        <tr>
+          <th style="width:2.5rem">#</th>
+          <th>Nom</th>
+          <th>Dossard</th>
+          <th>Catégorie</th>
+          <th>Club</th>
+          <th>Puce</th>
+          <th>Nouvelle puce</th>
+          <th>Départ</th>
+          <th>Statut</th>
+          <th>Commentaire</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for runner in runners %}
+        <tr class="{% if runner.start_status == 'DNS' %}non-finisher{% elif runner.start_status == 'Late start' %}bg-warning bg-opacity-10{% elif runner.new_card %}bg-info bg-opacity-10{% endif %}">
+          <td>{{ forloop.counter }}</td>
+          <td class="runner-name"><a href="{% url 'ochecklist_runner_detail' runner.id %}">{{ runner.name }}</a></td>
+          <td>{{ runner.bib|default:"—" }}</td>
+          <td><span class="badge bg-light text-dark border" style="font-family:var(--font-display)">{{ runner.class_name }}</span></td>
+          <td class="text-muted">{{ runner.org }}</td>
+          <td>{{ runner.card_number|default:"—" }}</td>
+          <td>
+            {% if runner.new_card %}
+              <span class="badge bg-info">{{ runner.new_card }}</span>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>
+            {% if runner.start_time %}
+              <div>{{ runner.start_time|date:"H:i" }}</div>
+              {% if runner.changelog and runner.changelog.late_start %}
+                <div class="small text-danger mt-1">
+                  <i class="bi bi-arrow-right-short"></i>{{ runner.changelog.late_start|date:"H:i" }}
+                </div>
+              {% endif %}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge bg-{% if runner.start_status == 'Started OK' %}success{% elif runner.start_status == 'DNS' %}danger{% else %}warning text-dark{% endif %}">
+              {{ runner.start_status|cut:"Started " }}
+            </span>
+          </td>
+          <td class="text-muted text-truncate" style="max-width:200px">{{ runner.comment|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="co-card text-center p-5">
+  <div class="py-4">
+    <i class="bi bi-inbox fs-1 d-block mb-3 opacity-25"></i>
+    <p class="mb-0 text-muted">Aucun coureur dans ce rapport.</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
