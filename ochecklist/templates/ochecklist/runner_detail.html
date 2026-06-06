@@ -1,0 +1,95 @@
+{% extends "ochecklist/base.html" %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="co-card">
+      <div class="co-card-header"><i class="bi bi-person me-2"></i>{{ runner.name }}</div>
+      <div class="card-body">
+        <table class="results-table mb-0">
+          <tbody>
+            <tr><td class="fw-semibold pe-3" style="width:9rem">Nom</td><td>{{ runner.name }}</td></tr>
+            <tr><td class="fw-semibold">Dossard</td><td>{{ runner.bib|default:"—" }}</td></tr>
+            <tr><td class="fw-semibold">ID IOF</td><td class="text-muted">{{ runner.runner_id|default:"—" }}</td></tr>
+            <tr><td class="fw-semibold">Club</td><td>{{ runner.org }}</td></tr>
+            <tr><td class="fw-semibold">Catégorie</td><td><span class="badge bg-light text-dark border" style="font-family:var(--font-display)">{{ runner.class_name }}</span></td></tr>
+            <tr><td class="fw-semibold">Puce</td><td>{{ runner.card_number|default:"—" }}</td></tr>
+            <tr><td class="fw-semibold">Départ</td>
+              <td>
+                {% if runner.start_time %}
+                  <div>{{ runner.start_time|date:"H:i" }}</div>
+                  {% if runner.changelog and runner.changelog.late_start %}
+                    <div class="small text-danger mt-1">
+                      <i class="bi bi-arrow-right-short"></i>{{ runner.changelog.late_start|date:"H:i" }}
+                    </div>
+                  {% endif %}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+            <tr><td class="fw-semibold">Statut</td>
+              <td>
+                <span class="badge bg-{% if runner.start_status == 'Started OK' %}success{% elif runner.start_status == 'DNS' %}danger{% else %}warning text-dark{% endif %}">
+                  {{ runner.start_status|cut:"Started " }}
+                </span>
+              </td>
+            </tr>
+            {% if runner.new_card %}
+            <tr><td class="fw-semibold">Nouvelle puce</td>
+              <td><span class="badge bg-info">{{ runner.new_card }}</span></td>
+            </tr>
+            {% endif %}
+            {% if runner.comment %}
+            <tr><td class="fw-semibold align-top">Commentaire</td>
+              <td>{{ runner.comment|linebreaksbr }}</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="co-card">
+      <div class="co-card-header"><i class="bi bi-clock-history me-2"></i>Journal des modifications</div>
+      <div class="card-body">
+        {% if runner.changelog %}
+        <table class="results-table mb-0">
+          <tbody>
+            <tr><td class="fw-semibold pe-3" style="width:9rem">DNS</td><td>{{ runner.changelog.dns|date:"H:i:s"|default:"—" }}</td></tr>
+            <tr><td class="fw-semibold">Départ retardé</td><td>{{ runner.changelog.late_start|date:"H:i:s"|default:"—" }}</td></tr>
+            <tr><td class="fw-semibold">Nouvelle puce</td><td>{{ runner.changelog.new_card|date:"H:i:s"|default:"—" }}</td></tr>
+            <tr><td class="fw-semibold">Commentaire</td><td>{{ runner.changelog.comment|date:"H:i:s"|default:"—" }}</td></tr>
+            <tr><td class="fw-semibold">Nouveau coureur</td><td>{{ runner.changelog.new_runner|date:"H:i:s"|default:"—" }}</td></tr>
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted mb-0">Aucune modification enregistrée.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="co-card">
+  <div class="co-card-header"><i class="bi bi-clipboard-data me-2"></i>Rapport associé</div>
+  <div class="card-body">
+    <table class="results-table mb-0">
+      <tbody>
+        <tr><td class="fw-semibold pe-3" style="width:9rem">Événement</td><td>{{ runner.report.event|default:"—" }}</td></tr>
+        <tr><td class="fw-semibold">Créé le</td><td>{{ runner.report.created|date:"d/m/Y H:i:s" }}</td></tr>
+        <tr><td class="fw-semibold">Reçu le</td><td>{{ runner.report.received_at|date:"d/m/Y H:i:s" }}</td></tr>
+        <tr><td class="fw-semibold">Version</td><td>{{ runner.report.version }}</td></tr>
+        <tr><td class="fw-semibold">Créateur</td><td>{{ runner.report.creator }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mt-3">
+  <a href="{% url 'ochecklist_report_detail' runner.report.id %}" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-arrow-left me-1"></i>Retour au rapport
+  </a>
+</div>
+{% endblock %}
