@@ -4,7 +4,7 @@ Tests unitaires pour verifie_moi.py et la vue verifie_moi_view.
 Couvre :
   - _fmt_hms()                 : formatage de l'heure
   - generate_verifie_moi_csv() : génération du CSV (une ligne par coureur)
-  - verifie_moi_view()         : vue Django (GET, POST valide, POST invalide)
+  - VerifieMoiView.as_view()()         : vue Django (GET, POST valide, POST invalide)
 """
 
 import pytest
@@ -418,56 +418,56 @@ class TestVerifieMoiView:
         from django.test import RequestFactory
         return RequestFactory().post('/gec/verifie-moi/')
 
-    @patch('results.views.render')
+    @patch('results.classViews.render')
     def test_get_template_correct(self, mock_render):
-        from results.views import verifie_moi_view
-        verifie_moi_view(self._get())
+        from results.classViews import VerifieMoiView
+        VerifieMoiView.as_view()(self._get())
         _, template, _ = mock_render.call_args[0]
         assert template == 'results/verifie_moi.html'
 
-    @patch('results.views.render')
+    @patch('results.classViews.render')
     def test_get_contexte_vide(self, mock_render):
-        from results.views import verifie_moi_view
-        verifie_moi_view(self._get())
+        from results.classViews import VerifieMoiView
+        VerifieMoiView.as_view()(self._get())
         _, _, ctx = mock_render.call_args[0]
         assert ctx['parse_error']      is None
         assert ctx['result']           is None
         assert ctx['csv_content_json'] is None
 
-    @patch('results.views.render')
+    @patch('results.classViews.render')
     def test_post_valide_result_present(self, mock_render):
-        from results.views import verifie_moi_view
-        verifie_moi_view(self._post(_xml(_minimal_body())))
+        from results.classViews import VerifieMoiView
+        VerifieMoiView.as_view()(self._post(_xml(_minimal_body())))
         _, _, ctx = mock_render.call_args[0]
         assert ctx['result'] is not None
         assert ctx['result'].n_runners == 1
 
-    @patch('results.views.render')
+    @patch('results.classViews.render')
     def test_post_valide_csv_content_json_present(self, mock_render):
         import json
-        from results.views import verifie_moi_view
-        verifie_moi_view(self._post(_xml(_minimal_body())))
+        from results.classViews import VerifieMoiView
+        VerifieMoiView.as_view()(self._post(_xml(_minimal_body())))
         _, _, ctx = mock_render.call_args[0]
         content = json.loads(ctx['csv_content_json'])
         assert 'Alice Martin' in content
 
-    @patch('results.views.render')
+    @patch('results.classViews.render')
     def test_post_valide_filename_json_present(self, mock_render):
         """filename_json doit être du JSON valide contenant le nom de compétition."""
         import json
-        from results.views import verifie_moi_view
-        verifie_moi_view(self._post(_xml(_minimal_body(), name='Savoie 2026')))
+        from results.classViews import VerifieMoiView
+        VerifieMoiView.as_view()(self._post(_xml(_minimal_body(), name='Savoie 2026')))
         _, _, ctx = mock_render.call_args[0]
         assert ctx['filename_json'] is not None
         filename = json.loads(ctx['filename_json'])
         assert 'Savoie 2026' in filename
         assert filename.endswith('.csv')
 
-    @patch('results.views.render')
+    @patch('results.classViews.render')
     def test_post_valide_filename_json_fallback_si_nom_vide(self, mock_render):
         """Si le nom de compétition est vide, le nom de fichier est 'verifie_moi.csv'."""
         import json
-        from results.views import verifie_moi_view
+        from results.classViews import VerifieMoiView
         xml = (
             b'<?xml version="1.0" encoding="UTF-8"?>'
             b'<meosdata version="5.0">'
@@ -475,12 +475,12 @@ class TestVerifieMoiView:
             + _minimal_body().encode('utf-8') +
             b'</meosdata>'
         )
-        verifie_moi_view(self._post(xml))
+        VerifieMoiView.as_view()(self._post(xml))
         _, _, ctx = mock_render.call_args[0]
         filename = json.loads(ctx['filename_json'])
         assert filename == 'verifie_moi.csv'
 
-    @patch('results.views.render')
+    @patch('results.classViews.render')
     def test_post_coureur_sans_heure_exclu(self, mock_render):
         """La vue doit transmettre un résultat avec n_skipped > 0."""
         import json
@@ -488,8 +488,8 @@ class TestVerifieMoiView:
             ('1', 'Alice', 3600, '10', '100', '1'),
             ('2', 'Bob',   None, '10', '100', '2'),
         ))
-        from results.views import verifie_moi_view
-        verifie_moi_view(self._post(_xml(body)))
+        from results.classViews import VerifieMoiView
+        VerifieMoiView.as_view()(self._post(_xml(body)))
         _, _, ctx = mock_render.call_args[0]
         assert ctx['result'].n_runners == 1
         assert ctx['result'].n_skipped == 1
@@ -497,18 +497,18 @@ class TestVerifieMoiView:
         assert 'Alice' in content
         assert 'Bob' not in content
 
-    @patch('results.views.render')
+    @patch('results.classViews.render')
     def test_post_xml_invalide_affiche_erreur(self, mock_render):
-        from results.views import verifie_moi_view
-        verifie_moi_view(self._post(b'pas du xml'))
+        from results.classViews import VerifieMoiView
+        VerifieMoiView.as_view()(self._post(b'pas du xml'))
         _, _, ctx = mock_render.call_args[0]
         assert ctx['parse_error'] is not None
         assert ctx['result'] is None
 
-    @patch('results.views.render')
+    @patch('results.classViews.render')
     def test_post_sans_fichier_contexte_vide(self, mock_render):
-        from results.views import verifie_moi_view
-        verifie_moi_view(self._post_without_file())
+        from results.classViews import VerifieMoiView
+        VerifieMoiView.as_view()(self._post_without_file())
         _, _, ctx = mock_render.call_args[0]
         assert ctx['parse_error'] is None
         assert ctx['result'] is None

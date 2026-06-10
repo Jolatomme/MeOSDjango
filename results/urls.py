@@ -1,18 +1,22 @@
 from django.urls import path
 from . import views
-from .classViews import TutoView
+from .classViews import (
+    HomeView, CompetitionDetailView, StartListView, StatisticsView,
+    EtiquettesView, DriversView, MarkdownDetailView, TutoView,
+    MeosCheckerView, VerifieMoiView,
+)
 from .mop_views import mop_update
 
 app_name = 'results'
 
 urlpatterns = [
     # ── Accueil ────────────────────────────────────────────────────────────
-    path('', views.home, name='home'),
+    path('', HomeView.as_view(), name='home'),
 
     # ── Compétition ────────────────────────────────────────────────────────
-    path('competition/<int:cid>/', views.competition_detail, name='competition_detail'),
-    path('competition/<int:cid>/start-list/', views.start_list, name='start_list'),
-    path('competition/<int:cid>/stats/', views.statistics, name='statistics'),
+    path('competition/<int:cid>/', CompetitionDetailView.as_view(), name='competition_detail'),
+    path('competition/<int:cid>/start-list/', StartListView.as_view(), name='start_list'),
+    path('competition/<int:cid>/stats/', StatisticsView.as_view(), name='statistics'),
 
     # ── Catégories ─────────────────────────────────────────────────────────
     # class_id : nom de catégorie (ex. 'H21') ou identifiant entier
@@ -49,14 +53,14 @@ urlpatterns = [
     path('api/<int:cid>/class/<str:class_id>/results/', views.api_class_results, name='api_class_results'),
 
     # ── GEC ───────────────────────────────────────────────────────────────
-    path('gec/checker/',    views.meos_checker_view, name='meos_checker'),
-    path('gec/verifie-moi/', views.verifie_moi_view, name='verifie_moi'),
+    path('gec/checker/',    MeosCheckerView.as_view(), name='meos_checker'),
+    path('gec/verifie-moi/', VerifieMoiView.as_view(), name='verifie_moi'),
 
     # ── Tutoriels / Ressources ─────────────────────────────────────────────
     path('tuto/',               TutoView.as_view(), name='tuto'),
-    path('tuto/<int:article_id>/', views.MarkdownView, name='markdown'),
-    path('etiquettes/',         views.etiquettes,   name='etiquettes'),
-    path('drivers/',            views.drivers,      name='drivers'),
+    path('tuto/<int:article_id>/', MarkdownDetailView.as_view(), name='markdown'),
+    path('etiquettes/',         EtiquettesView.as_view(), name='etiquettes'),
+    path('drivers/',            DriversView.as_view(), name='drivers'),
 
     # ── MOP ────────────────────────────────────────────────────────────────
     path('mop/update',  mop_update),

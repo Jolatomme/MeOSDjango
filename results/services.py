@@ -10,6 +10,16 @@ from .models import (
     STAT_OK, STATUS_LABELS, format_time,
 )
 
+import re
+from markdown.extensions.toc import slugify_unicode
+
+_PREFIX_RE = re.compile(r'^\d+(\.\d+)*\.?\s+')
+
+
+def slugify_no_prefix(value, separator='-'):
+    """Slugify after removing numbered prefix (e.g., '1.2. Title' → 'title')."""
+    return slugify_unicode(_PREFIX_RE.sub('', value), separator)
+
 
 # ─── Organisations ─────────────────────────────────────────────────────────────
 

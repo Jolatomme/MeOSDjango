@@ -1,11 +1,11 @@
 import json
 import re
 from types import SimpleNamespace
-import markdown
-from markdown.extensions.toc import slugify_unicode
-
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import Http404, HttpResponse, JsonResponse
+
+
+from .forms import MeosFileForm, VerifieMoiFileForm
 
 from .models import (
     Mopcompetition, Mopclass, Moporganization, Mopcompetitor,
@@ -22,6 +22,7 @@ from .services import (
     build_abs_time_series, compute_error_estimates,
     compute_grouping_index, compute_regularity_analysis,
     compute_course_hash, get_courses_map,
+    slugify_no_prefix,
 )
 from .meos_checker import check_meos_file
 from .verifie_moi import generate_verifie_moi_csv
@@ -45,6 +46,11 @@ _COURSE_HASH_RE = re.compile(r'^[0-9a-f]{8}$')
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _resolve_class_id(cid, class_id):
+    """Convert a class identifier to a numeric ID.
+
+    Accepts a numeric string, an integer, or a class name string.
+    When given a class name, performs a DB lookup to resolve it.
+    """
     if isinstance(class_id, str) and not class_id.isdigit():
         cls = get_object_or_404(Mopclass, cid=cid, name=class_id)
         return cls.id
@@ -98,6 +104,11 @@ def _load_class_context(cid, class_id):
 
 
 def _get_adjacent_classes(cid, class_id):
+    """Return the previous and next class in ordering for navigation links.
+
+    Returns (prev_cls, next_cls), where either can be None at boundaries
+    or when ``class_id`` is not found.
+    """
     all_classes = list(Mopclass.objects.filter(cid=cid).order_by('ord', 'name'))
     current_idx = next((i for i, c in enumerate(all_classes) if c.id == class_id), None)
     if current_idx is None:
@@ -108,6 +119,11 @@ def _get_adjacent_classes(cid, class_id):
 
 
 def _sort_non_finishers(non_finishers):
+    """Sort non-finishing competitors by a fixed status priority, then name.
+
+    Priority order: OCC/NT/OT/DQ (1), MP (2), DNF (3), DNS/NP/CANCEL (4),
+    unknown status (5). Within each group, alphabetical by name.
+    """
     return sorted(
         non_finishers,
         key=lambda c: (_NON_FINISHER_ORDER.get(c.stat, 5), c.name.lower()),
@@ -122,179 +138,9 @@ def _controls_for(cid, cls, course):
     return seq
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Pages statiques
-# ══════════════════════════════════════════════════════════════════════════════
-
-_PREFIX_RE = re.compile(r'^\d+(\.\d+)*\.?\s+')
 
 
-def _slugify_no_prefix(value, separator):
-    return slugify_unicode(_PREFIX_RE.sub('', value), separator)
 
-
-def MarkdownView(request, article_id):
-    md = markdown.Markdown(
-        extensions=["fenced_code", "toc", "tables"],
-        extension_configs={"toc": {"slugify": _slugify_no_prefix}},
-    )
-    markdown_content = MeosTutorial.objects.get(pk=article_id)
-    markdown_content.content = md.convert(markdown_content.text)
-    return render(request, "results/markdown_content.html",
-                  {'markdown_content': markdown_content})
-
-
-def etiquettes(request):
-    return render(request, "results/etiquettes.html")
-
-
-def drivers(request):
-    return render(request, "results/drivers.html")
-
-
-def meos_checker_view(request):
-    report = None; parse_error = None
-    if request.method == 'POST' and 'meosfile' in request.FILES:
-        try:
-            xml_bytes = request.FILES['meosfile'].read()
-            report = check_meos_file(xml_bytes)
-        except ValueError as exc:
-            parse_error = str(exc)
-    return render(request, 'results/meos_checker.html',
-                  {'report': report, 'parse_error': parse_error})
-
-
-def verifie_moi_view(request):
-    parse_error = None; result = None; csv_content_json = None; filename_json = None
-    if request.method == 'POST' and 'meosfile' in request.FILES:
-        try:
-            xml_bytes        = request.FILES['meosfile'].read()
-            result           = generate_verifie_moi_csv(xml_bytes)
-            csv_content_json = json.dumps(result.csv_content)
-            safe_name        = re.sub(r'[^\w\-\.\s]', '_', result.competition_name).strip() or 'verifie_moi'
-            filename_json    = json.dumps(safe_name + '.csv')
-        except ValueError as exc:
-            parse_error = str(exc)
-    return render(request, 'results/verifie_moi.html', {
-        'parse_error': parse_error, 'result': result,
-        'csv_content_json': csv_content_json, 'filename_json': filename_json,
-    })
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Accueil & détail compétition
-# ══════════════════════════════════════════════════════════════════════════════
-
-def home(request):
-    competitions = list(Mopcompetition.objects.all())
-    for comp in competitions:
-        # Get relay class IDs for this competition
-        relay_class_ids = set(
-            Mopteam.objects.filter(cid=comp.cid).values_list('cls', flat=True).distinct()
-        )
-        # Check for individual competitors (excluding relay classes)
-        if relay_class_ids:
-            comp.has_individual_competitors = Mopcompetitor.objects.filter(
-                cid=comp.cid, st__gt=0
-            ).exclude(cls__in=relay_class_ids).exists()
-        else:
-            comp.has_individual_competitors = Mopcompetitor.objects.filter(
-                cid=comp.cid, st__gt=0
-            ).exists()
-    return render(request, 'results/home.html', {'competitions': competitions})
-
-
-def competition_detail(request, cid):
-    competition     = get_object_or_404(Mopcompetition, cid=cid)
-    classes         = Mopclass.objects.filter(cid=cid).order_by('ord', 'name')
-    relay_class_ids = set(
-        Mopteam.objects.filter(cid=cid).values_list('cls', flat=True).distinct()
-    )
-    # Check if competition has individual competitors (excluding relay classes)
-    if relay_class_ids:
-        has_individual_competitors = Mopcompetitor.objects.filter(
-            cid=cid, st__gt=0
-        ).exclude(cls__in=relay_class_ids).exists()
-    else:
-        has_individual_competitors = Mopcompetitor.objects.filter(cid=cid, st__gt=0).exists()
-
-    class_stats = []
-    for cls in classes:
-        is_relay = cls.id in relay_class_ids
-        if is_relay:
-            qs        = Mopteam.objects.filter(cid=cid, cls=cls.id)
-            total     = qs.count()
-            if total == 0:
-                continue
-            finishers = qs.filter(stat=STAT_OK).exclude(rt__lte=0).count()
-            class_stats.append({'cls': cls, 'total': total, 'finishers': finishers,
-                                'is_relay': is_relay})
-        else:
-            qs        = Mopcompetitor.objects.filter(cid=cid, cls=cls.id)
-            total     = qs.count()
-            if total == 0:
-                continue
-            finishers = qs.filter(stat=STAT_OK).exclude(rt__lte=0).count()
-            controls_seq, _ = get_class_controls(cid, cls.id)
-            n_controls = len(controls_seq)
-            class_stats.append({'cls': cls, 'total': total, 'finishers': finishers,
-                                'is_relay': is_relay, 'n_controls': n_controls})
-
-    class_totals = {cs['cls'].id: cs['total'] for cs in class_stats}
-    courses_map = get_courses_map(cid, relay_class_ids, class_totals)
-    return render(request, 'results/competition_detail.html', {
-        'competition': competition,
-        'class_stats': class_stats,
-        'courses_map': courses_map,
-        'has_individual_competitors': has_individual_competitors,
-    })
-
-
-def start_list(request, cid):
-    """Display start list for a competition."""
-    competition = get_object_or_404(Mopcompetition, cid=cid)
-
-    # Get all competitors with start times
-    competitors = Mopcompetitor.objects.filter(cid=cid, st__gt=0).select_related()
-
-    # Get class and org maps
-    class_map = {c.id: c for c in Mopclass.objects.filter(cid=cid)}
-    org_map = get_org_map(cid, as_objects=True)
-
-    # Build rows
-    rows = []
-    for comp in competitors:
-        cls_obj = class_map.get(comp.cls)
-        org_obj = org_map.get(comp.org)
-
-        # Parse name (assume "FAMILY Given" format)
-        name_parts = comp.name.split(' ', 1)
-        family = name_parts[0] if name_parts else comp.name
-        given = name_parts[1] if len(name_parts) > 1 else ''
-
-        # Format start time (seconds since midnight to HH:MM)
-        start_time = ''
-        start_time_sort = '99:99'
-        if comp.st and comp.st > 0:
-            total_seconds = comp.st // 10  # convert tenths to seconds
-            hours = total_seconds // 3600
-            minutes = (total_seconds % 3600) // 60
-            start_time = f"{hours:02d}:{minutes:02d}"
-            start_time_sort = f"{hours:02d}:{minutes:02d}"
-
-        rows.append({
-            'family': family,
-            'given': given,
-            'full_name': comp.name,
-            'category': cls_obj.name if cls_obj else '',
-            'club_id': comp.org,
-            'club_short': f"{comp.org:04d}" if comp.org else '',
-            'club_name': org_obj.name if org_obj else '',
-            'club_display': f"{comp.org:04d} - {org_obj.name}" if org_obj else 'Sans club',
-            'start_time': start_time,
-            'start_time_sort': start_time_sort,
-            'control_card': '',  # Not available in model
-        })
 
     # Sort by start time
     rows.sort(key=lambda r: r['start_time_sort'])
@@ -357,6 +203,12 @@ def start_list(request, cid):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def class_results(request, cid, class_id):
+    """Results page for a single class or course.
+
+    Handles both regular categories and course (circuit) views.
+    Computes splits, best split markers, leg ranks, and error estimates.
+    Redirects to relay_results when the class has teams.
+    """
     competition, cls, competitors, course = _load_class_context(cid, class_id)
 
     # Redirect vers relais seulement pour les vraies catégories
@@ -471,6 +323,7 @@ def class_results(request, cid, class_id):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def competitor_detail(request, cid, competitor_id):
+    """Individual competitor detail page with split times."""
     competition = get_object_or_404(Mopcompetition, cid=cid)
     competitor  = get_object_or_404(Mopcompetitor, cid=cid, id=competitor_id)
     org = Moporganization.objects.filter(cid=cid, id=competitor.org).first()
@@ -500,6 +353,7 @@ def competitor_detail(request, cid, competitor_id):
 
 
 def org_results(request, cid, org_id):
+    """Results page for a single organisation — all runners grouped by class."""
     competition  = get_object_or_404(Mopcompetition, cid=cid)
     organization = get_object_or_404(Moporganization, cid=cid, id=org_id)
     org_competitors = list(Mopcompetitor.objects.filter(cid=cid, org=org_id))
@@ -536,27 +390,11 @@ def org_results(request, cid, org_id):
 # Statistiques & API
 # ══════════════════════════════════════════════════════════════════════════════
 
-def statistics(request, cid):
-    competition = get_object_or_404(Mopcompetition, cid=cid)
-    total    = Mopcompetitor.objects.filter(cid=cid).count()
-    finished = Mopcompetitor.objects.filter(cid=cid, stat=STAT_OK).exclude(rt__lte=0).count()
-    from django.db import connection
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            SELECT o.name, COUNT(c.id) AS cnt
-            FROM mopCompetitor c
-            JOIN mopOrganization o ON o.cid = c.cid AND o.id = c.org
-            WHERE c.cid = %s AND c.stat = %s AND c.rt > 0
-            GROUP BY o.id, o.name ORDER BY cnt DESC LIMIT 10
-        """, [cid, STAT_OK])
-        top_orgs = cursor.fetchall()
-    return render(request, 'results/statistics.html', {
-        'competition': competition, 'total': total,
-        'finished': finished, 'top_orgs': top_orgs,
-    })
+
 
 
 def api_class_results(request, cid, class_id):
+    """JSON API — returns ranked finishers for a class with times and gaps."""
     class_id        = _resolve_class_id(cid, class_id)
     competitors     = list(Mopcompetitor.objects.filter(cid=cid, cls=class_id))
     org_map         = get_org_map(cid)
@@ -583,6 +421,11 @@ def api_class_results(request, cid, class_id):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def superman_analysis(request, cid, class_id):
+    """Superman (optimal runner) chart — best time on each leg stitched together.
+
+    Renders a line chart comparing each runner's cumulative loss versus the
+    theoretical "superman" who takes the best split on every leg.
+    """
     competition, cls, competitors, course = _load_class_context(cid, class_id)
     org_map      = get_org_map(cid)
     controls_seq = _controls_for(cid, cls, course)
@@ -663,6 +506,11 @@ def superman_analysis(request, cid, class_id):
 
 
 def performance_analysis(request, cid, class_id):
+    """Performance index analysis — ratio of each runner's leg time to a reference.
+
+    The reference is the top-25% average per leg. A lower performance index
+    (closer to 0) means the runner is closer to the reference pace.
+    """
     competition, cls, competitors, course = _load_class_context(cid, class_id)
     finishers, _, _ = rank_finishers(competitors)
     if not finishers:
@@ -716,6 +564,11 @@ def performance_analysis(request, cid, class_id):
 
 
 def regularity_analysis(request, cid, class_id):
+    """Regularity analysis — weighted standard deviation of leg performance indices.
+
+    A lower weighted std means the runner maintains a more consistent pace
+    relative to the field across all legs. Requires at least 2 finishers.
+    """
     competition, cls, competitors, course = _load_class_context(cid, class_id)
     finishers, _, _ = rank_finishers(competitors)
     if len(finishers) < 2:
@@ -758,6 +611,11 @@ def regularity_analysis(request, cid, class_id):
 
 
 def grouping_analysis(request, cid, class_id):
+    """Grouping chart — absolute time at each control for runners with a start time.
+
+    Useful for detecting groups/clusters on the course. Renders a scatter-style
+    chart of cumulative time at each control point.
+    """
     competition, cls, competitors, course = _load_class_context(cid, class_id)
     runners_with_start = sorted([c for c in competitors if c.st > 0], key=lambda c: c.st)
     if not runners_with_start:
@@ -790,6 +648,11 @@ def grouping_analysis(request, cid, class_id):
 
 
 def grouping_index_analysis(request, cid, class_id):
+    """Grouping index — quantitative measure of how clustered runners are per leg.
+
+    Accepts optional ``t1`` and ``t2`` query parameters (in minutes) that define
+    the "close" and "far" time thresholds. Defaults: t1=7, t2=20.
+    """
     competition, cls, competitors, course = _load_class_context(cid, class_id)
     runners = sorted([c for c in competitors if c.st > 0], key=lambda c: c.st)
     if not runners:
@@ -842,6 +705,12 @@ def grouping_index_analysis(request, cid, class_id):
 
 
 def duel_analysis(request, cid, class_id):
+    """Duel chart — head-to-head split comparison for all runners.
+
+    Renders a table where every runner's splits are shown side-by-side,
+    allowing direct comparison of leg times across the field.
+    Redirects to relay_results for relay classes.
+    """
     competition, cls, competitors, course = _load_class_context(cid, class_id)
 
     # Redirect vers relais seulement pour les vraies catégories
@@ -972,10 +841,16 @@ def _load_recapitulatif_data(cid, class_id, context=None):
 
 
 def _is_relay(cid, cls, course):
+    """Return True if the class has teams (relay), excluding course (circuit) mode."""
     return course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists()
 
 
 def recapitulatif_analysis(request, cid, class_id):
+    """Recapitulatif (WinSplits-style) table — all splits in a single grid.
+
+    Shows every finisher's leg and cumulative times with ranks, plus error
+    estimates per control. Redirects to relay_results for relay classes.
+    """
     context = _load_class_context(cid, class_id)
     competition, cls, competitors, course = context
     if _is_relay(cid, cls, course):
@@ -1000,6 +875,11 @@ def recapitulatif_analysis(request, cid, class_id):
 
 
 def recapitulatif_csv(request, cid, class_id):
+    """CSV download of the recapitulatif table (leg and cumulative times with ranks).
+
+    Two-row format per competitor: leg times on the first row,
+    cumulative times on the second. Redirects to relay_results for relays.
+    """
     import csv
 
     context = _load_class_context(cid, class_id)
@@ -1060,6 +940,11 @@ def recapitulatif_csv(request, cid, class_id):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def relay_results(request, cid, class_id):
+    """Relay results page — per-leg split tables for each team.
+
+    Renders teams ranked by total time, with per-leg cumulative splits,
+    leg ranks, and cumulative ranks.
+    """
     competition = get_object_or_404(Mopcompetition, cid=cid)
     class_id    = _resolve_class_id(cid, class_id)
     cls         = get_object_or_404(Mopclass, cid=cid, id=class_id)
@@ -1156,3 +1041,5 @@ def relay_results(request, cid, class_id):
         'leader_time': format_time(leader_time) if leader_time else '-',
         'n_legs': n_legs,
     })
+
+

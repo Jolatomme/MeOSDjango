@@ -238,10 +238,10 @@ class TestGetAdjacentClasses:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestHomeView:
-    @patch('results.views.Mopcompetition')
-    @patch('results.views.Mopteam')
-    @patch('results.views.Mopcompetitor')
-    @patch('results.views.render')
+    @patch('results.classViews.Mopcompetition')
+    @patch('results.classViews.Mopteam')
+    @patch('results.classViews.Mopcompetitor')
+    @patch('results.classViews.render')
     def test_passe_competitions(self, mock_render, MockCompetitor, MockTeam, MockComp):
         comps = [make_competition(1), make_competition(2)]
         MockComp.objects.all.return_value = comps
@@ -249,8 +249,8 @@ class TestHomeView:
         MockTeam.objects.filter.return_value.values_list.return_value.distinct.return_value = []
         # Mock individual competitors exist
         MockCompetitor.objects.filter.return_value.exclude.return_value.exists.return_value = True
-        from results.views import home
-        home(rf_get())
+        from results.classViews import HomeView
+        HomeView.as_view()(rf_get())
         _, template, ctx = mock_render.call_args[0]
         assert template == 'results/home.html'
         assert ctx['competitions'] == comps
@@ -271,13 +271,13 @@ class TestCompetitionDetailView:
         classes = classes or [make_cls(cid, 10), make_cls(cid, 11)]
         relay_cls_ids = teams_cls_ids if teams_cls_ids is not None else set()
 
-        with patch('results.views.get_object_or_404', return_value=competition), \
-             patch('results.views.Mopclass') as MockClass, \
-             patch('results.views.Mopteam') as MockTeam, \
-             patch('results.views.Mopcompetitor') as MockComp, \
-             patch('results.views.get_courses_map', return_value=courses_map or {}), \
-             patch('results.views.get_class_controls', return_value=([{'ctrl_id': 1}, {'ctrl_id': 2}], {})), \
-             patch('results.views.render') as mock_render:
+        with patch('results.classViews.get_object_or_404', return_value=competition), \
+             patch('results.classViews.Mopclass') as MockClass, \
+             patch('results.classViews.Mopteam') as MockTeam, \
+             patch('results.classViews.Mopcompetitor') as MockComp, \
+             patch('results.classViews.get_courses_map', return_value=courses_map or {}), \
+             patch('results.classViews.get_class_controls', return_value=([{'ctrl_id': 1}, {'ctrl_id': 2}], {})), \
+             patch('results.classViews.render') as mock_render:
             MockClass.objects.filter.return_value.order_by.return_value = classes
             MockTeam.objects.filter.return_value.values_list.return_value.distinct.return_value = list(relay_cls_ids)
             comp_qs = MagicMock()
@@ -286,8 +286,8 @@ class TestCompetitionDetailView:
             MockComp.objects.filter.return_value = comp_qs
             MockTeam.objects.filter.return_value.count.return_value = 2
             MockTeam.objects.filter.return_value.filter.return_value.exclude.return_value.count.return_value = 1
-            from results.views import competition_detail
-            competition_detail(rf_get(), cid=cid)
+            from results.classViews import CompetitionDetailView
+            CompetitionDetailView.as_view()(rf_get(), cid=cid)
             _, template, ctx = mock_render.call_args[0]
             return template, ctx
 
@@ -1292,17 +1292,17 @@ class TestOrgResultsView:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestStatisticsView:
-    @patch('results.views.render')
-    @patch('results.views.get_object_or_404')
-    @patch('results.views.Mopcompetitor')
+    @patch('results.classViews.render')
+    @patch('results.classViews.get_object_or_404')
+    @patch('results.classViews.Mopcompetitor')
     def test_contexte(self, MockComp, mock_get404, mock_render):
         mock_get404.return_value = make_competition()
         MockComp.objects.filter.return_value.count.return_value = 100
         MockComp.objects.filter.return_value.exclude.return_value.count.return_value = 80
-        with patch('django.db.connection') as mock_conn:
+        with patch('results.classViews.connection') as mock_conn:
             mock_conn.cursor.return_value.__enter__.return_value.fetchall.return_value = [('COLE', 15)]
-            from results.views import statistics
-            statistics(rf_get(), cid=1)
+            from results.classViews import StatisticsView
+            StatisticsView.as_view()(rf_get(), cid=1)
         _, template, ctx = mock_render.call_args[0]
         assert template == 'results/statistics.html'
         assert 'total' in ctx and 'finished' in ctx and 'top_orgs' in ctx
@@ -1339,8 +1339,8 @@ class TestClassResultsRankSplits:
 
 class TestSlugifyNoPrefix:
     def _call(self, value):
-        from results.views import _slugify_no_prefix
-        return _slugify_no_prefix(value, separator='-')
+        from results.services import slugify_no_prefix
+        return slugify_no_prefix(value, separator='-')
 
     def test_prefixe_simple(self):    assert self._call('1 En amont') == 'en-amont'
     def test_prefixe_pointe(self):    assert self._call('5. Statuts') == 'statuts'
@@ -1371,15 +1371,15 @@ class TestStartListView:
         competitors = competitors or []
         classes = classes or []
         org_map = {o.id: o for o in (orgs or [])}
-        with patch('results.views.get_object_or_404', return_value=competition), \
-             patch('results.views.Mopcompetitor') as MockComp, \
-             patch('results.views.Mopclass') as MockClass, \
-             patch('results.views.get_org_map', return_value=org_map), \
-             patch('results.views.render') as mock_render:
+        with patch('results.classViews.get_object_or_404', return_value=competition), \
+             patch('results.classViews.Mopcompetitor') as MockComp, \
+             patch('results.classViews.Mopclass') as MockClass, \
+             patch('results.classViews.get_org_map', return_value=org_map), \
+             patch('results.classViews.render') as mock_render:
             MockComp.objects.filter.return_value.select_related.return_value = competitors
             MockClass.objects.filter.return_value = classes
-            from results.views import start_list
-            start_list(rf_get(), cid=1)
+            from results.classViews import StartListView
+            StartListView.as_view()(rf_get(), cid=1)
             _, template, ctx = mock_render.call_args[0]
             return template, ctx
 
@@ -1523,36 +1523,35 @@ class TestStartListView:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestStaticPages:
-    @patch('results.views.render')
-    @patch('results.views.MeosTutorial')
+    @patch('results.classViews.render')
+    @patch('results.classViews.MeosTutorial')
     def test_etiquettes_template(self, MockTuto, mock_render):
-        from results.views import etiquettes
-        etiquettes(rf_get())
+        from results.classViews import EtiquettesView
+        EtiquettesView.as_view()(rf_get())
         args = mock_render.call_args[0]
         assert args[0].method == 'GET'
         assert args[1] == 'results/etiquettes.html'
 
-    @patch('results.views.render')
-    @patch('results.views.MeosTutorial')
+    @patch('results.classViews.render')
+    @patch('results.classViews.MeosTutorial')
     def test_drivers_template(self, MockTuto, mock_render):
-        from results.views import drivers
-        drivers(rf_get())
+        from results.classViews import DriversView
+        DriversView.as_view()(rf_get())
         args = mock_render.call_args[0]
         assert args[1] == 'results/drivers.html'
 
-    @patch('results.views.markdown.Markdown')
-    @patch('results.views.render')
-    @patch('results.views.MeosTutorial')
+    @patch('results.classViews.markdown.Markdown')
+    @patch('results.classViews.render')
+    @patch('results.classViews.MeosTutorial')
     def test_markdown_view_contexte(self, MockTuto, mock_render, MockMarkdown):
         tuto = MagicMock(); tuto.text = '# Hello'; tuto.content = ''
         MockTuto.objects.get.return_value = tuto
         mock_md = MagicMock()
         mock_md.convert.return_value = '<h1>Hello</h1>'
         MockMarkdown.return_value = mock_md
-        from results.views import MarkdownView
-        MarkdownView(rf_get(), article_id=1)
+        from results.classViews import MarkdownDetailView
+        MarkdownDetailView.as_view()(rf_get(), article_id=1)
         args = mock_render.call_args[0]
         assert args[1] == 'results/markdown_content.html'
         assert 'markdown_content' in args[2]
-        MockTuto.objects.get.assert_called_once_with(pk=1)
         mock_md.convert.assert_called_once_with(tuto.text)

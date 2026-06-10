@@ -809,21 +809,21 @@ class TestCompetitionDetailCourses:
 
     def _run(self, courses_map=None):
         competition = MagicMock(); competition.cid = 1
-        with patch('results.views.get_object_or_404', return_value=competition), \
-             patch('results.views.Mopclass') as MockClass, \
-             patch('results.views.Mopteam') as MockTeam, \
-             patch('results.views.Mopcompetitor') as MockComp, \
-             patch('results.views.get_courses_map',
+        with patch('results.classViews.get_object_or_404', return_value=competition), \
+             patch('results.classViews.Mopclass') as MockClass, \
+             patch('results.classViews.Mopteam') as MockTeam, \
+             patch('results.classViews.Mopcompetitor') as MockComp, \
+             patch('results.classViews.get_courses_map',
                    return_value=courses_map or {}) as mock_gcm, \
-             patch('results.views.render') as mock_render:
+             patch('results.classViews.render') as mock_render:
             MockClass.objects.filter.return_value.order_by.return_value = []
             MockTeam.objects.filter.return_value.values_list.return_value.distinct.return_value = []
             comp_qs = MagicMock()
             comp_qs.count.return_value = 0
             comp_qs.filter.return_value.exclude.return_value.count.return_value = 0
             MockComp.objects.filter.return_value = comp_qs
-            from results.views import competition_detail
-            competition_detail(MagicMock(method='GET'), cid=1)
+            from results.classViews import CompetitionDetailView
+            CompetitionDetailView.as_view()(MagicMock(method='GET'), cid=1)
             _, _, ctx = mock_render.call_args[0]
             return ctx, mock_gcm
 
