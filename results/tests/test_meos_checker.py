@@ -510,6 +510,16 @@ class TestMeosCheckerView:
         )
         return RequestFactory().post('/checker/', {'meosfile': f})
 
+    def _post_checked(self, xml_bytes):
+        from django.test import RequestFactory
+        from io import BytesIO
+        from django.core.files.uploadedfile import InMemoryUploadedFile
+        f = InMemoryUploadedFile(
+            BytesIO(xml_bytes), 'meosfile', 'test.meosxml',
+            'application/xml', len(xml_bytes), None,
+        )
+        return RequestFactory().post('/checker/', {'meosfile': f, 'check_entrelacement': 'on'})
+
     def test_get_sans_rapport(self):
         from unittest.mock import patch
         with patch('results.classViews.render') as mock_render:
@@ -524,10 +534,20 @@ class TestMeosCheckerView:
         xml = _xml(_minimal_body())
         with patch('results.classViews.render') as mock_render:
             from results.classViews import MeosCheckerView
-            MeosCheckerView.as_view()(self._post(xml))
+            MeosCheckerView.as_view()(self._post_checked(xml))
             _, _, ctx = mock_render.call_args[0]
         assert ctx['report'] is not None
         assert len(ctx['report'].results) == 8
+
+    def test_post_sans_entrelacement_retourne_7_regles(self):
+        from unittest.mock import patch
+        xml = _xml(_minimal_body())
+        with patch('results.classViews.render') as mock_render:
+            from results.classViews import MeosCheckerView
+            MeosCheckerView.as_view()(self._post(xml))
+            _, _, ctx = mock_render.call_args[0]
+        assert ctx['report'] is not None
+        assert len(ctx['report'].results) == 7
 
     def test_post_xml_invalide_retourne_erreur(self):
         from unittest.mock import patch

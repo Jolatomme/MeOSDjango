@@ -43,21 +43,45 @@
     <form method="post" enctype="multipart/form-data" id="uploadForm">
       {% csrf_token %}
       <div class="row g-3 align-items-end">
-        <div class="col-12 col-md-8">
+        <div class="col-12 col-md-5">
           <label for="meosfile" class="form-label fw-bold small text-muted">
             Fichier d'exportation MeOS (<code>.meosxml</code>)
           </label>
           <input type="file" class="form-control" id="meosfile" name="meosfile"
                  accept=".meosxml,.xml" required>
-          <div class="form-text">
-            Exportez depuis MeOS via <em>Fichier &rarr; Sauvegarder sous&hellip;</em>
-            au format <code>.meosxml</code>.
-          </div>
         </div>
-        <div class="col-12 col-md-4">
+        <div class="col-6 col-md-3">
+          <label for="gap_seconds" class="form-label fw-bold small text-muted">
+            Écart min. entre 2 coureurs du même club (secondes)
+          </label>
+          <input type="number" class="form-control" id="gap_seconds" name="gap_seconds"
+                 min="1" value="120" step="1">
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label">&nbsp;</label>
           <button type="submit" class="btn btn-success w-100 fw-bold" id="submitBtn">
             <i class="bi bi-shield-check me-2"></i>Verifier la conformite
           </button>
+        </div>
+      </div>
+      <div class="row g-3 align-items-center mt-2">
+        <div class="col-auto">
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="check_entrelacement"
+                   name="check_entrelacement" checked>
+            <label class="form-check-label small" for="check_entrelacement">
+              Vérifier l'entrelacement des catégories
+            </label>
+          </div>
+        </div>
+        <div class="col">
+          <div class="form-text mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            Exportez depuis MeOS via <em>Fichier &rarr; Sauvegarder sous&hellip;</em>
+            au format <code>.meosxml</code>.
+            &mdash; Écart min. : si deux coureurs du même club sont séparés par un écart
+            inférieur ou égal à cette valeur (en secondes), ils sont considérés consécutifs.
+          </div>
         </div>
       </div>
     </form>
