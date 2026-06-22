@@ -264,11 +264,10 @@ def check_club_consecutif(
     courses: dict[str, Course],
     clubs: dict[str, Club],
     zero_time: int,
+    gap_max_seconds: int = 120,
 ) -> RuleResult:
     violations: list[Violation] = []
     by_course = _runners_by_course(runners, categories)
-
-    GAP_MAX = 2 * 60  # 2 minutes en secondes (start MeOS est en secondes)
 
     for course_id, sorted_runners in by_course.items():
         course_name = courses[course_id].name if course_id in courses else course_id
@@ -281,7 +280,7 @@ def check_club_consecutif(
                 # Deux coureurs du même club séparés de plus de 2 min
                 # ne sont pas considérés consécutifs
                 if r1.start is not None and r2.start is not None:
-                    if abs(r2.start - r1.start) > GAP_MAX:
+                    if abs(r2.start - r1.start) > gap_max_seconds:
                         continue
                 club = _club_name(r1.club_id, clubs)
                 t1   = _fmt_time(r1.start, zero_time)   # type: ignore[arg-type]
@@ -643,8 +642,18 @@ def check_completude_coureurs(
 
 # ─── Point d'entrée ────────────────────────────────────────────────────────────
 
-def check_meos_file(xml_bytes: bytes) -> CheckReport:
+def check_meos_file(
+    xml_bytes: bytes,
+    gap_max_seconds: int = 120,
+    enable_entrelacement: bool = True,
+) -> CheckReport:
     """Analyse un fichier .meosxml et retourne un rapport complet (8 règles).
+
+    Args:
+        xml_bytes: Contenu du fichier .meosxml.
+        gap_max_seconds: Écart max en secondes entre 2 coureurs du même club
+                         pour être considérés consécutifs (défaut: 120 = 2 min).
+        enable_entrelacement: Si True, vérifie la règle d'entrelacement (défaut: True).
 
     Raises:
         ValueError si le fichier ne peut pas être parsé.
@@ -671,9 +680,8 @@ def check_meos_file(xml_bytes: bytes) -> CheckReport:
         n_courses=len(courses),
     )
 
-    report.results = [
-        check_club_consecutif(runners, categories, courses, clubs, zero_time),
-        check_entrelacement(real_runners, categories, courses, zero_time),
+    results = [
+        check_club_consecutif(runners, categories, courses, clubs, zero_time, gap_max_seconds),
         check_premiers_postes(courses),
         check_plages_continues(real_runners, categories, courses, zero_time),
         check_coordonnees_postes(controls),
@@ -681,5 +689,8 @@ def check_meos_file(xml_bytes: bytes) -> CheckReport:
         check_categories_vides(real_runners, categories),
         check_completude_coureurs(real_runners, categories, courses),
     ]
+    if enable_entrelacement:
+        results.insert(1, check_entrelacement(real_runners, categories, courses, zero_time))
+    report.results = results
 
     return report

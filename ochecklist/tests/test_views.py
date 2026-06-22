@@ -292,6 +292,9 @@ class TestOchecklistUpdateGzip:
             mock_tx.atomic.return_value.__enter__ = lambda s: s
             mock_tx.atomic.return_value.__exit__  = MagicMock(return_value=False)
             MockReport.objects.filter.return_value.order_by.return_value.first.return_value = None
+            new_report = MagicMock()
+            new_report.runners.filter.return_value.first.return_value = None
+            MockReport.objects.create.return_value = new_report
             MockRunner.objects.create.return_value = MagicMock()
 
             request = factory.post(
@@ -395,6 +398,11 @@ class TestOchecklistUpdateReportLifecycle:
         }
         mocks['tx'].atomic.return_value.__enter__ = lambda s: s
         mocks['tx'].atomic.return_value.__exit__  = MagicMock(return_value=False)
+        # When no existing report is found, OchecklistReport.objects.create() is called.
+        # By default, that mock report's runner filter returns None so the upsert creates new runners.
+        new_report = MagicMock()
+        new_report.runners.filter.return_value.first.return_value = None
+        mocks['Report'].objects.create.return_value = new_report
         mocks['Report'].objects.filter.return_value.order_by.return_value.first.return_value = existing_report
         return mocks
 
@@ -455,12 +463,14 @@ class TestOchecklistUpdateReportLifecycle:
         finally:
             self._teardown_mocks()
 
-    def test_mise_a_jour_rapport_existant(self, factory):
-        existing = MagicMock()
-        existing.version = 'old'
-        existing.creator = 'old'
-        existing.created = None
-        m = self._setup_mocks(existing_report=existing)
+    def test_mise_a_jour_rapport_existant_avec_upsert(self, factory):
+        report_mock = MagicMock()
+        report_mock.version = 'old'
+        report_mock.creator = 'old'
+        report_mock.created = None
+        runner_mock = MagicMock()
+        report_mock.runners.filter.return_value.first.return_value = runner_mock
+        m = self._setup_mocks(existing_report=report_mock)
         try:
             body = make_yaml(event='Same Event', runners=[make_runner(name='New')])
             request = factory.post(
@@ -470,9 +480,69 @@ class TestOchecklistUpdateReportLifecycle:
             )
             response = ochecklist_update(request)
             assert response.status_code == 200
-            existing.save.assert_called_once()
-            existing.runners.all().delete.assert_called_once()
+            report_mock.save.assert_called_once()
             m['Report'].objects.create.assert_not_called()
+            runner_mock.save.assert_called_once()
+        finally:
+            self._teardown_mocks()
+
+    def test_upsert_par_runner_id_quand_nom_vide(self, factory):
+        """Quand le Name est vide, le match se fait par runner_id."""
+        report_mock = MagicMock()
+        report_mock.version = 'old'
+        report_mock.creator = 'old'
+        report_mock.created = None
+        runner_mock = MagicMock()
+        report_mock.runners.filter.return_value.first.return_value = runner_mock
+        m = self._setup_mocks(existing_report=report_mock)
+        try:
+            runner = {
+                'Runner': {
+                    'StartStatus': 'DNS',
+                    'Id': 'R42',
+                    'Name': '',
+                    'Org': 'CO',
+                    'Card': '999',
+                    'StartTime': '2024-10-12T12:31:00+02:00',
+                    'ClassName': 'H21',
+                },
+                'ChangeLog': None,
+            }
+            body = make_yaml(event='Same Event', runners=[runner])
+            request = factory.post(
+                '/ochecklist/update/',
+                data=body,
+                content_type='application/yaml',
+            )
+            response = ochecklist_update(request)
+            assert response.status_code == 200
+            report_mock.runners.filter.assert_any_call(runner_id='R42')
+            runner_mock.save.assert_called_once()
+            m['Runner'].objects.create.assert_not_called()
+        finally:
+            self._teardown_mocks()
+
+    def test_diff_ne_supprime_pas_les_anciens_runners(self, factory):
+        """Un envoi partiel (diff) ne doit pas effacer les runners absents."""
+        report_mock = MagicMock()
+        report_mock.version = 'old'
+        report_mock.creator = 'old'
+        report_mock.created = None
+        runner_mock = MagicMock()
+        report_mock.runners.filter.return_value.first.return_value = runner_mock
+        m = self._setup_mocks(existing_report=report_mock)
+        try:
+            body = make_yaml(event='Same Event', runners=[make_runner(name='Alice')])
+            request = factory.post(
+                '/ochecklist/update/',
+                data=body,
+                content_type='application/yaml',
+            )
+            response = ochecklist_update(request)
+            assert response.status_code == 200
+            report_mock.runners.all().delete.assert_not_called()
+            runner_mock.save.assert_called_once()
+            m['Runner'].objects.create.assert_not_called()
         finally:
             self._teardown_mocks()
 
@@ -553,8 +623,8 @@ class TestOchecklistUpdateReportLifecycle:
         finally:
             self._teardown_mocks()
 
-    def test_datetime_str_transmis_directement(self, factory):
-        """Si le Created est une string ISO, il est passé tel quel."""
+    def test_datetime_str_iso_est_convertie(self, factory):
+        """Une string ISO est parsée en datetime par to_datetime."""
         m = self._setup_mocks()
         try:
             payload = {
@@ -564,6 +634,8 @@ class TestOchecklistUpdateReportLifecycle:
                 'Event': 'Evt',
                 'Data': [],
             }
+            expected = datetime.datetime(2024, 10, 12, 12, 45, 4,
+                                         tzinfo=datetime.timezone(datetime.timedelta(hours=2)))
             body = yaml.dump(payload, default_flow_style=False).encode('utf-8')
             request = factory.post(
                 '/ochecklist/update/',
@@ -573,7 +645,7 @@ class TestOchecklistUpdateReportLifecycle:
             response = ochecklist_update(request)
             assert response.status_code == 200
             kwargs = m['Report'].objects.create.call_args.kwargs
-            assert kwargs['created'] == '2024-10-12T12:45:04+02:00'
+            assert kwargs['created'] == expected
         finally:
             self._teardown_mocks()
 
@@ -604,13 +676,13 @@ class TestOchecklistUpdateReportLifecycle:
             self._teardown_mocks()
 
     def test_created_invalide_devient_none(self, factory):
-        """Si Created n'est pas str/datetime, to_datetime retourne None."""
+        """Si Created n'est pas str/datetime/int, to_datetime retourne None."""
         m = self._setup_mocks()
         try:
             payload = {
                 'Version': '1.5',
                 'Creator': 'App',
-                'Created': 12345,
+                'Created': [1, 2, 3],
                 'Event': 'Evt',
                 'Data': [],
             }
@@ -642,6 +714,11 @@ class TestOchecklistUpdateChangeLog:
         }
         m['tx'].atomic.return_value.__enter__ = lambda s: s
         m['tx'].atomic.return_value.__exit__  = MagicMock(return_value=False)
+        # When no existing report is found, the newly created report mock
+        # returns None from runner filter so the upsert creates new runners.
+        new_report = MagicMock()
+        new_report.runners.filter.return_value.first.return_value = None
+        m['Report'].objects.create.return_value = new_report
         m['Report'].objects.filter.return_value.order_by.return_value.first.return_value = existing_report
         m['Runner'].objects.create.return_value = MagicMock()
         return m
@@ -680,6 +757,8 @@ class TestOchecklistUpdateChangeLog:
     def test_changelog_avec_dns(self, factory):
         m = self._setup({'DNS': '2024-10-12T12:34:56+02:00'})
         try:
+            expected = datetime.datetime(2024, 10, 12, 12, 34, 56,
+                                         tzinfo=datetime.timezone(datetime.timedelta(hours=2)))
             body = make_yaml(runners=[make_runner(
                 changelog={'DNS': '2024-10-12T12:34:56+02:00'},
             )])
@@ -687,17 +766,25 @@ class TestOchecklistUpdateChangeLog:
             assert response.status_code == 200
             m['ChangeLog'].objects.create.assert_called_once()
             kwargs = m['ChangeLog'].objects.create.call_args.kwargs
-            assert kwargs['dns'] == '2024-10-12T12:34:56+02:00'
+            assert kwargs['dns'] == expected
         finally:
             self._teardown()
 
     def test_changelog_avec_tous_les_champs(self, factory):
+        tz = datetime.timezone(datetime.timedelta(hours=2))
         cl = {
             'DNS': '2024-10-12T12:31:22+02:00',
             'LateStart': '2024-10-12T12:37:02+02:00',
             'NewCard': '2024-10-12T12:35:34+02:00',
             'Comment': '2024-10-12T12:40:08+02:00',
             'NewRunner': '2024-10-12T12:43:14+02:00',
+        }
+        cl_expected = {
+            'dns': datetime.datetime(2024, 10, 12, 12, 31, 22, tzinfo=tz),
+            'late_start': datetime.datetime(2024, 10, 12, 12, 37, 2, tzinfo=tz),
+            'new_card': datetime.datetime(2024, 10, 12, 12, 35, 34, tzinfo=tz),
+            'comment': datetime.datetime(2024, 10, 12, 12, 40, 8, tzinfo=tz),
+            'new_runner': datetime.datetime(2024, 10, 12, 12, 43, 14, tzinfo=tz),
         }
         m = self._setup(cl)
         try:
@@ -707,11 +794,11 @@ class TestOchecklistUpdateChangeLog:
             m['ChangeLog'].objects.create.assert_called_once()
             kwargs = m['ChangeLog'].objects.create.call_args.kwargs
             assert kwargs['runner'] is not None
-            assert kwargs['dns'] == cl['DNS']
-            assert kwargs['late_start'] == cl['LateStart']
-            assert kwargs['new_card'] == cl['NewCard']
-            assert kwargs['comment'] == cl['Comment']
-            assert kwargs['new_runner'] == cl['NewRunner']
+            assert kwargs['dns'] == cl_expected['dns']
+            assert kwargs['late_start'] == cl_expected['late_start']
+            assert kwargs['new_card'] == cl_expected['new_card']
+            assert kwargs['comment'] == cl_expected['comment']
+            assert kwargs['new_runner'] == cl_expected['new_runner']
         finally:
             self._teardown()
 
@@ -726,6 +813,31 @@ class TestOchecklistUpdateChangeLog:
             assert response.status_code == 200
             kwargs = m['ChangeLog'].objects.create.call_args.kwargs
             assert kwargs['dns'] == dt
+        finally:
+            self._teardown()
+
+    def test_changelog_existant_est_mis_a_jour(self, factory):
+        """Quand le runner existe déjà, son changelog est mis à jour via get_or_create."""
+        changelog_mock = MagicMock()
+        report_mock = MagicMock()
+        report_mock.version = 'old'
+        report_mock.creator = 'old'
+        report_mock.created = None
+        runner_mock = MagicMock()
+        report_mock.runners.filter.return_value.first.return_value = runner_mock
+        m = self._setup({'DNS': '2024-10-12T12:34:56+02:00'},
+                        existing_report=report_mock)
+        m['ChangeLog'].objects.get_or_create.return_value = (changelog_mock, False)
+        try:
+            body = make_yaml(event='Same Event', runners=[make_runner(
+                name='Alice',
+                changelog={'DNS': '2024-10-12T12:34:56+02:00'},
+            )])
+            response = ochecklist_update(self._post(factory, body))
+            assert response.status_code == 200
+            m['ChangeLog'].objects.get_or_create.assert_called_once()
+            changelog_mock.save.assert_called_once()
+            m['ChangeLog'].objects.create.assert_not_called()
         finally:
             self._teardown()
 

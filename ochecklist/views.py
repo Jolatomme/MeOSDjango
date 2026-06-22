@@ -10,6 +10,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.conf import settings
 from django.contrib import messages
 from django.db import transaction
+from django.utils import timezone
 from .models import OchecklistReport, OchecklistRunner, OchecklistChangeLog
 
 def decompress_if_needed(request_body, content_encoding_header):
@@ -123,14 +124,41 @@ def ochecklist_update(request):
         return str(val)
     
     def to_datetime(val):
-        if val is None or isinstance(val, str):
-            return val
+        if val is None:
+            return None
         if isinstance(val, datetime.datetime):
+            if val.tzinfo is None:
+                return timezone.make_aware(val)
             return val
+        if isinstance(val, bool):
+            return None
+        if isinstance(val, str):
+            if not val:
+                return None
+            try:
+                dt = datetime.datetime.fromisoformat(val)
+                if dt.tzinfo is None:
+                    return timezone.make_aware(dt)
+                return dt
+            except ValueError:
+                pass
+            parts = val.strip().split(':')
+            if len(parts) in (2, 3) and all(p.isdigit() for p in parts):
+                h, m, s = int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) == 3 else 0
+                if 0 <= h < 24 and 0 <= m < 60 and 0 <= s < 60:
+                    return timezone.make_aware(datetime.datetime(2000, 1, 1, h, m, s))
+            return None
+        if isinstance(val, (int, float)):
+            total_seconds = int(val) % 86400
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
+            naive = datetime.datetime(2000, 1, 1, hours, minutes, seconds)
+            return timezone.make_aware(naive)
         return None
     
     event_name = to_str(yaml_data.get('Event'))
-    
+
     with transaction.atomic():
         # Find or create report for this event
         if event_name:
@@ -140,7 +168,6 @@ def ochecklist_update(request):
                 report.creator = to_str(yaml_data.get('Creator', ''))
                 report.created = to_datetime(yaml_data.get('Created'))
                 report.save()
-                report.runners.all().delete()
             else:
                 report = OchecklistReport.objects.create(
                     version=to_str(yaml_data.get('Version', '')),
@@ -155,37 +182,85 @@ def ochecklist_update(request):
                 created=to_datetime(yaml_data.get('Created')),
                 event=None
             )
-        
-        # Process runners
+
+        # Process runners — upsert by Name, fall back to runner_id
         for runner_data in yaml_data['Data']:
             runner_section = runner_data.get('Runner', {})
             changelog_data = runner_data.get('ChangeLog') or {}
-            
-            runner = OchecklistRunner.objects.create(
-                report=report,
-                runner_id=to_str(runner_section.get('Id')),
-                bib=to_str(runner_section.get('Bib')),
-                name=to_str(runner_section.get('Name', '')),
-                org=to_str(runner_section.get('Org', '')),
-                card_number=to_str(runner_section.get('Card')),
-                start_time=to_datetime(runner_section.get('StartTime')),
-                class_name=to_str(runner_section.get('ClassName', '')),
-                start_status=to_str(runner_section.get('StartStatus', '')),
-                new_card=to_str(runner_section.get('NewCard')),
-                comment=to_str(runner_section.get('Comment'))
-            )
-            
-            # Create changelog if any timestamps exist
-            if any(changelog_data.values()):
-                OchecklistChangeLog.objects.create(
-                    runner=runner,
-                    dns=to_datetime(changelog_data.get('DNS')),
-                    late_start=to_datetime(changelog_data.get('LateStart')),
-                    new_card=to_datetime(changelog_data.get('NewCard')),
-                    comment=to_datetime(changelog_data.get('Comment')),
-                    new_runner=to_datetime(changelog_data.get('NewRunner'))
+
+            name = to_str(runner_section.get('Name', ''))
+            runner_id = to_str(runner_section.get('Id'))
+
+            # Match existing runner by Name, then by runner_id
+            existing = None
+            if name:
+                existing = report.runners.filter(name=name).first()
+            if not existing and runner_id:
+                existing = report.runners.filter(runner_id=runner_id).first()
+
+            if existing:
+                # Only update fields that are present in the incoming YAML
+                if 'Id' in runner_section:
+                    existing.runner_id = to_str(runner_section['Id'])
+                if 'Bib' in runner_section:
+                    existing.bib = to_str(runner_section['Bib'])
+                if 'Name' in runner_section:
+                    existing.name = to_str(runner_section['Name'])
+                if 'Org' in runner_section:
+                    existing.org = to_str(runner_section['Org'])
+                if 'Card' in runner_section:
+                    existing.card_number = to_str(runner_section['Card'])
+                if 'StartTime' in runner_section:
+                    existing.start_time = to_datetime(runner_section['StartTime'])
+                if 'ClassName' in runner_section:
+                    existing.class_name = to_str(runner_section['ClassName'])
+                if 'StartStatus' in runner_section:
+                    existing.start_status = to_str(runner_section['StartStatus'])
+                if 'NewCard' in runner_section:
+                    existing.new_card = to_str(runner_section['NewCard'])
+                if 'Comment' in runner_section:
+                    existing.comment = to_str(runner_section['Comment'])
+                existing.save()
+                runner = existing
+
+                if any(changelog_data.values()):
+                    changelog, _ = OchecklistChangeLog.objects.get_or_create(runner=runner)
+                    if 'DNS' in changelog_data:
+                        changelog.dns = to_datetime(changelog_data['DNS'])
+                    if 'LateStart' in changelog_data:
+                        changelog.late_start = to_datetime(changelog_data['LateStart'])
+                    if 'NewCard' in changelog_data:
+                        changelog.new_card = to_datetime(changelog_data['NewCard'])
+                    if 'Comment' in changelog_data:
+                        changelog.comment = to_datetime(changelog_data['Comment'])
+                    if 'NewRunner' in changelog_data:
+                        changelog.new_runner = to_datetime(changelog_data['NewRunner'])
+                    changelog.save()
+            else:
+                runner = OchecklistRunner.objects.create(
+                    report=report,
+                    runner_id=runner_id,
+                    bib=to_str(runner_section.get('Bib')),
+                    name=name,
+                    org=to_str(runner_section.get('Org', '')),
+                    card_number=to_str(runner_section.get('Card')),
+                    start_time=to_datetime(runner_section.get('StartTime')),
+                    class_name=to_str(runner_section.get('ClassName', '')),
+                    start_status=to_str(runner_section.get('StartStatus', '')),
+                    new_card=to_str(runner_section.get('NewCard')),
+                    comment=to_str(runner_section.get('Comment'))
                 )
-    
+
+                if any(changelog_data.values()):
+                    OchecklistChangeLog.objects.create(
+                        runner=runner,
+                        dns=to_datetime(changelog_data.get('DNS')),
+                        late_start=to_datetime(changelog_data.get('LateStart')),
+                        new_card=to_datetime(changelog_data.get('NewCard')),
+                        comment=to_datetime(changelog_data.get('Comment')),
+                        new_runner=to_datetime(changelog_data.get('NewRunner'))
+                    )
+
     return HttpResponse('OK', status=200)
 
 def report_list(request):
