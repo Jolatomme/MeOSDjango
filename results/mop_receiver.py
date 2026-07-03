@@ -282,8 +282,6 @@ def process_competitor(cid: int, elem: ET.Element):
         'stat':  int(base.get('stat', 0)),
         'st':    int(base.get('st', 0)),
         'rt':    int(base.get('rt', 0)),
-        'tstat': 0,
-        'it':    0,
     }
 
     inp = _find(elem, 'input')
