@@ -320,12 +320,12 @@ class MeosCheckerView(RenderShortcutMixin, FormView):
         """Parse uploaded XML and pass the check report to the template."""
         xml_bytes = form.cleaned_data['meosfile'].read()
         gap_seconds = form.cleaned_data.get('gap_seconds') or 120
-        enable_entrelacement = 'check_entrelacement' in form.data
+        enabled = set(form.cleaned_data.get('enabled_rules', []))
         try:
             report = check_meos_file(
                 xml_bytes,
                 gap_max_seconds=gap_seconds,
-                enable_entrelacement=enable_entrelacement,
+                enabled_rules=enabled,
             )
         except ValueError as exc:
             return self.form_invalid(form, parse_error=str(exc))

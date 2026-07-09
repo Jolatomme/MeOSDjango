@@ -1,5 +1,4 @@
 {% extends "results/base.html" %}
-{% load static %}
 {% block title %}Verificateur de tirage &mdash; {{ SITE_NAME }}{% endblock %}
 
 {% block page_header %}
@@ -64,16 +63,37 @@
           </button>
         </div>
       </div>
-      <div class="row g-3 align-items-center mt-2">
-        <div class="col-auto">
-          <div class="form-check">
-            <input type="checkbox" class="form-check-input" id="check_entrelacement"
-                   name="check_entrelacement" checked>
-            <label class="form-check-label small" for="check_entrelacement">
-              Vérifier l'entrelacement des catégories
-            </label>
+      <div class="row g-3 mt-3">
+        <div class="col-12">
+          <label class="form-label fw-bold small text-muted">Règles à vérifier</label>
+          <div class="bg-light rounded p-3 border">
+            <div class="fw-semibold small text-muted mb-1">Tirage au sort</div>
+            {% for value, label in form.enabled_rules.field.choices %}
+            {% if forloop.counter <= 4 %}
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" name="enabled_rules"
+                     value="{{ value }}" id="r-{{ value }}"
+                     {% if not form.enabled_rules.value or value in form.enabled_rules.value %}checked{% endif %}>
+              <label class="form-check-label small" for="r-{{ value }}">{{ label }}</label>
+            </div>
+            {% endif %}
+            {% endfor %}
+            <hr class="my-2">
+            <div class="fw-semibold small text-muted mb-1">Complétude des données</div>
+            {% for value, label in form.enabled_rules.field.choices %}
+            {% if forloop.counter > 4 %}
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" name="enabled_rules"
+                     value="{{ value }}" id="r-{{ value }}"
+                     {% if not form.enabled_rules.value or value in form.enabled_rules.value %}checked{% endif %}>
+              <label class="form-check-label small" for="r-{{ value }}">{{ label }}</label>
+            </div>
+            {% endif %}
+            {% endfor %}
           </div>
         </div>
+      </div>
+      <div class="row g-3 mt-2">
         <div class="col">
           <div class="form-text mb-0">
             <i class="bi bi-info-circle me-1"></i>
@@ -111,13 +131,13 @@
         </div>
       </div>
       <div class="col-6 col-md-2 d-flex">
-        <div class="stat-card h-100" style="border-left-color:#f0a500">
+        <div class="stat-card h-100 stat-card-warning">
           <div class="stat-value" style="color:#f0a500">{{ report.n_no_start }}</div>
           <div class="stat-label"><i class="bi bi-person-walking me-1"></i>Depart en parallele</div>
         </div>
       </div>
       <div class="col-6 col-md-2 d-flex">
-        <div class="stat-card h-100" style="border-left-color:#6c757d">
+        <div class="stat-card h-100 stat-card-secondary">
           <div class="stat-value" style="color:#6c757d">{{ report.n_vacants }}</div>
           <div class="stat-label"><i class="bi bi-person-dash me-1"></i>Places vacantes</div>
         </div>
@@ -135,8 +155,8 @@
         </div>
       </div>
       <div class="col-6 col-md-2 d-flex">
-        <div class="stat-card h-100" style="border-left-color:{% if report.has_errors %}#dc3545{% elif report.has_warnings %}#f0a500{% else %}var(--co-green){% endif %}">
-          <div class="stat-value" style="color:{% if report.has_errors %}#dc3545{% elif report.has_warnings %}#f0a500{% else %}var(--co-green){% endif %};font-size:1.4rem">
+        <div class="stat-card h-100{% if report.has_errors %} stat-card-status-error{% elif report.has_warnings %} stat-card-status-warning{% else %} stat-card-status-ok{% endif %}">
+          <div class="stat-value">
             {% if report.has_errors %}<i class="bi bi-x-circle-fill"></i> Erreurs
             {% elif report.has_warnings %}<i class="bi bi-exclamation-triangle-fill"></i> Avertissements
             {% else %}<i class="bi bi-check-circle-fill"></i> Conforme{% endif %}
@@ -150,7 +170,7 @@
       <a href="#rule-{{ rule.rule_id }}"
          class="badge text-decoration-none {% if rule.status == 'ok' %}bg-success{% elif rule.status == 'error' %}bg-danger{% else %}bg-warning text-dark{% endif %}"
          style="font-size:.78rem;padding:.35rem .7rem">
-        {% if rule.status == 'ok' %}<i class="bi bi-check2 me-1"></i>{% elif rule.status == 'error' %}<i class="bi bi-x me-1"></i>{% else %}<i class="bi bi-exclamation me-1"></i>{% endif %}R{{ forloop.counter }}
+        {% if rule.status == 'ok' %}<i class="bi bi-check2 me-1"></i>{% elif rule.status == 'error' %}<i class="bi bi-x me-1"></i>{% else %}<i class="bi bi-exclamation me-1"></i>{% endif %}R{{ rule.num }}
       </a>
       {% endfor %}
     </div>
@@ -161,8 +181,8 @@
   <i class="bi bi-shuffle me-2" style="color:var(--co-gold)"></i>Regles de tirage au sort
 </h2>
 {% for rule in report.results %}
-{% if forloop.counter <= 4 %}
-{% include "results/_checker_rule_card.html" with rule=rule num=forloop.counter %}
+{% if rule.num <= 4 %}
+{% include "results/_checker_rule_card.html" with rule=rule num=rule.num %}
 {% endif %}
 {% endfor %}
 
@@ -170,8 +190,8 @@
   <i class="bi bi-database-check me-2" style="color:var(--co-gold)"></i>Completude des donnees
 </h2>
 {% for rule in report.results %}
-{% if forloop.counter > 4 %}
-{% include "results/_checker_rule_card.html" with rule=rule num=forloop.counter %}
+{% if rule.num > 4 %}
+{% include "results/_checker_rule_card.html" with rule=rule num=rule.num %}
 {% endif %}
 {% endfor %}
 

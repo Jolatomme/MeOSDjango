@@ -193,6 +193,34 @@ body { font-family: var(--font-body); background: var(--co-light); color: #1a1a1
 .class-card .class-meta { font-size: .8rem; color: var(--co-grey); }
 .class-card .class-finishers { font-family: var(--font-display); font-size: .95rem; font-weight: 700; color: var(--co-forest); }
 
+/* ─── Checker rule card header statuses ─────────────────────────────────────── */
+
+.co-card-header.rule-header-ok { background: var(--co-green); }
+.co-card-header.rule-header-error { background: #a71d2a; }
+.co-card-header.rule-header-warning { background: #795c00; }
+
+/* ─── Checker violation rows ────────────────────────────────────────────────── */
+
+.rule-violation-btn {
+  background: #fff8f8;
+  border: none;
+}
+.rule-violation-text {
+  background: #fff8f8;
+}
+
+/* ─── Checker stat card variants ────────────────────────────────────────────── */
+
+.stat-card-warning { border-left-color: #f0a500; }
+.stat-card-secondary { border-left-color: #6c757d; }
+
+.stat-card-status-error { border-left-color: #dc3545; }
+.stat-card-status-error .stat-value { color: #dc3545; font-size: 1.4rem; }
+.stat-card-status-warning { border-left-color: #f0a500; }
+.stat-card-status-warning .stat-value { color: #f0a500; font-size: 1.4rem; }
+.stat-card-status-ok { border-left-color: var(--co-green); }
+.stat-card-status-ok .stat-value { color: var(--co-green); font-size: 1.4rem; }
+
 /* ─── Badge overrides ───────────────────────────────────────────────────────── */
 
 .badge-co-ok  { background: #1a6b3c; color: #fff; }

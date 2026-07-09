@@ -82,6 +82,7 @@ class RuleResult:
     status: str          # 'ok' | 'warning' | 'error'
     summary: str
     violations: list[Violation] = field(default_factory=list)
+    num: int = 0         # numéro d'affichage (1‑8)
 
 
 @dataclass
@@ -320,6 +321,17 @@ def check_entrelacement(
 
     for course_id, sorted_runners in by_course.items():
         course_name = courses[course_id].name if course_id in courses else course_id
+
+        if not sorted_runners:
+            continue
+
+        # Group runners by class once
+        by_class: dict[str, list[Runner]] = {}
+        for r in sorted_runners:
+            if r.class_id:
+                by_class.setdefault(r.class_id, []).append(r)
+
+        # Detect interleaving
         seen_classes: set[str] = set()
         last_class: Optional[str] = None
         interleaved: set[str] = set()
@@ -337,14 +349,11 @@ def check_entrelacement(
             cat_names = ', '.join(
                 _class_name(cid, categories) for cid in sorted(interleaved)
             )
-            # Premier et dernier coureur de chaque catégorie entrelacée
             border_lines = []
             for cid in sorted(interleaved):
-                cat_runners = sorted(
-                    [r for r in sorted_runners if r.class_id == cid],
-                    key=lambda r: r.start or 0
-                )
+                cat_runners = by_class.get(cid, [])
                 if cat_runners:
+                    cat_runners.sort(key=lambda r: r.start or 0)
                     cname = _class_name(cid, categories)
                     first_r = cat_runners[0]
                     last_r  = cat_runners[-1]
@@ -441,22 +450,20 @@ def check_plages_continues(
                 class_ranges[cid] = (min(starts), max(starts))
 
         for cid_a, (a_min, a_max) in class_ranges.items():
-            intrusions = [
-                f"{r.name} ({_class_name(r.class_id, categories)}) à {_fmt_time(r.start, zero_time)}"
-                for cid_b, blist in by_class.items()
-                if cid_b != cid_a
-                for r in blist
-                if r.start is not None and a_min < r.start < a_max
-            ]
-            if intrusions:
-                cat_name = _class_name(cid_a, categories)
-                intruding_cats = ', '.join(sorted({
-                    _class_name(r.class_id, categories)
-                    for cid_b, blist in by_class.items()
-                    if cid_b != cid_a
-                    for r in blist
-                    if r.start is not None and a_min < r.start < a_max
-                }))
+            cat_name = _class_name(cid_a, categories)
+            intruders: list[tuple[str, str]] = []
+            for cid_b, blist in by_class.items():
+                if cid_b == cid_a:
+                    continue
+                for r in blist:
+                    if r.start is not None and a_min < r.start < a_max:
+                        intruders.append((
+                            f"{r.name} ({_class_name(r.class_id, categories)}) à {_fmt_time(r.start, zero_time)}",
+                            _class_name(r.class_id, categories),
+                        ))
+            if intruders:
+                intrusions = [line for line, _ in intruders]
+                intruding_cats = ', '.join(sorted({cat for _, cat in intruders}))
                 # Premier et dernier coureur de la categorie cid_a
                 cat_runners_sorted = sorted(by_class[cid_a], key=lambda r: r.start or 0)
                 first_r = cat_runners_sorted[0]
@@ -645,7 +652,7 @@ def check_completude_coureurs(
 def check_meos_file(
     xml_bytes: bytes,
     gap_max_seconds: int = 120,
-    enable_entrelacement: bool = True,
+    enabled_rules: Optional[set[str]] = None,
 ) -> CheckReport:
     """Analyse un fichier .meosxml et retourne un rapport complet (8 règles).
 
@@ -653,7 +660,8 @@ def check_meos_file(
         xml_bytes: Contenu du fichier .meosxml.
         gap_max_seconds: Écart max en secondes entre 2 coureurs du même club
                          pour être considérés consécutifs (défaut: 120 = 2 min).
-        enable_entrelacement: Si True, vérifie la règle d'entrelacement (défaut: True).
+        enabled_rules: Ensemble des identifiants de règles à exécuter.
+                       None (défaut) = toutes les règles.
 
     Raises:
         ValueError si le fichier ne peut pas être parsé.
@@ -680,17 +688,23 @@ def check_meos_file(
         n_courses=len(courses),
     )
 
-    results = [
-        check_club_consecutif(runners, categories, courses, clubs, zero_time, gap_max_seconds),
-        check_premiers_postes(courses),
-        check_plages_continues(real_runners, categories, courses, zero_time),
-        check_coordonnees_postes(controls),
-        check_circuits_vides(courses),
-        check_categories_vides(real_runners, categories),
-        check_completude_coureurs(real_runners, categories, courses),
+    _RULES: list[tuple[str, int, ...]] = [
+        ('club_consecutif',   1, check_club_consecutif, (runners, categories, courses, clubs, zero_time, gap_max_seconds)),
+        ('entrelacement',     2, check_entrelacement, (real_runners, categories, courses, zero_time)),
+        ('premiers_postes',   3, check_premiers_postes, (courses,)),
+        ('plages_continues',  4, check_plages_continues, (real_runners, categories, courses, zero_time)),
+        ('coordonnees_postes',5, check_coordonnees_postes, (controls,)),
+        ('circuits_vides',    6, check_circuits_vides, (courses,)),
+        ('categories_vides',  7, check_categories_vides, (real_runners, categories)),
+        ('completude_coureurs',8, check_completude_coureurs, (real_runners, categories, courses)),
     ]
-    if enable_entrelacement:
-        results.insert(1, check_entrelacement(real_runners, categories, courses, zero_time))
+    enabled = enabled_rules if enabled_rules is not None else {r[0] for r in _RULES}
+    results = []
+    for rid, num, fn, args in _RULES:
+        if rid in enabled:
+            result = fn(*args)
+            result.num = num
+            results.append(result)
     report.results = results
 
     return report

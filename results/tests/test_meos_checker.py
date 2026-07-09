@@ -496,11 +496,13 @@ class TestFmtTime:
 
 class TestMeosCheckerView:
 
+    _RULE_IDS = [c[0] for c in __import__('results.forms', fromlist=['RULE_CHOICES']).RULE_CHOICES]
+
     def _get(self):
         from django.test import RequestFactory
         return RequestFactory().get('/checker/')
 
-    def _post(self, xml_bytes):
+    def _post(self, xml_bytes, **extra):
         from django.test import RequestFactory
         from io import BytesIO
         from django.core.files.uploadedfile import InMemoryUploadedFile
@@ -508,17 +510,16 @@ class TestMeosCheckerView:
             BytesIO(xml_bytes), 'meosfile', 'test.meosxml',
             'application/xml', len(xml_bytes), None,
         )
-        return RequestFactory().post('/checker/', {'meosfile': f})
+        data = {'meosfile': f}
+        data.update(extra)
+        return RequestFactory().post('/checker/', data)
 
-    def _post_checked(self, xml_bytes):
-        from django.test import RequestFactory
-        from io import BytesIO
-        from django.core.files.uploadedfile import InMemoryUploadedFile
-        f = InMemoryUploadedFile(
-            BytesIO(xml_bytes), 'meosfile', 'test.meosxml',
-            'application/xml', len(xml_bytes), None,
-        )
-        return RequestFactory().post('/checker/', {'meosfile': f, 'check_entrelacement': 'on'})
+    def _post_all(self, xml_bytes):
+        return self._post(xml_bytes, enabled_rules=self._RULE_IDS)
+
+    def _post_without(self, xml_bytes, *excluded):
+        rules = [r for r in self._RULE_IDS if r not in excluded]
+        return self._post(xml_bytes, enabled_rules=rules)
 
     def test_get_sans_rapport(self):
         from unittest.mock import patch
@@ -534,7 +535,7 @@ class TestMeosCheckerView:
         xml = _xml(_minimal_body())
         with patch('results.classViews.render') as mock_render:
             from results.classViews import MeosCheckerView
-            MeosCheckerView.as_view()(self._post_checked(xml))
+            MeosCheckerView.as_view()(self._post_all(xml))
             _, _, ctx = mock_render.call_args[0]
         assert ctx['report'] is not None
         assert len(ctx['report'].results) == 8
@@ -544,10 +545,43 @@ class TestMeosCheckerView:
         xml = _xml(_minimal_body())
         with patch('results.classViews.render') as mock_render:
             from results.classViews import MeosCheckerView
-            MeosCheckerView.as_view()(self._post(xml))
+            MeosCheckerView.as_view()(self._post_without(xml, 'entrelacement'))
             _, _, ctx = mock_render.call_args[0]
         assert ctx['report'] is not None
         assert len(ctx['report'].results) == 7
+
+    def test_post_une_seule_regle(self):
+        from unittest.mock import patch
+        xml = _xml(_minimal_body())
+        with patch('results.classViews.render') as mock_render:
+            from results.classViews import MeosCheckerView
+            MeosCheckerView.as_view()(self._post(xml, enabled_rules=['circuits_vides']))
+            _, _, ctx = mock_render.call_args[0]
+        assert ctx['report'] is not None
+        assert len(ctx['report'].results) == 1
+        assert ctx['report'].results[0].rule_id == 'circuits_vides'
+
+    def test_post_regles_sans_tirage(self):
+        from unittest.mock import patch
+        xml = _xml(_minimal_body())
+        with patch('results.classViews.render') as mock_render:
+            from results.classViews import MeosCheckerView
+            rules = ['coordonnees_postes', 'circuits_vides', 'categories_vides', 'completude_coureurs']
+            MeosCheckerView.as_view()(self._post(xml, enabled_rules=rules))
+            _, _, ctx = mock_render.call_args[0]
+        assert ctx['report'] is not None
+        assert len(ctx['report'].results) == 4
+        assert {r.rule_id for r in ctx['report'].results} == set(rules)
+
+    def test_post_aucune_regle(self):
+        from unittest.mock import patch
+        xml = _xml(_minimal_body())
+        with patch('results.classViews.render') as mock_render:
+            from results.classViews import MeosCheckerView
+            MeosCheckerView.as_view()(self._post(xml))
+            _, _, ctx = mock_render.call_args[0]
+        assert ctx['report'] is not None
+        assert len(ctx['report'].results) == 0
 
     def test_post_xml_invalide_retourne_erreur(self):
         from unittest.mock import patch
