@@ -1,7 +1,6 @@
 <div class="co-card mb-3" id="rule-{{ rule.rule_id }}">
 
-  <div class="co-card-header d-flex justify-content-between align-items-center"
-       style="background:{% if rule.status == 'ok' %}var(--co-green){% elif rule.status == 'error' %}#a71d2a{% else %}#795c00{% endif %}">
+<div class="co-card-header d-flex justify-content-between align-items-center rule-header-{{ rule.status }}">
     <span>
       {% if rule.status == 'ok' %}<i class="bi bi-check-circle-fill me-2"></i>{% elif rule.status == 'error' %}<i class="bi bi-x-circle-fill me-2"></i>{% else %}<i class="bi bi-exclamation-triangle-fill me-2"></i>{% endif %}
       <span style="opacity:.65" class="me-1">R{{ num }}.</span>{{ rule.title }}
@@ -23,8 +22,7 @@
       <div class="border-bottom py-1 border-{% if rule.status == 'error' %}danger{% else %}warning{% endif %}-subtle">
 
         {% if violation.runners %}
-        <button class="btn btn-sm w-100 text-start fw-semibold py-2 px-2 text-{% if rule.status == 'error' %}danger{% else %}warning{% endif %}"
-                style="background:#fff8f8;border:none;"
+        <button class="btn btn-sm w-100 text-start fw-semibold py-2 px-2 text-{% if rule.status == 'error' %}danger{% else %}warning{% endif %} rule-violation-btn"
                 type="button"
                 data-bs-toggle="collapse"
                 data-bs-target="#vd-{{ rule.rule_id }}-{{ forloop.counter }}">
@@ -40,7 +38,7 @@
           </div>
         </div>
         {% else %}
-        <div class="py-2 px-2 small fw-semibold text-{% if rule.status == 'error' %}danger{% else %}warning{% endif %}" style="background:#fff8f8;">
+        <div class="py-2 px-2 small fw-semibold text-{% if rule.status == 'error' %}danger{% else %}warning{% endif %} rule-violation-text">
           <i class="bi bi-exclamation-circle me-1"></i>{{ violation.description }}
         </div>
         {% endif %}
