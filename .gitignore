@@ -1,7 +1,7 @@
 # Do not manage Database credentials
 # Sensitive logging information not to be disclosed.
-#MeOSDjango/dev_settings.py
-#MeOSDjango/settings.py
+MeOSDjango/dev_settings.py
+MeOSDjango/settings.py
 
 # Byte-compiled / optimized / DLL files
 **/__pycache__/
