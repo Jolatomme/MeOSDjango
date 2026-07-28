@@ -31,10 +31,9 @@ SECRET_KEY = DJANGO_SECRET_KEY
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True # Set to False in production
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['*'] # A remplacer par l'adresse du site en production
 
 APPEND_SLASH = False
-
 
 # Application definition
 
@@ -133,7 +132,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # HTTPS Settings
 # These settings are for production use. For development with runserver_plus,
 # HTTPS is handled by the development server itself.
@@ -159,28 +157,7 @@ STATICFILES_DIRS = []
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# ─── SÉCURITÉ HTTPS ────────────────────────────────────────────────────────────
-# Indique à Django que le reverse proxy d'alwaysdata gère le SSL.
-# Grâce à SECURE_PROXY_SSL_HEADER, Django identifie toutes les requêtes entrantes
-# comme HTTPS (le proxy positionne X-Forwarded-Proto: https). SECURE_SSL_REDIRECT
-# est donc sans effet réel (aucune requête HTTP n'arrive jusqu'à Django), mais
-# doit être True pour satisfaire la vérification de sécurité W008.
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SECURE_SSL_REDIRECT = True
-
-# HSTS : indique aux navigateurs de ne contacter le site qu'en HTTPS.
-# Valeur progressive recommandée : commencer par 3600 (1h), puis 86400 (1j),
-# puis 31536000 (1 an) avant de soumettre au preload list.
-SECURE_HSTS_SECONDS = 3600  # À augmenter progressivement jusqu'à 31536000
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
-
-# Cookies sécurisés (transmission uniquement via HTTPS)
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
 
 # ─── MeOS MOP (réception des données en temps réel) ───────────────────────────
 # Mot de passe à configurer dans MeOS : Outils > Serveur Online > Mot de passe
