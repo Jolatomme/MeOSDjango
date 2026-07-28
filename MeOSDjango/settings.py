@@ -12,6 +12,12 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 
+try:
+    from .dev_settings import *
+except ImportError:
+    print("Could not import dev_settings")
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -20,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-g@y2k4bcsrrb^id4_z5m0_(u4m6lfmxmp)g=6lf2n&#v$5cuuw'
+SECRET_KEY = DJANGO_SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True # Set to False in production
@@ -28,6 +34,7 @@ DEBUG = True # Set to False in production
 ALLOWED_HOSTS = ['*']
 
 APPEND_SLASH = False
+
 
 # Application definition
 
@@ -79,11 +86,6 @@ WSGI_APPLICATION = 'MeOSDjango.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-try:
-    from .dev_settings import *
-except ImportError:
-    print("Could not import dev_settings")
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -159,6 +161,26 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ─── SÉCURITÉ HTTPS ────────────────────────────────────────────────────────────
+# Indique à Django que le reverse proxy d'alwaysdata gère le SSL.
+# Grâce à SECURE_PROXY_SSL_HEADER, Django identifie toutes les requêtes entrantes
+# comme HTTPS (le proxy positionne X-Forwarded-Proto: https). SECURE_SSL_REDIRECT
+# est donc sans effet réel (aucune requête HTTP n'arrive jusqu'à Django), mais
+# doit être True pour satisfaire la vérification de sécurité W008.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = True
+
+# HSTS : indique aux navigateurs de ne contacter le site qu'en HTTPS.
+# Valeur progressive recommandée : commencer par 3600 (1h), puis 86400 (1j),
+# puis 31536000 (1 an) avant de soumettre au preload list.
+SECURE_HSTS_SECONDS = 3600  # À augmenter progressivement jusqu'à 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Cookies sécurisés (transmission uniquement via HTTPS)
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 # ─── MeOS MOP (réception des données en temps réel) ───────────────────────────
 # Mot de passe à configurer dans MeOS : Outils > Serveur Online > Mot de passe
