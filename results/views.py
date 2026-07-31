@@ -3,6 +3,7 @@ import re
 from types import SimpleNamespace
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import Http404, HttpResponse, JsonResponse
+from django.db import connection
 
 
 from .forms import MeosFileForm, VerifieMoiFileForm
@@ -26,6 +27,23 @@ from .services import (
 )
 from .meos_checker import check_meos_file
 from .verifie_moi import generate_verifie_moi_csv
+
+
+def _competition_visible(cid):
+    """Return True if the competition is visible (not deleted, not hidden)."""
+    try:
+        with connection.cursor() as cur:
+            cur.execute(
+                "SELECT frozen, visible, deleted FROM results_competitionconfig WHERE cid=%s",
+                [cid],
+            )
+            row = cur.fetchone()
+    except Exception:
+        return True
+    if not row or len(row) < 3:
+        return True
+    _frozen, visible, deleted = row
+    return not deleted and visible
 
 
 # ─── Ordre de tri des non-classés ─────────────────────────────────────────────
@@ -74,8 +92,8 @@ def _load_class_context(cid, class_id):
           URLs).
     """
     competition = get_object_or_404(Mopcompetition, cid=cid)
-
-    # ── Cas circuit ───────────────────────────────────────────────────────────
+    if not _competition_visible(cid):
+        raise Http404
     if isinstance(class_id, str) and _COURSE_HASH_RE.match(class_id):
         courses_map = get_courses_map(cid)
         course      = courses_map.get(class_id)
@@ -325,6 +343,8 @@ def class_results(request, cid, class_id):
 def competitor_detail(request, cid, competitor_id):
     """Individual competitor detail page with split times."""
     competition = get_object_or_404(Mopcompetition, cid=cid)
+    if not _competition_visible(cid):
+        raise Http404
     competitor  = get_object_or_404(Mopcompetitor, cid=cid, id=competitor_id)
     org = Moporganization.objects.filter(cid=cid, id=competitor.org).first()
     cls = Mopclass.objects.filter(cid=cid, id=competitor.cls).first()
@@ -355,6 +375,8 @@ def competitor_detail(request, cid, competitor_id):
 def org_results(request, cid, org_id):
     """Results page for a single organisation — all runners grouped by class."""
     competition  = get_object_or_404(Mopcompetition, cid=cid)
+    if not _competition_visible(cid):
+        raise Http404
     organization = get_object_or_404(Moporganization, cid=cid, id=org_id)
     org_competitors = list(Mopcompetitor.objects.filter(cid=cid, org=org_id))
     class_map = {c.id: c for c in Mopclass.objects.filter(cid=cid)}
@@ -946,6 +968,8 @@ def relay_results(request, cid, class_id):
     leg ranks, and cumulative ranks.
     """
     competition = get_object_or_404(Mopcompetition, cid=cid)
+    if not _competition_visible(cid):
+        raise Http404
     class_id    = _resolve_class_id(cid, class_id)
     cls         = get_object_or_404(Mopclass, cid=cid, id=class_id)
     teams_qs    = list(Mopteam.objects.filter(cid=cid, cls=class_id))

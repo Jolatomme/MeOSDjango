@@ -383,8 +383,20 @@ def process_mop_xml(cid: int, xml_data: bytes) -> str:
     on les strip avant de les dispatcher.
 
     Returns:
-        Statut MeOS : 'OK', 'BADXML', etc.
+        Statut MeOS : 'OK', 'BADXML', 'FROZEN', etc.
     """
+    try:
+        with connection.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM results_competitionconfig WHERE cid=%s AND frozen=1",
+                [cid],
+            )
+            if cur.fetchone():
+                logger.warning("process_mop_xml: cid=%s gelée — écriture refusée", cid)
+                return 'FROZEN'
+    except Exception:
+        pass
+
     try:
         root = ET.fromstring(xml_data)
     except ET.ParseError as exc:
