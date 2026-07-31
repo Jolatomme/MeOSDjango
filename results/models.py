@@ -193,6 +193,48 @@ class Mopteammember(models.Model):
         unique_together = (('cid', 'id', 'leg', 'ord'),)
 
 
+class CompetitionConfig(models.Model):
+    """Paramètres de gestion d'une compétition (gel, visibilité, suppression).
+
+    Table Django-managed séparée des tables mop* (managed=False).
+    cid fait référence à Mopcompetition.cid mais sans contrainte FK
+    (les tables mop* ne sont pas gérées par Django).
+    """
+    cid       = models.IntegerField(primary_key=True, db_column='cid')
+    frozen    = models.BooleanField(
+        default=False,
+        verbose_name='gelée',
+        help_text="Bloque l'écrasement des données MOP (MOPComplete/UPDATE refusés)",
+    )
+    visible   = models.BooleanField(
+        default=True,
+        verbose_name='visible',
+        help_text="Afficher cette compétition dans la liste publique",
+    )
+    deleted   = models.BooleanField(
+        default=False,
+        verbose_name='à effacer',
+        help_text="Marquer comme supprimée (masquée de la liste publique)",
+    )
+
+    class Meta:
+        managed         = True
+        db_table        = 'results_competitionconfig'
+        verbose_name        = 'configuration compétition'
+        verbose_name_plural = 'configurations compétitions'
+
+    def __str__(self):
+        flags = []
+        if self.frozen:
+            flags.append('gelée')
+        if self.deleted:
+            flags.append('supprimée')
+        elif not self.visible:
+            flags.append('masquée')
+        suffix = f" [{', '.join(flags)}]" if flags else ''
+        return f"{self.cid}{suffix}"
+
+
 class MeosTutorial(models.Model):
     title = models.CharField(max_length=256)
     text  = models.TextField()

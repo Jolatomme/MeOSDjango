@@ -16,9 +16,28 @@ from .services import (
     get_org_map, get_class_controls, get_courses_map,
     slugify_no_prefix,
 )
+from django.db import connection
+
 from .meos_checker import check_meos_file
 from .verifie_moi import generate_verifie_moi_csv
 from .forms import MeosFileForm, VerifieMoiFileForm
+
+
+def _competition_visible(cid):
+    """Return True if the competition is visible (not deleted, not hidden)."""
+    try:
+        with connection.cursor() as cur:
+            cur.execute(
+                "SELECT frozen, visible, deleted FROM results_competitionconfig WHERE cid=%s",
+                [cid],
+            )
+            row = cur.fetchone()
+    except Exception:
+        return True
+    if not row or len(row) < 3:
+        return True
+    _frozen, visible, deleted = row
+    return not deleted and visible
 
 
 class RenderShortcutMixin:
@@ -42,8 +61,9 @@ class HomeView(RenderShortcutMixin, ListView):
     context_object_name = "competitions"
 
     def get_queryset(self):
-        """Return all competitions, annotated with relay/individual flags."""
+        """Return visible competitions, annotated with relay/individual flags."""
         qs = list(Mopcompetition.objects.all())
+        qs = [c for c in qs if _competition_visible(c.cid)]
         for comp in qs:
             relay_class_ids = set(
                 Mopteam.objects.filter(cid=comp.cid).values_list('cls', flat=True).distinct()
@@ -73,7 +93,10 @@ class CompetitionDetailView(RenderShortcutMixin, DetailView):
     pk_url_kwarg = "cid"
 
     def get_object(self, queryset=None):
-        return get_object_or_404(Mopcompetition, cid=self.kwargs['cid'])
+        obj = get_object_or_404(Mopcompetition, cid=self.kwargs['cid'])
+        if not _competition_visible(obj.cid):
+            raise Http404
+        return obj
 
     def get_context_data(self, **kwargs):
         """Build the full template context with class stats and courses."""
@@ -137,6 +160,8 @@ class StartListView(RenderShortcutMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         cid = self.kwargs['cid']
         competition = get_object_or_404(Mopcompetition, cid=cid)
+        if not _competition_visible(cid):
+            raise Http404
 
         competitors = Mopcompetitor.objects.filter(cid=cid, st__gt=0).select_related()
         class_map = {c.id: c for c in Mopclass.objects.filter(cid=cid)}
@@ -234,6 +259,8 @@ class StatisticsView(RenderShortcutMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         cid = self.kwargs['cid']
         competition = get_object_or_404(Mopcompetition, cid=cid)
+        if not _competition_visible(cid):
+            raise Http404
 
         total = Mopcompetitor.objects.filter(cid=cid).count()
         finished = Mopcompetitor.objects.filter(cid=cid, stat=STAT_OK).exclude(rt__lte=0).count()

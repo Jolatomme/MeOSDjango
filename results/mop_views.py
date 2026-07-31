@@ -87,7 +87,8 @@ def mop_update(request):
     # ── Traitement ────────────────────────────────────────────────────────────
     status = process_mop_xml(cid, xml_data)
 
-    http_status = 200 if status == 'OK' else 422
+    http_status_map = {'OK': 200, 'FROZEN': 423}
+    http_status = http_status_map.get(status, 422)
     return HttpResponse(
         mop_response(status),
         content_type='text/xml',
