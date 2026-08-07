@@ -21,6 +21,7 @@ Couvre toutes les branches de views.py pour les vues de catégorie :
 from unittest.mock import patch, MagicMock
 import pytest
 import json
+from datetime import date, timedelta
 from django.test import RequestFactory
 from django.http import Http404
 
@@ -32,8 +33,8 @@ from results.models import (
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
-def make_competition(cid=1):
-    c = MagicMock(); c.cid = cid; c.name = 'Test'; c.date = None; return c
+def make_competition(cid=1, date=None):
+    c = MagicMock(); c.cid = cid; c.name = 'Test'; c.date = date; return c
 
 def make_cls(cid=1, class_id=10, name='H21', ord_=10):
     c = MagicMock(); c.cid = cid; c.id = class_id; c.name = name; c.ord = ord_; return c
@@ -172,6 +173,16 @@ class TestLoadClassContext:
             _load_class_context(cid=999, class_id=10)
 
     @patch('results.views.Mopcompetitor')
+    @patch('results.views.competition_visible', return_value=False)
+    @patch('results.views.get_object_or_404')
+    def test_invisible_leve_404(self, mock_get404, mock_visible, MockComp):
+        """Compétition invisible → Http404 même si elle existe en base."""
+        mock_get404.return_value = make_competition(1)
+        from results.views import _load_class_context
+        with pytest.raises(Http404):
+            _load_class_context(cid=1, class_id=10)
+
+    @patch('results.views.Mopcompetitor')
     @patch('results.views.get_object_or_404')
     def test_resolve_nom_categorie(self, mock_get404, MockComp):
         """Un nom de catégorie (str non-digit) est résolu via get_object_or_404."""
@@ -258,6 +269,115 @@ class TestHomeView:
         for comp in comps:
             assert hasattr(comp, 'has_individual_competitors')
 
+    # ─── helpers ──────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _run(url='/', comps=None):
+        """Run HomeView with mocked models/render and return (template, context)."""
+        comps = comps if comps is not None else [make_competition(1), make_competition(2)]
+        with patch('results.classViews.Mopcompetition') as MockComp, \
+             patch('results.classViews.Mopteam') as MockTeam, \
+             patch('results.classViews.Mopcompetitor') as MockCompetitor, \
+             patch('results.classViews.render') as mock_render:
+            MockComp.objects.all.return_value = comps
+            MockTeam.objects.filter.return_value.values_list.return_value.distinct.return_value = []
+            MockCompetitor.objects.filter.return_value.exclude.return_value.exists.return_value = True
+            MockCompetitor.objects.filter.return_value.exists.return_value = True
+            from results.classViews import HomeView
+            HomeView.as_view()(rf_get(url))
+            _, template, context = mock_render.call_args[0]
+            return template, context
+
+    @staticmethod
+    def _comps():
+        """Five dated competitions, ordered oldest → newest."""
+        return [
+            make_competition(1, date=date(2024, 6, 15)),
+            make_competition(2, date=date(2025, 3, 20)),
+            make_competition(3, date=date(2025, 9, 10)),
+            make_competition(4, date=date(2026, 1, 5)),
+            make_competition(5, date=date(2026, 7, 1)),
+        ]
+
+    # -----------------------------------------------------------------─────
+
+    def test_defaut_limite_trois_plus_recentes(self):
+        """Sans paramètre → seules les 3 compétitions les plus récentes."""
+        _, ctx = self._run(comps=self._comps())
+        ids = [c.cid for c in ctx['competitions']]
+        assert ids == [5, 4, 3]
+
+    def test_defaut_trie_par_date_decroissante(self):
+        _, ctx = self._run(comps=self._comps())
+        dates = [c.date for c in ctx['competitions']]
+        assert dates == sorted(dates, reverse=True)
+
+    def test_regroupe_par_annee(self):
+        _, ctx = self._run(url='/?months=100', comps=self._comps())
+        years = [year for year, _ in ctx['years']]
+        assert years == [2026, 2025, 2024]
+        by_year = dict(ctx['years'])
+        assert [c.cid for c in by_year[2026]] == [5, 4]
+        assert [c.cid for c in by_year[2025]] == [3, 2]
+        assert [c.cid for c in by_year[2024]] == [1]
+
+    def test_filtre_mois_garde_seulement_recentes(self):
+        cutoff = date.today() - timedelta(days=45)
+        recent = make_competition(10, date=cutoff)
+        old = make_competition(11, date=date(2020, 1, 1))
+        _, ctx = self._run(url='/?months=2', comps=[old, recent])
+        assert ctx['months'] == 2
+        assert [c.cid for c in ctx['competitions']] == [10]
+        assert ctx['active_filter'] is True
+
+    def test_mode_annee_garde_toute_l_annee(self):
+        _, ctx = self._run(url='/?year=2025', comps=self._comps())
+        assert ctx['selected_year'] == 2025
+        assert ctx['active_filter'] is True
+        assert [c.cid for c in ctx['competitions']] == [3, 2]
+        assert [year for year, _ in ctx['years']] == [2025]
+
+    def test_annee_prioritaire_sur_mois(self):
+        """year + months simultanés → l'année gagne (modes exclusifs)."""
+        _, ctx = self._run(url='/?year=2024&months=1', comps=self._comps())
+        assert ctx['selected_year'] == 2024
+        assert ctx['months'] is None
+        assert [c.cid for c in ctx['competitions']] == [1]
+
+    def test_parametres_invalides_retour_au_defaut(self):
+        _, ctx = self._run(url='/?year=9999&months=abc', comps=self._comps())
+        assert ctx['selected_year'] is None
+        assert ctx['months'] is None
+        assert ctx['active_filter'] in (None, False)
+        assert [c.cid for c in ctx['competitions']] == [5, 4, 3]
+
+    def test_available_years_decroissants(self):
+        _, ctx = self._run(comps=self._comps())
+        assert ctx['available_years'] == [2026, 2025, 2024]
+
+    def test_months_zero_retour_au_defaut(self):
+        """months=0 (ou négatif) → considéré invalide → 3 plus récentes."""
+        _, ctx = self._run(url='/?months=0', comps=self._comps())
+        assert ctx['months'] is None
+        assert ctx['active_filter'] is False
+        assert [c.cid for c in ctx['competitions']] == [5, 4, 3]
+
+    def test_annotation_relais_utilise_exclude_par_competition(self):
+        """HomeView annotates chaque compétition via la branche relais (exclude)."""
+        comps = self._comps()
+        with patch('results.classViews.Mopcompetition') as MockComp, \
+             patch('results.classViews.Mopteam') as MockTeam, \
+             patch('results.classViews.Mopcompetitor') as MockCompetitor, \
+             patch('results.classViews.render'):
+            MockComp.objects.all.return_value = comps
+            MockTeam.objects.filter.return_value.values_list.return_value.distinct.return_value = [10]
+            MockCompetitor.objects.filter.return_value.exclude.return_value.exists.return_value = True
+            from results.classViews import HomeView
+            HomeView.as_view()(rf_get())
+        recent = sorted(comps, key=lambda c: c.date, reverse=True)[:HomeView.default_limit]
+        for comp in recent:
+            assert comp.has_individual_competitors is True
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # competition_detail
@@ -323,6 +443,36 @@ class TestCompetitionDetailView:
         cls1 = make_cls(1, 10); cls2 = make_cls(1, 11)
         _, ctx = self._run(classes=[cls1, cls2])
         assert len(ctx['class_stats']) == 2
+
+    def _run_class_stats(self, cls, relay_cls_ids, relay_total=2, comp_total=5):
+        """Run CompetitionDetailView avec une seule catégorie et des totaux donnés."""
+        with patch('results.classViews.get_object_or_404', return_value=make_competition(1)), \
+             patch('results.classViews.Mopclass') as MockClass, \
+             patch('results.classViews.Mopteam') as MockTeam, \
+             patch('results.classViews.Mopcompetitor') as MockComp, \
+             patch('results.classViews.get_courses_map', return_value={}), \
+             patch('results.classViews.get_class_controls', return_value=([], {})), \
+             patch('results.classViews.render') as mock_render:
+            MockClass.objects.filter.return_value.order_by.return_value = [cls]
+            MockTeam.objects.filter.return_value.values_list.return_value.distinct.return_value = list(relay_cls_ids)
+            MockTeam.objects.filter.return_value.count.return_value = relay_total
+            MockComp.objects.filter.return_value.count.return_value = comp_total
+            from results.classViews import CompetitionDetailView
+            CompetitionDetailView.as_view()(rf_get(), cid=1)
+            _, _, ctx = mock_render.call_args[0]
+            return ctx
+
+    def test_classe_relais_sans_equipe_ignoree(self):
+        """Catégorie relais sans équipe (total 0) → absente de class_stats."""
+        cls1 = make_cls(1, 10)
+        ctx = self._run_class_stats(cls1, relay_cls_ids=[10], relay_total=0)
+        assert ctx['class_stats'] == []
+
+    def test_classe_individuelle_sans_concurrent_ignoree(self):
+        """Catégorie individuelle sans concurrent (total 0) → absente de class_stats."""
+        cls1 = make_cls(1, 10)
+        ctx = self._run_class_stats(cls1, relay_cls_ids=set(), comp_total=0)
+        assert ctx['class_stats'] == []
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -556,6 +706,37 @@ class TestCompetitorDetailView:
         _, _, ctx = mock_render.call_args[0]
         assert ctx['total_time'] == 'OK'  # status_label mocké
 
+    @patch('results.views.compute_splits', return_value=[{'ctrl_name': 'P31', 'abs_raw': 1200}])
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.Moporganization')
+    @patch('results.views.Mopclass')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    def test_troncon_arrivee_ajoute(self, mock_get404, mock_render, MockClass, MockOrg, *_):
+        """Un coureur classé avec splits reçoit un tronçon « Arrivée »."""
+        comp = make_competition(); c = make_competitor(1, rt=5000)
+        mock_get404.side_effect = [comp, c]
+        MockOrg.objects.filter.return_value.first.return_value = None
+        MockClass.objects.filter.return_value.first.return_value = None
+        from results.views import competitor_detail
+        competitor_detail(rf_get(), cid=1, competitor_id=1)
+        _, _, ctx = mock_render.call_args[0]
+        last = ctx['splits'][-1]
+        assert last['ctrl_name'] == 'Arrivée'
+        assert last['leg_raw'] == 3800   # 5000 - 1200
+        assert last['abs_raw'] == 5000
+
+    @patch('results.views.render')  # non atteint (le 404 précède)
+    @patch('results.views.get_object_or_404')
+    def test_invisible_leve_404(self, mock_get404, mock_render):
+        """Compétition invisible → Http404."""
+        mock_get404.return_value = make_competition(1)
+        with patch('results.views.competition_visible', return_value=False):
+            from results.views import competitor_detail
+            with pytest.raises(Http404):
+                competitor_detail(rf_get(), cid=1, competitor_id=1)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # api_class_results
@@ -639,6 +820,25 @@ class TestSupermanAnalysis:
         # P31 radio absent → valid=False → points[1:] = None
         assert series[0]['points'][1] is None
 
+    @patch('results.views.get_org_map', return_value={1: 'COLE'})
+    @patch('results.views.get_class_controls', return_value=([{'ctrl_id': 31, 'ctrl_name': 'P31'}], {}))
+    @patch('results.views.get_radio_map', return_value={1: {31: 1200}})
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    def test_radio_presente_points_loss_calcules(self, MockComp, mock_get404, mock_render, *_):
+        """Radio à 1200 → loss de 0 par rapport au superman cumulé, puis arrivée."""
+        self._setup(mock_get404)
+        c = make_competitor(1, rt=5000, org=1)
+        MockComp.objects.filter.return_value = [c]
+        from results.views import superman_analysis
+        superman_analysis(rf_get(), cid=1, class_id=10)
+        _, _, ctx = mock_render.call_args[0]
+        series = json.loads(ctx['series_json'])
+        # P31=1200 (cum=1200) → loss 0 ; totale=5000-5000 → 0
+        assert series[0]['points'] == [0, 0, 0]
+        assert len(series[0]['labels']) == 3
+
     @patch('results.views.get_org_map', return_value={1: 'COLE', 2: 'NOSE'})
     @patch('results.views.get_class_controls', return_value=([], {}))
     @patch('results.views.get_radio_map', return_value={})
@@ -709,6 +909,25 @@ class TestPerformanceAnalysis:
         _, _, ctx = mock_render.call_args[0]
         assert ctx['n_finishers'] == 2
         assert ctx['n_legs'] == 1   # 0 contrôles → 1 tronçon
+
+    @patch('results.views.get_org_map', return_value={})
+    @patch('results.views.get_class_controls', return_value=([{'ctrl_id': 31, 'ctrl_name': 'P31'}], {}))
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    def test_indices_none_et_mean_pi_none_sans_radio(self, MockComp, mock_get404, mock_render, *_):
+        """Aucune radio intermédiaire → leg_matrix vide, indices None, mean_pi None."""
+        mock_get404.side_effect = [make_competition(), make_cls()]
+        c = make_competitor(1, rt=5000)
+        MockComp.objects.filter.return_value = [c]
+        from results.views import performance_analysis
+        performance_analysis(rf_get(), cid=1, class_id=10)
+        _, _, ctx = mock_render.call_args[0]
+        series = json.loads(ctx['series_json'])
+        assert series[0]['indices'] == [None, None]   # P31 + Arrivée
+        assert series[0]['mean_pi'] is None
+        assert series[0]['std_pi'] is None
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1189,6 +1408,102 @@ class TestRecapitulatifAnalysis:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# _load_recapitulatif_data — appel direct sans contexte (branche « else »)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestLoadRecapitulatifDataDirect:
+    @patch('results.views.compute_splits', return_value=[])
+    @patch('results.views.mark_best_splits')
+    @patch('results.views.rank_splits')
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.get_org_map', return_value={})
+    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views._load_class_context')
+    @patch('results.views.Mopteam')
+    def test_sans_contexte_appelle_load_class_context(self, MockTeam, mock_load_ctx, *_):
+        """Appel direct (CSV) → chargement via _load_class_context."""
+        competition = make_competition(); cls_ = make_cls()
+        mock_load_ctx.return_value = (competition, cls_, [], None)
+        from results.views import _load_recapitulatif_data
+        comp, c_, course, results, controls, prev, nxt, leader, errs = \
+            _load_recapitulatif_data(cid=1, class_id=10)
+        mock_load_ctx.assert_called_once_with(1, 10)
+        assert comp is competition and c_ is cls_ and course is None
+        assert results == [] and controls == []
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# recapitulatif_csv
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestRecapitulatifCsv:
+    def _csv_runner(self, id_=1, ok=True, splits=None, class_name='H21',
+                    org_name='COLE', rank=1):
+        c = MagicMock()
+        c.id = id_; c.name = f'Runner {id_}'; c.rank = rank; c.is_ok = ok
+        c.class_obj = MagicMock(); c.class_obj.name = class_name
+        c.org_obj = MagicMock(); c.org_obj.name = org_name
+        c.splits = splits or []
+        return c
+
+    def _call(self, runner, controls=None, course=None, relay=False):
+        competition = make_competition(); cls_ = make_cls(1, 10)
+        with patch('results.views._load_class_context') as mock_ctx, \
+             patch('results.views._is_relay', return_value=relay), \
+             patch('results.views._load_recapitulatif_data') as mock_data, \
+             patch('results.views.redirect') as mock_redirect:
+            mock_ctx.return_value = (competition, cls_, [runner], course)
+            mock_data.return_value = (competition, cls_, course, [runner],
+                                      controls or [], None, None, None, [])
+            from results.views import recapitulatif_csv
+            response = recapitulatif_csv(rf_get(), cid=1, class_id=10)
+            return response, mock_redirect
+
+    def test_relais_redirige(self):
+        runner = self._csv_runner()
+        _, mock_redirect = self._call(runner, relay=True)
+        mock_redirect.assert_called_once()
+
+    def test_avec_troncons_ecrit_deux_lignes_par_coureur(self):
+        runner = self._csv_runner(splits=[
+            {'leg_time': '0.00', 'leg_rank': None, 'abs_time': '0.00', 'abs_rank': 1},
+            {'leg_time': '0.00', 'leg_rank': 1, 'abs_time': '0.00', 'abs_rank': 2},
+        ])
+        response, _ = self._call(runner, controls=[{'ctrl_name': 'P31'}])
+        text = response.content.decode('utf-8')
+        assert 'attachment; filename="recapitulatif_H21_1.csv"' in response['Content-Disposition']
+        lines = text.strip().split('\r\n')
+        assert lines[0].strip().startswith('#') and 'Arr.' in lines[0]
+        # 1 en-tête + 2 lignes (tronçon + cumulé)
+        assert len(lines) == 3
+        assert 'Runner 1' in lines[1]
+        assert '(2)' in lines[2]     # rang cumulé de l'arrivée
+
+    def test_sans_troncons_ligne_unique(self):
+        runner = self._csv_runner(splits=[{'leg_time': '-', 'leg_rank': None,
+                                           'abs_time': '-', 'abs_rank': None}])
+        response, _ = self._call(runner)
+        text = response.content.decode('utf-8')
+        assert 'Arr.' not in text
+        assert text.count('Runner 1') == 1
+
+    def test_non_classe_tirets(self):
+        runner = self._csv_runner(ok=False, splits=[{}, {}])
+        response, _ = self._call(runner, controls=[{'ctrl_name': 'P31'}])
+        text = response.content.decode('utf-8')
+        assert '—' in text
+
+    def test_circuit_ajoute_categorie(self):
+        runner = self._csv_runner(class_name='D21', org_name='NOSE')
+        course = {'hash': 'abc12345', 'display_name': 'Circuit'}
+        response, _ = self._call(runner, course=course)
+        text = response.content.decode('utf-8')
+        assert 'Catégorie' in text
+        assert 'D21' in text
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # relay_results
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -1216,6 +1531,44 @@ class TestRelayResultsView:
         _, template, ctx = mock_render.call_args[0]
         assert template == 'results/relay_results.html'
         assert 'teams_data' in ctx and 'leader_time' in ctx and 'n_legs' in ctx
+
+    @patch('results.views.render')  # non atteint (le 404 précède)
+    @patch('results.views.get_object_or_404')
+    def test_404_si_invisible(self, mock_get404, mock_render):
+        mock_get404.return_value = make_competition(1)
+        with patch('results.views.competition_visible', return_value=False):
+            from results.views import relay_results
+            with pytest.raises(Http404):
+                relay_results(rf_get(), cid=1, class_id=10)
+
+    @patch('results.views.get_controls_by_leg', return_value=({}, {}))
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.get_org_map', return_value={1: 'COLE'})
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.Mopteammember')
+    @patch('results.views.Mopteam')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    def test_etape_sans_coureur_emplacement_vide(self, mock_get404, mock_render, MockTeam, MockTM, MockComp, *_):
+        """Équipe avec un trou dans les étapes → emplacement vide « — »."""
+        mock_get404.side_effect = [make_competition(), make_cls()]
+        t1 = MagicMock(); t1.id = 1; t1.rt = 10000; t1.stat = STAT_OK; t1.org = 1
+        t2 = MagicMock(); t2.id = 2; t2.rt = 12000; t2.stat = STAT_OK; t2.org = 1
+        MockTeam.objects.filter.return_value = [t1, t2]
+        m1 = MagicMock(); m1.id = 1; m1.rid = 101; m1.leg = 1; m1.ord = 1
+        m2 = MagicMock(); m2.id = 2; m2.rid = 102; m2.leg = 2; m2.ord = 1
+        MockTM.objects.filter.return_value.order_by.return_value = [m1, m2]
+        c1 = make_competitor(101, rt=10000); c2 = make_competitor(102, rt=12000)
+        MockComp.objects.filter.return_value = [c1, c2]
+        from results.views import relay_results
+        relay_results(rf_get(), cid=1, class_id=10)
+        _, _, ctx = mock_render.call_args[0]
+        assert ctx['n_legs'] == 2
+        team1 = ctx['teams_data'][0]          # t1 (10000) avant t2 (12000)
+        assert team1['legs'][1]['name'] == '—'       # étape 2 sans coureur
+        assert team1['legs'][1]['runner_id'] is None
+        team2 = ctx['teams_data'][1]
+        assert team2['legs'][0]['name'] == '—'       # étape 1 sans coureur
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1285,6 +1638,15 @@ class TestOrgResultsView:
         org_results(rf_get(), cid=1, org_id=5)
         _, _, ctx = mock_render.call_args[0]
         assert ctx['competitors'][0].cat_rank is None
+
+    @patch('results.views.render')  # non atteint (le 404 précède)
+    @patch('results.views.get_object_or_404')
+    def test_invisible_leve_404(self, mock_get404, mock_render):
+        mock_get404.return_value = make_competition(1)
+        with patch('results.views.competition_visible', return_value=False):
+            from results.views import org_results
+            with pytest.raises(Http404):
+                org_results(rf_get(), cid=1, org_id=5)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

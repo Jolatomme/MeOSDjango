@@ -13,6 +13,7 @@ from results.templatetags.meos_tags import (
     status_badge,
     status_label,
     time_behind,
+    display_name,
 )
 
 
@@ -241,3 +242,25 @@ class TestTimeBehindTag:
         assert time_behind('', '') == '-'
         assert time_behind('', '36000') == '-'
         assert time_behind('36000', '') == '-'
+
+
+class TestDisplayNameFilter:
+    """Tests pour le filter display_name (Prénom Nom → 'Nom,<br>Prénom')."""
+
+    def test_deux_parties(self):
+        from django.utils.safestring import SafeString
+        result = display_name('Luc Martin')
+        assert isinstance(result, SafeString)
+        assert result == 'Martin,<br>Luc'
+
+    def test_triple_nom_tout_dans_seconde_partie(self):
+        assert display_name('Jean Paul Sartre') == 'Paul Sartre,<br>Jean'
+
+    def test_nom_seul(self):
+        assert display_name('Martin') == 'Martin'
+
+    def test_nom_vide(self):
+        assert display_name('') == ''
+
+    def test_espaces_superflus(self):
+        assert display_name('  Luc Martin  ') == 'Martin,<br>Luc'

@@ -2,6 +2,7 @@ import json
 import re
 import markdown
 from collections import defaultdict
+from datetime import date
 
 from django.shortcuts import render, get_object_or_404
 from django.http import Http404
@@ -14,30 +15,45 @@ from .models import (
 )
 from .services import (
     get_org_map, get_class_controls, get_courses_map,
-    slugify_no_prefix,
+    slugify_no_prefix, competition_visible,
 )
-from django.db import connection
 
 from .meos_checker import check_meos_file
 from .verifie_moi import generate_verifie_moi_csv
 from .forms import MeosFileForm, VerifieMoiFileForm
 
 
-def _competition_visible(cid):
-    """Return True if the competition is visible (not deleted, not hidden)."""
-    try:
-        with connection.cursor() as cur:
-            cur.execute(
-                "SELECT frozen, visible, deleted FROM results_competitionconfig WHERE cid=%s",
-                [cid],
-            )
-            row = cur.fetchone()
-    except Exception:
-        return True
-    if not row or len(row) < 3:
-        return True
-    _frozen, visible, deleted = row
-    return not deleted and visible
+def has_individual_competitors(cid, relay_class_ids=None):
+    """Return True if the competition has individual (non-relay) runners."""
+    if relay_class_ids is None:
+        relay_class_ids = set(
+            Mopteam.objects.filter(cid=cid).values_list('cls', flat=True).distinct()
+        )
+    if relay_class_ids:
+        return Mopcompetitor.objects.filter(
+            cid=cid, st__gt=0
+        ).exclude(cls__in=relay_class_ids).exists()
+    return Mopcompetitor.objects.filter(cid=cid, st__gt=0).exists()
+
+
+def _days_in_month(year, month):
+    """Number of days in the given month."""
+    next_first = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+    return (next_first - date(year, month, 1)).days
+
+
+def _months_ago(n, ref=None):
+    """Date situated ``n`` months before ``ref`` (today by default).
+
+    Handles month/year rollover and clamps the day to the last day of the
+    target month (e.g. Jan 31 minus 1 month → Dec 31).
+    """
+    ref = ref or date.today()
+    total = ref.year * 12 + (ref.month - 1) - n
+    year, month0 = divmod(total, 12)
+    month = month0 + 1
+    day = min(ref.day, _days_in_month(year, month))
+    return date(year, month, day)
 
 
 class RenderShortcutMixin:
@@ -52,31 +68,72 @@ class RenderShortcutMixin:
 
 
 class HomeView(RenderShortcutMixin, ListView):
-    """Landing page listing all competitions.
+    """Landing page listing competitions, grouped by year.
 
-    For each competition, annotates ``has_individual_competitors`` to let the
-    template know whether individual (non-relay) results are available.
+    Three mutually exclusive display modes (most specific wins):
+      1. ``?year=YYYY``  — every competition of that year;
+      2. ``?months=X``   — competitions from the last X months;
+      3. no parameter    — the 3 most recent competitions.
+    Competitions are always sorted by date, most recent first. The template
+    receives ``years`` (list of ``(year, [competitions])``), ``months``,
+    ``selected_year`` and ``available_years``.
     """
     template_name = "results/home.html"
     context_object_name = "competitions"
+    default_limit = 3
 
     def get_queryset(self):
-        """Return visible competitions, annotated with relay/individual flags."""
+        """Return visible competitions, filtered then sorted newest first."""
         qs = list(Mopcompetition.objects.all())
-        qs = [c for c in qs if _competition_visible(c.cid)]
-        for comp in qs:
-            relay_class_ids = set(
-                Mopteam.objects.filter(cid=comp.cid).values_list('cls', flat=True).distinct()
-            )
-            if relay_class_ids:
-                comp.has_individual_competitors = Mopcompetitor.objects.filter(
-                    cid=comp.cid, st__gt=0
-                ).exclude(cls__in=relay_class_ids).exists()
-            else:
-                comp.has_individual_competitors = Mopcompetitor.objects.filter(
-                    cid=comp.cid, st__gt=0
-                ).exists()
-        return qs
+        qs = [c for c in qs if competition_visible(c.cid)]
+        rqs = sorted(qs, key=lambda c: c.date or date.min, reverse=True)
+
+        self.available_years = sorted(
+            {c.date.year for c in rqs if c.date}, reverse=True
+        )
+
+        self.months = None
+        self.selected_year = None
+        self.active_filter = False
+        months_raw = self.request.GET.get('months', '').strip()
+        year_raw = self.request.GET.get('year', '').strip()
+
+        selected_year = year_raw if year_raw.isdigit() else None
+        months_value = months_raw if months_raw.isdigit() else None
+
+        if selected_year is not None and int(selected_year) in self.available_years:
+            self.selected_year = int(selected_year)
+            self.active_filter = True
+            rqs = [c for c in rqs if c.date and c.date.year == self.selected_year]
+        elif months_value is not None and int(months_value) >= 1:
+            self.months = int(months_value)
+            self.active_filter = True
+            cutoff = _months_ago(self.months)
+            rqs = [c for c in rqs if c.date and c.date >= cutoff]
+        else:
+            rqs = rqs[:self.default_limit]
+
+        for comp in rqs:
+            comp.has_individual_competitors = has_individual_competitors(comp.cid)
+
+        groups = defaultdict(list)
+        for comp in rqs:
+            groups[comp.date.year if comp.date else None].append(comp)
+        self.years = sorted(
+            groups.items(),
+            key=lambda item: item[0] if item[0] is not None else -1,
+            reverse=True,
+        )
+        return rqs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['years'] = self.years
+        ctx['months'] = self.months
+        ctx['selected_year'] = self.selected_year
+        ctx['available_years'] = self.available_years
+        ctx['active_filter'] = self.active_filter
+        return ctx
 
 
 class CompetitionDetailView(RenderShortcutMixin, DetailView):
@@ -94,7 +151,7 @@ class CompetitionDetailView(RenderShortcutMixin, DetailView):
 
     def get_object(self, queryset=None):
         obj = get_object_or_404(Mopcompetition, cid=self.kwargs['cid'])
-        if not _competition_visible(obj.cid):
+        if not competition_visible(obj.cid):
             raise Http404
         return obj
 
@@ -108,12 +165,7 @@ class CompetitionDetailView(RenderShortcutMixin, DetailView):
             Mopteam.objects.filter(cid=cid).values_list('cls', flat=True).distinct()
         )
 
-        if relay_class_ids:
-            has_individual = Mopcompetitor.objects.filter(
-                cid=cid, st__gt=0
-            ).exclude(cls__in=relay_class_ids).exists()
-        else:
-            has_individual = Mopcompetitor.objects.filter(cid=cid, st__gt=0).exists()
+        has_individual = has_individual_competitors(cid, relay_class_ids)
 
         class_stats = []
         for cls in classes:
@@ -160,7 +212,7 @@ class StartListView(RenderShortcutMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         cid = self.kwargs['cid']
         competition = get_object_or_404(Mopcompetition, cid=cid)
-        if not _competition_visible(cid):
+        if not competition_visible(cid):
             raise Http404
 
         competitors = Mopcompetitor.objects.filter(cid=cid, st__gt=0).select_related()
@@ -259,7 +311,7 @@ class StatisticsView(RenderShortcutMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         cid = self.kwargs['cid']
         competition = get_object_or_404(Mopcompetition, cid=cid)
-        if not _competition_visible(cid):
+        if not competition_visible(cid):
             raise Http404
 
         total = Mopcompetitor.objects.filter(cid=cid).count()

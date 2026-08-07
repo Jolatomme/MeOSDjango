@@ -113,6 +113,20 @@ class TestMopUpdateAuth:
         response = mop_update(request)
         assert response.status_code == 403
 
+    def test_password_non_configure(self, factory):
+        """MOP_PASSWORD absent des settings → 403 BADPWD."""
+        with patch.object(settings, 'MOP_PASSWORD', ''):
+            request = factory.post(
+                '/mop/update/',
+                data=b'<MeOS><Competition>1</Competition></MeOS>',
+                content_type='application/xml',
+                HTTP_COMPETITION='1',
+                HTTP_PWD='nimporte',
+            )
+            response = mop_update(request)
+            assert response.status_code == 403
+            assert b'BADPWD' in response.content
+
 
 class TestMopUpdateBody:
     """Tests pour le corps de la requête."""

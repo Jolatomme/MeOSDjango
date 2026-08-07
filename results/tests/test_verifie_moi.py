@@ -368,6 +368,36 @@ class TestGenerateVerifieMoiCsv:
         assert result.n_with_card == 1
 
 
+# ─── Tests get_start_name ─────────────────────────────────────────────────────
+
+class TestGetStartName:
+
+    def _call(self, class_name):
+        from results.verifie_moi import get_start_name
+        return get_start_name(class_name)
+
+    def test_categorie_vide(self):
+        assert self._call('') == ''
+        assert self._call(None) == ''
+
+    def test_correspondance_exacte(self):
+        assert self._call('H21') == 'A'
+        assert self._call('D21') == 'B'
+        assert self._call('H10') == 'Vert'
+
+    def test_correspondance_prefixe(self):
+        """'H21E' → préfixe 'H21' → 'A'."""
+        assert self._call('H21E') == 'A'
+        assert self._call('D21L') == 'B'
+
+    def test_inconnu_retourne_vide(self):
+        assert self._call('ZZ99') == ''
+
+    def test_sans_prefixe_retourne_vide(self):
+        """Aucun préfixe lettre+chiffres → ''."""
+        assert self._call('—') == ''
+
+
 # ─── Tests CsvResult ──────────────────────────────────────────────────────────
 
 class TestCsvResultProperties:

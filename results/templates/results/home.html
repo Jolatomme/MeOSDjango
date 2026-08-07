@@ -21,54 +21,98 @@
   <i class="bi bi-calendar-event me-2 text-success"></i>Compétitions
 </h2>
 
+<div class="co-card p-3 mb-4">
+  <div class="d-flex flex-wrap align-items-end gap-3">
+    <div>
+      <label for="id-year" class="small fw-semibold text-muted mb-1 d-block">Année</label>
+      <select id="id-year" name="year"
+              class="form-select form-select-sm"
+              onchange="if (this.value) window.location.href = this.value;">
+        <option value="{% url 'results:home' %}"
+                {% if not selected_year and not months %}selected{% endif %}>
+          3 plus récentes
+        </option>
+        {% for y in available_years %}
+          <option value="{% url 'results:home' %}?year={{ y }}"
+                  {% if selected_year == y %}selected{% endif %}>
+            {{ y }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <form method="get" action="{% url 'results:home' %}" class="d-flex align-items-end gap-2 mb-0">
+      <div>
+        <label for="id-months" class="small fw-semibold text-muted mb-1 d-block">X derniers mois</label>
+        <input type="number" id="id-months" name="months" min="1" value="{{ months|default:'' }}"
+               class="form-control form-control-sm" style="width:100px" placeholder="12">
+      </div>
+      <button type="submit" class="btn btn-sm btn-success">Filtrer</button>
+    </form>
+  </div>
+</div>
+
 {% if competitions %}
-  <div class="row g-3">
-    {% for comp in competitions %}
-    <div class="col-12 col-md-6 col-lg-4">
-      <a href="{% url 'results:competition_detail' comp.cid %}" class="text-decoration-none">
-        <div class="co-card h-100">
-          <div class="co-card-header d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-compass me-2"></i>{{ comp.name }}</span>
-            {% if comp.date %}
-              <span class="badge bg-warning text-dark">{{ comp.date|date:"d/m/Y" }}</span>
-            {% endif %}
-          </div>
-          <div class="p-3">
-            {% if comp.organizer %}
-              <div class="mb-1 text-muted small">
-                <i class="bi bi-building me-1"></i>{{ comp.organizer }}
-              </div>
-            {% endif %}
-            <div class="d-flex gap-2 flex-wrap mt-2">
-              <span class="badge bg-success rounded-pill">
-                <i class="bi bi-arrow-right me-1"></i>Voir les résultats
-              </span>
-              {% if comp.homepage %}
-                <a href="{{ comp.homepage }}" target="_blank"
-                   class="badge bg-secondary rounded-pill text-decoration-none"
-                   onclick="event.stopPropagation()">
-                  <i class="bi bi-globe me-1"></i>Site web
-                </a>
-              {% endif %}
-              {% if comp.has_individual_competitors %}
-                <a href="{% url 'results:start_list' comp.cid %}"
-                   class="badge bg-info rounded-pill text-decoration-none"
-                   onclick="event.stopPropagation()">
-                  <i class="bi bi-clock me-1"></i>Horaire
-                </a>
+  {% for year, comps in years %}
+  <section class="mb-4">
+    <h3 class="h5 fw-bold mb-2 d-flex align-items-center" style="font-family:var(--font-display);">
+      <i class="bi bi-calendar-week me-2 text-success"></i>
+      {% if year %}{{ year }}{% else %}Sans date{% endif %}
+      <span class="badge bg-success-subtle text-success ms-2">{{ comps|length }}</span>
+    </h3>
+    <div class="row g-3">
+      {% for comp in comps %}
+      <div class="col-12 col-md-6 col-lg-4">
+        <a href="{% url 'results:competition_detail' comp.cid %}" class="text-decoration-none">
+          <div class="co-card h-100">
+            <div class="co-card-header d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-compass me-2"></i>{{ comp.name }}</span>
+              {% if comp.date %}
+                <span class="badge bg-warning text-dark">{{ comp.date|date:"d/m/Y" }}</span>
               {% endif %}
             </div>
+            <div class="p-3">
+              {% if comp.organizer %}
+                <div class="mb-1 text-muted small">
+                  <i class="bi bi-building me-1"></i>{{ comp.organizer }}
+                </div>
+              {% endif %}
+              <div class="d-flex gap-2 flex-wrap mt-2">
+                <span class="badge bg-success rounded-pill">
+                  <i class="bi bi-arrow-right me-1"></i>Voir les résultats
+                </span>
+                {% if comp.homepage %}
+                  <a href="{{ comp.homepage }}" target="_blank"
+                     class="badge bg-secondary rounded-pill text-decoration-none"
+                     onclick="event.stopPropagation()">
+                    <i class="bi bi-globe me-1"></i>Site web
+                  </a>
+                {% endif %}
+                {% if comp.has_individual_competitors %}
+                  <a href="{% url 'results:start_list' comp.cid %}"
+                     class="badge bg-info rounded-pill text-decoration-none"
+                     onclick="event.stopPropagation()">
+                    <i class="bi bi-clock me-1"></i>Horaire
+                  </a>
+                {% endif %}
+              </div>
+            </div>
           </div>
-        </div>
-      </a>
+        </a>
+      </div>
+      {% endfor %}
     </div>
-    {% endfor %}
-  </div>
+  </section>
+  {% endfor %}
 {% else %}
   <div class="co-card text-center p-5 text-muted">
     <i class="bi bi-search fs-1 d-block mb-3 opacity-25"></i>
-    <p class="mb-0">Aucune compétition trouvée dans la base de données MeOS.</p>
-    <p class="small mt-1">Vérifiez la connexion et que la table <code>mopCompetition</code> contient des données.</p>
+    {% if active_filter %}
+      <p class="mb-0">Aucune compétition ne correspond aux filtres sélectionnés.</p>
+      <p class="small mt-1">Essayez une autre année ou un nombre de mois plus grand.</p>
+    {% else %}
+      <p class="mb-0">Aucune compétition trouvée dans la base de données MeOS.</p>
+      <p class="small mt-1">Vérifiez la connexion et que la table <code>mopCompetition</code> contient des données.</p>
+    {% endif %}
   </div>
 {% endif %}
 {% endblock %}
