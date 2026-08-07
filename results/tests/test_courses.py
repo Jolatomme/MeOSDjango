@@ -215,6 +215,39 @@ class TestGetCoursesMap:
     @patch('results.services.Mopcontrol')
     @patch('results.services.Mopclasscontrol')
     @patch('results.services.Mopclass')
+    def test_class_totals_garde_les_circuits_avec_participants(self, MockClass, MockCC, MockCtrl):
+        """class_totals fourni → seuls les circuits ayant des participants restent."""
+        MockClass.objects.filter.return_value.order_by.return_value = [
+            make_cls(10, 'H21'), make_cls(11, 'H35')
+        ]
+        MockCC.objects.filter.return_value.order_by.return_value = [
+            make_cc(10, 31), make_cc(10, 32),
+            make_cc(11, 33), make_cc(11, 34),
+        ]
+        MockCtrl.objects.filter.return_value = []
+
+        from results.services import get_courses_map
+        result = get_courses_map(cid=1, class_totals={10: 5, 11: 0})
+        assert len(result) == 1
+        assert list(result.values())[0]['class_ids'] == [10]
+
+    @patch('results.services.Mopcontrol')
+    @patch('results.services.Mopclasscontrol')
+    @patch('results.services.Mopclass')
+    def test_class_totals_tous_a_zero_retourne_vide(self, MockClass, MockCC, MockCtrl):
+        """class_totals entièrement à 0 → aucun circuit conservé."""
+        MockClass.objects.filter.return_value.order_by.return_value = [make_cls(10, 'H21')]
+        MockCC.objects.filter.return_value.order_by.return_value = [
+            make_cc(10, 31), make_cc(10, 32),
+        ]
+        MockCtrl.objects.filter.return_value = []
+
+        from results.services import get_courses_map
+        assert get_courses_map(cid=1, class_totals={10: 0}) == {}
+
+    @patch('results.services.Mopcontrol')
+    @patch('results.services.Mopclasscontrol')
+    @patch('results.services.Mopclass')
     def test_hash_coherent_avec_compute_course_hash(self, MockClass, MockCC, MockCtrl):
         MockClass.objects.filter.return_value.order_by.return_value = [make_cls(10, 'H21')]
         MockCC.objects.filter.return_value.order_by.return_value = [

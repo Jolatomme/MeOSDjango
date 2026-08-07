@@ -17,7 +17,7 @@ from results.meos_checker import (
     check_completude_coureurs,
     check_meos_file,
     Control, Course, Category, Club, Runner,
-    _fmt_time,
+    _fmt_time, _club_name, _class_name,
 )
 
 
@@ -602,3 +602,126 @@ class TestMeosCheckerView:
             _, _, ctx = mock_render.call_args[0]
         assert ctx.get('report') is None
         assert ctx.get('parse_error') is None
+
+
+# ─── Couverture complémentaire (parse + helpers + règles) ─────────────────────
+
+class TestParseMeosxmlComplement:
+
+    def test_zero_time_texte_invalide_retourne_0(self):
+        xml = _xml(_minimal_body(), zero_time='abc')
+        zt, *_ = parse_meosxml(xml)
+        assert zt == 0
+
+    def test_first_start_non_numerique_retourne_none(self):
+        cats = _class_list(('100', 'H21', '1', 'abc', 120))
+        body = _minimal_body(cats=cats)
+        _, _, _, _, _, categories, _, _ = parse_meosxml(_xml(body))
+        assert categories['100'].first_start is None
+
+    def test_start_interval_non_numerique_retourne_none(self):
+        cats = _class_list(('100', 'H21', '1', 3600, 'xyz'))
+        body = _minimal_body(cats=cats)
+        _, _, _, _, _, categories, _, _ = parse_meosxml(_xml(body))
+        assert categories['100'].start_interval is None
+
+    def test_start_coureur_non_numerique_retourne_none(self):
+        runners = _runner_list(('1', 'Alice', 'pas-un-chiffre', '10', '100', '12345'))
+        body = _minimal_body(runners=runners)
+        _, _, _, _, _, _, _, runners_list = parse_meosxml(_xml(body))
+        assert runners_list[0].start is None
+
+
+class TestHelpersComplement:
+
+    def test_club_name_sans_club(self):
+        assert _club_name(None, {}) == '(sans club)'
+
+    def test_class_name_sans_classe(self):
+        assert _class_name(None, {}) == '?'
+
+    def test_runners_by_course_ignore_categorie_sans_circuit(self):
+        """Un coureur dont la catégorie n'est pas rattachée à un circuit est ignoré."""
+        cats = {'100': Category(id='100', name='H21', course_id='',
+                                first_start=None, start_interval=None)}
+        runners = [
+            Runner(id='1', name='Alice', start=3600, club_id='10', class_id='100', card_no='12345'),
+        ]
+        result = check_club_consecutif(runners, cats, {}, {}, 45000)
+        assert result.status == 'ok'
+
+    def test_club_consecutif_ignore_vacant(self):
+        """Le coureur 'Vacant' sert de séparateur et n'est pas signalé."""
+        runners = [
+            Runner(id='1', name='Vacant', start=3600, club_id='10', class_id='100', card_no='1'),
+            Runner(id='2', name='Alice',  start=3720, club_id='10', class_id='100', card_no='2'),
+        ]
+        cats  = {'100': Category(id='100', name='H21', course_id='1',
+                                 first_start=None, start_interval=None)}
+        courses = {'1': Course(id='1', name='A', controls=[1])}
+        clubs = {'10': Club(id='10', name='COCS')}
+        result = check_club_consecutif(runners, cats, courses, clubs, 45000)
+        assert result.violations == []
+
+    def test_club_consecutif_ignore_gap_sup_2min(self):
+        """Deux coureurs du même club à plus de 2 min d'écart ne sont pas consécutifs."""
+        runners = [
+            Runner(id='1', name='Alice', start=3600, club_id='10', class_id='100', card_no='1'),
+            Runner(id='2', name='Bob',   start=4000, club_id='10', class_id='100', card_no='2'),
+        ]
+        cats  = {'100': Category(id='100', name='H21', course_id='1',
+                                 first_start=3600, start_interval=120)}
+        courses = {'1': Course(id='1', name='A', controls=[1])}
+        clubs = {'10': Club(id='10', name='COCS')}
+        result = check_club_consecutif(runners, cats, courses, clubs, 45000)
+        assert result.violations == []
+
+    def test_entrelacement_ignore_coureur_sans_classe(self):
+        """Un coureur sans classe est ignoré pendant la détection d'entrelacement."""
+        runners = [
+            Runner(id='1', name='Alice', start=3600, club_id='10', class_id=None, card_no='1'),
+            Runner(id='2', name='Bob',   start=3660, club_id='10', class_id='100', card_no='2'),
+            Runner(id='3', name='Cara',  start=3720, club_id='10', class_id='100', card_no='3'),
+        ]
+        cats  = {'100': Category(id='100', name='H21', course_id='1',
+                                 first_start=3600, start_interval=None)}
+        courses = {'1': Course(id='1', name='A', controls=[1])}
+        result = check_entrelacement(runners, cats, courses, 45000)
+        assert result.status == 'ok'
+
+    def test_entrelacement_circuit_vide_ignore(self):
+        result = check_entrelacement([], {}, {}, 45000)
+        assert result.status == 'ok'
+
+
+class TestCompletudeCoureursComplement:
+
+    def test_categorie_sans_circuit_manquant(self):
+        """Catégorie reconnue mais sans circuit → champ 'circuit' manquant."""
+        runners = [Runner(id='1', name='Alice', start=3600, club_id='10', class_id='100', card_no='12345')]
+        cats  = {'100': Category(id='100', name='H21', course_id='',
+                                 first_start=None, start_interval=None)}
+        courses = {}
+        result = check_completude_coureurs(runners, cats, courses)
+        assert 'circuit' in result.violations[0].description
+        assert result.status == 'error'
+
+    def test_categorie_inconnue_signale_categorie_et_circuit(self):
+        """Catégorie inconnue → 'catégorie' manquante (branche elif 'circuit')."""
+        runners = [Runner(id='1', name='Alice', start=3600, club_id='10',
+                          class_id='999', card_no='12345')]
+        result = check_completude_coureurs(runners, {}, {})
+        assert 'catégorie' in result.violations[0].description
+        assert result.status == 'error'
+
+
+class TestCheckReportHasWarnings:
+
+    def test_has_warnings_true_depuis_check_meos_file(self):
+        """check_categories_vides retourne 'warning' → has_warnings est True."""
+        cats = _class_list(('100', 'H21', '1', 3600, 120), ('101', 'H21', '1', 3600, 120))
+        runners = _runner_list(('1', 'Alice', 3600, '10', '100', '12345'))
+        body = _minimal_body(cats=cats, runners=runners)
+        report = check_meos_file(_xml(body), enabled_rules={'categories_vides'})
+        assert report.has_warnings
+        assert not report.has_errors

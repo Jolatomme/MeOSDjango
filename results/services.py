@@ -12,8 +12,26 @@ from .models import (
 
 import re
 from markdown.extensions.toc import slugify_unicode
+from django.db import connection
 
 _PREFIX_RE = re.compile(r'^\d+(\.\d+)*\.?\s+')
+
+
+def competition_visible(cid):
+    """Return True if the competition is visible (not deleted, not hidden)."""
+    try:
+        with connection.cursor() as cur:
+            cur.execute(
+                "SELECT frozen, visible, deleted FROM results_competitionconfig WHERE cid=%s",
+                [cid],
+            )
+            row = cur.fetchone()
+    except Exception:
+        return True
+    if not row or len(row) < 3:
+        return True
+    _frozen, visible, deleted = row
+    return not deleted and visible
 
 
 def slugify_no_prefix(value, separator='-'):

@@ -700,6 +700,96 @@ class TestOchecklistUpdateReportLifecycle:
             self._teardown_mocks()
 
 
+# ─── Tests ochecklist_update : branches restantes de to_datetime ───────────────
+
+class TestOchecklistUpdateToDatetime:
+    """Branches peu fréquentes de to_datetime (naïf, bool, heure seule, secondes)."""
+
+    def _post_created(self, factory, value):
+        payload = {
+            'Version': '1.5',
+            'Creator': 'App',
+            'Created': value,
+            'Event': 'Evt',
+            'Data': [],
+        }
+        body = yaml.dump(payload, default_flow_style=False).encode('utf-8')
+        with patch('ochecklist.views.OchecklistReport') as MockReport, \
+             patch('ochecklist.views.OchecklistRunner'), \
+             patch('ochecklist.views.OchecklistChangeLog'), \
+             patch('ochecklist.views.transaction') as mock_tx:
+            mock_tx.atomic.return_value.__enter__ = lambda s: s
+            mock_tx.atomic.return_value.__exit__ = MagicMock(return_value=False)
+            MockReport.objects.filter.return_value.order_by.return_value.first.return_value = None
+            request = factory.post(
+                '/ochecklist/update/',
+                data=body,
+                content_type='application/yaml',
+            )
+            response = ochecklist_update(request)
+            return response, MockReport
+
+    def test_datetime_naif_devient_aware(self, factory):
+        """datetime sans tzinfo → timezone.make_aware."""
+        response, MockReport = self._post_created(
+            factory, datetime.datetime(2024, 10, 12, 12, 45, 4))
+        assert response.status_code == 200
+        created = MockReport.objects.create.call_args.kwargs['created']
+        assert created.tzinfo is not None
+
+    def test_bool_devient_none(self, factory):
+        response, MockReport = self._post_created(factory, True)
+        assert response.status_code == 200
+        assert MockReport.objects.create.call_args.kwargs['created'] is None
+
+    def test_string_vide_devient_none(self, factory):
+        response, MockReport = self._post_created(factory, '')
+        assert response.status_code == 200
+        assert MockReport.objects.create.call_args.kwargs['created'] is None
+
+    def test_iso_sans_tz_devient_aware(self, factory):
+        response, MockReport = self._post_created(factory, '2024-10-12T12:45:04')
+        assert response.status_code == 200
+        created = MockReport.objects.create.call_args.kwargs['created']
+        assert created.year == 2024 and created.hour == 12
+        assert created.tzinfo is not None
+
+    def test_heure_seule_hhmm(self, factory):
+        """'12:45' → 2000-01-01 12:45 aware."""
+        response, MockReport = self._post_created(factory, '12:45')
+        assert response.status_code == 200
+        created = MockReport.objects.create.call_args.kwargs['created']
+        assert created.year == 2000 and created.hour == 12 and created.minute == 45
+        assert created.tzinfo is not None
+
+    def test_heure_seule_hhmmss(self, factory):
+        """'12:45:30' → 2000-01-01 12:45:30 aware."""
+        response, MockReport = self._post_created(factory, '12:45:30')
+        assert response.status_code == 200
+        created = MockReport.objects.create.call_args.kwargs['created']
+        assert created.second == 30
+
+    def test_string_invalide_devient_none(self, factory):
+        """Ni ISO ni heure seule → None."""
+        response, MockReport = self._post_created(factory, 'pas-une-date')
+        assert response.status_code == 200
+        assert MockReport.objects.create.call_args.kwargs['created'] is None
+
+    def test_secondes_converties(self, factory):
+        """45000 s → 2000-01-01 12:30:00 aware."""
+        response, MockReport = self._post_created(factory, 45000)
+        assert response.status_code == 200
+        created = MockReport.objects.create.call_args.kwargs['created']
+        assert created.hour == 12 and created.minute == 30 and created.second == 0
+
+    def test_secondes_au_dela_24h_rebouclent(self, factory):
+        """90000 s → modulo 86400 → 01:00:00."""
+        response, MockReport = self._post_created(factory, 90000)
+        assert response.status_code == 200
+        created = MockReport.objects.create.call_args.kwargs['created']
+        assert created.hour == 1 and created.minute == 0
+
+
 # ─── Tests ochecklist_update : ChangeLog ───────────────────────────────────────
 
 class TestOchecklistUpdateChangeLog:
@@ -837,6 +927,42 @@ class TestOchecklistUpdateChangeLog:
             assert response.status_code == 200
             m['ChangeLog'].objects.get_or_create.assert_called_once()
             changelog_mock.save.assert_called_once()
+            m['ChangeLog'].objects.create.assert_not_called()
+        finally:
+            self._teardown()
+
+    def test_mise_a_jour_runner_existant_tous_champs_changelog(self, factory):
+        """Runner existant : Bib + NewCard + Comment, et changelog LateStart/NewCard/Comment/NewRunner."""
+        changelog_mock = MagicMock()
+        report_mock = MagicMock()
+        report_mock.version = 'old'
+        report_mock.creator = 'old'
+        report_mock.created = None
+        runner_mock = MagicMock()
+        report_mock.runners.filter.return_value.first.return_value = runner_mock
+        cl = {
+            'LateStart': '2024-10-12T12:37:02+02:00',
+            'NewCard': '2024-10-12T12:35:34+02:00',
+            'Comment': '2024-10-12T12:40:08+02:00',
+            'NewRunner': '2024-10-12T12:43:14+02:00',
+        }
+        m = self._setup(cl, existing_report=report_mock)
+        m['ChangeLog'].objects.get_or_create.return_value = (changelog_mock, False)
+        try:
+            runner = make_runner(name='Alice', new_card='222', comment='En retard',
+                                 changelog=cl)
+            runner['Runner']['Bib'] = '7'
+            body = make_yaml(event='Same Event', runners=[runner])
+            response = ochecklist_update(self._post(factory, body))
+            assert response.status_code == 200
+            assert runner_mock.bib == '7'
+            assert runner_mock.new_card == '222'
+            assert runner_mock.comment == 'En retard'
+            changelog_mock.save.assert_called_once()
+            assert changelog_mock.late_start is not None
+            assert changelog_mock.new_card is not None
+            assert changelog_mock.comment is not None
+            assert changelog_mock.new_runner is not None
             m['ChangeLog'].objects.create.assert_not_called()
         finally:
             self._teardown()

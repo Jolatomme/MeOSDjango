@@ -3,15 +3,12 @@ import re
 from types import SimpleNamespace
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import Http404, HttpResponse, JsonResponse
-from django.db import connection
 
-
-from .forms import MeosFileForm, VerifieMoiFileForm
 
 from .models import (
     Mopcompetition, Mopclass, Moporganization, Mopcompetitor,
-    Mopteam, Mopteammember, MeosTutorial,
-    format_time, STAT_OK, STATUS_LABELS,
+    Mopteam, Mopteammember,
+    format_time, STAT_OK,
     STAT_NT, STAT_MP, STAT_DNF, STAT_DQ, STAT_OT,
     STAT_OCC, STAT_DNS, STAT_CANCEL, STAT_NP,
 )
@@ -23,27 +20,8 @@ from .services import (
     build_abs_time_series, compute_error_estimates,
     compute_grouping_index, compute_regularity_analysis,
     compute_course_hash, get_courses_map,
-    slugify_no_prefix,
+    competition_visible,
 )
-from .meos_checker import check_meos_file
-from .verifie_moi import generate_verifie_moi_csv
-
-
-def _competition_visible(cid):
-    """Return True if the competition is visible (not deleted, not hidden)."""
-    try:
-        with connection.cursor() as cur:
-            cur.execute(
-                "SELECT frozen, visible, deleted FROM results_competitionconfig WHERE cid=%s",
-                [cid],
-            )
-            row = cur.fetchone()
-    except Exception:
-        return True
-    if not row or len(row) < 3:
-        return True
-    _frozen, visible, deleted = row
-    return not deleted and visible
 
 
 # ─── Ordre de tri des non-classés ─────────────────────────────────────────────
@@ -92,7 +70,7 @@ def _load_class_context(cid, class_id):
           URLs).
     """
     competition = get_object_or_404(Mopcompetition, cid=cid)
-    if not _competition_visible(cid):
+    if not competition_visible(cid):
         raise Http404
     if isinstance(class_id, str) and _COURSE_HASH_RE.match(class_id):
         courses_map = get_courses_map(cid)
@@ -156,66 +134,6 @@ def _controls_for(cid, cls, course):
     return seq
 
 
-
-
-
-
-    # Sort by start time
-    rows.sort(key=lambda r: r['start_time_sort'])
-
-    # Group by category
-    from collections import defaultdict
-    by_category = defaultdict(list)
-    for row in rows:
-        by_category[row['category']].append(row)
-
-    # Group by club
-    by_club = defaultdict(list)
-    for row in rows:
-        by_club[row['club_display']].append(row)
-
-    # Group by exact start time
-    by_start_time = defaultdict(list)
-    for row in rows:
-        if row['start_time']:
-            by_start_time[row['start_time']].append(row)
-
-    def make_groups(group_dict, sort_key=None):
-        groups = []
-        for key, items in group_dict.items():
-            if not key:
-                continue
-            slug = re.sub(r'[^a-z0-9]+', '-', key.lower()).strip('-')
-            groups.append({
-                'name': key,
-                'slug': slug,
-                'rows': items,
-            })
-        if sort_key:
-            groups.sort(key=sort_key)
-        else:
-            groups.sort(key=lambda g: g['name'])
-        return groups
-
-    data = {
-        'meta': {
-            'event_name': competition.name,
-            'event_date': competition.date.strftime('%Y-%m-%d') if competition.date else '',
-        },
-        'groups': {
-            'category': make_groups(by_category),
-            'club': make_groups(by_club),
-            'start_time': make_groups(by_start_time, sort_key=lambda g: g['name']),
-        }
-    }
-
-    return render(request, 'results/start_list.html', {
-        'competition': competition,
-        'start_list_data': json.dumps(data),
-    })
-
-
-# ══════════════════════════════════════════════════════════════════════════════
 # Résultats — catégorie ET circuit
 # (class_id peut être un nom/identifiant de catégorie OU un hash de circuit)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -343,7 +261,7 @@ def class_results(request, cid, class_id):
 def competitor_detail(request, cid, competitor_id):
     """Individual competitor detail page with split times."""
     competition = get_object_or_404(Mopcompetition, cid=cid)
-    if not _competition_visible(cid):
+    if not competition_visible(cid):
         raise Http404
     competitor  = get_object_or_404(Mopcompetitor, cid=cid, id=competitor_id)
     org = Moporganization.objects.filter(cid=cid, id=competitor.org).first()
@@ -375,7 +293,7 @@ def competitor_detail(request, cid, competitor_id):
 def org_results(request, cid, org_id):
     """Results page for a single organisation — all runners grouped by class."""
     competition  = get_object_or_404(Mopcompetition, cid=cid)
-    if not _competition_visible(cid):
+    if not competition_visible(cid):
         raise Http404
     organization = get_object_or_404(Moporganization, cid=cid, id=org_id)
     org_competitors = list(Mopcompetitor.objects.filter(cid=cid, org=org_id))
@@ -968,7 +886,7 @@ def relay_results(request, cid, class_id):
     leg ranks, and cumulative ranks.
     """
     competition = get_object_or_404(Mopcompetition, cid=cid)
-    if not _competition_visible(cid):
+    if not competition_visible(cid):
         raise Http404
     class_id    = _resolve_class_id(cid, class_id)
     cls         = get_object_or_404(Mopclass, cid=cid, id=class_id)

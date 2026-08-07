@@ -895,3 +895,39 @@ class TestComputeErrorEstimates:
         errors = self._call([c], controls_seq, radio_map)
         assert 'error_time' in errors[1][0]
         assert 'error_pct'  in errors[1][0]
+
+
+# ─── Tests competition_visible ─────────────────────────────────────────────────
+
+class TestCompetitionVisible:
+    """Toutes les branches de competition_visible (DB mockée)."""
+
+    @staticmethod
+    def _fetchone(row):
+        cursor = MagicMock()
+        cursor.fetchone.return_value = row
+        with patch('results.services.connection') as mock_conn:
+            mock_conn.cursor.return_value.__enter__.return_value = cursor
+            from results.services import competition_visible
+            return competition_visible(42)
+
+    def test_visible_si_ligne_non_supprimee_et_visible(self):
+        assert self._fetchone((0, 1, 0)) == True
+
+    def test_cachee_si_visible_a_zero(self):
+        assert self._fetchone((0, 0, 0)) == False
+
+    def test_cachee_si_supprimee(self):
+        assert self._fetchone((0, 1, 1)) == False
+
+    def test_visible_si_aucune_ligne(self):
+        assert self._fetchone(None) is True
+
+    def test_visible_si_ligne_trop_courte(self):
+        assert self._fetchone((0, 1)) is True
+
+    @patch('results.services.connection')
+    def test_visible_si_erreur_db(self, mock_conn):
+        mock_conn.cursor.side_effect = Exception('db down')
+        from results.services import competition_visible
+        assert competition_visible(42) is True

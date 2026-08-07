@@ -10,7 +10,7 @@ from results.models import (
     STAT_UNKNOWN, STAT_OK, STAT_NT, STAT_MP, STAT_DNF,
     STAT_DQ, STAT_OT, STAT_OCC, STAT_DNS, STAT_CANCEL, STAT_NP,
     Mopcompetition, Mopclass, Moporganization, Mopcompetitor,
-    Mopcontrol, MeosTutorial,
+    Mopcontrol, MeosTutorial, CompetitionConfig,
 )
 from unittest.mock import MagicMock
 
@@ -263,3 +263,39 @@ class TestModelStr:
         obj = Mopcompetitor.__new__(Mopcompetitor)
         obj.name = ''
         assert str(obj) == ''
+
+
+# ─── Tests __str__ de CompetitionConfig ───────────────────────────────────────
+
+class TestCompetitionConfigStr:
+    """__str__ affiche cid + flags [gelée, supprimée, masquée]."""
+
+    def _make(self, cid=1, frozen=False, deleted=False, visible=True):
+        obj = CompetitionConfig.__new__(CompetitionConfig)
+        obj.cid = cid
+        obj.frozen = frozen
+        obj.deleted = deleted
+        obj.visible = visible
+        return obj
+
+    def test_sans_flags(self):
+        assert str(self._make()) == '1'
+
+    def test_gellee(self):
+        assert str(self._make(frozen=True)) == '1 [gelée]'
+
+    def test_supprimee(self):
+        assert str(self._make(deleted=True)) == '1 [supprimée]'
+
+    def test_masquee(self):
+        assert str(self._make(visible=False)) == '1 [masquée]'
+
+    def test_gellee_et_supprimee(self):
+        assert str(self._make(frozen=True, deleted=True)) == '1 [gelée, supprimée]'
+
+    def test_gellee_et_masquee(self):
+        """frozen=True + deleted=False → le elif visible s'applique."""
+        assert str(self._make(frozen=True, visible=False)) == '1 [gelée, masquée]'
+
+    def test_autres_cid(self):
+        assert str(self._make(cid=42)) == '42'

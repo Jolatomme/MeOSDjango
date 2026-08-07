@@ -579,3 +579,205 @@ class TestProcessCompetitorParseId:
 
         rows = cur.executemany.call_args[0][1]
         assert (1, 1, 70, 27160) in rows
+
+
+# ─── Couverture complémentaire (clear_competition, _upsert, frozen, …) ──────
+
+class TestClearCompetition:
+
+    @patch('results.mop_receiver.connection')
+    def test_supprime_toutes_les_tables(self, mock_conn):
+        from results.mop_receiver import clear_competition, MEOS_TABLES
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
+
+        clear_competition(7)
+
+        assert cur.execute.call_count >= len(MEOS_TABLES)
+        for c in cur.execute.call_args_list:
+            assert 'DELETE' in c.args[0]
+            assert c.args[1] == [7]
+
+
+class TestUpsert:
+
+    def _run(self, exists):
+        from results.mop_receiver import _upsert
+        cur = MagicMock()
+        cur.fetchone.return_value = exists
+        with patch('results.mop_receiver.connection') as mock_conn:
+            mock_conn.cursor.return_value.__enter__ = lambda s: cur
+            mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
+            _upsert('mopCompetition', 1, 99, {'name': 'Test', 'date': '2026-01-01'})
+            return cur.execute.call_args_list
+
+    def test_update_si_existe(self):
+        calls = self._run((1,))
+        assert 'UPDATE' in calls[1][0][0]
+        assert calls[1][0][1] == ['Test', '2026-01-01', 1, 99]
+
+    def test_insert_si_absent(self):
+        calls = self._run(None)
+        assert 'INSERT' in calls[1][0][0]
+        assert calls[1][0][1] == [1, 99, 'Test', '2026-01-01']
+
+
+class TestProcessCompetition:
+
+    @patch('results.mop_receiver._upsert')
+    def test_champs_complets(self, mock_upsert):
+        from results.mop_receiver import process_competition
+        el = elem('competition',
+                  {'date': '2026-01-01', 'organizer': 'OK Linné',
+                   'homepage': 'http://x', 'zerotime': '09:00:00'},
+                  text='Course Test')
+        process_competition(1, el)
+        fields = mock_upsert.call_args[0][3]
+        assert fields['name'] == 'Course Test'
+        assert fields['date'] == '2026-01-01'
+        assert fields['organizer'] == 'OK Linné'
+        assert fields['homepage'] == 'http://x'
+
+
+class TestProcessControl:
+
+    @patch('results.mop_receiver._upsert')
+    def test_nom_poste(self, mock_upsert):
+        from results.mop_receiver import process_control
+        el = elem('ctrl', {'id': '70'}, text='Radio')
+        process_control(1, el)
+        fields = mock_upsert.call_args[0][3]
+        assert fields['name'] == 'Radio'
+
+
+class TestProcessOrganization:
+
+    @patch('results.mop_receiver.connection')
+    def test_delete(self, mock_conn):
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
+        from results.mop_receiver import process_organization
+        el = elem('org', {'id': '255', 'delete': 'true'})
+        process_organization(1, el)
+        assert 'DELETE' in cur.execute.call_args[0][0]
+
+    @patch('results.mop_receiver._upsert')
+    def test_insertion(self, mock_upsert):
+        from results.mop_receiver import process_organization
+        el = elem('org', {'id': '255'}, text='Länna IF')
+        process_organization(1, el)
+        fields = mock_upsert.call_args[0][3]
+        assert fields['name'] == 'Länna IF'
+
+
+class TestProcessCompetitorComplement:
+
+    @patch('results.mop_receiver._upsert')
+    @patch('results.mop_receiver.connection')
+    def test_base_manquant_ignore(self, mock_conn, mock_upsert):
+        """<cmp> sans <base> → warning et retour sans upsert."""
+        from results.mop_receiver import process_competitor
+        el = elem('cmp', {'id': '5'})
+        process_competitor(1, el)
+        mock_upsert.assert_not_called()
+
+    @patch('results.mop_receiver._upsert')
+    @patch('results.mop_receiver.connection')
+    def test_input_renseigne_it_et_tstat(self, mock_conn, mock_upsert):
+        """<input it/tstat> alimente it et tstat dans le base."""
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
+        from results.mop_receiver import process_competitor
+        el = elem('cmp', {'id': '9'}, children=[
+            ('base', {'org': '1', 'cls': '1', 'stat': '1',
+                      'st': '0', 'rt': '3000'}, 'A'),
+            ('input', {'it': '123', 'tstat': '2'}, None),
+        ])
+        process_competitor(1, el)
+        fields = mock_upsert.call_args[0][3]
+        assert fields['it'] == 123
+        assert fields['tstat'] == 2
+
+    @patch('results.mop_receiver._upsert')
+    @patch('results.mop_receiver.connection')
+    def test_radio_entrees_vides_ignorees(self, mock_conn, mock_upsert):
+        """'70,1;;80,2;' → les segments vides sont ignorés."""
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
+        from results.mop_receiver import process_competitor
+        el = elem('cmp', {'id': '9'}, children=[
+            ('base', {'org': '1', 'cls': '1', 'stat': '1',
+                      'st': '0', 'rt': '3000'}, 'A'),
+            ('radio', {}, '70,1;;80,2;'),
+        ])
+        process_competitor(1, el)
+        rows = cur.executemany.call_args[0][1]
+        assert (1, 9, 70, 1) in rows
+        assert (1, 9, 80, 2) in rows
+        assert len(rows) == 2
+
+
+class TestProcessTeamComplement:
+
+    @patch('results.mop_receiver._upsert')
+    @patch('results.mop_receiver.connection')
+    def test_base_manquant_ignore(self, mock_conn, mock_upsert):
+        """<tm> sans <base> → warning sans insert."""
+        from results.mop_receiver import process_team
+        el = elem('tm', {'id': '100'})
+        process_team(1, el)
+        mock_upsert.assert_not_called()
+
+
+class TestProcessMopXmlFrozen:
+
+    @patch('results.mop_receiver.transaction')
+    def test_competition_gelée_retourne_frozen(self, mock_tx):
+        cur = MagicMock()
+        cur.fetchone.return_value = (1,)
+        with patch('results.mop_receiver.connection') as mock_conn:
+            mock_conn.cursor.return_value.__enter__ = lambda s: cur
+            mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
+            from results.mop_receiver import process_mop_xml
+            assert process_mop_xml(1, b'<MOPDiff></MOPDiff>') == 'FROZEN'
+        mock_tx.atomic.assert_not_called()
+
+    def test_erreur_db_ignoree_puis_traitement(self):
+        """Une exception sur la vérification frozen ne bloque pas le traitement."""
+        with patch('results.mop_receiver.connection') as mock_conn, \
+             patch('results.mop_receiver.transaction') as mock_tx, \
+             patch('results.mop_receiver.clear_competition') as mock_clear:
+            mock_conn.cursor.side_effect = RuntimeError('db down')
+            mock_tx.atomic.return_value.__enter__ = lambda s: s
+            mock_tx.atomic.return_value.__exit__  = MagicMock(return_value=False)
+            from results.mop_receiver import process_mop_xml
+            status = process_mop_xml(1, b'<MOPComplete></MOPComplete>')
+            assert status == 'OK'
+            mock_clear.assert_called_once_with(1)
+
+    @patch('results.mop_receiver.transaction')
+    def test_exception_processeur_ne_bloque_pas_les_autres(self, mock_tx):
+        """Une exception sur <cmp> n'empêche pas le traitement des autres éléments."""
+        mock_tx.atomic.return_value.__enter__ = lambda s: s
+        mock_tx.atomic.return_value.__exit__  = MagicMock(return_value=False)
+        xml = '<MOPDiff><cmp id="1"><base name="x"/></cmp><ctrl id="1"/></MOPDiff>'.encode()
+        boom = MagicMock(side_effect=RuntimeError('sur <cmp>'))
+        ok = MagicMock(return_value=None)
+        with patch.dict('results.mop_receiver.PROCESSORS', {'cmp': boom, 'ctrl': ok}):
+            from results.mop_receiver import process_mop_xml
+            status = process_mop_xml(1, xml)
+        assert status == 'OK'
+        ok.assert_called_once()
+
+    @patch('results.mop_receiver.transaction')
+    def test_tag_inconnu_ignore_sans_exception(self, mock_tx):
+        """Un tag sans processeur enregistré est ignoré (logger.debug)."""
+        mock_tx.atomic.return_value.__enter__ = lambda s: s
+        mock_tx.atomic.return_value.__exit__  = MagicMock(return_value=False)
+        xml = '<MOPDiff><tagInconnu id="42"/></MOPDiff>'.encode()
+        from results.mop_receiver import process_mop_xml
+        assert process_mop_xml(1, xml) == 'OK'
