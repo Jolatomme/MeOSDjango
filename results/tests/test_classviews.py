@@ -76,6 +76,77 @@ class TestTutoView:
         assert issubclass(TutoView, ListView)
 
 
+# ─── Tests CompetitionListView ────────────────────────────────────────────────
+
+class TestCompetitionListView:
+    """Vérifie le comportement de CompetitionListView (liste des compétitions)."""
+
+    def test_template_name(self):
+        """CompetitionListView doit utiliser le bon template."""
+        from results.classViews import CompetitionListView
+        assert CompetitionListView.template_name == 'results/competition_list.html'
+
+    @patch('results.classViews.Mopcompetition')
+    def test_get_queryset_retourne_toutes_les_competitions(self, MockComp):
+        """get_queryset doit retourner Mopcompetition.objects.all()."""
+        comps = [MagicMock(cid=1), MagicMock(cid=2)]
+        MockComp.objects.all.return_value = comps
+
+        from results.classViews import CompetitionListView
+        view = CompetitionListView()
+        qs = view.get_queryset()
+
+        MockComp.objects.all.assert_called_once()
+        assert list(qs) == comps
+
+    @patch('results.classViews.Mopcompetition')
+    def test_next_cid_max_plus_un(self, MockComp):
+        """next_cid doit être le max(cid) + 1."""
+        MockComp.objects.aggregate.return_value = {'max_cid': 42}
+
+        from results.classViews import CompetitionListView
+        view = CompetitionListView()
+        view.object_list = []
+        ctx = view.get_context_data()
+
+        MockComp.objects.aggregate.assert_called_once()
+        assert ctx['next_cid'] == 43
+
+    @patch('results.classViews.Mopcompetition')
+    def test_next_cid_si_table_vide(self, MockComp):
+        """Si la table est vide, next_cid doit valoir 1."""
+        MockComp.objects.aggregate.return_value = {'max_cid': None}
+
+        from results.classViews import CompetitionListView
+        view = CompetitionListView()
+        view.object_list = []
+        ctx = view.get_context_data()
+
+        assert ctx['next_cid'] == 1
+
+    @patch('results.classViews.Mopcompetition')
+    @patch('results.classViews.render')
+    def test_vue_entiere_rend_competitions_et_next_cid(self, mock_render, MockComp):
+        """La vue rend le template avec les compétitions et le prochain CID."""
+        comps = [MagicMock(cid=1), MagicMock(cid=2)]
+        MockComp.objects.all.return_value = comps
+        MockComp.objects.aggregate.return_value = {'max_cid': 2}
+
+        from results.classViews import CompetitionListView
+        CompetitionListView.as_view()(rf_get('/gec/competitions/'))
+
+        _, template, ctx = mock_render.call_args[0]
+        assert template == 'results/competition_list.html'
+        assert list(ctx['competitions']) == comps
+        assert ctx['next_cid'] == 3
+
+    def test_competitionlistview_est_une_listview(self):
+        """CompetitionListView doit hériter de ListView."""
+        from django.views.generic import ListView
+        from results.classViews import CompetitionListView
+        assert issubclass(CompetitionListView, ListView)
+
+
 # ─── Tests has_individual_competitors ─────────────────────────────────────────
 
 class TestHasIndividualCompetitors:

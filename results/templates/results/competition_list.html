@@ -1,0 +1,75 @@
+{% extends "results/base.html" %}
+{% block title %}Liste des compétitions — {{ SITE_NAME }}{% endblock %}
+
+{% block page_header %}
+<div class="co-page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="co-breadcrumb">
+      <ol class="breadcrumb mb-2 small">
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
+        <li class="breadcrumb-item active">Liste des compétitions</li>
+      </ol>
+    </nav>
+    <div>
+      <h1><i class="bi bi-calendar2-week me-2 opacity-75"></i>Liste des compétitions</h1>
+      <p class="opacity-75 small mt-1 mb-0">
+        Toutes les compétitions présentes dans la base MeOS, avec leur CID.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="co-card mb-4">
+  <div class="co-card-header">
+    <i class="bi bi-plus-circle me-2"></i>Prochaine compétition
+  </div>
+  <div class="p-3 d-flex align-items-center gap-3">
+    <span class="fs-4" style="color:var(--co-gold)"><i class="bi bi-key"></i></span>
+    <div>
+      <div class="small text-muted">CID à utiliser pour la prochaine course</div>
+      <div class="fw-bold fs-5">{{ next_cid }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="co-card">
+  <div class="co-card-header">
+    <i class="bi bi-list-ul me-2"></i>Compétitions ({{ competitions|length }})
+  </div>
+  {% if competitions %}
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th scope="col">CID</th>
+          <th scope="col">Nom</th>
+          <th scope="col">Date</th>
+          <th scope="col">Organisateur</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for comp in competitions %}
+        <tr>
+          <td>
+            <a href="{% url 'results:competition_detail' comp.cid %}" class="fw-semibold text-decoration-none">
+              {{ comp.cid }}
+            </a>
+          </td>
+          <td>{{ comp.name }}</td>
+          <td>{{ comp.date|date:"d/m/Y" }}</td>
+          <td>{{ comp.organizer }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="text-center p-5 text-muted">
+    <i class="bi bi-inbox fs-1 d-block mb-3 opacity-25"></i>
+    <p class="mb-0">Aucune compétition trouvée dans la table <code>mopCompetition</code>.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
