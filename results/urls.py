@@ -3,7 +3,7 @@ from . import views
 from .classViews import (
     HomeView, CompetitionDetailView, StartListView, StatisticsView,
     EtiquettesView, DriversView, MarkdownDetailView, TutoView,
-    MeosCheckerView, VerifieMoiView,
+    CompetitionListView, MeosCheckerView, VerifieMoiView,
 )
 from .mop_views import mop_update
 
@@ -61,6 +61,7 @@ urlpatterns = [
     path('tuto/<int:article_id>/', MarkdownDetailView.as_view(), name='markdown'),
     path('etiquettes/',         EtiquettesView.as_view(), name='etiquettes'),
     path('drivers/',            DriversView.as_view(), name='drivers'),
+    path('gec/competitions/',   CompetitionListView.as_view(), name='competition_list'),
 
     # ── MOP ────────────────────────────────────────────────────────────────
     path('mop/update',  mop_update),

@@ -8,6 +8,7 @@ from django.shortcuts import render, get_object_or_404
 from django.http import Http404
 from django.views.generic import TemplateView, ListView, DetailView, FormView
 from django.db import connection
+from django.db.models import Max
 
 from .models import (
     Mopcompetition, Mopclass, Mopcompetitor, Mopteam,
@@ -357,6 +358,25 @@ class TutoView(ListView):
 
     def get_queryset(self):
         return MeosTutorial.objects.all()
+
+
+class CompetitionListView(RenderShortcutMixin, ListView):
+    """GEC page listing all competitions from the MeOS database with their CID.
+
+    Context includes ``competitions`` (all mopCompetition rows, newest first)
+    and ``next_cid`` — the next free CID (max CID + 1) for the next race.
+    """
+    template_name = "results/competition_list.html"
+    context_object_name = "competitions"
+
+    def get_queryset(self):
+        return Mopcompetition.objects.all()
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        max_cid = Mopcompetition.objects.aggregate(max_cid=Max('cid'))['max_cid']
+        ctx['next_cid'] = max_cid + 1 if max_cid is not None else 1
+        return ctx
 
 
 class MarkdownDetailView(RenderShortcutMixin, DetailView):
