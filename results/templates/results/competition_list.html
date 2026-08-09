@@ -13,7 +13,7 @@
     <div>
       <h1><i class="bi bi-calendar2-week me-2 opacity-75"></i>Liste des compétitions</h1>
       <p class="opacity-75 small mt-1 mb-0">
-        Toutes les compétitions présentes dans la base MeOS, avec leur CID.
+        Toutes les compétitions présentes dans la base, avec leur CID.
       </p>
     </div>
   </div>
@@ -40,18 +40,22 @@
   </div>
   {% if competitions %}
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
+    <table class="table table-hover align-middle mb-0" id="competition-table">
       <thead>
         <tr>
-          <th scope="col">CID</th>
+          <th scope="col" data-sort-key="cid">
+            CID <i class="bi sort-chevron" style="cursor:pointer" aria-label="Trier par CID" role="button"></i>
+          </th>
           <th scope="col">Nom</th>
-          <th scope="col">Date</th>
+          <th scope="col" data-sort-key="date">
+            Date <i class="bi sort-chevron" style="cursor:pointer" aria-label="Trier par date" role="button"></i>
+          </th>
           <th scope="col">Organisateur</th>
         </tr>
       </thead>
       <tbody>
         {% for comp in competitions %}
-        <tr>
+        <tr data-cid="{{ comp.cid }}" data-date="{{ comp.date|date:'Y-m-d' }}">
           <td>
             <a href="{% url 'results:competition_detail' comp.cid %}" class="fw-semibold text-decoration-none">
               {{ comp.cid }}
@@ -72,4 +76,13 @@
   </div>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  COUtils.bindTableSort('#competition-table', 'th', {
+    defaultKey: 'date',
+    defaultOrder: 'desc',
+  });
+</script>
 {% endblock %}

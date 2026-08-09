@@ -437,6 +437,120 @@ describe('COUtils.bindSimpleSearch', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// bindTableSort
+// ─────────────────────────────────────────────────────────────────────────────
+describe('COUtils.bindTableSort', () => {
+  function setupTable() {
+    document.body.innerHTML = `
+      <table id="t">
+        <thead>
+          <tr>
+            <th data-sort-key="cid">CID <i class="bi sort-chevron"></i></th>
+            <th data-sort-key="date">Date <i class="bi sort-chevron"></i></th>
+            <th>Nom</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-cid="10" data-date="2024-03-01"><td>10</td><td>01/03/2024</td><td>A</td></tr>
+          <tr data-cid="2"  data-date="2025-07-15"><td>2</td><td>15/07/2025</td><td>B</td></tr>
+          <tr data-cid="7"  data-date="2023-11-30"><td>7</td><td>30/11/2023</td><td>C</td></tr>
+        </tbody>
+      </table>
+    `;
+  }
+
+  function rowCids() {
+    return Array.from(document.querySelectorAll('#t tbody tr')).map(r => r.dataset.cid);
+  }
+
+  function chevronClasses(key) {
+    const chev = document.querySelector(`th[data-sort-key="${key}"] .sort-chevron`);
+    return chev.className;
+  }
+
+  test('bindTableSort est exposé dans COUtils', () => {
+    expect(typeof COUtils.bindTableSort).toBe('function');
+  });
+
+  test('état initial : date desc par défaut et chevron actif', () => {
+    setupTable();
+    COUtils.bindTableSort('#t', 'th', { defaultKey: 'date', defaultOrder: 'desc' });
+    expect(rowCids()).toEqual(['2', '10', '7']);
+    expect(chevronClasses('date')).toContain('bi-chevron-down');
+    expect(chevronClasses('cid')).toContain('opacity-50');
+  });
+
+  test('clic CID → tri ascendant par CID', () => {
+    setupTable();
+    COUtils.bindTableSort('#t', 'th', { defaultKey: 'date', defaultOrder: 'desc' });
+    document.querySelector('th[data-sort-key="cid"] .sort-chevron').click();
+    expect(rowCids()).toEqual(['2', '7', '10']);
+    expect(chevronClasses('cid')).toContain('bi-chevron-up');
+    expect(chevronClasses('date')).toContain('opacity-50');
+  });
+
+  test('second clic CID → tri descendant', () => {
+    setupTable();
+    COUtils.bindTableSort('#t', 'th', { defaultKey: 'date', defaultOrder: 'desc' });
+    const chev = document.querySelector('th[data-sort-key="cid"] .sort-chevron');
+    chev.click();
+    chev.click();
+    expect(rowCids()).toEqual(['10', '7', '2']);
+    expect(chevronClasses('cid')).toContain('bi-chevron-down');
+  });
+
+  test('troisième clic CID → retour ascendant', () => {
+    setupTable();
+    COUtils.bindTableSort('#t', 'th', { defaultKey: 'date', defaultOrder: 'desc' });
+    const chev = document.querySelector('th[data-sort-key="cid"] .sort-chevron');
+    chev.click();
+    chev.click();
+    chev.click();
+    expect(rowCids()).toEqual(['2', '7', '10']);
+  });
+
+  test('tri par date (valeurs ISO) — ordre chronologique', () => {
+    setupTable();
+    COUtils.bindTableSort('#t', 'th', { defaultKey: 'cid', defaultOrder: 'asc' });
+    document.querySelector('th[data-sort-key="date"] .sort-chevron').click();
+    expect(rowCids()).toEqual(['7', '10', '2']); // 2023-11-30, 2024-03-01, 2025-07-15
+  });
+
+  test('dates vides placées en fin de liste (desc et asc)', () => {
+    setupTable();
+    const tbody = document.querySelector('#t tbody');
+    const row = document.createElement('tr');
+    row.dataset.cid = '99';
+    row.dataset.date = '';
+    tbody.appendChild(row);
+
+    COUtils.bindTableSort('#t', 'th', { defaultKey: 'date', defaultOrder: 'desc' });
+    expect(rowCids()[3]).toBe('99');
+
+    document.querySelector('th[data-sort-key="date"] .sort-chevron').click(); // asc
+    expect(rowCids()[3]).toBe('99');
+  });
+
+  test('l\'état initial par défaut est asc si defaultKey seule', () => {
+    setupTable();
+    COUtils.bindTableSort('#t', 'th', { defaultKey: 'cid' });
+    expect(rowCids()).toEqual(['2', '7', '10']);
+  });
+
+  test('ne plante pas si la table est absente', () => {
+    document.body.innerHTML = '';
+    expect(() => COUtils.bindTableSort('#inexistant', 'th')).not.toThrow();
+  });
+
+  test('ne plante pas sans en-têtes triables ni tbody', () => {
+    document.body.innerHTML = '<table id="t"><thead><tr><th>Nom</th></tr></thead></table>';
+    expect(() => COUtils.bindTableSort('#t', 'th')).not.toThrow();
+    document.body.innerHTML = '<table id="t"><thead><tr><th data-sort-key="cid"></th></tr></thead></table>';
+    expect(() => COUtils.bindTableSort('#t', 'th')).not.toThrow();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // initBackToTop
 // ─────────────────────────────────────────────────────────────────────────────
 describe('COUtils.initBackToTop', () => {

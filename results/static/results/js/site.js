@@ -165,6 +165,86 @@ const COUtils = (() => {
     });
   }
 
+  // ── Tri de tableau (chevrons) ─────────────────────────────────────────────
+
+  /**
+   * Branche le tri client d'un tableau sur les chevrons de ses en-têtes.
+   *
+   * Les <th> triables doivent porter `data-sort-key` et contenir un
+   * <i class="sort-chevron">. Les <tr> portent les valeurs à trier dans des
+   * data-attributs nommés `data-<sortKey>` (ex. data-cid, data-date).
+   *
+   * @param {string} tableSelector - sélecteur CSS de la table
+   * @param {string} thSelector    - sélecteur CSS des en-têtes triables
+   * @param {Object} [opts]
+   * @param {string} [opts.defaultKey]   - clé triée initialement
+   * @param {string} [opts.defaultOrder] - 'asc' ou 'desc' pour la clé initiale
+   */
+  function bindTableSort(tableSelector, thSelector, opts) {
+    opts = opts || {};
+    const table = document.querySelector(tableSelector);
+    if (!table) return;
+
+    const heads = Array.from(table.querySelectorAll(thSelector + '[data-sort-key]'));
+    if (!heads.length) return;
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+
+    let sortKey = opts.defaultKey || null;
+    let order = opts.defaultOrder === 'desc' ? 'desc' : 'asc';
+
+    function chevronOf(th) {
+      return th.querySelector('.sort-chevron');
+    }
+
+    function renderChevrons() {
+      heads.forEach(th => {
+        const chev = chevronOf(th);
+        if (!chev) return;
+        chev.classList.remove('bi-chevron-up', 'bi-chevron-down');
+        if (th.dataset.sortKey === sortKey) {
+          chev.classList.add(order === 'desc' ? 'bi-chevron-down' : 'bi-chevron-up');
+          chev.classList.remove('opacity-50');
+        } else {
+          chev.classList.add('bi-chevron-down', 'opacity-50');
+        }
+      });
+    }
+
+    function sortRows() {
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      const isDesc = order === 'desc';
+      rows.sort((a, b) => {
+        let va = (a.dataset[sortKey] || '').trim();
+        let vb = (b.dataset[sortKey] || '').trim();
+        if (va === '') return 1;
+        if (vb === '') return -1;
+        const na = Number(va);
+        const nb = Number(vb);
+        const cmp = (!isNaN(na) && !isNaN(nb)) ? (na - nb) : va.localeCompare(vb);
+        return isDesc ? -cmp : cmp;
+      });
+      rows.forEach(row => tbody.appendChild(row));
+      renderChevrons();
+    }
+
+    heads.forEach(th => {
+      const chev = chevronOf(th);
+      if (!chev) return;
+      chev.addEventListener('click', function () {
+        if (th.dataset.sortKey === sortKey) {
+          order = order === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortKey = th.dataset.sortKey;
+          order = 'asc';
+        }
+        sortRows();
+      });
+    });
+
+    renderChevrons();
+  }
+
   // ── Bouton retour en haut ─────────────────────────────────────────────────
 
   /**
@@ -205,6 +285,7 @@ const COUtils = (() => {
     toggleDetailRow,
     makeAllToggle,
     bindSimpleSearch,
+    bindTableSort,
     initBackToTop,
   };
 })();
