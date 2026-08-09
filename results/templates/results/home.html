@@ -29,8 +29,12 @@
               class="form-select form-select-sm"
               onchange="if (this.value) window.location.href = this.value;">
         <option value="{% url 'results:home' %}"
-                {% if not selected_year and not months %}selected{% endif %}>
+                {% if not selected_year and not months and not show_all %}selected{% endif %}>
           3 plus récentes
+        </option>
+        <option value="{% url 'results:home' %}?all=1"
+                {% if show_all %}selected{% endif %}>
+          Toutes
         </option>
         {% for y in available_years %}
           <option value="{% url 'results:home' %}?year={{ y }}"

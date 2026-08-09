@@ -73,7 +73,8 @@ class HomeView(RenderShortcutMixin, ListView):
     Three mutually exclusive display modes (most specific wins):
       1. ``?year=YYYY``  — every competition of that year;
       2. ``?months=X``   — competitions from the last X months;
-      3. no parameter    — the 3 most recent competitions.
+      3. ``?all=1``      — every competition;
+      4. no parameter    — the 3 most recent competitions.
     Competitions are always sorted by date, most recent first. The template
     receives ``years`` (list of ``(year, [competitions])``), ``months``,
     ``selected_year`` and ``available_years``.
@@ -94,9 +95,11 @@ class HomeView(RenderShortcutMixin, ListView):
 
         self.months = None
         self.selected_year = None
+        self.show_all = False
         self.active_filter = False
         months_raw = self.request.GET.get('months', '').strip()
         year_raw = self.request.GET.get('year', '').strip()
+        all_raw = self.request.GET.get('all', '').strip()
 
         selected_year = year_raw if year_raw.isdigit() else None
         months_value = months_raw if months_raw.isdigit() else None
@@ -110,6 +113,9 @@ class HomeView(RenderShortcutMixin, ListView):
             self.active_filter = True
             cutoff = _months_ago(self.months)
             rqs = [c for c in rqs if c.date and c.date >= cutoff]
+        elif all_raw == '1':
+            self.show_all = True
+            self.active_filter = True
         else:
             rqs = rqs[:self.default_limit]
 
@@ -133,6 +139,7 @@ class HomeView(RenderShortcutMixin, ListView):
         ctx['selected_year'] = self.selected_year
         ctx['available_years'] = self.available_years
         ctx['active_filter'] = self.active_filter
+        ctx['show_all'] = self.show_all
         return ctx
 
 

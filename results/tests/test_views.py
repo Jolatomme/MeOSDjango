@@ -337,6 +337,28 @@ class TestHomeView:
         assert [c.cid for c in ctx['competitions']] == [3, 2]
         assert [year for year, _ in ctx['years']] == [2025]
 
+    def test_mode_toutes_garde_toutes_les_competitions(self):
+        """?all=1 → toutes les compétitions, triées par date décroissante."""
+        _, ctx = self._run(url='/?all=1', comps=self._comps())
+        assert ctx['show_all'] is True
+        assert ctx['active_filter'] is True
+        assert [c.cid for c in ctx['competitions']] == [5, 4, 3, 2, 1]
+        assert [year for year, _ in ctx['years']] == [2026, 2025, 2024]
+
+    def test_annee_prioritaire_sur_toutes(self):
+        """year + all simultanés → l'année gagne (modes exclusifs)."""
+        _, ctx = self._run(url='/?year=2024&all=1', comps=self._comps())
+        assert ctx['selected_year'] == 2024
+        assert ctx['show_all'] is False
+        assert [c.cid for c in ctx['competitions']] == [1]
+
+    def test_all_invalide_retour_au_defaut(self):
+        """all=abc (ou absent) → considéré invalide → 3 plus récentes."""
+        _, ctx = self._run(url='/?all=abc', comps=self._comps())
+        assert ctx['show_all'] is False
+        assert ctx['active_filter'] is False
+        assert [c.cid for c in ctx['competitions']] == [5, 4, 3]
+
     def test_annee_prioritaire_sur_mois(self):
         """year + months simultanés → l'année gagne (modes exclusifs)."""
         _, ctx = self._run(url='/?year=2024&months=1', comps=self._comps())
