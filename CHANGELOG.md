@@ -1,6 +1,6 @@
 # Changelog
 
-Tous les changements notables de ce projet dont documentés ici.
+Tous les changements notables de ce projet sont documentés ici.
 
 ## [Unreleased]
 

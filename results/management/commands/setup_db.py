@@ -41,6 +41,7 @@ CREATE_TABLES = {
         `id` INT NOT NULL,
         PRIMARY KEY (`cid`, `id`),
         `name` VARCHAR(64) NOT NULL DEFAULT '',
+        `card` VARCHAR(32) NOT NULL DEFAULT '',
         `org` INT NOT NULL DEFAULT 0,
         `cls` INT NOT NULL DEFAULT 0,
         `stat` TINYINT NOT NULL DEFAULT 0,
@@ -109,6 +110,14 @@ TABLE_ORDER = [
     "mopRadio",
 ]
 
+# Colonnes ajoutées après la création d'origine des tables (bases existantes).
+MISSING_COLUMN_ALTERS = {
+    "mopCompetitor": {
+        "card": "ALTER TABLE `mopCompetitor` "
+                "ADD COLUMN `card` VARCHAR(32) NOT NULL DEFAULT ''",
+    },
+}
+
 
 class Command(BaseCommand):
     help = "Create the MeOS mop* tables (InnoDB, utf8mb4) in the database."
@@ -157,8 +166,14 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.NOTICE("-- CREATE TABLES --"))
                 for t in to_create:
                     self.stdout.write(CREATE_TABLES[t] + ";")
-                    self.stdout.write("")
-            if not to_create and not to_drop:
+                self.stdout.write("")
+            missing_alters = self._missing_columns(existing)
+            if missing_alters:
+                self.stdout.write(self.style.NOTICE("-- ALTER TABLES --"))
+                for sql in missing_alters:
+                    self.stdout.write(sql + ";")
+                self.stdout.write("")
+            if not to_create and not to_drop and not missing_alters:
                 self.stdout.write(self.style.WARNING("No tables to create or drop."))
             return
 
@@ -169,27 +184,52 @@ class Command(BaseCommand):
                     cursor.execute(f"DROP TABLE IF EXISTS `{t}`")
                     self.stdout.write(f"  Dropped `{t}`")
 
-        if not to_create:
-            self.stdout.write(self.style.SUCCESS("All mop* tables already exist."))
-            return
+        if to_create:
+            self.stdout.write(self.style.NOTICE(f"Creating {len(to_create)} table(s)..."))
+            created = []
 
-        self.stdout.write(self.style.NOTICE(f"Creating {len(to_create)} table(s)..."))
-        created = []
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    for t in to_create:
+                        try:
+                            cursor.execute(CREATE_TABLES[t])
+                            created.append(t)
+                            self.stdout.write(self.style.SUCCESS(f"  ✓ Created `{t}`"))
+                        except Exception as e:
+                            self.stdout.write(self.style.ERROR(f"  ✗ Failed `{t}`: {e}"))
+                            raise
 
-        with transaction.atomic():
-            with connection.cursor() as cursor:
-                for t in to_create:
+                if fake_initial:
+                    from django.db.migrations.recorder import MigrationRecorder
+                    recorder = MigrationRecorder(connection)
+                    recorder.record_applied("results", "0001_initial")
+
+            self.stdout.write(self.style.SUCCESS(f"\nDone. Created {len(created)} table(s)."))
+
+        missing_alters = self._missing_columns(existing | set(to_create))
+        if missing_alters:
+            self.stdout.write(self.style.NOTICE("Adding missing columns..."))
+            for sql in missing_alters:
+                with connection.cursor() as cursor:
                     try:
-                        cursor.execute(CREATE_TABLES[t])
-                        created.append(t)
-                        self.stdout.write(self.style.SUCCESS(f"  ✓ Created `{t}`"))
+                        cursor.execute(sql)
+                        self.stdout.write(self.style.SUCCESS(f"  ✓ {sql}"))
                     except Exception as e:
-                        self.stdout.write(self.style.ERROR(f"  ✗ Failed `{t}`: {e}"))
+                        self.stdout.write(self.style.ERROR(f"  ✗ {sql}: {e}"))
                         raise
 
-            if fake_initial:
-                from django.db.migrations.recorder import MigrationRecorder
-                recorder = MigrationRecorder(connection)
-                recorder.record_applied("results", "0001_initial")
-
-        self.stdout.write(self.style.SUCCESS(f"\nDone. Created {len(created)} table(s)."))
+    def _missing_columns(self, existing: set) -> list:
+        """Retourne les ALTER TABLE nécessaires pour les colonnes manquantes."""
+        missing = []
+        for table, columns in MISSING_COLUMN_ALTERS.items():
+            if table not in existing:
+                continue
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+                    "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s",
+                    [table],
+                )
+                present = {row[0] for row in cursor.fetchall()}
+            missing += [sql for col, sql in columns.items() if col not in present]
+        return missing

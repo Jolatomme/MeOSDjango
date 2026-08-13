@@ -452,7 +452,7 @@
     if (!q) return rows;
     return rows.filter(row => [
       row.full_name, row.family, row.given, row.club_display,
-      row.category, row.start_time
+      row.category, row.start_time, row.control_card
     ].join(' ').toLowerCase().includes(q));
   }
 
@@ -475,6 +475,29 @@
     return 'clubs';
   }
 
+  // Colonnes par vue : label + accesseur. categoryLink affiche la catégorie
+  // comme un lien cliquable qui bascule sur la vue « Par catégorie ».
+  const COLUMNS = {
+    category: [
+      { label: 'Nom / Prénom', value: row => row.full_name },
+      { label: 'Heure de départ', value: row => row.start_time },
+      { label: 'Club', value: row => row.club_display },
+      { label: 'Puce', value: row => row.control_card },
+    ],
+    club: [
+      { label: 'Nom / Prénom', value: row => row.full_name },
+      { label: 'Heure de départ', value: row => row.start_time },
+      { label: 'Catégorie', value: row => row.category, categoryLink: true },
+      { label: 'Puce', value: row => row.control_card },
+    ],
+    start_time: [
+      { label: 'Nom / Prénom', value: row => row.full_name },
+      { label: 'Club', value: row => row.club_display },
+      { label: 'Catégorie', value: row => row.category, categoryLink: true },
+      { label: 'Puce', value: row => row.control_card },
+    ],
+  };
+
   function render(anchorSlug = '') {
     const groups = currentGroups();
     let totalGroupsVisible = 0;
@@ -486,44 +509,16 @@
       totalGroupsVisible += 1;
       totalRowsVisible += rows.length;
       const groupId = `group-${group.slug}`;
+      const columns = COLUMNS[state.view] || COLUMNS.category;
 
-      let headers = '';
-      let rowsHtml = '';
-
-      if (state.view === 'club') {
-        headers = `<tr>
-          <th>Nom / Prénom</th>
-          <th>Heure de départ</th>
-          <th>Catégorie</th>
-        </tr>`;
-        rowsHtml = rows.map(row => `<tr>
-          ${td('Nom / Prénom', escapeHtml(row.full_name))}
-          ${td('Heure de départ', escapeHtml(row.start_time || ''))}
-          ${td('Catégorie', `<span class="clickable-link" data-switch-view="category" data-target-slug="${slugify(row.category)}">${escapeHtml(row.category || '')}</span>`)}
-        </tr>`).join('');
-      } else if (state.view === 'start_time') {
-        headers = `<tr>
-          <th>Nom / Prénom</th>
-          <th>Club</th>
-          <th>Catégorie</th>
-        </tr>`;
-        rowsHtml = rows.map(row => `<tr>
-          ${td('Nom / Prénom', escapeHtml(row.full_name))}
-          ${td('Club', escapeHtml(row.club_display || ''))}
-          ${td('Catégorie', `<span class="clickable-link" data-switch-view="category" data-target-slug="${slugify(row.category)}">${escapeHtml(row.category || '')}</span>`)}
-        </tr>`).join('');
-      } else {
-        headers = `<tr>
-          <th>Heure de départ</th>
-          <th>Nom / Prénom</th>
-          <th>Club</th>
-        </tr>`;
-        rowsHtml = rows.map(row => `<tr>
-          ${td('Heure de départ', escapeHtml(row.start_time || ''))}
-          ${td('Nom / Prénom', escapeHtml(row.full_name))}
-          ${td('Club', escapeHtml(row.club_display || ''))}
-        </tr>`).join('');
-      }
+      const headers = `<tr>${columns.map(c => `<th>${escapeHtml(c.label)}</th>`).join('')}</tr>`;
+      const rowsHtml = rows.map(row => `<tr>${columns.map(c => {
+        const value = String(c.value(row) || '');
+        if (c.categoryLink) {
+          return td(c.label, `<span class="clickable-link" data-switch-view="category" data-target-slug="${slugify(value)}">${escapeHtml(value)}</span>`);
+        }
+        return td(c.label, escapeHtml(value));
+      }).join('')}</tr>`).join('');
 
       return `<section class="group" id="${groupId}" data-group-slug="${group.slug}">
         <div class="group-head">

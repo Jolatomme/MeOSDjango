@@ -1862,9 +1862,10 @@ class TestSlugifyNoPrefix:
 
 class TestStartListView:
 
-    def _mk_competitor(self, id=1, st=100000, name='Martin Luc', org=1, cls=10):
+    def _mk_competitor(self, id=1, st=100000, name='Martin Luc', org=1, cls=10, card=''):
         c = MagicMock()
         c.id = id; c.st = st; c.name = name; c.org = org; c.cls = cls
+        c.card = card
         return c
 
     def _mk_cls(self, id=10, name='H21'):
@@ -1943,15 +1944,32 @@ class TestStartListView:
         row = data['groups']['category'][0]['rows'][0]
         assert row['start_time'] == ''
 
+    def test_control_card_rempli(self):
+        """Le numéro de puce (attribut card MOP) est exposé dans la liste."""
+        c = self._mk_competitor(id=1, st=36000, name='Martin Luc', card='12345')
+        cls = self._mk_cls(10, 'H21')
+        _, ctx = self._run(competitors=[c], classes=[cls])
+        data = json.loads(ctx['start_list_data'])
+        row = data['groups']['category'][0]['rows'][0]
+        assert row['control_card'] == '12345'
+
+    def test_control_card_vide_si_absent(self):
+        c = self._mk_competitor(id=1, st=36000, name='Martin Luc')
+        cls = self._mk_cls(10, 'H21')
+        _, ctx = self._run(competitors=[c], classes=[cls])
+        data = json.loads(ctx['start_list_data'])
+        row = data['groups']['category'][0]['rows'][0]
+        assert row['control_card'] == ''
+
     def test_tri_par_heure_depart(self):
+        """Les groupes « Par heure » sont ordonnés par heure croissante."""
         c1 = self._mk_competitor(id=1, st=72000, name='Lent')
         c2 = self._mk_competitor(id=2, st=36000, name='Rapide')
         cls = self._mk_cls(10, 'H21')
         _, ctx = self._run(competitors=[c1, c2], classes=[cls])
         data = json.loads(ctx['start_list_data'])
-        rows = data['groups']['category'][0]['rows']
-        assert rows[0]['full_name'] == 'Rapide'
-        assert rows[1]['full_name'] == 'Lent'
+        groups = data['groups']['start_time']
+        assert [g['name'] for g in groups] == ['01:00', '02:00']
 
     def test_groupement_par_categorie(self):
         c1 = self._mk_competitor(id=1, st=36000, cls=10)
@@ -1964,6 +1982,16 @@ class TestStartListView:
         assert 'H21' in cats
         assert 'D21' in cats
 
+    def test_tri_alpha_dans_categorie(self):
+        """À catégorie identique, les coureurs sont triés par nom puis prénom, insensible à la casse."""
+        c1 = self._mk_competitor(id=1, st=36000, name='Zebre anne', cls=10)
+        c2 = self._mk_competitor(id=2, st=37000, name='martin Luc', cls=10)
+        cls1 = self._mk_cls(10, 'H21')
+        _, ctx = self._run(competitors=[c1, c2], classes=[cls1])
+        data = json.loads(ctx['start_list_data'])
+        rows = data['groups']['category'][0]['rows']
+        assert [r['full_name'] for r in rows] == ['martin Luc', 'Zebre anne']
+
     def test_groupement_par_club(self):
         c1 = self._mk_competitor(id=1, st=36000, org=1)
         c2 = self._mk_competitor(id=2, st=37000, org=2)
@@ -1975,12 +2003,52 @@ class TestStartListView:
         assert any('COLE' in c for c in clubs)
         assert any('NOSE' in c for c in clubs)
 
+    def test_tri_alpha_dans_club(self):
+        """À club identique, les coureurs sont triés par nom puis prénom, insensible à la casse."""
+        c1 = self._mk_competitor(id=1, st=36000, name='Zebre anne', org=1)
+        c2 = self._mk_competitor(id=2, st=37000, name='martin Luc', org=1)
+        org1 = self._mk_org(1, 'COLE')
+        _, ctx = self._run(competitors=[c1, c2], orgs=[org1])
+        data = json.loads(ctx['start_list_data'])
+        rows = data['groups']['club'][0]['rows']
+        assert [r['full_name'] for r in rows] == ['martin Luc', 'Zebre anne']
+
+    def test_vignettes_club_triees_par_numero(self):
+        """Les vignettes club sont triées par numéro de club croissant, pas par nom."""
+        c1 = self._mk_competitor(id=1, st=36000, org=2)
+        c2 = self._mk_competitor(id=2, st=37000, org=1)
+        org1 = self._mk_org(1, 'COLE')
+        org2 = self._mk_org(2, 'NOSE')
+        _, ctx = self._run(competitors=[c1, c2], orgs=[org1, org2])
+        data = json.loads(ctx['start_list_data'])
+        groups = data['groups']['club']
+        assert [g['name'] for g in groups] == ['0001 - COLE', '0002 - NOSE']
+
+    def test_sans_club_en_dernier(self):
+        """Le groupe « Sans club » apparaît après les clubs numérotés."""
+        c1 = self._mk_competitor(id=1, st=36000, org=1)
+        c2 = self._mk_competitor(id=2, st=37000, org=None)
+        org1 = self._mk_org(1, 'COLE')
+        _, ctx = self._run(competitors=[c1, c2], orgs=[org1])
+        data = json.loads(ctx['start_list_data'])
+        groups = data['groups']['club']
+        assert [g['name'] for g in groups] == ['0001 - COLE', 'Sans club']
+
     def test_groupement_par_heure_depart_identique(self):
         c1 = self._mk_competitor(id=1, st=36000, name='A')
         c2 = self._mk_competitor(id=2, st=36000, name='B')
         _, ctx = self._run(competitors=[c1, c2])
         data = json.loads(ctx['start_list_data'])
         assert len(data['groups']['start_time']) == 1
+
+    def test_tri_alpha_dans_heure_depart(self):
+        """À heure identique, les coureurs sont triés par nom puis prénom, insensible à la casse."""
+        c1 = self._mk_competitor(id=1, st=36000, name='Zebre anne')
+        c2 = self._mk_competitor(id=2, st=36000, name='martin Luc')
+        _, ctx = self._run(competitors=[c1, c2])
+        data = json.loads(ctx['start_list_data'])
+        rows = data['groups']['start_time'][0]['rows']
+        assert [r['full_name'] for r in rows] == ['martin Luc', 'Zebre anne']
 
     def test_slug_genere(self):
         c = self._mk_competitor(id=1, st=36000)
