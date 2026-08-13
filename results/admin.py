@@ -42,6 +42,9 @@ class CompetitionConfigAdmin(admin.ModelAdmin):
         for cid in all_cids:
             if cid not in existing:
                 CompetitionConfig.objects.create(cid=cid)
+        stale = existing - set(all_cids)
+        if stale:
+            CompetitionConfig.objects.filter(cid__in=stale).delete()
         return CompetitionConfig.objects.all()
 
     def _name(self, obj):
@@ -68,12 +71,14 @@ class CompetitionConfigAdmin(admin.ModelAdmin):
         obj = self.get_object(request, object_id) if object_id else None
         if request.method == 'POST' and '_delete_mop_data' in request.POST and obj:
             cid = obj.cid
+            name = _competition_name(cid)
             with connection.cursor() as cur:
                 for table in MEOS_TABLES:
                     cur.execute(f"DELETE FROM `{table}` WHERE cid = %s", [cid])
+            CompetitionConfig.objects.filter(cid=cid).delete()
             self.message_user(
                 request,
-                f"Données MOP supprimées pour cid={cid} ({_competition_name(cid)}).",
+                f"Données MOP supprimées pour cid={cid} ({name}).",
                 level=messages.WARNING,
             )
             return HttpResponseRedirect(

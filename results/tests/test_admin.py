@@ -65,6 +65,35 @@ class TestCompetitionConfigAdmin:
             inst.get_queryset(None)
             MockConfig.objects.create.assert_not_called()
 
+    def test_get_queryset_purge_configs_orphelines(self):
+        inst = _make_admin()
+        cur = MagicMock()
+        cur.fetchall.return_value = [(1,), (2,)]
+        with patch('results.admin.CompetitionConfig') as MockConfig, \
+             patch('results.admin.connection') as mock_conn:
+            mock_conn.cursor.return_value.__enter__ = lambda s: cur
+            mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
+            MockConfig.objects.all.side_effect = [
+                [MagicMock(cid=1), MagicMock(cid=2), MagicMock(cid=3)],
+                MagicMock(),
+            ]
+            inst.get_queryset(None)
+            MockConfig.objects.create.assert_not_called()
+            MockConfig.objects.filter.assert_called_once_with(cid__in={3})
+            MockConfig.objects.filter.return_value.delete.assert_called_once_with()
+
+    def test_get_queryset_pas_de_purge_si_aucune_orpheline(self):
+        inst = _make_admin()
+        cur = MagicMock()
+        cur.fetchall.return_value = [(1,), (2,)]
+        with patch('results.admin.CompetitionConfig') as MockConfig, \
+             patch('results.admin.connection') as mock_conn:
+            mock_conn.cursor.return_value.__enter__ = lambda s: cur
+            mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
+            MockConfig.objects.all.side_effect = [[MagicMock(cid=1), MagicMock(cid=2)], MagicMock()]
+            inst.get_queryset(None)
+            MockConfig.objects.filter.assert_not_called()
+
     def test_name_et_date(self):
         inst = _make_admin()
         cur = MagicMock()
@@ -110,6 +139,7 @@ class TestChangeformView:
         mock_reverse.return_value = '/admin/results/competitionconfig/'
         with patch.object(CompetitionConfigAdmin, 'get_object', return_value=obj), \
              patch.object(CompetitionConfigAdmin, 'message_user') as mock_msg, \
+             patch('results.admin.CompetitionConfig') as MockConfig, \
              patch('results.admin.connection') as mock_conn:
             mock_conn.cursor.return_value.__enter__ = lambda s: cur
             mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
@@ -118,6 +148,8 @@ class TestChangeformView:
         deletes = [c[0][0] for c in cur.execute.call_args_list if 'DELETE' in c[0][0]]
         assert len(deletes) == len(MEOS_TABLES)
         assert any('mopCompetition' in sql for sql in deletes)
+        MockConfig.objects.filter.assert_called_once_with(cid=5)
+        MockConfig.objects.filter.return_value.delete.assert_called_once_with()
         mock_msg.assert_called_once()
         assert response.status_code == 302
 
