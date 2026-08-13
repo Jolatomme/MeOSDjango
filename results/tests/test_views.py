@@ -408,7 +408,7 @@ class TestHomeView:
 class TestCompetitionDetailView:
     """CORRECTIF : get_courses_map est mocké pour éviter les requêtes DB."""
 
-    def _run(self, cid=1, classes=None, teams_cls_ids=None, courses_map=None):
+    def _run(self, cid=1, classes=None, teams_cls_ids=None, courses_map=None, neg_stats=None):
         competition = make_competition(cid)
         classes = classes or [make_cls(cid, 10), make_cls(cid, 11)]
         relay_cls_ids = teams_cls_ids if teams_cls_ids is not None else set()
@@ -419,6 +419,7 @@ class TestCompetitionDetailView:
              patch('results.classViews.Mopcompetitor') as MockComp, \
              patch('results.classViews.get_courses_map', return_value=courses_map or {}), \
              patch('results.classViews.get_class_controls', return_value=([{'ctrl_id': 1}, {'ctrl_id': 2}], {})), \
+             patch('results.classViews.get_negative_time_stats', return_value=neg_stats), \
              patch('results.classViews.render') as mock_render:
             MockClass.objects.filter.return_value.order_by.return_value = classes
             MockTeam.objects.filter.return_value.values_list.return_value.distinct.return_value = list(relay_cls_ids)
@@ -496,6 +497,58 @@ class TestCompetitionDetailView:
         ctx = self._run_class_stats(cls1, relay_cls_ids=set(), comp_total=0)
         assert ctx['class_stats'] == []
 
+    def test_neg_time_warning_absent_par_defaut(self):
+        """Aucun temps négatif → neg_time_warning est None."""
+        _, ctx = self._run()
+        assert ctx['neg_time_warning'] is None
+        assert 'neg_count' not in ctx['class_stats'][0]
+        assert 'neg_count' not in ctx['courses_map']
+
+    def test_neg_count_par_categorie_et_circuit(self):
+        """Le contexte remonte le nombre de temps négatifs par catégorie et par circuit."""
+        cls1 = make_cls(1, 10, 'H21')
+        cls2 = make_cls(1, 11, 'D35')
+        stats = {
+            'count': 3, 'kind': 'multiple', 'message': 'msg', 'tooltip': 't',
+            'box_controls': {'P32': 2},
+            'runners': [
+                {'id': 1, 'name': 'A', 'cls_name': 'H21', 'controls': ['P32']},
+                {'id': 2, 'name': 'B', 'cls_name': 'H21', 'controls': ['P32']},
+                {'id': 3, 'name': 'C', 'cls_name': 'D35', 'controls': ['P31']},
+            ],
+        }
+        cm = {'abc12345': {'hash': 'abc12345', 'display_name': 'H21 / D35',
+                           'n_controls': 2, 'classes': [cls1, cls2]}}
+        _, ctx = self._run(classes=[cls1, cls2], courses_map=cm, neg_stats=stats)
+        assert ctx['neg_time_warning'] is stats
+        assert ctx['class_stats'][0]['neg_count'] == 2
+        assert ctx['class_stats'][1]['neg_count'] == 1
+        assert ctx['courses_map']['abc12345']['neg_count'] == 3
+
+    def test_neg_time_warning_rendu_dans_template(self):
+        """La bannière et les badges s'affichent dans le HTML rendu."""
+        cls1 = make_cls(1, 10, 'H21')
+        cls2 = make_cls(1, 11, 'D35')
+        stats = {
+            'count': 2, 'kind': 'multiple', 'message': '2 coureurs neg', 'tooltip': 't',
+            'box_controls': {'P32': 2},
+            'runners': [
+                {'id': 1, 'name': 'A', 'cls_name': 'H21', 'controls': ['P32']},
+                {'id': 2, 'name': 'B', 'cls_name': 'H21', 'controls': ['P32']},
+            ],
+        }
+        cm = {'abc12345': {'hash': 'abc12345', 'display_name': 'H21',
+                           'n_controls': 2, 'classes': [cls1]}}
+        _, ctx = self._run(classes=[cls1, cls2], courses_map=cm, neg_stats=stats)
+        from types import SimpleNamespace
+        from django.template.loader import render_to_string
+        ctx['competition'] = SimpleNamespace(cid=1, name='Test', date=date(2026, 1, 1))
+        html = render_to_string('results/competition_detail.html', ctx)
+        assert '2 coureurs neg' in html
+        assert 'neg-runners-table' in html
+        assert 'neg-badge' in html
+        assert 'neg-time-warning' in html
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # class_results (mode catégorie)
@@ -569,6 +622,76 @@ class TestClassResultsView:
         dnf = make_nf(1, STAT_DNF, 'Bob')
         _, ctx = self._run([dnf])
         assert ctx['leader_time'] == '-'
+
+    def test_neg_time_warning_dans_contexte(self):
+        """Le diagnostic temps négatifs est transmis au template."""
+        comp = make_competition(); cls = make_cls()
+        warning = {'count': 2, 'kind': 'multiple',
+                   'message': '2 coureurs…', 'tooltip': 'Temps négatif'}
+        with patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views.get_object_or_404', side_effect=[comp, cls]), \
+             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views.get_org_map', return_value={}), \
+             patch('results.views.get_class_controls', return_value=([], {})), \
+             patch('results.views.get_radio_map', return_value={}), \
+             patch('results.views.compute_splits', return_value=[]), \
+             patch('results.views.mark_best_splits'), \
+             patch('results.views.rank_splits'), \
+             patch('results.views.get_negative_time_stats', return_value=warning) as mock_stats, \
+             patch('results.views.render') as mock_render:
+            MockTeam.objects.filter.return_value.exists.return_value = False
+            MockComp.objects.filter.return_value = [make_competitor()]
+            from results.views import class_results
+            class_results(rf_get(), cid=1, class_id=10)
+            mock_stats.assert_called_once_with(1)
+            _, _, ctx = mock_render.call_args[0]
+            assert ctx['neg_time_warning'] == warning
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# class_results — marquage des coureurs à temps négatif
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestClassResultsNegTime:
+    """Les coureurs avec un temps négatif sont marqués c.neg_time."""
+
+    def _run(self, splits_list):
+        comp = make_competition(); cls = make_cls()
+        with patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views.get_object_or_404', side_effect=[comp, cls]), \
+             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views.get_org_map', return_value={}), \
+             patch('results.views.get_class_controls', return_value=([{'ctrl_id': 31, 'ctrl_name': 'P31'}], {})), \
+             patch('results.views.get_radio_map', return_value={}), \
+             patch('results.views.compute_splits', return_value=splits_list), \
+             patch('results.views.mark_best_splits'), \
+             patch('results.views.rank_splits'), \
+             patch('results.views.render') as mock_render:
+            MockTeam.objects.filter.return_value.exists.return_value = False
+            MockComp.objects.filter.return_value = [make_competitor(1, 4000)]
+            from results.views import class_results
+            class_results(rf_get(), cid=1, class_id=10)
+            _, _, ctx = mock_render.call_args[0]
+            return ctx['results'][0]
+
+    def test_coureur_temps_negatif_marque(self):
+        splits = [{'ctrl_name': 'P31', 'leg_time': '-00:50', 'leg_raw': -500,
+                   'abs_raw': 1200, 'neg_leg': True}]
+        assert self._run(splits).neg_time is True
+
+    def test_coureur_arrivee_negative_marque(self):
+        """Arrivée antérieure au dernier poste → marqué aussi."""
+        splits = [{'ctrl_name': 'P31', 'leg_time': '02:00', 'leg_raw': 1200,
+                   'abs_raw': 5000, 'neg_leg': False}]
+        c = self._run(splits)
+        assert c.neg_time is True
+
+    def test_coureur_normal_non_marque(self):
+        splits = [{'ctrl_name': 'P31', 'leg_time': '02:00', 'leg_raw': 1200,
+                   'abs_raw': 1200, 'neg_leg': False}]
+        assert self._run(splits).neg_time is False
 
 
 # ══════════════════════════════════════════════════════════════════════════════

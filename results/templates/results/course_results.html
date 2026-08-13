@@ -31,6 +31,8 @@
 
 {% block content %}
 
+{% include 'results/_neg_time_warning.html' %}
+
 {% include 'results/_result_filters_bar.html' with search_placeholder="Nom ou club…" %}
 {% include 'results/_error_chart_card.html' %}
 
@@ -54,7 +56,7 @@
       <tbody>
         {% with colspan=6 %}
         {% for comp in results %}
-        <tr class="result-row {% if not comp.is_ok %}non-finisher{% endif %}"
+        <tr class="result-row {% if comp.neg_time %}neg-row{% endif %} {% if not comp.is_ok %}non-finisher{% endif %}"
             data-name="{{ comp.name|lower }}{% if comp.class_obj %} {{ comp.class_obj.name|lower }}{% endif %} {% if comp.org_obj %}{{ comp.org_obj.name|lower }}{% endif %}"
             data-org="{% if comp.org_obj %}{{ comp.org_obj.name|lower }}{% endif %}">
           <td>
@@ -68,6 +70,7 @@
           <td class="runner-name">
             <a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name }}</a>
             {% if comp.cat_rank %}<span class="text-muted small"> ({{ comp.cat_rank }}<sup>e</sup> cat.)</span>{% endif %}
+            {% if comp.neg_time %}<span class="badge neg-badge ms-1" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>{% endif %}
           </td>
           <td class="d-none d-md-table-cell">
             {% if comp.class_obj %}

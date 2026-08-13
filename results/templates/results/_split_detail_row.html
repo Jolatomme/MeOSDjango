@@ -19,8 +19,8 @@
           <span class="split-time-abs">
             {{ sp.abs_time }}{% if sp.abs_rank %} <span class="split-rank">{{ sp.abs_rank }}</span>{% endif %}
           </span>
-          <span class="split-time-leg {% if sp.is_best %}split-leg-best{% endif %}">
-            {{ sp.leg_time }}{% if sp.leg_rank %} <span class="split-rank split-rank-leg">{{ sp.leg_rank }}</span>{% endif %}
+          <span class="split-time-leg {% if sp.is_best %}split-leg-best{% endif %}{% if sp.neg_leg %} split-neg{% endif %}"{% if sp.neg_leg %} title="{{ neg_time_warning.tooltip|default:'Temps négatif' }}"{% endif %}>
+            {{ sp.leg_time }}{% if sp.leg_rank %} <span class="split-rank split-rank-leg">{{ sp.leg_rank }}</span>{% endif %}{% if sp.neg_leg %} <span class="split-mark-warn">(!)</span>{% endif %}
           </span>
           <span class="split-error d-none"></span>
         </div>
@@ -31,7 +31,7 @@
         <div class="split-cell split-finish{% if last.is_best %} split-best{% elif last.leg_rank == 2 or last.leg_rank == 3 %} split-podium{% endif %}">
           <span class="split-ctrl-name">Arrivée</span>
           <span class="split-time-abs">{{ last.abs_time }}{% if last.abs_rank %} <span class="split-rank">{{ last.abs_rank }}</span>{% endif %}</span>
-          <span class="split-time-leg {% if last.is_best %}split-leg-best{% endif %}">{{ last.leg_time }}{% if last.leg_rank %} <span class="split-rank split-rank-leg">{{ last.leg_rank }}</span>{% endif %}</span>
+          <span class="split-time-leg {% if last.is_best %}split-leg-best{% endif %}{% if last.neg_leg %} split-neg{% endif %}"{% if last.neg_leg %} title="{{ neg_time_warning.tooltip|default:'Temps négatif' }}"{% endif %}>{{ last.leg_time }}{% if last.leg_rank %} <span class="split-rank split-rank-leg">{{ last.leg_rank }}</span>{% endif %}{% if last.neg_leg %} <span class="split-mark-warn">(!)</span>{% endif %}</span>
         </div>
         {% endif %}
         {% endwith %}

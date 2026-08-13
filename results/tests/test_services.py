@@ -163,6 +163,175 @@ class TestComputeSplits:
         splits = self._call(99, controls_seq, {})
         assert splits[0]['abs_time'] == '-'
 
+    def test_troncon_negatif_boitier_desynchronise(self):
+        """Poste suivant antérieur au précédent → tronçon négatif signalé."""
+        controls_seq = [
+            {'ctrl_id': 31, 'ctrl_name': 'P31'},
+            {'ctrl_id': 32, 'ctrl_name': 'P32'},
+        ]
+        radio_map = {1: {31: 2000, 32: 1500}}
+        splits = self._call(1, controls_seq, radio_map)
+        assert splits[1]['leg_raw']   == -500
+        assert splits[1]['leg_time']  == "-00:50"
+        assert splits[1]['neg_leg']   is True
+        assert splits[0]['neg_leg']   is False
+
+    def test_temps_manquant_pas_negatif(self):
+        """Un tronçon manquant ne doit pas être signalé comme négatif."""
+        controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
+        splits = self._call(1, controls_seq, {})
+        assert splits[0]['neg_leg'] is False
+        assert splits[0]['leg_time'] == '-'
+
+
+# ─── Tests build_finish_split ─────────────────────────────────────────────────
+
+class TestBuildFinishSplit:
+    """Vérifie le tronçon 'Arrivée', y compris les cas négatifs."""
+
+    def _call(self, rt, last_abs=None, **kwargs):
+        from results.services import build_finish_split
+        return build_finish_split(rt, last_abs, **kwargs)
+
+    def test_troncon_arrivee_normal(self):
+        sp = self._call(3000, 2500)
+        assert sp['leg_raw']  == 500
+        assert sp['leg_time'] == format_time(500)
+        assert sp['neg_leg']  is False
+
+    def test_arrivee_avant_dernier_poste(self):
+        """rt antérieur au dernier poste → tronçon négatif signalé."""
+        sp = self._call(2000, 2500)
+        assert sp['leg_raw']  == -500
+        assert sp['leg_time'] == "-00:50"
+        assert sp['neg_leg']  is True
+
+    def test_sans_dernier_poste_temps_total(self):
+        sp = self._call(3000)
+        assert sp['leg_raw']  == 3000
+        assert sp['neg_leg']  is False
+
+    def test_sans_dernier_poste_troncon_inconnu(self):
+        sp = self._call(3000, None, leg_full_race_if_missing=False)
+        assert sp['leg_raw']  is None
+        assert sp['leg_time'] == '-'
+
+    def test_non_classe(self):
+        sp = self._call(-1)
+        assert sp['abs_time'] == '-'
+        assert sp['leg_raw']  is None
+        assert sp['neg_leg']  is False
+
+    def test_rt_none(self):
+        sp = self._call(None)
+        assert sp['abs_time'] == '-'
+
+
+# ─── Tests get_negative_time_stats ────────────────────────────────────────────
+
+class TestGetNegativeTimeStats:
+    """get_negative_time_stats distingue le problème individuel du boîtier."""
+
+    def _call(self, cid, competitors, radios, controls):
+        from results.services import get_negative_time_stats
+        cls_mock = MagicMock(id=1)
+        cls_mock.name = 'H21'
+        with patch('results.services.Mopclass.objects') as mock_cls, \
+             patch('results.services.Mopcompetitor.objects') as mock_comp, \
+             patch('results.services.get_class_controls', return_value=(controls, {})), \
+             patch('results.services.get_radio_map', return_value=radios):
+            mock_cls.filter.return_value = [cls_mock]
+            mock_comp.filter.return_value = competitors
+            return get_negative_time_stats(cid)
+
+    def test_aucun_temps_negatif(self):
+        comps = [make_competitor(1, 3000), make_competitor(2, 4000)]
+        radios = {1: {31: 1000, 32: 2500}, 2: {31: 1100, 32: 2600}}
+        assert self._call(1, comps, radios, [{'ctrl_id': 31, 'ctrl_name': 'P31'},
+                                             {'ctrl_id': 32, 'ctrl_name': 'P32'}]) is None
+
+    def test_un_seul_coureur_probleme_individuel(self):
+        comps = [make_competitor(1, 3000), make_competitor(2, 4000)]
+        radios = {1: {31: 2000, 32: 1500}, 2: {31: 1100, 32: 2600}}
+        stats = self._call(1, comps, radios, [{'ctrl_id': 31, 'ctrl_name': 'P31'},
+                                              {'ctrl_id': 32, 'ctrl_name': 'P32'}])
+        assert stats is not None
+        assert stats['count'] == 1
+        assert stats['kind']  == 'single'
+        assert stats['box_controls'] == {}
+        assert 'non effacée' in stats['message']
+        assert 'carte SI' in stats['tooltip']
+        assert stats['runners'] == [
+            {'id': 1, 'name': 'Coureur', 'cls_name': 'H21', 'controls': ['P32']}
+        ]
+
+    def test_un_seul_coureur_arrivee_negative(self):
+        """Arrivée antérieure au dernier poste → 'Arrivée' listée dans controls."""
+        comps = [make_competitor(1, 1000)]
+        radios = {1: {31: 1500}}
+        stats = self._call(1, comps, radios, [{'ctrl_id': 31, 'ctrl_name': 'P31'}])
+        assert stats is not None
+        assert stats['count'] == 1
+        assert stats['kind']  == 'single'
+        assert stats['box_controls'] == {}
+        assert stats['runners'][0]['controls'] == ['Arrivée']
+
+    def test_troncon_et_arrivee_negatifs_listes(self):
+        """Tronçon intermédiaire ET arrivée négatifs → les deux listés."""
+        comps = [make_competitor(1, 1000)]
+        radios = {1: {31: 2000, 32: 1500}}
+        stats = self._call(1, comps, radios, [{'ctrl_id': 31, 'ctrl_name': 'P31'},
+                                              {'ctrl_id': 32, 'ctrl_name': 'P32'}])
+        assert stats['runners'][0]['controls'] == ['P32', 'Arrivée']
+        assert stats['kind'] == 'single'
+
+    def test_plusieurs_coureurs_meme_poste_boitier(self):
+        """Deux coureurs négatifs au MÊME poste → boîtier mal synchronisé."""
+        comps = [make_competitor(1, 3000), make_competitor(2, 4000)]
+        radios = {1: {31: 2000, 32: 1500}, 2: {31: 2500, 32: 2400}}
+        stats = self._call(1, comps, radios, [{'ctrl_id': 31, 'ctrl_name': 'P31'},
+                                              {'ctrl_id': 32, 'ctrl_name': 'P32'}])
+        assert stats is not None
+        assert stats['count'] == 2
+        assert stats['kind']  == 'multiple'
+        assert stats['box_controls'] == {'P32': 2}
+        assert 'mal synchronisé' in stats['message']
+        assert 'boîtier' in stats['tooltip']
+        names = [r['name'] for r in stats['runners']]
+        assert names == ['Coureur', 'Coureur']
+
+    def test_plusieurs_coureurs_postes_differents_doigt(self):
+        """Deux coureurs négatifs à des postes DIFFÉRENTS → doigt non effacé."""
+        comps = [make_competitor(1, 3000), make_competitor(2, 4000)]
+        radios = {1: {31: 2000, 32: 1500, 33: 3000}, 2: {31: 1000, 32: 2000, 33: 1500}}
+        stats = self._call(1, comps, radios, [{'ctrl_id': 31, 'ctrl_name': 'P31'},
+                                              {'ctrl_id': 32, 'ctrl_name': 'P32'},
+                                              {'ctrl_id': 33, 'ctrl_name': 'P33'}])
+        assert stats is not None
+        assert stats['count'] == 2
+        assert stats['kind']  == 'single'
+        assert stats['box_controls'] == {}
+        assert 'postes différents' in stats['message']
+        assert 'non effacées' in stats['message']
+        controls_par_coureur = [r['controls'] for r in stats['runners']]
+        assert ['P32'] in controls_par_coureur
+        assert ['P33'] in controls_par_coureur
+
+    def test_boitier_et_doigts_melanges(self):
+        """Poste partagé (boîtier) détecté même si d'autres postes sont isolés."""
+        comps = [make_competitor(1, 3000), make_competitor(2, 6000)]
+        radios = {1: {31: 2000, 32: 1500, 33: 1400}, 2: {31: 2500, 32: 2400, 33: 5600}}
+        stats = self._call(1, comps, radios, [{'ctrl_id': 31, 'ctrl_name': 'P31'},
+                                              {'ctrl_id': 32, 'ctrl_name': 'P32'},
+                                              {'ctrl_id': 33, 'ctrl_name': 'P33'}])
+        assert stats['count'] == 2
+        assert stats['kind']  == 'multiple'
+        assert stats['box_controls'] == {'P32': 2}
+        assert 'au poste P32' in stats['message']
+        controls_par_coureur = [r['controls'] for r in stats['runners']]
+        assert ['P32', 'P33'] in controls_par_coureur
+        assert ['P32'] in controls_par_coureur
+
 
 # ─── Tests mark_best_splits ───────────────────────────────────────────────────
 

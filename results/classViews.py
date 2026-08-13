@@ -16,7 +16,7 @@ from .models import (
 )
 from .services import (
     get_org_map, get_class_controls, get_courses_map,
-    slugify_no_prefix, competition_visible,
+    get_negative_time_stats, slugify_no_prefix, competition_visible,
 )
 
 from .meos_checker import check_meos_file
@@ -199,10 +199,23 @@ class CompetitionDetailView(RenderShortcutMixin, DetailView):
         class_totals = {cs['cls'].id: cs['total'] for cs in class_stats}
         courses_map = get_courses_map(cid, relay_class_ids, class_totals)
 
+        neg_stats = get_negative_time_stats(cid)
+        if neg_stats:
+            neg_by_cls = {}
+            for r in neg_stats['runners']:
+                neg_by_cls[r['cls_name']] = neg_by_cls.get(r['cls_name'], 0) + 1
+            for cs in class_stats:
+                cs['neg_count'] = neg_by_cls.get(cs['cls'].name, 0)
+            for course in courses_map.values():
+                course['neg_count'] = sum(
+                    neg_by_cls.get(cls.name, 0) for cls in course['classes']
+                )
+
         context.update({
             'class_stats': class_stats,
             'courses_map': courses_map,
             'has_individual_competitors': has_individual,
+            'neg_time_warning': neg_stats,
         })
         return context
 

@@ -276,6 +276,59 @@ footer a { color: var(--co-gold); }
 .split-rank::after  { content: ')'; }
 .split-rank-leg { color: var(--co-green-dark); }
 
+/* Temps négatif (boîtier mal synchronisé ou carte SI non effacée) */
+.split-neg { color: var(--co-warn); font-weight: 700; }
+.split-mark-warn { color: var(--co-warn); font-weight: 800; }
+.badge.neg-badge { background: var(--co-warn); color: #fff; font-size: .68rem; }
+tr.neg-row > td { background: rgba(220, 53, 69, .05); }
+tr.neg-row:hover > td { background: rgba(220, 53, 69, .1); }
+
+/* Bannière d'avertissement temps négatifs */
+.neg-time-warning {
+  display: flex; flex-direction: column; gap: .5rem;
+  padding: .6rem 1rem;
+  border: 1px solid rgba(220, 53, 69, .35);
+  border-left: 4px solid var(--co-warn);
+  border-radius: .375rem;
+  background: color-mix(in srgb, var(--co-warn) 8%, transparent);
+  color: var(--co-warn);
+  font-weight: 600;
+}
+.neg-time-warning-header { display: flex; align-items: center; }
+.neg-time-warning-header .bi { flex: none; }
+
+/* Postes suspectés (boîtier) */
+.neg-box-controls { font-weight: 500; font-size: .92rem; }
+.neg-box-controls-label { color: var(--co-warn); font-weight: 700; }
+.neg-box-control { font-weight: 700; color: var(--co-forest); }
+.neg-box-count { font-weight: 500; color: var(--co-warn); }
+.neg-box-sep { color: var(--co-grey); }
+
+/* Tableau des coureurs à temps négatif */
+.neg-runners-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-weight: 500; font-size: .92rem;
+}
+.neg-runners-table th {
+  text-align: left; padding: .3rem .5rem;
+  border-bottom: 2px solid rgba(220, 53, 69, .4);
+  font-size: .78rem; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--co-warn); white-space: nowrap;
+}
+.neg-runners-table td {
+  padding: .3rem .5rem;
+  border-bottom: 1px solid rgba(220, 53, 69, .18);
+  vertical-align: top;
+}
+.neg-runners-table tr:last-child td { border-bottom: none; }
+.neg-table-rank { color: var(--co-grey); font-variant-numeric: tabular-nums; }
+.neg-runners-table a { color: var(--co-warn); text-decoration: underline; }
+.neg-runners-table a:hover { color: var(--co-forest); }
+.neg-table-cls { color: var(--co-grey); white-space: nowrap; }
+.neg-table-ctrls { font-style: italic; color: var(--co-forest); }
+.neg-ctrl-box { font-style: normal; color: var(--co-warn); text-decoration: underline dotted; }
+
 /* Meilleur tronçon */
 .split-best { background: #fffbe6; border-color: #f0c040; }
 .split-leg-best { font-weight: 800; color: #9a6700; }

@@ -39,9 +39,16 @@ class TestFormatTime:
         # 600 = 60 s = 1 min exactement
         assert format_time(600) == "01:00"
 
-    def test_negatif_leve_exception(self):
-        with pytest.raises(ValueError):
-            format_time(-1)
+    def test_negatif_prefixe_moins(self):
+        # -500 dixièmes = -50 s → "-00:50" (boîtier mal synchronisé)
+        assert format_time(-500) == "-00:50"
+
+    def test_negatif_avec_dixieme(self):
+        assert format_time(-1) == "-00:00.1"
+
+    def test_negatif_heures(self):
+        # -36615 dixièmes = -3661.5 s = -1h01m01.5s
+        assert format_time(-36615) == "-1:01:01.5"
 
     def test_type_float_converti(self):
         # La fonction doit accepter les floats (int() coerce)

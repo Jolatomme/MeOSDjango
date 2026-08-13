@@ -16,12 +16,13 @@
         <li class="breadcrumb-item active">{{ competitor.name }}</li>
       </ol>
     </nav>
-    <h1><i class="bi bi-person-circle me-2 opacity-75"></i>{{ competitor.name }}</h1>
+    <h1><i class="bi bi-person-circle me-2 opacity-75"></i>{{ competitor.name }}{% if competitor.neg_time %} <span class="badge neg-badge align-middle ms-1" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>{% endif %}</h1>
   </div>
 </div>
 {% endblock %}
 
 {% block content %}
+{% include 'results/_neg_time_warning.html' %}
 <div class="row g-4">
 
   <!-- Fiche -->
@@ -103,7 +104,7 @@
             <tr class="split-row">
               <td>{{ sp.ctrl_name }}</td>
               <td class="text-end split-abs">{{ sp.abs_time }}</td>
-              <td class="text-end split-leg">{{ sp.leg_time }}</td>
+              <td class="text-end split-leg{% if sp.neg_leg %} split-neg{% endif %}"{% if sp.neg_leg %} title="{{ neg_time_warning.tooltip|default:'Temps négatif' }}"{% endif %}>{{ sp.leg_time }}{% if sp.neg_leg %} <span class="split-mark-warn">(!)</span>{% endif %}</td>
             </tr>
             {% endif %}
             {% endfor %}
@@ -112,7 +113,7 @@
             <tr class="split-row" style="border-top:2px solid var(--co-green)">
               <td><i class="bi bi-flag-fill text-danger"></i> Arrivée</td>
               <td class="text-end split-abs fw-bold" style="color:var(--co-green)">{{ last.abs_time }}</td>
-              <td class="text-end split-leg">{{ last.leg_time }}</td>
+              <td class="text-end split-leg{% if last.neg_leg %} split-neg{% endif %}"{% if last.neg_leg %} title="{{ neg_time_warning.tooltip|default:'Temps négatif' }}"{% endif %}>{{ last.leg_time }}{% if last.neg_leg %} <span class="split-mark-warn">(!)</span>{% endif %}</td>
             </tr>
             {% endif %}
             {% endwith %}
