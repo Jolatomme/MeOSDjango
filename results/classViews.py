@@ -269,7 +269,7 @@ class StartListView(RenderShortcutMixin, TemplateView):
                 'club_display': f"{comp.org:04d} - {org_obj.name}" if org_obj else 'Sans club',
                 'start_time': start_time,
                 'start_time_sort': start_time_sort,
-                'control_card': '',
+                'control_card': comp.card or '',
             })
 
         rows.sort(key=lambda r: r['start_time_sort'])
@@ -286,6 +286,14 @@ class StartListView(RenderShortcutMixin, TemplateView):
         for row in rows:
             if row['start_time']:
                 by_start_time[row['start_time']].append(row)
+
+        def sort_rows_alphabetically(group_dict):
+            """Tri les coureurs de chaque groupe par nom puis prénom (insensible à la casse)."""
+            for items in group_dict.values():
+                items.sort(key=lambda r: (r['family'].lower(), r['given'].lower()))
+
+        for group_dict in (by_category, by_club, by_start_time):
+            sort_rows_alphabetically(group_dict)
 
         def make_groups(group_dict, sort_key=None):
             groups = []
@@ -307,7 +315,7 @@ class StartListView(RenderShortcutMixin, TemplateView):
             },
             'groups': {
                 'category': make_groups(by_category),
-                'club': make_groups(by_club),
+                'club': make_groups(by_club, sort_key=lambda g: g['rows'][0]['club_id'] or float('inf')),
                 'start_time': make_groups(by_start_time, sort_key=lambda g: g['name']),
             }
         }

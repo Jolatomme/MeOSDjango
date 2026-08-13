@@ -16,6 +16,9 @@ pytest results/tests/test_views.py -v
 python manage.py migrate
 python manage.py collectstatic
 
+# Create mop* tables / add missing columns (e.g. mopCompetitor.card)
+python manage.py setup_db
+
 # Manual test of the O'checklist endpoint
 python test_ochecklist.py
 ```

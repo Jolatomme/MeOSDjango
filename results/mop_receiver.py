@@ -250,6 +250,7 @@ def process_competitor(cid: int, elem: ET.Element):
     </cmp>
 
     Attributs notables (stockés si présents) :
+      card    : numéro de puce SI (SIAC)
       stat=0  : Unknown (en course)
       stat=1  : OK
       stat=15 : OCC (Out-of-competition, v3.7)
@@ -283,6 +284,12 @@ def process_competitor(cid: int, elem: ET.Element):
         'st':    int(base.get('st', 0)),
         'rt':    int(base.get('rt', 0)),
     }
+
+    # Numéro de puce : seulement si l'attribut est présent, pour ne pas
+    # écraser une valeur existante lors d'un MOPDiff partiel sans card.
+    card_attr = elem.get('card')
+    if card_attr is not None:
+        fields['card'] = card_attr.strip()
 
     inp = _find(elem, 'input')
     if inp is not None:
