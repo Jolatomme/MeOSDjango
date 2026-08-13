@@ -22,6 +22,8 @@ Tous les changements notables de ce projet dont documentés ici.
 
 ### Fixed
 - Erreur 500 sur les pages classe/circuit, coureur, relais, récapitulatif et duel lorsqu'un temps intermédiaire ou le tronçon arrivée était négatif.
+- Admin : « Supprimer les données MOP » supprime aussi la configuration de la compétition (`CompetitionConfig`) — la compétition disparaît de la liste au lieu d'y rester avec son CID en guise de nom. Le nom de la compétition est désormais capturé avant la suppression (message de confirmation exact).
+- Admin : purge automatique des `CompetitionConfig` orphelines (cid absent de `mopCompetition`) à l'ouverture de la liste des configurations.
 
 ### Security
 - 
