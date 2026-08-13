@@ -81,6 +81,8 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
 
 {% block content %}
 
+{% include 'results/_neg_time_warning.html' %}
+
 {% if course %}
 <div class="co-card mb-3">
   <div class="co-card-header"><i class="bi bi-tags me-2"></i>Catégories sur ce circuit</div>
@@ -143,6 +145,7 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
               <td class="rank-col" rowspan="2" data-sticky="0">{{ comp.rank }}</td>
               <td rowspan="2" class="runner-name" data-sticky="1">
                 <a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a>
+                {% if comp.neg_time %}<span class="badge neg-badge ms-1" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>{% endif %}
               </td>
               {% if course %}
               <td rowspan="2" data-sticky="2" class="col-category">
@@ -163,7 +166,7 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
               <td class="text-end time-col text-nowrap {% if sp.is_best %}split-best{% elif sp.leg_rank == 2 or sp.leg_rank == 3 %}split-podium{% endif %}"
                   data-error-time="{{ sp.error_time|default:'' }}"
                   data-error-pct="{{ sp.error_pct|default:'' }}">
-                <span class="split-time">{{ sp.leg_time }}{% if sp.leg_rank %} <span class="split-rank">{{ sp.leg_rank }}</span>{% endif %}</span>
+                <span class="split-time{% if sp.neg_leg %} split-neg{% endif %}"{% if sp.neg_leg %} title="{{ neg_time_warning.tooltip|default:'Temps négatif' }}"{% endif %}>{{ sp.leg_time }}{% if sp.leg_rank %} <span class="split-rank">{{ sp.leg_rank }}</span>{% endif %}{% if sp.neg_leg %} <span class="split-mark-warn">(!)</span>{% endif %}</span>
                 <span class="split-error d-none"></span>
               </td>
               {% endfor %}
@@ -185,7 +188,7 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
             {% else %}
             <tr class="runner-row non-finisher">
               <td class="rank-col" data-sticky="0">{% if comp.rank %}{{ comp.rank }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
-              <td class="runner-name" data-sticky="1"><a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a></td>
+              <td class="runner-name" data-sticky="1"><a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a>{% if comp.neg_time %} <span class="badge neg-badge ms-1" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>{% endif %}</td>
               {% if course %}<td data-sticky="2" class="col-category">{% if comp.class_obj %}{{ comp.class_obj.name }}{% else %}—{% endif %}</td>{% endif %}
               <td class="club-name col-club" data-sticky="{% if course %}3{% else %}2{% endif %}">{% if comp.org_obj %}{{ comp.org_obj.name }}{% else %}—{% endif %}</td>
               {% if has_splits %}

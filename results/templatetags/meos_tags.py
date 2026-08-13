@@ -9,9 +9,13 @@ register = template.Library()
 def meos_time(seconds):
     """Formate des secondes MeOS en MM:SS."""
     try:
-        return format_time(int(seconds))
+        seconds = int(seconds)
     except (TypeError, ValueError):
         return '-'
+    if seconds < 0:
+        # MeOS utilise rt=-1 pour les non classés : on ne formate pas les négatifs ici
+        return '-'
+    return format_time(seconds)
 
 
 @register.filter

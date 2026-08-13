@@ -14,7 +14,9 @@ from .models import (
 )
 from .services import (
     get_org_map, get_class_controls, get_controls_by_leg,
-    get_radio_map, compute_splits, mark_best_splits, rank_splits,
+    get_radio_map, compute_splits, build_finish_split,
+    get_negative_time_stats,
+    mark_best_splits, rank_splits,
     rank_finishers, build_rank_map,
     build_leg_matrix, compute_leg_refs,
     build_abs_time_series, compute_error_estimates,
@@ -185,30 +187,9 @@ def class_results(request, cid, class_id):
 
     # Ajout du tronçon arrivée pour tous (cohérence mark_best_splits / rank_splits)
     for c in results:
-        if c.rt > 0:
-            last_abs = c.splits[-1]['abs_raw'] if c.splits else None
-            leg_raw = c.rt - last_abs if last_abs else c.rt
-            c.splits.append({
-                'ctrl_name': 'Arrivée',
-                'abs_time':  format_time(c.rt),
-                'leg_time':  format_time(leg_raw) if leg_raw else '-',
-                'leg_raw':   leg_raw,
-                'abs_raw':   c.rt,
-                'is_best':   False,
-                'leg_rank':  None,
-                'abs_rank':  None,
-            })
-        else:
-            c.splits.append({
-                'ctrl_name': 'Arrivée',
-                'abs_time':  '-',
-                'leg_time':  '-',
-                'leg_raw':   None,
-                'abs_raw':   None,
-                'is_best':   False,
-                'leg_rank':  None,
-                'abs_rank':  None,
-            })
+        last_abs = c.splits[-1]['abs_raw'] if c.splits else None
+        c.splits.append(build_finish_split(c.rt, last_abs))
+        c.neg_time = any(sp.get('neg_leg') for sp in c.splits)
 
     mark_best_splits(finishers, results)
     rank_splits(finishers, results)
@@ -251,6 +232,7 @@ def class_results(request, cid, class_id):
         'prev_cls':            prev_cls,
         'next_cls':            next_cls,
         'course_hash':         course['hash'] if course else compute_course_hash(controls_seq),
+        'neg_time_warning':    get_negative_time_stats(cid),
     })
 
 
@@ -272,20 +254,12 @@ def competitor_detail(request, cid, competitor_id):
     # Ajout du tronçon arrivée
     if competitor.is_ok and splits and competitor.rt > 0:
         last_abs = splits[-1]['abs_raw']
-        leg_raw = competitor.rt - last_abs if last_abs else competitor.rt
-        splits.append({
-            'ctrl_name': 'Arrivée',
-            'abs_time':  format_time(competitor.rt),
-            'leg_time':  format_time(leg_raw) if leg_raw else '-',
-            'leg_raw':   leg_raw,
-            'abs_raw':   competitor.rt,
-            'is_best':   False,
-            'leg_rank':  None,
-            'abs_rank':  None,
-        })
+        splits.append(build_finish_split(competitor.rt, last_abs))
+    competitor.neg_time = any(sp.get('neg_leg') for sp in splits)
     return render(request, 'results/competitor_detail.html', {
         'competition': competition, 'competitor': competitor,
         'org': org, 'cls': cls, 'splits': splits,
+        'neg_time_warning': get_negative_time_stats(cid),
         'total_time': format_time(competitor.rt) if competitor.is_ok else competitor.status_label,
     })
 
@@ -340,12 +314,17 @@ def api_class_results(request, cid, class_id):
     org_map         = get_org_map(cid)
     finishers, _, _ = rank_finishers(competitors)
     leader          = finishers[0].rt if finishers else None
-    data = [
-        {'rank': i + 1, 'name': c.name, 'org': org_map.get(c.org, ''),
-         'time': format_time(c.rt),
-         'behind': f'+{format_time(c.rt - leader)}' if i > 0 else ''}
-        for i, c in enumerate(finishers)
-    ]
+    data = []
+    for i, c in enumerate(finishers):
+        behind = ''
+        if i > 0:
+            diff = c.rt - leader
+            behind = f'+{format_time(diff)}' if diff >= 0 else format_time(diff)
+        data.append({
+            'rank': i + 1, 'name': c.name, 'org': org_map.get(c.org, ''),
+            'time': format_time(c.rt),
+            'behind': behind,
+        })
     return JsonResponse({'results': data})
 
 
@@ -682,6 +661,7 @@ def duel_analysis(request, cid, class_id):
     return render(request, 'results/duel.html', {
         'competition': competition, 'cls': cls, 'course': course,
         'no_data': False, 'current_analysis': 'duel',
+        'neg_time_warning': get_negative_time_stats(cid),
         'runners_json': json.dumps(runners_data), 'n_runners': len(runners_data),
     })
 
@@ -726,30 +706,9 @@ def _load_recapitulatif_data(cid, class_id, context=None):
 
     for c in results:
         c.splits = compute_splits(c.id, controls_seq, radio_map)
-        if c.rt > 0:
-            last_abs = c.splits[-1]['abs_raw'] if c.splits else None
-            leg_raw  = c.rt - last_abs if last_abs else c.rt
-            c.splits.append({
-                'ctrl_name': 'Arrivée',
-                'abs_time':  format_time(c.rt),
-                'leg_time':  format_time(leg_raw) if leg_raw else '-',
-                'leg_raw':   leg_raw,
-                'abs_raw':   c.rt,
-                'is_best':   False,
-                'leg_rank':  None,
-                'abs_rank':  None,
-            })
-        else:
-            c.splits.append({
-                'ctrl_name': 'Arrivée',
-                'abs_time':  '-',
-                'leg_time':  '-',
-                'leg_raw':   None,
-                'abs_raw':   None,
-                'is_best':   False,
-                'leg_rank':  None,
-                'abs_rank':  None,
-            })
+        last_abs = c.splits[-1]['abs_raw'] if c.splits else None
+        c.splits.append(build_finish_split(c.rt, last_abs))
+        c.neg_time = any(sp.get('neg_leg') for sp in c.splits)
 
     mark_best_splits(finishers, results)
     rank_splits(finishers, results)
@@ -810,6 +769,7 @@ def recapitulatif_analysis(request, cid, class_id):
         'current_analysis':    'recapitulatif',
         'prev_cls':            prev_cls,
         'next_cls':            next_cls,
+        'neg_time_warning':    get_negative_time_stats(cid),
         'leg_error_data_json': json.dumps(leg_error_data),
     })
 
@@ -927,17 +887,7 @@ def relay_results(request, cid, class_id):
                 ]
                 splits = compute_splits(runner.id, ctrl_seq, radio_map)
                 last_ctrl_abs = splits[-1]['abs_raw'] if splits and splits[-1]['abs_raw'] is not None else None
-                finish_leg_raw = (leg_time_raw - last_ctrl_abs) if leg_time_raw and last_ctrl_abs else None
-                splits.append({
-                    'ctrl_name': 'Arrivée',
-                    'abs_time': format_time(leg_time_raw) if leg_time_raw else '-',
-                    'leg_time': format_time(finish_leg_raw) if finish_leg_raw else '-',
-                    'leg_raw': finish_leg_raw,
-                    'abs_raw': leg_time_raw,
-                    'is_best': False,
-                    'leg_rank': None,
-                    'abs_rank': None,
-                })
+                splits.append(build_finish_split(leg_time_raw, last_ctrl_abs, leg_full_race_if_missing=False))
                 legs_data.append({
                     'leg': leg_num, 'runner_id': runner.id, 'name': runner.name,
                     'leg_time': format_time(leg_time_raw) if leg_time_raw else '-',
@@ -956,6 +906,9 @@ def relay_results(request, cid, class_id):
                     'stat': 0, 'stat_label': '-', 'stat_badge': 'secondary',
                     'splits': [], 'leg_rank': None, 'cum_rank': None,
                 })
+        t.neg_time = any(
+            sp.get('neg_leg') for leg in legs_data for sp in leg['splits']
+        )
         teams_data.append({'team': t, 'org_name': org_map.get(t.org, ''), 'legs': legs_data})
 
     for leg_num in range(1, n_legs + 1):
@@ -981,6 +934,7 @@ def relay_results(request, cid, class_id):
         'competition': competition, 'cls': cls,
         'teams_data': teams_data,
         'leader_time': format_time(leader_time) if leader_time else '-',
+        'neg_time_warning': get_negative_time_stats(cid),
         'n_legs': n_legs,
     })
 

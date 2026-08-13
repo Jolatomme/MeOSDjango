@@ -253,15 +253,16 @@ def format_time(time_with_ms: int) -> str:
 
     Args:
         time_with_ms: Time in units of 1/10 seconds
-        (e.g., 36615 for 10h0m6.5s).
+        (e.g., 36615 for 10h0m6.5s). May be negative when a timing
+        device is mis-synchronized — the value is then prefixed with '-'.
 
     Returns:
         Formatted time string in the format "HH:MM:SS.d", "MM:SS.d",
-        "HH:MM:SS", or "MM:SS".
+        "HH:MM:SS", or "MM:SS", prefixed with '-' when negative.
     """
     time_with_ms = int(time_with_ms)  # coerce float → int
-    if time_with_ms < 0:
-        raise ValueError("Time cannot be negative.")
+    sign = '-' if time_with_ms < 0 else ''
+    time_with_ms = abs(time_with_ms)
 
     tenths = time_with_ms % 10
     total_seconds = time_with_ms // 10
@@ -275,4 +276,4 @@ def format_time(time_with_ms: int) -> str:
     if tenths != 0:
         time_str += f".{tenths}"
 
-    return time_str
+    return sign + time_str

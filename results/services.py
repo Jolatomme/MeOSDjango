@@ -7,10 +7,12 @@ Les accès DB restent ici pour pouvoir les mocker facilement dans les tests.
 
 from .models import (
     Moporganization, Mopcontrol, Mopclasscontrol, Mopradio, Mopclass,
+    Mopcompetitor,
     STAT_OK, STATUS_LABELS, format_time,
 )
 
 import re
+from collections import Counter
 from markdown.extensions.toc import slugify_unicode
 from django.db import connection
 
@@ -113,12 +115,151 @@ def compute_splits(runner_id, controls_seq, radio_map):
             'leg_time':  format_time(leg)   if leg is not None else '-',
             'leg_raw':   leg,
             'abs_raw':   abs_t if abs_t > 0 else None,
+            'neg_leg':   leg is not None and leg < 0,
             'is_best':   False,
             'leg_rank':  None,
             'abs_rank':  None,
         })
         prev = abs_t if abs_t > 0 else -1
     return splits
+
+
+def build_finish_split(rt, last_abs, *, leg_full_race_if_missing=True):
+    """Construit le dict du tronçon 'Arrivée'.
+
+    Un temps d'arrivée antérieur au dernier poste (boîtier mal
+    synchronisé) produit un tronçon négatif, signalé via 'neg_leg'.
+
+    Args:
+        rt: temps de course (en 1/10 s). Si absent ou négatif
+            (non classé), renvoie un tronçon vide.
+        last_abs: temps du dernier poste (en 1/10 s) ou None.
+        leg_full_race_if_missing: si True et qu'aucun dernier poste
+            n'est connu, le tronçon vaut rt (temps total) ; si False,
+            le tronçon reste inconnu ('-').
+    """
+    if rt is None or rt <= 0:
+        return {
+            'ctrl_name': 'Arrivée',
+            'abs_time':  '-',
+            'leg_time':  '-',
+            'leg_raw':   None,
+            'abs_raw':   None,
+            'neg_leg':   False,
+            'is_best':   False,
+            'leg_rank':  None,
+            'abs_rank':  None,
+        }
+    if last_abs:
+        leg_raw = rt - last_abs
+    elif leg_full_race_if_missing:
+        leg_raw = rt
+    else:
+        leg_raw = None
+    return {
+        'ctrl_name': 'Arrivée',
+        'abs_time':  format_time(rt),
+        'leg_time':  format_time(leg_raw) if leg_raw else '-',
+        'leg_raw':   leg_raw,
+        'abs_raw':   rt,
+        'neg_leg':   leg_raw is not None and leg_raw < 0,
+        'is_best':   False,
+        'leg_rank':  None,
+        'abs_rank':  None,
+    }
+
+
+def get_negative_time_stats(cid):
+    """Compte les coureurs de la compétition ayant au moins un temps négatif.
+
+    Diagnostic :
+      - boîtier mal synchronisé ('multiple') si plusieurs coureurs ont un
+        temps négatif au même poste (le boîtier est commun) ;
+      - carte SI non effacée ('single') sinon, même si plusieurs coureurs
+        sont affectés mais sur des postes différents.
+
+    Returns:
+        None si aucun coureur affecté, sinon un dict avec
+        {'count', 'kind', 'message', 'tooltip', 'box_controls', 'runners'} :
+        - count : nombre de coureurs affectés ;
+        - kind : 'single' (doigt non effacé) ou 'multiple' (boîtier) ;
+        - box_controls : {poste: nb de coureurs} pour les postes où ≥ 2
+          coureurs ont un temps négatif (triés par nombre décroissant) ;
+        - runners : liste triée (classe, nom) des coureurs affectés avec
+          {'id', 'name', 'cls_name', 'controls'} — controls étant la
+          liste des postes (et éventuellement 'Arrivée') au temps négatif.
+    """
+    affected    = {}
+    ctrl_counts = Counter()
+    for cls in Mopclass.objects.filter(cid=cid):
+        competitors = list(Mopcompetitor.objects.filter(cid=cid, cls=cls.id))
+        if not competitors:
+            continue
+        controls_seq, _ = get_class_controls(cid, cls.id)
+        radio_map       = get_radio_map(cid, [c.id for c in competitors])
+        for c in competitors:
+            if c.id in affected:
+                continue
+            splits = compute_splits(c.id, controls_seq, radio_map)
+            neg_ctrls = [sp['ctrl_name'] for sp in splits if sp['neg_leg']]
+            if c.rt > 0 and splits:
+                last_abs = splits[-1]['abs_raw']
+                if last_abs and c.rt < last_abs:
+                    neg_ctrls.append('Arrivée')
+            if neg_ctrls:
+                affected[c.id] = {
+                    'name':    c.name,
+                    'cls_name': cls.name,
+                    'controls': neg_ctrls,
+                }
+                ctrl_counts.update(neg_ctrls)
+
+    if not affected:
+        return None
+    count = len(affected)
+
+    # Boîtiers suspectés : postes où plusieurs coureurs ont un temps négatif
+    box_controls = {
+        name: n
+        for name, n in sorted(ctrl_counts.items(), key=lambda kv: (-kv[1], kv[0]))
+        if n >= 2
+    }
+
+    if box_controls:
+        kind     = 'multiple'
+        box_names = ', '.join(box_controls)
+        if len(box_controls) == 1:
+            postes = f"au poste {box_names}"
+        else:
+            postes = f"aux postes {box_names}"
+        message = (
+            f"{count} coureurs ont des temps négatifs {postes} : "
+            "probable boîtier mal synchronisé."
+        )
+        tooltip = 'Temps négatif : boîtier probablement mal synchronisé'
+    elif count == 1:
+        kind = 'single'
+        message = (
+            "1 coureur a un temps négatif : probable carte SI non effacée "
+            "(problème d'effacement de doigts)."
+        )
+        tooltip = 'Temps négatif : carte SI probablement non effacée'
+    else:
+        kind = 'single'
+        message = (
+            f"{count} coureurs ont des temps négatifs sur des postes "
+            "différents : probables cartes SI non effacées "
+            "(effacement de doigts)."
+        )
+        tooltip = ('Temps négatifs sur des postes différents : '
+                   'cartes SI probablement non effacées')
+
+    runners = sorted(
+        ({'id': cid_, **info} for cid_, info in affected.items()),
+        key=lambda r: (r['cls_name'], r['name']),
+    )
+    return {'count': count, 'kind': kind, 'message': message, 'tooltip': tooltip,
+            'box_controls': box_controls, 'runners': runners}
 
 
 def mark_best_splits(finishers, all_results):

@@ -62,6 +62,11 @@ class TestMeosTimeFilter:
         assert meos_time('abc') == '-'
         assert meos_time('') == '-'
 
+    def test_negatif_non_classe(self):
+        """MeOS utilise -1 pour les non classés : on ne formate pas les négatifs ici."""
+        assert meos_time(-1) == '-'
+        assert meos_time(-500) == '-'
+
 
 class TestStatusBadgeFilter:
     """Tests pour le filter status_badge."""

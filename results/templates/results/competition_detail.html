@@ -36,6 +36,11 @@
 {% block content %}
 {% load static %}
 
+{# ── Avertissement temps négatifs (toute la compétition) ───────────────────── #}
+{% if neg_time_warning %}
+{% include "results/_neg_time_warning.html" %}
+{% endif %}
+
 {# ── Stats rapides ──────────────────────────────────────────────────────────── #}
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
@@ -89,6 +94,11 @@
             {{ cs.cls.name }}
           </div>
           <span class="badge bg-light text-dark border">{{ cs.total }} équipe{{ cs.total|pluralize }}</span>
+          {% if cs.neg_count %}
+          <span class="badge neg-badge" title="Temps négatifs dans cette catégorie">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ cs.neg_count }} temps négatif{{ cs.neg_count|pluralize }}
+          </span>
+          {% endif %}
         </div>
       </a>
       {% else %}
@@ -101,6 +111,11 @@
             </div>
           </a>
           <span class="badge bg-light text-dark border">{{ cs.n_controls }} poste{{ cs.n_controls|pluralize }}</span>
+          {% if cs.neg_count %}
+          <span class="badge neg-badge" title="Temps négatifs dans cette catégorie">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ cs.neg_count }} temps négatif{{ cs.neg_count|pluralize }}
+          </span>
+          {% endif %}
         </div>
         <div class="small text-muted mb-2">
           {{ cs.finishers }} classé{{ cs.finishers|pluralize }} / {{ cs.total }} partant{{ cs.total|pluralize }}
@@ -153,6 +168,11 @@
             </div>
           </a>
           <span class="badge bg-light text-dark border">{{ course.n_controls }} poste{{ course.n_controls|pluralize }}</span>
+          {% if course.neg_count %}
+          <span class="badge neg-badge" title="Temps négatifs sur ce circuit">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ course.neg_count }} temps négatif{{ course.neg_count|pluralize }}
+          </span>
+          {% endif %}
         </div>
         {# Pastilles catégories cliquables #}
         <div class="d-flex flex-wrap gap-1 mb-2">
