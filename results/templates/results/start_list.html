@@ -480,15 +480,15 @@
   const COLUMNS = {
     category: [
       { label: 'Nom / Prénom', value: row => row.full_name },
-      { label: 'Heure de départ', value: row => row.start_time },
       { label: 'Club', value: row => row.club_display },
       { label: 'Puce', value: row => row.control_card },
+      { label: 'Heure de départ', value: row => row.start_time },
     ],
     club: [
       { label: 'Nom / Prénom', value: row => row.full_name },
-      { label: 'Heure de départ', value: row => row.start_time },
       { label: 'Catégorie', value: row => row.category, categoryLink: true },
       { label: 'Puce', value: row => row.control_card },
+      { label: 'Heure de départ', value: row => row.start_time },
     ],
     start_time: [
       { label: 'Nom / Prénom', value: row => row.full_name },
