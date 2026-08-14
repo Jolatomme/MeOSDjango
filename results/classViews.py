@@ -270,6 +270,7 @@ class StartListView(RenderShortcutMixin, TemplateView):
                 'start_time': start_time,
                 'start_time_sort': start_time_sort,
                 'control_card': comp.card or '',
+                'bib': comp.bib or '',
             })
 
         rows.sort(key=lambda r: r['start_time_sort'])
@@ -312,6 +313,7 @@ class StartListView(RenderShortcutMixin, TemplateView):
             'meta': {
                 'event_name': competition.name,
                 'event_date': competition.date.strftime('%Y-%m-%d') if competition.date else '',
+                'has_bib': any(r['bib'] for r in rows),
             },
             'groups': {
                 'category': make_groups(by_category),

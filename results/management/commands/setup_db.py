@@ -42,6 +42,7 @@ CREATE_TABLES = {
         PRIMARY KEY (`cid`, `id`),
         `name` VARCHAR(64) NOT NULL DEFAULT '',
         `card` VARCHAR(32) NOT NULL DEFAULT '',
+        `bib` VARCHAR(32) NOT NULL DEFAULT '',
         `org` INT NOT NULL DEFAULT 0,
         `cls` INT NOT NULL DEFAULT 0,
         `stat` TINYINT NOT NULL DEFAULT 0,
@@ -115,6 +116,8 @@ MISSING_COLUMN_ALTERS = {
     "mopCompetitor": {
         "card": "ALTER TABLE `mopCompetitor` "
                 "ADD COLUMN `card` VARCHAR(32) NOT NULL DEFAULT ''",
+        "bib": "ALTER TABLE `mopCompetitor` "
+               "ADD COLUMN `bib` VARCHAR(32) NOT NULL DEFAULT ''",
     },
 }
 
@@ -194,9 +197,9 @@ class Command(BaseCommand):
                         try:
                             cursor.execute(CREATE_TABLES[t])
                             created.append(t)
-                            self.stdout.write(self.style.SUCCESS(f"  ✓ Created `{t}`"))
+                            self.stdout.write(self.style.SUCCESS(f"  [OK] Created `{t}`"))
                         except Exception as e:
-                            self.stdout.write(self.style.ERROR(f"  ✗ Failed `{t}`: {e}"))
+                            self.stdout.write(self.style.ERROR(f"  [FAIL] Failed `{t}`: {e}"))
                             raise
 
                 if fake_initial:
@@ -213,9 +216,9 @@ class Command(BaseCommand):
                 with connection.cursor() as cursor:
                     try:
                         cursor.execute(sql)
-                        self.stdout.write(self.style.SUCCESS(f"  ✓ {sql}"))
+                        self.stdout.write(self.style.SUCCESS(f"  [OK] {sql}"))
                     except Exception as e:
-                        self.stdout.write(self.style.ERROR(f"  ✗ {sql}: {e}"))
+                        self.stdout.write(self.style.ERROR(f"  [FAIL] {sql}: {e}"))
                         raise
 
     def _missing_columns(self, existing: set) -> list:

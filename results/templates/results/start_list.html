@@ -452,7 +452,7 @@
     if (!q) return rows;
     return rows.filter(row => [
       row.full_name, row.family, row.given, row.club_display,
-      row.category, row.start_time, row.control_card
+      row.category, row.start_time, row.control_card, row.bib
     ].join(' ').toLowerCase().includes(q));
   }
 
@@ -498,6 +498,13 @@
     ],
   };
 
+  const BIB_COLUMN = { label: 'Dossard', value: row => row.bib };
+
+  function viewColumns(view) {
+    const base = COLUMNS[view] || COLUMNS.category;
+    return DATA.meta.has_bib ? [...base, BIB_COLUMN] : base;
+  }
+
   function render(anchorSlug = '') {
     const groups = currentGroups();
     let totalGroupsVisible = 0;
@@ -509,7 +516,7 @@
       totalGroupsVisible += 1;
       totalRowsVisible += rows.length;
       const groupId = `group-${group.slug}`;
-      const columns = COLUMNS[state.view] || COLUMNS.category;
+      const columns = viewColumns(state.view);
 
       const headers = `<tr>${columns.map(c => `<th>${escapeHtml(c.label)}</th>`).join('')}</tr>`;
       const rowsHtml = rows.map(row => `<tr>${columns.map(c => {
