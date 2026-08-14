@@ -397,7 +397,6 @@ def _weighted_median(values_weights):
         cum += w
         if cum >= total / 2:
             return v
-    return vw[-1][0]
 
 
 def compute_error_estimates(finishers, controls_seq, radio_map, top_fraction=0.25):

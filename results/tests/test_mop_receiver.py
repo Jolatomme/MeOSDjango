@@ -329,6 +329,58 @@ class TestProcessCompetitor:
 
     @patch('results.mop_receiver.connection')
     @patch('results.mop_receiver._upsert')
+    def test_attribut_bib_stocke(self, mock_upsert, mock_conn):
+        """<base bib="218"> → le dossard est enregistré."""
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
+
+        el = elem('cmp', {'id': '5490'}, children=[
+            ('base', {'org': '515', 'cls': '1', 'stat': '1',
+                      'st': '370800', 'rt': '71480', 'bib': '218'},
+             'Jonas Svensson'),
+        ])
+        process_competitor(1, el)
+
+        fields = mock_upsert.call_args[0][3]
+        assert fields['bib'] == '218'
+
+    @patch('results.mop_receiver.connection')
+    @patch('results.mop_receiver._upsert')
+    def test_sans_attribut_bib_ne_lecrase_pas(self, mock_upsert, mock_conn):
+        """MOPDiff partiel sans bib → pas de champ bib (pas d'écrasement)."""
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
+
+        el = elem('cmp', {'id': '1'}, children=[
+            ('base', {'org': '1', 'cls': '1', 'stat': '1',
+                      'st': '0', 'rt': '3000'}, 'Alice'),
+        ])
+        process_competitor(1, el)
+
+        fields = mock_upsert.call_args[0][3]
+        assert 'bib' not in fields
+
+    @patch('results.mop_receiver.connection')
+    @patch('results.mop_receiver._upsert')
+    def test_card_zero_efface_le_numero(self, mock_upsert, mock_conn):
+        """<cmp card="0"> → le numéro de puce doit être retiré ('')."""
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
+
+        el = elem('cmp', {'id': '5490', 'card': '0'}, children=[
+            ('base', {'org': '515', 'cls': '1', 'stat': '1',
+                      'st': '370800', 'rt': '71480'}, 'Jonas Svensson'),
+        ])
+        process_competitor(1, el)
+
+        fields = mock_upsert.call_args[0][3]
+        assert fields['card'] == ''
+
+    @patch('results.mop_receiver.connection')
+    @patch('results.mop_receiver._upsert')
     def test_radio_parse(self, mock_upsert, mock_conn):
         """<radio>70,27160</radio> → (cid, id, 70, 27160)"""
         cur = MagicMock()

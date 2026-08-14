@@ -1,0 +1,9 @@
+[run]
+omit =
+    */tests/*
+    */migrations/*
+    */management/*
+
+[report]
+exclude_lines =
+    pragma: no cover

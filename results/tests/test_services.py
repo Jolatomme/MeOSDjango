@@ -332,6 +332,59 @@ class TestGetNegativeTimeStats:
         assert ['P32', 'P33'] in controls_par_coureur
         assert ['P32'] in controls_par_coureur
 
+    def test_plusieurs_postes_boitier(self):
+        """Deux postes partagés → message au pluriel : 'aux postes ...'."""
+        comps = [make_competitor(1, 5000), make_competitor(2, 4500),
+                 make_competitor(3, 4400), make_competitor(4, 5200)]
+        radios = {1: {31: 2000, 32: 1500, 33: 4500},
+                  2: {31: 2500, 32: 2400, 33: 4000},
+                  3: {31: 4200, 32: 4100, 33: 2000},
+                  4: {31: 3000, 32: 5000, 33: 1500}}
+        stats = self._call(1, comps, radios, [{'ctrl_id': 31, 'ctrl_name': 'P31'},
+                                              {'ctrl_id': 32, 'ctrl_name': 'P32'},
+                                              {'ctrl_id': 33, 'ctrl_name': 'P33'}])
+        assert stats['count'] == 4
+        assert stats['kind']  == 'multiple'
+        assert stats['box_controls'] == {'P32': 3, 'P33': 2}
+        assert 'aux postes P32, P33' in stats['message']
+
+    def test_classe_sans_coureur_ignoree(self):
+        """Une classe sans coureurs (vide) est ignorée."""
+        from results.services import get_negative_time_stats
+        comps = [make_competitor(1, 3000)]
+        radios = {1: {31: 1000, 32: 2500}}
+        with patch('results.services.Mopclass.objects') as mock_cls, \
+             patch('results.services.Mopcompetitor.objects') as mock_comp, \
+             patch('results.services.get_class_controls',
+                   return_value=([{'ctrl_id': 31, 'ctrl_name': 'P31'}], {})), \
+             patch('results.services.get_radio_map', return_value=radios):
+            cls1 = MagicMock(id=1); cls1.name = 'H21'
+            cls2 = MagicMock(id=2); cls2.name = 'D21'
+            mock_cls.filter.return_value = [cls1, cls2]
+            mock_comp.filter.side_effect = [comps, []]
+            assert get_negative_time_stats(1) is None
+
+    def test_coureur_deja_affecte_ignore(self):
+        """Un coureur présent dans 2 classes n'est traité qu'une seule fois."""
+        from results.services import get_negative_time_stats
+        comps = [make_competitor(1, 3000)]
+        radios = {1: {31: 2000, 32: 1500}}
+        with patch('results.services.Mopclass.objects') as mock_cls, \
+             patch('results.services.Mopcompetitor.objects') as mock_comp, \
+             patch('results.services.get_class_controls',
+                   return_value=([{'ctrl_id': 31, 'ctrl_name': 'P31'},
+                                  {'ctrl_id': 32, 'ctrl_name': 'P32'}], {})), \
+             patch('results.services.get_radio_map', return_value=radios):
+            cls1 = MagicMock(id=1); cls1.name = 'H21'
+            cls2 = MagicMock(id=2); cls2.name = 'D21'
+            mock_cls.filter.return_value = [cls1, cls2]
+            mock_comp.filter.return_value = comps
+            stats = get_negative_time_stats(1)
+        assert stats['count'] == 1
+        assert stats['runners'] == [
+            {'id': 1, 'name': 'Coureur', 'cls_name': 'H21', 'controls': ['P32']}
+        ]
+
 
 # ─── Tests mark_best_splits ───────────────────────────────────────────────────
 

@@ -95,6 +95,7 @@ class Mopcompetitor(models.Model):
     id    = models.IntegerField()
     name  = models.CharField(max_length=64)
     card  = models.CharField(max_length=32, blank=True, default='')
+    bib   = models.CharField(max_length=32, blank=True, default='')
     org   = models.IntegerField()
     cls   = models.IntegerField()
     stat  = models.IntegerField()

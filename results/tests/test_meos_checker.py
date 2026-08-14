@@ -706,8 +706,8 @@ class TestCompletudeCoureursComplement:
         assert 'circuit' in result.violations[0].description
         assert result.status == 'error'
 
-    def test_categorie_inconnue_signale_categorie_et_circuit(self):
-        """Catégorie inconnue → 'catégorie' manquante (branche elif 'circuit')."""
+    def test_categorie_inconnue_signale_categorie(self):
+        """Catégorie inconnue → 'catégorie' manquante."""
         runners = [Runner(id='1', name='Alice', start=3600, club_id='10',
                           class_id='999', card_no='12345')]
         result = check_completude_coureurs(runners, {}, {})

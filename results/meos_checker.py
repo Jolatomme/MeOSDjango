@@ -322,9 +322,6 @@ def check_entrelacement(
     for course_id, sorted_runners in by_course.items():
         course_name = courses[course_id].name if course_id in courses else course_id
 
-        if not sorted_runners:
-            continue
-
         # Group runners by class once
         by_class: dict[str, list[Runner]] = {}
         for r in sorted_runners:
@@ -338,8 +335,6 @@ def check_entrelacement(
 
         for r in sorted_runners:
             cid = r.class_id
-            if cid is None:
-                continue
             if cid in seen_classes and cid != last_class:
                 interleaved.add(cid)
             seen_classes.add(cid)
@@ -607,8 +602,6 @@ def check_completude_coureurs(
             cat = categories[r.class_id]
             if not cat.course_id or cat.course_id not in courses:
                 missing.append('circuit')
-        elif 'catégorie' not in missing:
-            missing.append('circuit')
 
         # Numéro de puce
         if not r.card_no:

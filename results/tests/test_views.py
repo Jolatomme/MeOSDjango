@@ -1862,10 +1862,10 @@ class TestSlugifyNoPrefix:
 
 class TestStartListView:
 
-    def _mk_competitor(self, id=1, st=100000, name='Martin Luc', org=1, cls=10, card=''):
+    def _mk_competitor(self, id=1, st=100000, name='Martin Luc', org=1, cls=10, card='', bib=''):
         c = MagicMock()
         c.id = id; c.st = st; c.name = name; c.org = org; c.cls = cls
-        c.card = card
+        c.card = card; c.bib = bib
         return c
 
     def _mk_cls(self, id=10, name='H21'):
@@ -1960,6 +1960,43 @@ class TestStartListView:
         data = json.loads(ctx['start_list_data'])
         row = data['groups']['category'][0]['rows'][0]
         assert row['control_card'] == ''
+
+    def test_bib_expose_dans_rows(self):
+        """Le dossard (attribut bib MOP) est exposé dans la liste."""
+        c = self._mk_competitor(id=1, st=36000, name='Martin Luc', bib='218')
+        cls = self._mk_cls(10, 'H21')
+        _, ctx = self._run(competitors=[c], classes=[cls])
+        data = json.loads(ctx['start_list_data'])
+        row = data['groups']['category'][0]['rows'][0]
+        assert row['bib'] == '218'
+
+    def test_bib_vide_si_absent(self):
+        c = self._mk_competitor(id=1, st=36000, name='Martin Luc')
+        cls = self._mk_cls(10, 'H21')
+        _, ctx = self._run(competitors=[c], classes=[cls])
+        data = json.loads(ctx['start_list_data'])
+        row = data['groups']['category'][0]['rows'][0]
+        assert row['bib'] == ''
+
+    def test_meta_has_bib_vrai_si_au_moins_un_bib(self):
+        """Dès qu'un dossard existe, la colonne s'affichera pour tous."""
+        c1 = self._mk_competitor(id=1, st=36000, name='Sans Bib')
+        c2 = self._mk_competitor(id=2, st=37000, name='Avec Bib', bib='218')
+        cls = self._mk_cls(10, 'H21')
+        _, ctx = self._run(competitors=[c1, c2], classes=[cls])
+        data = json.loads(ctx['start_list_data'])
+        assert data['meta']['has_bib'] is True
+
+    def test_meta_has_bib_faux_sans_bib(self):
+        cls = self._mk_cls(10, 'H21')
+        _, ctx = self._run(competitors=[self._mk_competitor()], classes=[cls])
+        data = json.loads(ctx['start_list_data'])
+        assert data['meta']['has_bib'] is False
+
+    def test_meta_has_bib_faux_sans_concurrent(self):
+        _, ctx = self._run()
+        data = json.loads(ctx['start_list_data'])
+        assert data['meta']['has_bib'] is False
 
     def test_tri_par_heure_depart(self):
         """Les groupes « Par heure » sont ordonnés par heure croissante."""
