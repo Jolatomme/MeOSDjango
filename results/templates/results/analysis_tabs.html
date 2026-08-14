@@ -7,6 +7,11 @@
   <div class="container">
     <nav class="analysis-tabs" aria-label="Navigation analyses">
 
+      <a href="{% url 'results:live' competition.cid cls.name %}"
+         class="analysis-tab {% if current_analysis == 'live' %}active{% endif %}">
+        <i class="bi bi-broadcast"></i><span>Live</span>
+      </a>
+
       <a href="{% url 'results:class_results' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'results' %}active{% endif %}">
         <i class="bi bi-list-ol"></i><span>Résultats</span>

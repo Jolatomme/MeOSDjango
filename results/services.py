@@ -9,10 +9,13 @@ from .models import (
     Moporganization, Mopcontrol, Mopclasscontrol, Mopradio, Mopclass,
     Mopcompetitor,
     STAT_OK, STATUS_LABELS, format_time,
+    STAT_NT, STAT_MP, STAT_DNF, STAT_DQ, STAT_OT,
+    STAT_DNS, STAT_CANCEL, STAT_NP,
 )
 
 import re
 from collections import Counter
+from datetime import datetime
 from markdown.extensions.toc import slugify_unicode
 from django.db import connection
 
@@ -673,3 +676,145 @@ def get_courses_map(cid, relay_class_ids=None, class_totals=None):
         }
 
     return courses
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Suivi live (postes radio)
+#
+# Groupes :
+#   en_course  — heure de départ passée, sans statut définitif. Les coureurs
+#                sans poinçon radio sont virtuellement en tête (triés par
+#                heure de départ), puis viennent ceux qui ont pointé (triés
+#                par progression : plus de postes devant, à égalité le temps
+#                au dernier poste radio départage).
+#   arrives    — données complètes : statut OK et rt > 0 (carte vidée à la
+#                GEC + statut attribué par MeOS). Tri par rt.
+#   en_attente — st == 0 (départ inconnu) ou départ dans le futur.
+#   termine    — statuts définitifs non-OK (PM, Abandon, DNS, …).
+# ══════════════════════════════════════════════════════════════════════════════
+
+_DAY_TENTHS = 24 * 3600 * 10
+
+# Priorité de tri dans le groupe 'termine' (même ordre que _NON_FINISHER_ORDER)
+LIVE_DONE_PRIORITY = {
+    STAT_NT: 1, STAT_OT: 1, STAT_DQ: 1,
+    STAT_MP:  2,
+    STAT_DNF: 3,
+    STAT_DNS: 4, STAT_NP: 4, STAT_CANCEL: 4,
+}
+
+LIVE_GROUPS = ('en_course', 'arrives', 'en_attente', 'termine')
+
+
+def clock_tenths(dt):
+    """Convertit un datetime en 1/10 s écoulées depuis minuit (format st MeOS)."""
+    return (dt.hour * 3600 + dt.minute * 60 + dt.second) * 10
+
+
+def format_clock(tenths):
+    """Formate une heure murale (1/10 s depuis minuit) en 'HH:MM:SS'.
+
+    Gère le passage de minuit (valeur > 24 h ramenée dans la journée) et
+    les valeurs négatives (préfixe '-').
+    """
+    try:
+        tenths = int(tenths)
+    except (TypeError, ValueError):
+        return '-'
+    if tenths < 0:
+        return '-' + format_clock(-tenths)
+    total = (tenths % _DAY_TENTHS) // 10
+    hours, rem = divmod(total, 3600)
+    minutes, seconds = divmod(rem, 60)
+    return f'{hours:02d}:{minutes:02d}:{seconds:02d}'
+
+
+def _is_definitive(stat):
+    """Statut définitif non-OK (le coureur ne peut plus être en course)."""
+    return stat in LIVE_DONE_PRIORITY
+
+
+def race_start_clock(competitors):
+    """1/10 s depuis minuit du premier départ valide, ou None."""
+    starts = [c.st for c in competitors if c.st and c.st > 0]
+    return min(starts) if starts else None
+
+
+def race_in_progress(competitors, now=None):
+    """True si au moins un coureur est encore en course (départ passé)."""
+    now = now or datetime.now()
+    now_t = clock_tenths(now)
+    return any(
+        not c.is_ok and not _is_definitive(c.stat) and c.st > 0 and c.st <= now_t
+        for c in competitors
+    )
+
+
+def rank_live(competitors, radio_map, now):
+    """Classe les coureurs pour l'affichage live.
+
+    Mutates : attache à chaque coureur ``live_group``, ``live_rank``,
+    ``n_punches``, ``last_ctrl``, ``last_time`` (1/10 s de course) et
+    ``last_punch_clock`` (horloge murale = st + last_time).
+
+    Returns
+    -------
+    Liste ordonnée des coureurs : en_course, arrives, en_attente, termine.
+    """
+    now_t = clock_tenths(now)
+
+    for c in competitors:
+        radios  = radio_map.get(c.id, {})
+        punches = sorted(
+            (ctrl, rt) for ctrl, rt in radios.items() if rt and rt > 0
+        )
+        c.n_punches = len(punches)
+        if punches:
+            c.last_ctrl         = punches[-1][0]
+            c.last_time         = punches[-1][1]
+            c.last_punch_clock  = (c.st + c.last_time) if c.st and c.st > 0 else None
+        else:
+            c.last_ctrl = None
+            c.last_time = None
+            c.last_punch_clock = None
+
+        if c.is_ok:
+            c.live_group = 'arrives'
+        elif _is_definitive(c.stat):
+            c.live_group = 'termine'
+        elif c.st > 0 and c.st <= now_t:
+            c.live_group = 'en_course'
+        else:
+            c.live_group = 'en_attente'
+
+    en_course = sorted(
+        [c for c in competitors if c.live_group == 'en_course'],
+        key=lambda c: (
+            1 if c.n_punches else 0,          # sans poinçon : virtuellement en tête
+            -c.n_punches,                     # puis progression sur les postes radio
+            c.last_time if c.last_time is not None else 0,
+            c.st,
+        ),
+    )
+    for i, c in enumerate(en_course, start=1):
+        c.live_rank = i
+
+    arrives = sorted(
+        [c for c in competitors if c.live_group == 'arrives'],
+        key=lambda c: c.rt,
+    )
+    for i, c in enumerate(arrives, start=1):
+        c.live_rank = i
+
+    en_attente = sorted(
+        [c for c in competitors if c.live_group == 'en_attente'],
+        key=lambda c: (c.st == 0, c.st),      # st=0 (départ inconnu) en dernier
+    )
+    termine = sorted(
+        [c for c in competitors if c.live_group == 'termine'],
+        key=lambda c: (LIVE_DONE_PRIORITY.get(c.stat, 5), c.name.lower()),
+    )
+    for c in en_attente + termine:
+        c.live_rank = None
+
+    return en_course + arrives + en_attente + termine

@@ -1,0 +1,139 @@
+{% extends "results/base.html" %}
+{% load meos_tags %}
+{% load static %}
+{% block title %}
+  Live — {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %} — {{ competition.name }}
+{% endblock %}
+
+{% block page_header %}
+<div class="co-page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="co-breadcrumb">
+      <ol class="breadcrumb mb-2 small">
+        {% include 'results/_breadcrumb_home_comp.html' %}
+        <li class="breadcrumb-item active">
+          {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Live</li>
+      </ol>
+    </nav>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h1>
+          <i class="bi bi-broadcast me-2 opacity-75"></i>Live —
+          {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
+        </h1>
+        <div class="opacity-75 small mt-1">
+          Suivi en temps réel des postes radio
+          {% if controls_seq %}&bull; {{ controls_seq|length }} poste{{ controls_seq|length|pluralize }} radio{% endif %}
+        </div>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <span class="badge bg-dark text-white fs-6" title="Temps de course depuis le premier départ">
+          <i class="bi bi-clock-history me-1"></i><span id="liveRaceClockValue" class="live-clock">--:--:--</span>
+        </span>
+        <span class="badge bg-dark text-white fs-6" title="Heure actuelle">
+          <i class="bi bi-clock me-1"></i><span id="liveWallClockValue" class="live-clock">--:--:--</span>
+        </span>
+        <span class="badge bg-success fs-6" id="liveStatusBadge"><span class="live-dot"></span>En direct</span>
+        <span class="badge bg-light text-dark fs-6">{{ competition.date|date:"d/m/Y" }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% if course %}{% include 'results/course_analysis_tabs.html' %}{% else %}{% include 'results/analysis_tabs.html' %}{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{% include 'results/_neg_time_warning.html' %}
+
+<div class="alert alert-info small d-flex align-items-center gap-2">
+  <i class="bi bi-info-circle"></i>
+  <span>Poinçons des postes radio affichés en direct. Tous les postes du parcours ne sont pas des postes radio. Un coureur n'apparaît
+  «&nbsp;Arrivé&nbsp;» qu'une fois ses données vidées à la GEC et son statut attribué par MeOS — avant cela il reste «&nbsp;En course&nbsp;».</span>
+</div>
+
+<div class="row g-2 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="stat-card p-3 text-center">
+      <div class="stat-label small">En course</div>
+      <div class="fs-3 fw-bold" id="liveCountEnCourse">…</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card p-3 text-center">
+      <div class="stat-label small">Arrivés</div>
+      <div class="fs-3 fw-bold" id="liveCountArrives">…</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card p-3 text-center">
+      <div class="stat-label small">En attente</div>
+      <div class="fs-3 fw-bold" id="liveCountWaiting">…</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card p-3 text-center">
+      <div class="stat-label small">Terminé</div>
+      <div class="fs-3 fw-bold" id="liveCountDone">…</div>
+    </div>
+  </div>
+</div>
+
+<div class="co-card">
+  <div class="co-card-header d-flex justify-content-between">
+    <span><i class="bi bi-broadcast me-2"></i>Classement live</span>
+    <span class="badge bg-secondary" id="liveLastUpdate" title="Dernière mise à jour">—</span>
+  </div>
+  <div class="table-responsive">
+    <table class="results-table" id="liveTable">
+      <thead>
+        <tr>
+          <th style="width:3rem">#</th>
+          <th>Coureur</th>
+          {% if course %}<th>Catégorie</th>{% endif %}
+          <th>Club</th>
+          <th class="text-end">Postes radio</th>
+          <th>Dernier poste</th>
+          <th class="text-end">Statut</th>
+          <th class="text-end">Temps</th>
+        </tr>
+      </thead>
+      <tbody id="liveBody">
+        <tr><td colspan="{{ course|yesno:'8,7' }}" class="text-center text-muted p-4">
+          <span class="spinner-border spinner-border-sm me-2" role="status"></span>Chargement…
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .live-dot { display:inline-block; width:.6rem; height:.6rem; border-radius:50%;
+              background:currentColor; margin-right:.4rem; animation:livePulse 1.5s infinite; }
+  @keyframes livePulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+  .live-group-row { background: var(--co-forest) !important; }
+  .live-group-row td { color: #fff !important; padding: .45rem 1rem !important; }
+  .live-running { animation: liveFlash 2s infinite; }
+  @keyframes liveFlash { 0%,100% { background: transparent; } 50% { background: rgba(25,135,84,.08); } }
+  .live-time { font-variant-numeric: tabular-nums; }
+  .live-clock { font-variant-numeric: tabular-nums; letter-spacing: .05em; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'results/js/live.js' %}"></script>
+<script>
+  LiveResults.init({
+    apiUrl: {% if course %}"{% url 'results:api_course_live_results' competition.cid course.hash %}"{% else %}"{% url 'results:api_live_results' competition.cid cls.name %}"{% endif %},
+    cid: {{ competition.cid }},
+    isCourse: {% if course %}true{% else %}false{% endif %},
+    initialRaceStart: {{ race_start_clock|default:"null" }},
+    initialNowClock: {{ server_now_clock }},
+  });
+</script>
+{% endblock %}

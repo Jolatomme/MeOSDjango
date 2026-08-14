@@ -1,6 +1,7 @@
 import json
 import re
 from types import SimpleNamespace
+from datetime import datetime
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import Http404, HttpResponse, JsonResponse
 
@@ -23,6 +24,8 @@ from .services import (
     compute_grouping_index, compute_regularity_analysis,
     compute_course_hash, get_courses_map,
     competition_visible,
+    rank_live, race_start_clock, race_in_progress, clock_tenths,
+    LIVE_GROUPS,
 )
 
 
@@ -329,6 +332,95 @@ def api_class_results(request, cid, class_id):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Suivi live — catégorie ET circuit (via _load_class_context unifié)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def live_results(request, cid, class_id):
+    """Page live : suivi en temps réel des postes radio.
+
+    Aucune analyse n'est calculée ici (données incomplètes tant que les
+    coureurs ne sont pas passés à la GEC) — uniquement le classement live.
+    """
+    competition, cls, competitors, course = _load_class_context(cid, class_id)
+
+    # Redirection relais (live non géré pour les équipes pour l'instant)
+    if course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists():
+        return redirect('results:relay_results', cid=cid, class_id=class_id)
+
+    org_map = get_org_map(cid, as_objects=True)
+    for c in competitors:
+        c.org_obj = org_map.get(c.org)
+
+    controls_seq = _controls_for(cid, cls, course)
+    radio_map    = get_radio_map(cid, [c.id for c in competitors])
+    now          = datetime.now()
+    live         = rank_live(competitors, radio_map, now)
+
+    groups = {g: [c for c in live if c.live_group == g] for g in LIVE_GROUPS}
+
+    return render(request, 'results/live_results.html', {
+        'competition':       competition,
+        'cls':               cls,
+        'course':            course,
+        'controls_seq':      controls_seq or [],
+        'live':              live,
+        'groups':            groups,
+        'race_start_clock':  race_start_clock(competitors),
+        'server_now_clock':  clock_tenths(now),
+        'course_hash':       course['hash'] if course else compute_course_hash(controls_seq),
+        'current_analysis':  'live',
+        'neg_time_warning':  get_negative_time_stats(cid),
+    })
+
+
+def api_live_results(request, cid, class_id):
+    """JSON API — données live pour le polling JS (catégorie ou circuit)."""
+    competition, cls, competitors, course = _load_class_context(cid, class_id)
+
+    if course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists():
+        return JsonResponse({'success': False, 'error': 'relay'}, status=422)
+
+    org_map      = get_org_map(cid)
+    controls_seq = _controls_for(cid, cls, course)
+    radio_map    = get_radio_map(cid, [c.id for c in competitors])
+    now          = datetime.now()
+    live         = rank_live(competitors, radio_map, now)
+
+    runners = []
+    for c in live:
+        runners.append({
+            'id':                c.id,
+            'name':              c.name,
+            'org':               org_map.get(c.org, ''),
+            'class_name':        c.class_obj.name if course and getattr(c, 'class_obj', None) else cls.name,
+            'stat':              c.stat,
+            'stat_label':        c.status_label,
+            'stat_badge':        c.status_badge,
+            'group':             c.live_group,
+            'rank':              c.live_rank,
+            'st':                c.st,
+            'rt':                c.rt if c.is_ok else None,
+            'n_punches':         c.n_punches,
+            'last_ctrl':         c.last_ctrl,
+            'last_time':         c.last_time,
+            'last_punch_clock':  c.last_punch_clock,
+        })
+
+    return JsonResponse({
+        'success':            True,
+        'server_now':         int(now.timestamp() * 1000),
+        'server_now_clock':   clock_tenths(now),
+        'race_start_clock':   race_start_clock(competitors),
+        'is_course':          bool(course),
+        'cls_name':           cls.name,
+        'course':             {'hash': course['hash'], 'display_name': course['display_name']} if course else None,
+        'controls':           controls_seq,
+        'n_controls':         len(controls_seq),
+        'runners':            runners,
+    })
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Analyses — catégorie ET circuit via _load_class_context unifié
 #
 # class_id peut être :
@@ -350,11 +442,13 @@ def superman_analysis(request, cid, class_id):
     controls_seq = _controls_for(cid, cls, course)
     controls_labels = [c['ctrl_name'] for c in controls_seq]
     finishers, _, _ = rank_finishers(competitors)
+    race_pending = race_in_progress(competitors)
 
     if not finishers:
         return render(request, 'results/superman.html', {
             'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'superman',
+            'race_in_progress': race_pending,
         })
 
     radio_map  = get_radio_map(cid, [c.id for c in finishers])
@@ -421,6 +515,7 @@ def superman_analysis(request, cid, class_id):
         'controls_labels': controls_labels,
         'no_data': False, 'n_finishers': len(finishers),
         'current_analysis': 'superman',
+        'race_in_progress': race_pending,
     })
 
 
@@ -432,10 +527,12 @@ def performance_analysis(request, cid, class_id):
     """
     competition, cls, competitors, course = _load_class_context(cid, class_id)
     finishers, _, _ = rank_finishers(competitors)
+    race_pending = race_in_progress(competitors)
     if not finishers:
         return render(request, 'results/performance.html', {
             'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'performance',
+            'race_in_progress': race_pending,
         })
     org_map         = get_org_map(cid)
     controls_seq    = _controls_for(cid, cls, course)
@@ -479,6 +576,7 @@ def performance_analysis(request, cid, class_id):
         'series_json': json.dumps(series), 'leg_info_json': json.dumps(leg_info),
         'n_legs': n_legs, 'n_finishers': len(finishers),
         'no_data': False, 'current_analysis': 'performance',
+        'race_in_progress': race_pending,
     })
 
 
@@ -490,10 +588,12 @@ def regularity_analysis(request, cid, class_id):
     """
     competition, cls, competitors, course = _load_class_context(cid, class_id)
     finishers, _, _ = rank_finishers(competitors)
+    race_pending = race_in_progress(competitors)
     if len(finishers) < 2:
         return render(request, 'results/regularity.html', {
             'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'regularity',
+            'race_in_progress': race_pending,
         })
     org_map         = get_org_map(cid)
     controls_seq    = _controls_for(cid, cls, course)
@@ -526,6 +626,7 @@ def regularity_analysis(request, cid, class_id):
         'category_regularity': round(cat_reg, 4) if cat_reg is not None else None,
         'n_legs': reg_data['n_legs'], 'n_finishers': len(finishers),
         'no_data': False, 'current_analysis': 'regularity',
+        'race_in_progress': race_pending,
     })
 
 
@@ -537,10 +638,12 @@ def grouping_analysis(request, cid, class_id):
     """
     competition, cls, competitors, course = _load_class_context(cid, class_id)
     runners_with_start = sorted([c for c in competitors if c.st > 0], key=lambda c: c.st)
+    race_pending = race_in_progress(competitors)
     if not runners_with_start:
         return render(request, 'results/grouping.html', {
             'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'grouping',
+            'race_in_progress': race_pending,
         })
     org_map         = get_org_map(cid)
     controls_seq    = _controls_for(cid, cls, course)
@@ -563,6 +666,7 @@ def grouping_analysis(request, cid, class_id):
         'series_json': json.dumps(series), 'x_labels_json': json.dumps(x_labels),
         'n_runners': len(series), 'n_controls': len(controls_seq),
         'no_data': False, 'current_analysis': 'grouping',
+        'race_in_progress': race_pending,
     })
 
 
@@ -574,10 +678,12 @@ def grouping_index_analysis(request, cid, class_id):
     """
     competition, cls, competitors, course = _load_class_context(cid, class_id)
     runners = sorted([c for c in competitors if c.st > 0], key=lambda c: c.st)
+    race_pending = race_in_progress(competitors)
     if not runners:
         return render(request, 'results/grouping_index.html', {
             'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'grouping_index',
+            'race_in_progress': race_pending,
         })
     try:
         t1 = max(1, min(int(request.GET.get('t1', 7)), 30))
@@ -620,6 +726,7 @@ def grouping_index_analysis(request, cid, class_id):
         'results_json': json.dumps(raw), 'leg_labels_json': json.dumps(leg_labels),
         'n_runners': len(raw), 'n_legs': len(leg_labels),
         't1': t1, 't2': t2, 'no_data': False, 'current_analysis': 'grouping_index',
+        'race_in_progress': race_pending,
     })
 
 
@@ -638,10 +745,12 @@ def duel_analysis(request, cid, class_id):
 
     finishers, non_finishers, _ = rank_finishers(competitors)
     all_results = finishers + non_finishers
+    race_pending = race_in_progress(competitors)
     if not all_results:
         return render(request, 'results/duel.html', {
             'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'duel',
+            'race_in_progress': race_pending,
         })
     org_map      = get_org_map(cid)
     controls_seq = _controls_for(cid, cls, course)
@@ -662,6 +771,7 @@ def duel_analysis(request, cid, class_id):
         'competition': competition, 'cls': cls, 'course': course,
         'no_data': False, 'current_analysis': 'duel',
         'neg_time_warning': get_negative_time_stats(cid),
+        'race_in_progress': race_pending,
         'runners_json': json.dumps(runners_data), 'n_runners': len(runners_data),
     })
 
@@ -770,6 +880,7 @@ def recapitulatif_analysis(request, cid, class_id):
         'prev_cls':            prev_cls,
         'next_cls':            next_cls,
         'neg_time_warning':    get_negative_time_stats(cid),
+        'race_in_progress':    race_in_progress(competitors),
         'leg_error_data_json': json.dumps(leg_error_data),
     })
 

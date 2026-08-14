@@ -21,6 +21,7 @@ urlpatterns = [
     # ── Catégories ─────────────────────────────────────────────────────────
     # class_id : nom de catégorie (ex. 'H21') ou identifiant entier
     path('competition/<int:cid>/class/<str:class_id>/',                     views.class_results,           name='class_results'),
+    path('competition/<int:cid>/class/<str:class_id>/live/',                views.live_results,            name='live'),
     path('competition/<int:cid>/class/<str:class_id>/relay/',               views.relay_results,           name='relay_results'),
     path('competition/<int:cid>/class/<str:class_id>/superman/',            views.superman_analysis,       name='superman'),
     path('competition/<int:cid>/class/<str:class_id>/performance/',         views.performance_analysis,    name='performance'),
@@ -36,6 +37,7 @@ urlpatterns = [
     # Les MÊMES vues que pour les catégories — _load_class_context détecte
     # automatiquement un hash et charge le circuit correspondant.
     path('competition/<int:cid>/course/<str:class_id>/',                    views.class_results,           name='course_results'),
+    path('competition/<int:cid>/course/<str:class_id>/live/',               views.live_results,            name='course_live'),
     path('competition/<int:cid>/course/<str:class_id>/superman/',           views.superman_analysis,       name='course_superman'),
     path('competition/<int:cid>/course/<str:class_id>/performance/',        views.performance_analysis,    name='course_performance'),
     path('competition/<int:cid>/course/<str:class_id>/regularity/',         views.regularity_analysis,     name='course_regularity'),
@@ -51,6 +53,8 @@ urlpatterns = [
 
     # ── API ────────────────────────────────────────────────────────────────
     path('api/<int:cid>/class/<str:class_id>/results/', views.api_class_results, name='api_class_results'),
+    path('api/<int:cid>/class/<str:class_id>/live/',     views.api_live_results,  name='api_live_results'),
+    path('api/<int:cid>/course/<str:class_id>/live/',    views.api_live_results,  name='api_course_live_results'),
 
     # ── GEC ───────────────────────────────────────────────────────────────
     path('gec/checker/',    MeosCheckerView.as_view(), name='meos_checker'),
