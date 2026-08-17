@@ -740,6 +740,36 @@ def race_start_clock(competitors):
     return min(starts) if starts else None
 
 
+def race_end_clock(competitors):
+    """1/10 s depuis minuit de la dernière arrivée (st + rt), ou None."""
+    ends = [c.st + c.rt for c in competitors
+            if c.is_ok and c.st and c.st > 0 and c.rt and c.rt > 0]
+    return max(ends) if ends else None
+
+
+def race_state(competitors, now=None, race_start=None):
+    """État de la course : ``'upcoming'``, ``'live'`` ou ``'finished'``.
+
+    - ``'finished'`` : plus aucun coureur en course ni en attente de départ
+      (les coureurs st=0 restent « en attente » et bloquent cet état).
+    - ``'upcoming'`` : aucun départ donné (ou premier départ dans le futur).
+    - ``'live'``     : course en cours.
+
+    ``competitors`` doit avoir l'attribut ``live_group`` (posé par
+    ``rank_live``). ``race_start`` doit être fourni (voir
+    ``race_start_clock``) ; ``None`` signifie qu'aucun départ n'est connu.
+    """
+    now_t = clock_tenths(now or datetime.now())
+
+    en_course  = [c for c in competitors if getattr(c, 'live_group', None) == 'en_course']
+    en_attente = [c for c in competitors if getattr(c, 'live_group', None) == 'en_attente']
+    if not en_course and not en_attente:
+        return 'finished'
+    if race_start is None or now_t < race_start:
+        return 'upcoming'
+    return 'live'
+
+
 def race_in_progress(competitors, now=None):
     """True si au moins un coureur est encore en course (départ passé)."""
     now = now or datetime.now()
@@ -750,12 +780,47 @@ def race_in_progress(competitors, now=None):
     )
 
 
+def mark_negative_times(competitors, controls_seq, radio_map):
+    """Pose ``c.neg_time`` sur les coureurs ayant au moins un temps négatif.
+
+    Mêmes règles que ``get_negative_time_stats`` / ``compute_splits`` :
+    tronçon radio négatif, arrivée antérieure au dernier poste radio, ou
+    temps d'arrivée ``rt`` négatif.
+    """
+    for c in competitors:
+        radios = radio_map.get(c.id, {})
+        rt     = getattr(c, 'rt', None)
+        prev, neg = 0, False
+        for ctrl in controls_seq:
+            abs_t = radios.get(ctrl['ctrl_id'], -1)
+            if abs_t > 0 and prev >= 0 and abs_t < prev:
+                neg = True
+                break
+            prev = abs_t if abs_t > 0 else -1
+        if not neg and rt is not None and rt < 0:
+            neg = True
+        if not neg and rt and rt > 0:
+            last_abs = None
+            for ctrl in controls_seq:
+                abs_t = radios.get(ctrl['ctrl_id'], -1)
+                if abs_t > 0:
+                    last_abs = abs_t
+            if last_abs and c.rt < last_abs:
+                neg = True
+        c.neg_time = neg
+
+
 def rank_live(competitors, radio_map, now):
     """Classe les coureurs pour l'affichage live.
 
     Mutates : attache à chaque coureur ``live_group``, ``live_rank``,
     ``n_punches``, ``last_ctrl``, ``last_time`` (1/10 s de course) et
     ``last_punch_clock`` (horloge murale = st + last_time).
+
+    Les coureurs marqués ``neg_time`` (à poser via ``mark_negative_times``
+    avant l'appel, ou ``rt < 0`` détecté ici) n'obtiennent pas de rang
+    (``live_rank = None``). Un ``rt < 0`` avec statut OK est classé
+    « arrives ».
 
     Returns
     -------
@@ -764,6 +829,9 @@ def rank_live(competitors, radio_map, now):
     now_t = clock_tenths(now)
 
     for c in competitors:
+        c.neg_time = getattr(c, 'neg_time', False) is True or (
+            c.rt is not None and c.rt < 0
+        )
         radios  = radio_map.get(c.id, {})
         punches = sorted(
             (ctrl, rt) for ctrl, rt in radios.items() if rt and rt > 0
@@ -782,6 +850,8 @@ def rank_live(competitors, radio_map, now):
             c.live_group = 'arrives'
         elif _is_definitive(c.stat):
             c.live_group = 'termine'
+        elif c.stat == STAT_OK and c.rt is not None and c.rt < 0:
+            c.live_group = 'arrives'
         elif c.st > 0 and c.st <= now_t:
             c.live_group = 'en_course'
         else:
@@ -797,14 +867,14 @@ def rank_live(competitors, radio_map, now):
         ),
     )
     for i, c in enumerate(en_course, start=1):
-        c.live_rank = i
+        c.live_rank = None if getattr(c, 'neg_time', False) else i
 
     arrives = sorted(
         [c for c in competitors if c.live_group == 'arrives'],
         key=lambda c: c.rt,
     )
     for i, c in enumerate(arrives, start=1):
-        c.live_rank = i
+        c.live_rank = None if getattr(c, 'neg_time', False) else i
 
     en_attente = sorted(
         [c for c in competitors if c.live_group == 'en_attente'],

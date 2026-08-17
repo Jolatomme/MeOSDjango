@@ -24,7 +24,8 @@ from .services import (
     compute_grouping_index, compute_regularity_analysis,
     compute_course_hash, get_courses_map,
     competition_visible,
-    rank_live, race_start_clock, race_in_progress, clock_tenths,
+    rank_live, race_start_clock, race_end_clock, race_state,
+    race_in_progress, mark_negative_times, clock_tenths,
     LIVE_GROUPS,
 )
 
@@ -347,6 +348,11 @@ def live_results(request, cid, class_id):
     if course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists():
         return redirect('results:relay_results', cid=cid, class_id=class_id)
 
+    # Navigation catégorie adjacente (non pertinent pour un circuit)
+    prev_cls, next_cls = (None, None)
+    if course is None:
+        prev_cls, next_cls = _get_adjacent_classes(cid, cls.id)
+
     org_map = get_org_map(cid, as_objects=True)
     for c in competitors:
         c.org_obj = org_map.get(c.org)
@@ -354,9 +360,16 @@ def live_results(request, cid, class_id):
     controls_seq = _controls_for(cid, cls, course)
     radio_map    = get_radio_map(cid, [c.id for c in competitors])
     now          = datetime.now()
+    mark_negative_times(competitors, controls_seq or [], radio_map)
     live         = rank_live(competitors, radio_map, now)
 
     groups = {g: [c for c in live if c.live_group == g] for g in LIVE_GROUPS}
+
+    race_start = race_start_clock(competitors)
+    state      = race_state(live, now, race_start)
+    race_end   = None
+    if state == 'finished':
+        race_end = race_end_clock(competitors) or clock_tenths(now)
 
     return render(request, 'results/live_results.html', {
         'competition':       competition,
@@ -365,11 +378,15 @@ def live_results(request, cid, class_id):
         'controls_seq':      controls_seq or [],
         'live':              live,
         'groups':            groups,
-        'race_start_clock':  race_start_clock(competitors),
+        'race_start_clock':  race_start,
+        'race_state':        state,
+        'race_end_clock':    race_end,
         'server_now_clock':  clock_tenths(now),
         'course_hash':       course['hash'] if course else compute_course_hash(controls_seq),
         'current_analysis':  'live',
         'neg_time_warning':  get_negative_time_stats(cid),
+        'prev_cls':          prev_cls,
+        'next_cls':          next_cls,
     })
 
 
@@ -384,7 +401,14 @@ def api_live_results(request, cid, class_id):
     controls_seq = _controls_for(cid, cls, course)
     radio_map    = get_radio_map(cid, [c.id for c in competitors])
     now          = datetime.now()
+    mark_negative_times(competitors, controls_seq or [], radio_map)
     live         = rank_live(competitors, radio_map, now)
+
+    race_start = race_start_clock(competitors)
+    state      = race_state(live, now, race_start)
+    race_end   = None
+    if state == 'finished':
+        race_end = race_end_clock(competitors) or clock_tenths(now)
 
     runners = []
     for c in live:
@@ -399,7 +423,8 @@ def api_live_results(request, cid, class_id):
             'group':             c.live_group,
             'rank':              c.live_rank,
             'st':                c.st,
-            'rt':                c.rt if c.is_ok else None,
+            'rt':                c.rt if c.live_group == 'arrives' else None,
+            'neg_time':          bool(getattr(c, 'neg_time', False)),
             'n_punches':         c.n_punches,
             'last_ctrl':         c.last_ctrl,
             'last_time':         c.last_time,
@@ -410,7 +435,9 @@ def api_live_results(request, cid, class_id):
         'success':            True,
         'server_now':         int(now.timestamp() * 1000),
         'server_now_clock':   clock_tenths(now),
-        'race_start_clock':   race_start_clock(competitors),
+        'race_start_clock':   race_start,
+        'race_state':         state,
+        'race_end_clock':     race_end,
         'is_course':          bool(course),
         'cls_name':           cls.name,
         'course':             {'hash': course['hash'], 'display_name': course['display_name']} if course else None,

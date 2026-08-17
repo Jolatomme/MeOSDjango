@@ -67,13 +67,15 @@ const LiveResults = (() => {
   /** Temps de course MeOS (1/10 s) → 'MM:SS' ou 'H:MM:SS' (à la seconde). */
   function fmtRaceTime(tenths) {
     if (tenths == null) return '—';
-    const t = Math.floor(tenths / 10);
+    const neg = tenths < 0;
+    const t = Math.floor(Math.abs(tenths) / 10);
     const h = Math.floor(t / 3600);
     const m = Math.floor((t % 3600) / 60);
     const s = t % 60;
-    return h > 0
+    const fmt = h > 0
       ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
       : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    return neg ? `-${fmt}` : fmt;
   }
 
   function ctrlName(data, ctrlId) {
@@ -138,7 +140,11 @@ const LiveResults = (() => {
 
   function timeCell(runner) {
     if (runner.group === 'arrives') {
-      return `<span class="fw-bold">${fmtRaceTime(runner.rt)}</span>`;
+      const t = `<span class="fw-bold">${fmtRaceTime(runner.rt)}</span>`;
+      if (runner.neg_time) {
+        return `${t} <span class="badge neg-badge ms-1" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>`;
+      }
+      return t;
     }
     if (runner.group === 'en_course' && runner.st > 0) {
       return `<span class="live-time fw-bold" data-st="${runner.st}" title="Temps de course depuis le départ">—</span>`;
@@ -146,12 +152,15 @@ const LiveResults = (() => {
     if (runner.group === 'en_attente' && runner.st > 0) {
       return `<span class="text-muted small" title="Heure de départ">Départ ${fmtClock(runner.st)}</span>`;
     }
+    if (runner.group === 'termine') {
+      return statusBadge(runner);
+    }
     return '—';
   }
 
   // ── Rendu ──────────────────────────────────────────────────────────────────
 
-  function colSpan() { return cfg.isCourse ? 8 : 7; }
+  function colSpan() { return cfg.isCourse ? 7 : 6; }
 
   function render(data) {
     lastData = data;
@@ -179,12 +188,12 @@ const LiveResults = (() => {
           <td>${rankCell(r)}</td>
           <td class="runner-name">
             <a href="/competition/${cfg.cid}/competitor/${r.id}/">${esc(r.name)}</a>
+            ${r.neg_time ? `<span class="badge neg-badge ms-1" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>` : ''}
           </td>
           ${cfg.isCourse ? `<td>${r.class_name ? `<span class="badge bg-light text-dark border">${esc(r.class_name)}</span>` : '—'}</td>` : ''}
           <td class="club-name text-muted">${r.org ? esc(r.org) : '—'}</td>
           <td class="text-end">${progressCell(r, data)}</td>
           <td>${lastPunchCell(r, data)}</td>
-          <td class="text-end">${statusBadge(r)}</td>
           <td class="text-end">${timeCell(r)}</td>
         </tr>`);
       }
@@ -214,6 +223,17 @@ const LiveResults = (() => {
   function updateClock(data) {
     const el = document.getElementById('liveRaceClockValue');
     if (!el) return;
+    if (data.race_state === 'upcoming' || data.race_start_clock == null) {
+      el.textContent = '--:--:--';
+      return;
+    }
+    if (data.race_state === 'finished') {
+      const end = data.race_end_clock != null ? data.race_end_clock : data.server_now_clock;
+      let delta = end - data.race_start_clock;
+      if (delta < 0) delta += DAY_TENTHS;
+      el.textContent = fmtClock(delta);
+      return;
+    }
     const base = raceElapsed(data);
     if (base == null) { el.textContent = '--:--:--'; return; }
     const now = Date.now();
@@ -256,6 +276,21 @@ const LiveResults = (() => {
     }
   }
 
+  function setRaceState(state) {
+    const badge = document.getElementById('liveStatusBadge');
+    if (!badge) return;
+    if (state === 'finished') {
+      badge.className = 'badge bg-secondary fs-6';
+      badge.innerHTML = 'Course terminée';
+    } else if (state === 'upcoming') {
+      badge.className = 'badge bg-info fs-6';
+      badge.innerHTML = 'Course à venir';
+    } else {
+      badge.className = 'badge bg-success fs-6';
+      badge.innerHTML = `<span class="live-dot"></span>En direct`;
+    }
+  }
+
   function setLiveStatus(ok) {
     const badge = document.getElementById('liveStatusBadge');
     if (!badge) return;
@@ -272,7 +307,7 @@ const LiveResults = (() => {
       lastFetchClientMs = Date.now();
       render(data);
       startClock(data);
-      setLiveStatus(true);
+      setRaceState(data.race_state);
     } catch (err) {
       setLiveStatus(false);
     }
@@ -284,6 +319,8 @@ const LiveResults = (() => {
     startClock({
       race_start_clock: cfg.initialRaceStart,
       server_now_clock: cfg.initialNowClock,
+      race_state: cfg.initialRaceState || 'live',
+      race_end_clock: cfg.initialRaceEndClock,
     });
     poll();
     pollTimer = setInterval(poll, POLL_INTERVAL_MS);
