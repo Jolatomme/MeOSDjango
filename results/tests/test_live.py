@@ -20,7 +20,8 @@ from results.models import (
     STAT_OK, STAT_MP, STAT_DNF, STAT_DNS, STAT_OCC,
 )
 from results.services import (
-    rank_live, race_start_clock, race_in_progress, format_clock,
+    rank_live, race_start_clock, race_end_clock, race_state,
+    race_in_progress, mark_negative_times, format_clock,
 )
 
 NOW = datetime(2025, 8, 14, 12, 0, 0)   # 12:00:00 → 432000 (1/10 s depuis minuit)
@@ -116,6 +117,49 @@ class TestRaceInProgress:
         assert race_in_progress(cs, NOW) is False
 
 
+class TestRaceEndClock:
+    def test_max_st_rt_des_arrives(self):
+        c1 = make_competitor(1, st=200000, rt=5000, stat=STAT_OK)
+        c2 = make_competitor(2, st=300000, rt=10000, stat=STAT_OK)
+        assert race_end_clock([c1, c2]) == 310000
+
+    def test_ignore_non_arrives(self):
+        c1 = make_competitor(1, st=200000, rt=5000, stat=STAT_OK)
+        c2 = make_competitor(2, st=200000, rt=0, stat=STAT_DNF)
+        assert race_end_clock([c1, c2]) == 205000
+
+    def test_aucun_arrive(self):
+        cs = [make_competitor(1, st=100000, stat=STAT_DNS)]
+        assert race_end_clock(cs) is None
+
+
+class TestRaceState:
+    def test_finished_sans_en_course_ni_en_attente(self):
+        cs = [make_runner(1, group='arrives'), make_runner(2, group='termine')]
+        assert race_state(cs, NOW, race_start=100000) == 'finished'
+
+    def test_upcoming_premier_depart_futur(self):
+        cs = [make_runner(1, group='en_attente')]
+        assert race_state(cs, NOW, race_start=500000) == 'upcoming'
+
+    def test_upcoming_sans_depart(self):
+        c = make_runner(1, group='en_attente')
+        c.st = 0
+        assert race_state([c], NOW, race_start=None) == 'upcoming'
+
+    def test_finished_prime_sur_upcoming(self):
+        cs = [make_runner(1, group='arrives'), make_runner(2, group='termine')]
+        assert race_state(cs, NOW, race_start=None) == 'finished'
+
+    def test_live_avec_coureur_en_course(self):
+        cs = [make_runner(1, group='en_course'), make_runner(2, group='arrives')]
+        assert race_state(cs, NOW, race_start=100000) == 'live'
+
+    def test_live_avec_attente_restante(self):
+        cs = [make_runner(1, group='arrives'), make_runner(2, group='en_attente')]
+        assert race_state(cs, NOW, race_start=100000) == 'live'
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # rank_live
 # ══════════════════════════════════════════════════════════════════════════════
@@ -172,6 +216,37 @@ class TestRankLive:
         assert [r.id for r in ranked] == [2, 1]
         assert a.live_group == 'arrives' and a.live_rank == 2
 
+    def test_rt_negatif_stat_ok_va_dans_arrives_sans_rang(self):
+        c = make_competitor(1, st=100000, stat=STAT_OK, rt=-500)
+        self._rank([c])
+        assert c.live_group == 'arrives'
+        assert c.live_rank is None
+        assert c.neg_time is True
+
+    def test_rt_negatif_statut_definitif_reste_termine(self):
+        c = make_competitor(1, st=100000, stat=STAT_DNF, rt=-500)
+        self._rank([c])
+        assert c.live_group == 'termine'
+        assert c.live_rank is None
+
+    def test_arrive_negatif_au_milieu_rangs_sequentiels(self):
+        neg = make_competitor(1, st=100000, stat=STAT_OK, rt=5500)
+        neg.neg_time = True
+        a = make_competitor(2, st=100000, stat=STAT_OK, rt=5000)
+        b = make_competitor(3, st=100000, stat=STAT_OK, rt=6000)
+        ranked = self._rank([neg, a, b])
+        assert [r.id for r in ranked] == [2, 1, 3]
+        assert a.live_rank == 1
+        assert neg.live_rank is None
+        assert b.live_rank == 3
+
+    def test_en_course_troncon_negatif_sans_rang(self):
+        c = make_competitor(1, st=100000, stat=0)
+        c.neg_time = True
+        self._rank([c])
+        assert c.live_group == 'en_course'
+        assert c.live_rank is None
+
     def test_ordre_finished_done_waiting(self):
         c_dnf = make_competitor(1, st=100000, stat=STAT_DNF, name='BBB')
         c_dns = make_competitor(2, st=900000, stat=STAT_DNS, name='CCC')
@@ -214,22 +289,63 @@ class TestRankLive:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# mark_negative_times
+# ══════════════════════════════════════════════════════════════════════════════
+
+CONTROLS = [
+    {'ctrl_id': 101, 'ctrl_name': '1-101'},
+    {'ctrl_id': 102, 'ctrl_name': '2-102'},
+]
+
+
+class TestMarkNegativeTimes:
+    def _mark(self, competitor, radio_map=None, controls=None):
+        mark_negative_times([competitor], controls or CONTROLS, radio_map or {})
+        return competitor.neg_time
+
+    def test_troncon_radio_negatif(self):
+        c = make_competitor(1, st=100000)
+        assert self._mark(c, {1: {101: 6000, 102: 3000}}) is True
+
+    def test_arrivee_avant_dernier_poste(self):
+        c = make_competitor(1, st=100000, stat=STAT_OK, rt=2000)
+        assert self._mark(c, {1: {101: 5000, 102: 7000}}) is True
+
+    def test_rt_negatif(self):
+        c = make_competitor(1, st=100000, stat=STAT_OK, rt=-500)
+        assert self._mark(c) is True
+
+    def test_cas_sain(self):
+        c = make_competitor(1, st=100000, stat=STAT_OK, rt=9000)
+        assert self._mark(c, {1: {101: 3000, 102: 6000}}) is False
+
+    def test_arrivee_apres_dernier_poste_saine(self):
+        c = make_competitor(1, st=100000, stat=STAT_OK, rt=9000)
+        assert self._mark(c, {1: {101: 3000, 102: 6000}}) is False
+
+    def test_aucun_poincon_rt_positif_sain(self):
+        c = make_competitor(1, st=100000, stat=STAT_OK, rt=5000)
+        assert self._mark(c) is False
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # live_results (page)
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestLiveResultsView:
-    def _run(self, competitors=None, course=None):
+    def _run(self, competitors=None, course=None, race_start=None):
         competitors = competitors or []
         cls = SimpleNamespace(id=10, name='H21')
         with patch('results.views._load_class_context',
                    return_value=(MagicMock(cid=1, name='Test'), cls,
                                  competitors, course)), \
              patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
              patch('results.views.get_org_map', return_value={}), \
              patch('results.views.get_radio_map', return_value={}), \
              patch('results.views._controls_for', return_value=[]), \
              patch('results.views.rank_live', return_value=competitors), \
-             patch('results.views.race_start_clock', return_value=None), \
+             patch('results.views.race_start_clock', return_value=race_start), \
              patch('results.views.render') as mock_render:
             MockTeam.objects.filter.return_value.exists.return_value = False
             from results.views import live_results
@@ -253,6 +369,66 @@ class TestLiveResultsView:
                   'controls_seq': [], 'classes': []}
         template, _ = self._run(course=course)
         assert template == 'results/live_results.html'
+
+    def test_prev_next_cls_presents(self):
+        prev = SimpleNamespace(id=9, name='H20')
+        next_ = SimpleNamespace(id=11, name='D35')
+        with patch('results.views._load_class_context',
+                   return_value=(MagicMock(cid=1, name='Test'),
+                                 SimpleNamespace(id=10, name='H21'), [], None)), \
+             patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views._get_adjacent_classes', return_value=(prev, next_)), \
+             patch('results.views.get_org_map', return_value={}), \
+             patch('results.views.get_radio_map', return_value={}), \
+             patch('results.views._controls_for', return_value=[]), \
+             patch('results.views.rank_live', return_value=[]), \
+             patch('results.views.race_start_clock', return_value=None), \
+             patch('results.views.render') as mock_render:
+            MockTeam.objects.filter.return_value.exists.return_value = False
+            from results.views import live_results
+            live_results(rf_get(), cid=1, class_id='H21')
+            _, _, ctx = mock_render.call_args[0]
+            assert ctx['prev_cls'] is prev
+            assert ctx['next_cls'] is next_
+
+    def test_prev_next_none_en_mode_circuit(self):
+        course = {'hash': 'abc12345', 'display_name': 'Circuit', 'class_ids': [10],
+                  'controls_seq': [], 'classes': []}
+        _, ctx = self._run(course=course)
+        assert ctx['prev_cls'] is None
+        assert ctx['next_cls'] is None
+
+    def test_race_state_finished_sans_coureurs(self):
+        _, ctx = self._run()
+        assert ctx['race_state'] == 'finished'
+        assert ctx['race_end_clock'] is not None
+
+    def test_race_state_live_avec_coureur_en_course(self):
+        runner = make_runner(id=5, group='en_course')
+        _, ctx = self._run(competitors=[runner], race_start=100000)
+        assert ctx['race_state'] == 'live'
+        assert ctx['race_end_clock'] is None
+
+    def test_race_state_upcoming_avec_depart_futur(self):
+        runner = make_runner(id=5, group='en_attente')
+        with patch('results.views._load_class_context',
+                   return_value=(MagicMock(cid=1, name='Test'),
+                                 SimpleNamespace(id=10, name='H21'),
+                                 [runner], None)), \
+             patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views.get_org_map', return_value={}), \
+             patch('results.views.get_radio_map', return_value={}), \
+             patch('results.views._controls_for', return_value=[]), \
+             patch('results.views.rank_live', return_value=[runner]), \
+             patch('results.views.race_start_clock', return_value=863990), \
+             patch('results.views.render') as mock_render:
+            MockTeam.objects.filter.return_value.exists.return_value = False
+            from results.views import live_results
+            live_results(rf_get(), cid=1, class_id='H21')
+            _, _, ctx = mock_render.call_args[0]
+            assert ctx['race_state'] == 'upcoming'
+            assert ctx['race_end_clock'] is None
 
     def test_relais_redirige(self):
         with patch('results.views._load_class_context',
@@ -280,6 +456,7 @@ class TestLiveResultsView:
                                  SimpleNamespace(id=10, name='H21'),
                                  [runner], None)), \
              patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
              patch('results.views.get_org_map', return_value={3: org}), \
              patch('results.views.get_radio_map', return_value={}), \
              patch('results.views._controls_for', return_value=[]), \
@@ -310,7 +487,7 @@ class TestApiLiveResults:
         r.class_obj = None
         return r
 
-    def _run(self, competitors=None, course=None, class_name='H21'):
+    def _run(self, competitors=None, course=None, class_name='H21', race_start=180000):
         competitors = competitors or []
         cls = SimpleNamespace(id=10, name=class_name)
         with patch('results.views._load_class_context',
@@ -323,7 +500,7 @@ class TestApiLiveResults:
                  {'ctrl_id': 102, 'ctrl_name': '2-102'},
              ]), \
              patch('results.views.rank_live', return_value=competitors), \
-             patch('results.views.race_start_clock', return_value=180000):
+             patch('results.views.race_start_clock', return_value=race_start):
             MockTeam.objects.filter.return_value.exists.return_value = False
             from results.views import api_live_results
             return json.loads(api_live_results(rf_get(), cid=1, class_id='H21').content)
@@ -344,6 +521,35 @@ class TestApiLiveResults:
         assert r['n_punches'] == 1
         assert r['last_ctrl'] == 101
         assert r['last_punch_clock'] == 205000
+
+    def test_race_state_live(self):
+        data = self._run(competitors=[self._runner()])
+        assert data['race_state'] == 'live'
+        assert data['race_end_clock'] is None
+
+    def test_race_state_finished_avec_dernier_arrive(self):
+        r = self._runner(id=1, group='arrives')
+        r.is_ok = True; r.rt = 5000
+        data = self._run(competitors=[r])
+        assert data['race_state'] == 'finished'
+        assert data['race_end_clock'] == 200000 + 5000
+
+    def test_race_state_upcoming_depart_futur(self):
+        r = self._runner(id=1, group='en_attente')
+        data = self._run(competitors=[r], race_start=863990)
+        assert data['race_state'] == 'upcoming'
+        assert data['race_end_clock'] is None
+
+    def test_neg_time_renvoye_avec_rt_negatif(self):
+        r = self._runner(id=1, group='arrives')
+        r.rt = -500; r.neg_time = True
+        data = self._run(competitors=[r])
+        assert data['runners'][0]['rt'] == -500
+        assert data['runners'][0]['neg_time'] is True
+
+    def test_neg_time_faux_par_defaut(self):
+        data = self._run(competitors=[self._runner()])
+        assert data['runners'][0]['neg_time'] is False
 
     def test_json_course_inclut_categorie(self):
         course = {'hash': 'abc12345', 'display_name': 'Circuit',
