@@ -38,9 +38,7 @@
           <i class="bi bi-stopwatch me-1"></i>Leader : {{ leader_time }}
         </span>
         {% endif %}
-        {% if not analysis_locked %}
         <span class="badge bg-light text-dark fs-6">{{ results|length }} coureur{{ results|length|pluralize }}</span>
-        {% endif %}
         {% if has_splits %}
         <span class="badge bg-light text-dark fs-6">{{ controls_seq|length }} poste{{ controls_seq|length|pluralize }}</span>
         {% endif %}
@@ -48,7 +46,7 @@
     </div>
   </div>
 </div>
-{% if has_splits or analysis_locked %}{% include 'results/analysis_tabs.html' %}{% endif %}
+{% if has_splits %}{% include 'results/analysis_tabs.html' %}{% endif %}
 {% endblock %}
 
 {% block extra_head %}
@@ -83,11 +81,7 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
 
 {% block content %}
 
-{% if analysis_locked %}
-
-{% include 'results/_analysis_locked.html' %}
-
-{% else %}
+{% include 'results/_analysis_partial.html' %}
 
 {% include 'results/_neg_time_warning.html' %}
 
@@ -253,7 +247,6 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
 </div>
 {% endif %}
 
-{% endif %}
 {% endblock %}
 
 
