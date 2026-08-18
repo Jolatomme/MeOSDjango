@@ -330,11 +330,11 @@ class TestGroupingAnalysisView:
     @patch('results.views.render')
     @patch('results.views.get_object_or_404')
     @patch('results.views.Mopcompetitor')
-    def test_dnf_inclus(
+    def test_dnf_exclu(
         self, MockCompetitor, mock_get404, mock_render,
         mock_radio, mock_ctrl, mock_org,
     ):
-        """Les coureurs DNF avec st>0 sont inclus dans la vue."""
+        """Les coureurs non-OK (DNF) sont exclus de la vue."""
         competition = MagicMock(); competition.cid = 1
         cls         = MagicMock(); cls.id = 10
         mock_get404.side_effect = [competition, cls]
@@ -347,12 +347,12 @@ class TestGroupingAnalysisView:
         grouping_analysis(self._get(), cid=1, class_id=10)
 
         _, _, context = mock_render.call_args[0]
-        assert context['n_runners'] == 2
+        assert context['n_runners'] == 1
 
         series = json.loads(context['series_json'])
         noms = [s['name'] for s in series]
         assert 'Alice' in noms
-        assert 'Bob'   in noms
+        assert 'Bob'   not in noms
 
     @patch('results.views.get_org_map',        return_value={})
     @patch('results.views.get_class_controls', return_value=([], {}))
@@ -437,11 +437,11 @@ class TestGroupingRealRank:
     @patch('results.views.render')
     @patch('results.views.get_object_or_404')
     @patch('results.views.Mopcompetitor')
-    def test_dnf_recoit_rank_none(
+    def test_dnf_exclu_des_series(
         self, MockCompetitor, mock_get404, mock_render,
         mock_radio, mock_ctrl, mock_org,
     ):
-        """Un coureur DNF doit avoir rank=None (pas un entier)."""
+        """Un coureur DNF n'apparaît pas dans les séries (OK uniquement)."""
         competition = MagicMock(); competition.cid = 1
         cls         = MagicMock(); cls.id = 10
         mock_get404.side_effect = [competition, cls]
@@ -455,8 +455,10 @@ class TestGroupingRealRank:
 
         _, _, context = mock_render.call_args[0]
         series = json.loads(context['series_json'])
-        s_bob = next(s for s in series if s['name'] == 'Bob')
-        assert s_bob['rank'] is None, "Un DNF doit avoir rank=None dans les séries"
+        noms = [s['name'] for s in series]
+        assert 'Bob' not in noms, "Un DNF ne doit pas apparaître dans les séries"
+        s_alice = next(s for s in series if s['name'] == 'Alice')
+        assert s_alice['rank'] == 1
 
     @patch('results.views.get_org_map',        return_value={})
     @patch('results.views.get_class_controls', return_value=([], {}))
@@ -526,11 +528,11 @@ class TestGroupingRealRank:
     @patch('results.views.render')
     @patch('results.views.get_object_or_404')
     @patch('results.views.Mopcompetitor')
-    def test_time_fmt_tiret_pour_dnf(
+    def test_no_data_si_seul_dnf(
         self, MockCompetitor, mock_get404, mock_render,
         mock_radio, mock_ctrl, mock_org,
     ):
-        """Un coureur DNF (rt <= 0) doit avoir time_fmt='—'."""
+        """Aucun coureur OK → no_data=True (les DNF sont exclus)."""
         competition = MagicMock(); competition.cid = 1
         cls         = MagicMock(); cls.id = 10
         mock_get404.side_effect = [competition, cls]
@@ -542,9 +544,7 @@ class TestGroupingRealRank:
         grouping_analysis(self._get(), cid=1, class_id=10)
 
         _, _, context = mock_render.call_args[0]
-        series = json.loads(context['series_json'])
-        s_bob = next(s for s in series if s['name'] == 'Bob')
-        assert s_bob['time_fmt'] == '—'
+        assert context['no_data'] is True
 
 
 # ─── Tests invariants de couleur tableau/graphique ────────────────────────────
@@ -652,17 +652,17 @@ class TestGroupingColorInvariants:
     @patch('results.views.render')
     @patch('results.views.get_object_or_404')
     @patch('results.views.Mopcompetitor')
-    def test_ordre_series_stable_avec_dnf(
+    def test_ordre_series_stable_sans_dnf(
         self, MockCompetitor, mock_get404, mock_render,
         mock_radio, mock_ctrl, mock_org,
     ):
-        """La présence de coureurs DNF ne doit pas perturber les index dans SERIES
-        (et donc les couleurs). Un DNF conserve sa position basée sur st."""
+        """Les coureurs DNF étant exclus des séries, l'ordre des coureurs OK
+        reste basé sur l'heure de départ (index SERIES = couleur)."""
         competition = MagicMock(); competition.cid = 1
         cls         = MagicMock(); cls.id = 10
         mock_get404.side_effect = [competition, cls]
 
-        # Alice part en 1er, Bob (DNF) en 2e, Charlie en 3e
+        # Alice part en 1er, Bob (DNF, exclu), Charlie en 3e
         alice   = make_runner(1, st=100000, rt=50000, stat=STAT_OK,  name='Alice')
         bob_dnf = make_runner(2, st=110000, rt=-1,    stat=STAT_DNF, name='Bob')
         charlie = make_runner(3, st=120000, rt=55000, stat=STAT_OK,  name='Charlie')
@@ -675,8 +675,6 @@ class TestGroupingColorInvariants:
         series = json.loads(context['series_json'])
 
         names_in_order = [s['name'] for s in series]
-        # L'ordre de départ doit être préservé : Alice(0), Bob(1), Charlie(2)
-        assert names_in_order.index('Alice')   < names_in_order.index('Bob'),   \
-            "Alice (st=100k) doit précéder Bob (st=110k)"
-        assert names_in_order.index('Bob')     < names_in_order.index('Charlie'), \
-            "Bob (st=110k) doit précéder Charlie (st=120k)"
+        # Bob (DNF) est exclu : Alice(0), Charlie(1)
+        assert 'Bob' not in names_in_order
+        assert names_in_order == ['Alice', 'Charlie']

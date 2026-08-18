@@ -54,11 +54,9 @@
 
 {% include 'results/_neg_time_warning.html' %}
 
-{% if analysis_locked %}
+{% include 'results/_analysis_partial.html' %}
 
-{% include 'results/_analysis_locked.html' %}
-
-{% elif no_data %}
+{% if no_data %}
 <div class="co-card text-center p-5 text-muted">
   <i class="bi bi-people fs-1 d-block mb-3 opacity-25"></i>
   Aucun coureur disponible pour cette catégorie.

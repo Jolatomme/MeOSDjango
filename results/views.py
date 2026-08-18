@@ -457,30 +457,23 @@ def api_live_results(request, cid, class_id):
 # Aucune vue dupliquée : les templates utilisent {% if course %} pour adapter
 # l'affichage (fil d'Ariane, onglets de navigation).
 #
-# Pendant la course, les analyses sont BLOQUÉES : les données d'un coureur ne
-# sont complètes qu'une fois son statut attribué par MeOS (lecture de puce à la
-# GEC après l'arrivée). Tant qu'un coureur parti (st > 0, départ passé) n'a pas
-# de statut définitif, les références calculées (superman, top-25 %, erreurs…)
-# porteraient sur un peloton partiel et seraient fausses. Les coureurs jamais
-# partis (st = 0) ou au départ futur ne bloquent pas.
+# Les analyses ne sont PLUS bloquées pendant la course : elles se calculent
+# dès les premières arrivées, sur les coureurs ayant un statut OK (stat = 1,
+# puce lue à la GEC). Les coureurs encore en course (stat = 0), non partis
+# (st = 0) ou avec un statut non-OK n'apparaissent pas dans les analyses.
+# Tant que la course est en cours, un bandeau « analyse partielle » est affiché
+# (voir ``_partial_analysis_info``).
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _analysis_locked(request, template, competition, cls, course, current_analysis):
-    """Réponse quand la course est en cours : analyse bloquée (données incomplètes).
+def _partial_analysis_info(competitors):
+    """Infos du bandeau « analyse partielle » tant que la course est en cours.
 
-    Voir ``race_in_progress()`` pour la condition. ``no_data=True`` réutilise les
-    gardes `{% if not no_data %}` des templates (badges, extra_head, JS) ; le
-    template branche sur ``analysis_locked`` pour afficher le message dédié.
+    Retourne ``(partial, n_ok, n_total)`` : ``partial`` est True dès qu'un
+    coureur parti n'a pas de statut définitif (``race_in_progress``) ;
+    ``n_ok`` compte les coureurs OK pris en compte dans les analyses.
     """
-    return render(request, template, {
-        'competition':      competition,
-        'cls':              cls,
-        'course':           course,
-        'current_analysis': current_analysis,
-        'analysis_locked':  True,
-        'no_data':          True,
-        'race_in_progress': True,
-    })
+    n_ok = sum(1 for c in competitors if c.is_ok)
+    return race_in_progress(competitors), n_ok, len(competitors)
 
 
 def superman_analysis(request, cid, class_id):
@@ -490,8 +483,7 @@ def superman_analysis(request, cid, class_id):
     theoretical "superman" who takes the best split on every leg.
     """
     competition, cls, competitors, course = _load_class_context(cid, class_id)
-    if race_in_progress(competitors):
-        return _analysis_locked(request, 'results/superman.html', competition, cls, course, 'superman')
+    partial, n_ok, n_total = _partial_analysis_info(competitors)
     org_map      = get_org_map(cid)
     controls_seq = _controls_for(cid, cls, course)
     controls_labels = [c['ctrl_name'] for c in controls_seq]
@@ -567,6 +559,7 @@ def superman_analysis(request, cid, class_id):
         'controls_labels': controls_labels,
         'no_data': False, 'n_finishers': len(finishers),
         'current_analysis': 'superman',
+        'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
     })
 
 
@@ -577,8 +570,7 @@ def performance_analysis(request, cid, class_id):
     (closer to 0) means the runner is closer to the reference pace.
     """
     competition, cls, competitors, course = _load_class_context(cid, class_id)
-    if race_in_progress(competitors):
-        return _analysis_locked(request, 'results/performance.html', competition, cls, course, 'performance')
+    partial, n_ok, n_total = _partial_analysis_info(competitors)
     finishers, _, _ = rank_finishers(competitors)
     if not finishers:
         return render(request, 'results/performance.html', {
@@ -627,6 +619,7 @@ def performance_analysis(request, cid, class_id):
         'series_json': json.dumps(series), 'leg_info_json': json.dumps(leg_info),
         'n_legs': n_legs, 'n_finishers': len(finishers),
         'no_data': False, 'current_analysis': 'performance',
+        'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
     })
 
 
@@ -637,8 +630,7 @@ def regularity_analysis(request, cid, class_id):
     relative to the field across all legs. Requires at least 2 finishers.
     """
     competition, cls, competitors, course = _load_class_context(cid, class_id)
-    if race_in_progress(competitors):
-        return _analysis_locked(request, 'results/regularity.html', competition, cls, course, 'regularity')
+    partial, n_ok, n_total = _partial_analysis_info(competitors)
     finishers, _, _ = rank_finishers(competitors)
     if len(finishers) < 2:
         return render(request, 'results/regularity.html', {
@@ -676,6 +668,7 @@ def regularity_analysis(request, cid, class_id):
         'category_regularity': round(cat_reg, 4) if cat_reg is not None else None,
         'n_legs': reg_data['n_legs'], 'n_finishers': len(finishers),
         'no_data': False, 'current_analysis': 'regularity',
+        'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
     })
 
 
@@ -686,9 +679,9 @@ def grouping_analysis(request, cid, class_id):
     chart of cumulative time at each control point.
     """
     competition, cls, competitors, course = _load_class_context(cid, class_id)
-    if race_in_progress(competitors):
-        return _analysis_locked(request, 'results/grouping.html', competition, cls, course, 'grouping')
-    runners_with_start = sorted([c for c in competitors if c.st > 0], key=lambda c: c.st)
+    partial, n_ok, n_total = _partial_analysis_info(competitors)
+    runners_with_start = sorted([c for c in competitors if c.is_ok and c.st > 0],
+                            key=lambda c: c.st)
     if not runners_with_start:
         return render(request, 'results/grouping.html', {
             'competition': competition, 'cls': cls, 'course': course,
@@ -715,6 +708,7 @@ def grouping_analysis(request, cid, class_id):
         'series_json': json.dumps(series), 'x_labels_json': json.dumps(x_labels),
         'n_runners': len(series), 'n_controls': len(controls_seq),
         'no_data': False, 'current_analysis': 'grouping',
+        'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
     })
 
 
@@ -725,9 +719,8 @@ def grouping_index_analysis(request, cid, class_id):
     the "close" and "far" time thresholds. Defaults: t1=7, t2=20.
     """
     competition, cls, competitors, course = _load_class_context(cid, class_id)
-    if race_in_progress(competitors):
-        return _analysis_locked(request, 'results/grouping_index.html', competition, cls, course, 'grouping_index')
-    runners = sorted([c for c in competitors if c.st > 0], key=lambda c: c.st)
+    partial, n_ok, n_total = _partial_analysis_info(competitors)
+    runners = sorted([c for c in competitors if c.is_ok and c.st > 0], key=lambda c: c.st)
     if not runners:
         return render(request, 'results/grouping_index.html', {
             'competition': competition, 'cls': cls, 'course': course,
@@ -774,6 +767,7 @@ def grouping_index_analysis(request, cid, class_id):
         'results_json': json.dumps(raw), 'leg_labels_json': json.dumps(leg_labels),
         'n_runners': len(raw), 'n_legs': len(leg_labels),
         't1': t1, 't2': t2, 'no_data': False, 'current_analysis': 'grouping_index',
+        'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
     })
 
 
@@ -790,11 +784,8 @@ def duel_analysis(request, cid, class_id):
     if course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists():
         return redirect('results:relay_results', cid=cid, class_id=class_id)
 
-    if race_in_progress(competitors):
-        return _analysis_locked(request, 'results/duel.html', competition, cls, course, 'duel')
-
-    finishers, non_finishers, _ = rank_finishers(competitors)
-    all_results = finishers + non_finishers
+    partial, n_ok, n_total = _partial_analysis_info(competitors)
+    all_results, _, _ = rank_finishers(competitors)
     if not all_results:
         return render(request, 'results/duel.html', {
             'competition': competition, 'cls': cls, 'course': course,
@@ -820,6 +811,7 @@ def duel_analysis(request, cid, class_id):
         'no_data': False, 'current_analysis': 'duel',
         'neg_time_warning': get_negative_time_stats(cid),
         'runners_json': json.dumps(runners_data), 'n_runners': len(runners_data),
+        'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
     })
 
 
@@ -828,7 +820,12 @@ def duel_analysis(request, cid, class_id):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _load_recapitulatif_data(cid, class_id, context=None):
-    """Charge et prépare les données pour le récapitulatif (HTML et CSV)."""
+    """Charge et prépare les données pour le récapitulatif (HTML et CSV).
+
+    Ne prend en compte que les coureurs OK (statut attribué par MeOS, puce
+    lue) : les coureurs encore en course, non partis ou non classés
+    n'apparaissent pas (analyse partielle pendant la course).
+    """
     if context is not None:
         competition, cls, competitors, course = context
     else:
@@ -842,7 +839,7 @@ def _load_recapitulatif_data(cid, class_id, context=None):
     for c in competitors:
         c.org_obj = org_map.get(c.org)
 
-    finishers, non_finishers, leader_time = rank_finishers(competitors)
+    finishers, _, leader_time = rank_finishers(competitors)
 
     if course is not None:
         class_rank_cache = {}
@@ -857,7 +854,7 @@ def _load_recapitulatif_data(cid, class_id, context=None):
                 class_rank_cache[cls_id] = {x.id: i + 1 for i, x in enumerate(cls_finishers)}
             c.cat_rank = class_rank_cache[cls_id].get(c.id)
 
-    results     = finishers + _sort_non_finishers(non_finishers)
+    results      = finishers
     controls_seq = _controls_for(cid, cls, course)
     radio_map   = get_radio_map(cid, [c.id for c in results])
 
@@ -912,8 +909,7 @@ def recapitulatif_analysis(request, cid, class_id):
     if _is_relay(cid, cls, course):
         return redirect('results:relay_results', cid=cid, class_id=class_id)
 
-    if race_in_progress(competitors):
-        return _analysis_locked(request, 'results/recapitulatif.html', competition, cls, course, 'recapitulatif')
+    partial, n_ok, n_total = _partial_analysis_info(competitors)
 
     _, _, _, results, controls_seq, prev_cls, next_cls, leader_time, leg_error_data = \
         _load_recapitulatif_data(cid, class_id, context=context)
@@ -931,6 +927,7 @@ def recapitulatif_analysis(request, cid, class_id):
         'next_cls':            next_cls,
         'neg_time_warning':    get_negative_time_stats(cid),
         'leg_error_data_json': json.dumps(leg_error_data),
+        'partial_analysis':    partial, 'n_ok': n_ok, 'n_total': n_total,
     })
 
 
@@ -946,13 +943,6 @@ def recapitulatif_csv(request, cid, class_id):
     competition, cls, _competitors, course = context
     if _is_relay(cid, cls, course):
         return redirect('results:relay_results', cid=cid, class_id=class_id)
-
-    if race_in_progress(_competitors):
-        return HttpResponse(
-            'Analyse indisponible pendant la course — données incomplètes tant '
-            "qu'un coureur parti n'a pas de statut attribué par MeOS.",
-            status=409,
-        )
 
     _comp, _cls, _course, results, controls_seq, _prev, _next, _leader, _leg_error = \
         _load_recapitulatif_data(cid, class_id, context=context)

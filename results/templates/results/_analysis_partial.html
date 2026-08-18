@@ -1,0 +1,8 @@
+{% if partial_analysis %}
+<div class="alert alert-info border-0 mb-4" style="background:#e7f3ff;border-left:4px solid #0dcaf0 !important;">
+  <i class="bi bi-hourglass-split me-2"></i>
+  <strong>Analyse partielle</strong> — {{ n_ok }} coureur{{ n_ok|pluralize }} arrivé{{ n_ok|pluralize }} sur {{ n_total }}.
+  Les coureurs encore en course ou non partis n'apparaissent pas :
+  l'analyse se complète au fil des arrivées.
+</div>
+{% endif %}
