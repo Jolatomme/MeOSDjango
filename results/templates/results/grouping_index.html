@@ -53,9 +53,11 @@
 
 {% block content %}
 
-{% include 'results/_race_in_progress_warning.html' %}
+{% if analysis_locked %}
 
-{% if no_data %}
+{% include 'results/_analysis_locked.html' %}
+
+{% elif no_data %}
 <div class="co-card text-center p-5 text-muted">
   <i class="bi bi-collection fs-1 d-block mb-3 opacity-25"></i>
   Pas assez de données pour calculer l'indice lièvre / suiveur.

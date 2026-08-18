@@ -52,7 +52,11 @@
 
 {% block content %}
 
-{% if no_data %}
+{% if analysis_locked %}
+
+{% include 'results/_analysis_locked.html' %}
+
+{% elif no_data %}
 <div class="co-card text-center p-5 text-muted">
   <i class="bi bi-activity fs-1 d-block mb-3 opacity-25"></i>
   Pas assez de coureurs classés pour calculer la régularité

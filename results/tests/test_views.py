@@ -1587,6 +1587,7 @@ class TestRecapitulatifCsv:
                     org_name='COLE', rank=1):
         c = MagicMock()
         c.id = id_; c.name = f'Runner {id_}'; c.rank = rank; c.is_ok = ok
+        c.st = 100000; c.stat = STAT_OK if ok else STAT_DNF
         c.class_obj = MagicMock(); c.class_obj.name = class_name
         c.org_obj = MagicMock(); c.org_obj.name = org_name
         c.splits = splits or []
