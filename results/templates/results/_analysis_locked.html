@@ -1,0 +1,16 @@
+<div class="co-card text-center p-5 text-muted">
+  <i class="bi bi-hourglass-split fs-1 d-block mb-3 opacity-25"></i>
+  <h2 class="h5 fw-bold mb-2">Analyse indisponible pendant la course</h2>
+  <p class="mb-0 mx-auto" style="max-width:560px">
+    Les données d'un coureur ne sont complètes qu'une fois sa puce lue après
+    l'arrivée, avec un statut attribué par MeOS. Tant que la course est en
+    cours, les analyses calculées sur les données partielles seraient fausses —
+    elles seront disponibles automatiquement à la fin de la course.
+  </p>
+  <div class="mt-4">
+    <a href="{% if course %}{% url 'results:course_live' competition.cid course.hash %}{% else %}{% url 'results:live' competition.cid cls.name %}{% endif %}"
+       class="btn btn-sm btn-outline-success">
+      <i class="bi bi-activity me-1"></i>Suivre la course en direct
+    </a>
+  </div>
+</div>

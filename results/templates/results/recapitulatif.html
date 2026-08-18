@@ -33,12 +33,14 @@
         {% endif %}
       </div>
       <div class="d-flex gap-2 align-items-center flex-wrap">
-        {% if leader_time != '-' %}
+        {% if leader_time and leader_time != '-' %}
         <span class="badge bg-warning text-dark fs-6 fw-bold">
           <i class="bi bi-stopwatch me-1"></i>Leader : {{ leader_time }}
         </span>
         {% endif %}
+        {% if not analysis_locked %}
         <span class="badge bg-light text-dark fs-6">{{ results|length }} coureur{{ results|length|pluralize }}</span>
+        {% endif %}
         {% if has_splits %}
         <span class="badge bg-light text-dark fs-6">{{ controls_seq|length }} poste{{ controls_seq|length|pluralize }}</span>
         {% endif %}
@@ -46,7 +48,7 @@
     </div>
   </div>
 </div>
-{% if has_splits %}{% include 'results/analysis_tabs.html' %}{% endif %}
+{% if has_splits or analysis_locked %}{% include 'results/analysis_tabs.html' %}{% endif %}
 {% endblock %}
 
 {% block extra_head %}
@@ -81,8 +83,13 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
 
 {% block content %}
 
+{% if analysis_locked %}
+
+{% include 'results/_analysis_locked.html' %}
+
+{% else %}
+
 {% include 'results/_neg_time_warning.html' %}
-{% include 'results/_race_in_progress_warning.html' %}
 
 {% if course %}
 <div class="co-card mb-3">
@@ -246,7 +253,9 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
 </div>
 {% endif %}
 
+{% endif %}
 {% endblock %}
+
 
 {% block extra_js %}
 {% if has_splits %}
