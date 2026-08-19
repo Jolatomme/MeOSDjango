@@ -21,7 +21,7 @@ from results.models import (
 )
 from results.services import (
     rank_live, race_start_clock, race_end_clock, race_state,
-    race_in_progress, mark_negative_times, format_clock,
+    race_in_progress, mark_negative_times, mark_presumed_prestart, format_clock,
 )
 
 NOW = datetime(2025, 8, 14, 12, 0, 0)   # 12:00:00 → 432000 (1/10 s depuis minuit)
@@ -165,8 +165,8 @@ class TestRaceState:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestRankLive:
-    def _rank(self, competitors, radio_map=None):
-        return rank_live(competitors, radio_map or {}, NOW)
+    def _rank(self, competitors, radio_map=None, controls=None):
+        return rank_live(competitors, radio_map or {}, NOW, controls or [])
 
     def test_heure_depart_passee_en_course(self):
         c = make_competitor(1, st=100000)
@@ -287,6 +287,32 @@ class TestRankLive:
         assert c.n_punches == 1
         assert c.last_ctrl == 103
 
+    def test_dernier_poste_selon_ordre_du_circuit(self):
+        """Le dernier poste suit l'ordre du circuit, pas l'id du poste."""
+        c = make_competitor(1, st=100000)
+        radio_map = {1: {53: 210, 31: 310, 179: 520, 52: 630, 54: 660}}
+        controls = [
+            {'ctrl_id': 53, 'ctrl_name': 'P53'},
+            {'ctrl_id': 55, 'ctrl_name': 'P55'},
+            {'ctrl_id': 31, 'ctrl_name': 'P31'},
+            {'ctrl_id': 179, 'ctrl_name': 'P179'},
+            {'ctrl_id': 52, 'ctrl_name': 'P52'},
+            {'ctrl_id': 54, 'ctrl_name': 'P54'},
+        ]
+        self._rank([c], radio_map, controls)
+        assert c.n_punches == 5
+        assert c.last_ctrl == 54
+        assert c.last_time == 660
+        assert c.last_punch_clock == 100660
+
+    def test_dernier_poste_sans_ordre_du_circuit_fall_back_temps(self):
+        """Sans controls_seq, le poste le plus avancé reste déterminé."""
+        c = make_competitor(1, st=100000)
+        radio_map = {1: {53: 210, 54: 660}}
+        self._rank([c], radio_map)
+        assert c.last_ctrl == 54
+        assert c.last_time == 660
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # mark_negative_times
@@ -326,6 +352,63 @@ class TestMarkNegativeTimes:
     def test_aucun_poincon_rt_positif_sain(self):
         c = make_competitor(1, st=100000, stat=STAT_OK, rt=5000)
         assert self._mark(c) is False
+
+    def test_poincon_avant_depart_negatif(self):
+        """Un poinçon antérieur au départ (temps relatif négatif) → neg_time."""
+        c = make_competitor(1, st=100000, stat=STAT_OK, rt=9000)
+        assert self._mark(c, {1: {101: 210, 102: -350}}) is True
+
+    def test_poincon_avant_depart_unique(self):
+        c = make_competitor(1, st=100000, stat=STAT_OK, rt=9000)
+        assert self._mark(c, {1: {101: -350}}) is True
+
+
+class TestPresumedPrestartLive:
+    """OK définitif + poste attesté manquant → badge « Temps négatif » live."""
+
+    def _mark(self, competitors, radio_map=None):
+        for c in competitors:
+            c.neg_time = False
+        mark_presumed_prestart(competitors, CONTROLS, radio_map or {})
+        return competitors
+
+    def _ok(self, id, **kw):
+        kw.setdefault('rt', 9000)
+        c = make_competitor(id, stat=STAT_OK, **kw)
+        c.tstat = STAT_OK
+        return c
+
+    def test_poste_atteste_manquant_marque(self):
+        c1 = self._ok(1)
+        c2 = self._ok(2)
+        self._mark([c1, c2], {1: {101: 3000}, 2: {101: 3000, 102: 6000}})
+        assert c1.neg_time is True
+        assert c1.prestart_ctrls == {102}
+        assert c2.neg_time is False
+
+    def test_poste_non_atteste_non_marque(self):
+        c1 = self._ok(1)
+        c2 = self._ok(2)
+        self._mark([c1, c2], {1: {101: 3000}, 2: {101: 3000}})
+        assert c1.neg_time is False
+
+    def test_statut_ok_non_definitif_non_marque(self):
+        c1 = self._ok(1)
+        c1.tstat = 0
+        c2 = self._ok(2)
+        self._mark([c1, c2], {1: {101: 3000}, 2: {101: 3000, 102: 6000}})
+        assert c1.neg_time is False
+
+    def test_live_sans_rang_pour_presume(self):
+        """Coureur présumé → neg_time → exclu du classement live."""
+        c1 = self._ok(1)
+        c2 = self._ok(2, rt=8000)
+        self._mark([c1, c2], {1: {101: 3000}, 2: {101: 3000, 102: 6000}})
+        ranked = rank_live([c1, c2], {1: {101: 3000}, 2: {101: 3000, 102: 6000}},
+                           NOW, CONTROLS)
+        assert c1.live_group == 'arrives'
+        assert c1.live_rank is None
+        assert c2.live_rank == 1
 
 
 # ══════════════════════════════════════════════════════════════════════════════

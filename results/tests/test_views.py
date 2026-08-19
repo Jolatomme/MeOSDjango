@@ -822,10 +822,12 @@ class TestCompetitorDetailView:
     @patch('results.views.get_class_controls', return_value=([], {}))
     @patch('results.views.Moporganization')
     @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
     @patch('results.views.render')
     @patch('results.views.get_object_or_404')
-    def test_contexte(self, mock_get404, mock_render, MockClass, MockOrg, *_):
+    def test_contexte(self, mock_get404, mock_render, MockComp, MockClass, MockOrg, *_):
         mock_get404.side_effect = [make_competition(), make_competitor()]
+        MockComp.objects.filter.return_value = []
         MockOrg.objects.filter.return_value.first.return_value = MagicMock()
         MockClass.objects.filter.return_value.first.return_value = MagicMock()
         from results.views import competitor_detail
@@ -839,11 +841,13 @@ class TestCompetitorDetailView:
     @patch('results.views.get_class_controls', return_value=([], {}))
     @patch('results.views.Moporganization')
     @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
     @patch('results.views.render')
     @patch('results.views.get_object_or_404')
-    def test_total_time_statut_si_non_classe(self, mock_get404, mock_render, MockClass, MockOrg, *_):
+    def test_total_time_statut_si_non_classe(self, mock_get404, mock_render, MockComp, MockClass, MockOrg, *_):
         dnf = make_competitor(1, rt=-1, stat=STAT_DNF); dnf.is_ok = False
         mock_get404.side_effect = [make_competition(), dnf]
+        MockComp.objects.filter.return_value = []
         MockOrg.objects.filter.return_value.first.return_value = None
         MockClass.objects.filter.return_value.first.return_value = None
         from results.views import competitor_detail
@@ -856,12 +860,14 @@ class TestCompetitorDetailView:
     @patch('results.views.get_class_controls', return_value=([], {}))
     @patch('results.views.Moporganization')
     @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
     @patch('results.views.render')
     @patch('results.views.get_object_or_404')
-    def test_troncon_arrivee_ajoute(self, mock_get404, mock_render, MockClass, MockOrg, *_):
+    def test_troncon_arrivee_ajoute(self, mock_get404, mock_render, MockComp, MockClass, MockOrg, *_):
         """Un coureur classé avec splits reçoit un tronçon « Arrivée »."""
         comp = make_competition(); c = make_competitor(1, rt=5000)
         mock_get404.side_effect = [comp, c]
+        MockComp.objects.filter.return_value = []
         MockOrg.objects.filter.return_value.first.return_value = None
         MockClass.objects.filter.return_value.first.return_value = None
         from results.views import competitor_detail

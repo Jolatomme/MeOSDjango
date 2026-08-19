@@ -25,7 +25,7 @@ from .services import (
     compute_course_hash, get_courses_map,
     competition_visible,
     rank_live, race_start_clock, race_end_clock, race_state,
-    race_in_progress, mark_negative_times, clock_tenths,
+    race_in_progress, mark_negative_times, mark_presumed_prestart, clock_tenths,
     LIVE_GROUPS,
 )
 
@@ -185,9 +185,11 @@ def class_results(request, cid, class_id):
     results      = finishers + _sort_non_finishers(non_finishers)
     controls_seq = _controls_for(cid, cls, course)
     radio_map    = get_radio_map(cid, [c.id for c in results])
+    mark_presumed_prestart(results, controls_seq, radio_map)
 
     for c in results:
-        c.splits = compute_splits(c.id, controls_seq, radio_map)
+        c.splits = compute_splits(c.id, controls_seq, radio_map,
+                                  c.prestart_ctrls)
 
     # Ajout du tronçon arrivée pour tous (cohérence mark_best_splits / rank_splits)
     for c in results:
@@ -253,8 +255,11 @@ def competitor_detail(request, cid, competitor_id):
     org = Moporganization.objects.filter(cid=cid, id=competitor.org).first()
     cls = Mopclass.objects.filter(cid=cid, id=competitor.cls).first()
     controls_seq, _ = get_class_controls(cid, competitor.cls)
-    radio_map       = get_radio_map(cid, [competitor_id])
-    splits          = compute_splits(competitor_id, controls_seq, radio_map)
+    class_competitors = list(Mopcompetitor.objects.filter(cid=cid, cls=competitor.cls))
+    radio_map = get_radio_map(cid, [c.id for c in class_competitors])
+    mark_presumed_prestart(class_competitors, controls_seq, radio_map)
+    splits = compute_splits(competitor_id, controls_seq, radio_map,
+                            competitor.prestart_ctrls)
     # Ajout du tronçon arrivée
     if competitor.is_ok and splits and competitor.rt > 0:
         last_abs = splits[-1]['abs_raw']
@@ -361,7 +366,8 @@ def live_results(request, cid, class_id):
     radio_map    = get_radio_map(cid, [c.id for c in competitors])
     now          = datetime.now()
     mark_negative_times(competitors, controls_seq or [], radio_map)
-    live         = rank_live(competitors, radio_map, now)
+    mark_presumed_prestart(competitors, controls_seq or [], radio_map)
+    live         = rank_live(competitors, radio_map, now, controls_seq or [])
 
     groups = {g: [c for c in live if c.live_group == g] for g in LIVE_GROUPS}
 
@@ -402,7 +408,8 @@ def api_live_results(request, cid, class_id):
     radio_map    = get_radio_map(cid, [c.id for c in competitors])
     now          = datetime.now()
     mark_negative_times(competitors, controls_seq or [], radio_map)
-    live         = rank_live(competitors, radio_map, now)
+    mark_presumed_prestart(competitors, controls_seq or [], radio_map)
+    live         = rank_live(competitors, radio_map, now, controls_seq or [])
 
     race_start = race_start_clock(competitors)
     state      = race_state(live, now, race_start)
@@ -793,10 +800,12 @@ def duel_analysis(request, cid, class_id):
         })
     org_map      = get_org_map(cid)
     controls_seq = _controls_for(cid, cls, course)
-    radio_map    = get_radio_map(cid, [c.id for c in all_results])
+    radio_map    = get_radio_map(cid, [c.id for c in competitors])
+    mark_presumed_prestart(competitors, controls_seq, radio_map)
     runners_data = []
     for c in all_results:
-        splits = compute_splits(c.id, controls_seq, radio_map)
+        splits = compute_splits(c.id, controls_seq, radio_map,
+                                c.prestart_ctrls)
         runners_data.append({
             'id': c.id, 'name': c.name, 'org': org_map.get(c.org, ''),
             'rank': getattr(c, 'rank', None),
@@ -856,10 +865,12 @@ def _load_recapitulatif_data(cid, class_id, context=None):
 
     results      = finishers
     controls_seq = _controls_for(cid, cls, course)
-    radio_map   = get_radio_map(cid, [c.id for c in results])
+    radio_map   = get_radio_map(cid, [c.id for c in competitors])
+    mark_presumed_prestart(competitors, controls_seq, radio_map)
 
     for c in results:
-        c.splits = compute_splits(c.id, controls_seq, radio_map)
+        c.splits = compute_splits(c.id, controls_seq, radio_map,
+                                  c.prestart_ctrls)
         last_abs = c.splits[-1]['abs_raw'] if c.splits else None
         c.splits.append(build_finish_split(c.rt, last_abs))
         c.neg_time = any(sp.get('neg_leg') for sp in c.splits)
@@ -1026,6 +1037,19 @@ def relay_results(request, cid, class_id):
     controls_by_leg, control_name_map = get_controls_by_leg(cid, class_id)
     radio_map = get_radio_map(cid, runner_ids)
 
+    prestart_by_leg = {}
+    for leg_num in range(1, n_legs + 1):
+        leg_runners = [competitors[m.rid] for m in all_members
+                       if m.leg == leg_num and m.rid in competitors]
+        ctrl_seq = [
+            {'ctrl_id': cv, 'ctrl_name': f"{idx+1}-{control_name_map.get(cv, str(cv))}"}
+            for idx, cv in enumerate(controls_by_leg.get(leg_num, []))
+        ]
+        mark_presumed_prestart(leg_runners, ctrl_seq, radio_map)
+        prestart_by_leg[leg_num] = {
+            r.id: r.prestart_ctrls for r in leg_runners
+        }
+
     teams_data = []
     for t in all_teams:
         members = members_by_team.get(t.id, [])
@@ -1042,7 +1066,8 @@ def relay_results(request, cid, class_id):
                     {'ctrl_id': cv, 'ctrl_name': f"{idx+1}-{control_name_map.get(cv, str(cv))}"}
                     for idx, cv in enumerate(controls_by_leg.get(leg_num, []))
                 ]
-                splits = compute_splits(runner.id, ctrl_seq, radio_map)
+                splits = compute_splits(runner.id, ctrl_seq, radio_map,
+                                        prestart_by_leg.get(leg_num, {}).get(runner.id))
                 last_ctrl_abs = splits[-1]['abs_raw'] if splits and splits[-1]['abs_raw'] is not None else None
                 splits.append(build_finish_split(leg_time_raw, last_ctrl_abs, leg_full_race_if_missing=False))
                 legs_data.append({

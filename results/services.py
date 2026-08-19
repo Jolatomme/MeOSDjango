@@ -105,25 +105,44 @@ def get_radio_map(cid, runner_ids):
 
 # ─── Calcul des splits ─────────────────────────────────────────────────────────
 
-def compute_splits(runner_id, controls_seq, radio_map):
+def compute_splits(runner_id, controls_seq, radio_map, prestart_ctrls=None):
+    """Calcule les temps intermédiaires d'un coureur.
+
+    ``prestart_ctrls`` : ensemble de postes présumés pointés avant le
+    départ (statut OK définitif + poste attesté manquant, voir
+    ``mark_presumed_prestart``). Leur valeur exacte est inconnue :
+    affichage « avant départ », tronçon inconnu, marqué négatif.
+
+    Chaîne des tronçons : un poste inconnu (manquant ou présumé) rend
+    les tronçons adjacents inconnus, mais la chaîne reprend au poinçon
+    connu suivant (les tronçons entre deux poinçons connus sont valides).
+    """
     radios = radio_map.get(runner_id, {})
+    prestart_ctrls = prestart_ctrls or set()
     splits = []
     prev   = 0
     for ctrl in controls_seq:
-        abs_t = radios.get(ctrl['ctrl_id'], -1)
-        leg   = abs_t - prev if abs_t > 0 and prev >= 0 else None
+        abs_t = radios.get(ctrl['ctrl_id'])
+        if ctrl['ctrl_id'] in prestart_ctrls:
+            leg, neg_leg, abs_display, prev = None, True, 'avant départ', None
+        elif abs_t is not None and prev is not None:
+            leg = abs_t - prev
+            neg_leg, abs_display, prev = leg < 0, format_time(abs_t), abs_t
+        elif abs_t is not None:
+            leg, neg_leg, abs_display, prev = None, False, format_time(abs_t), abs_t
+        else:
+            leg, neg_leg, abs_display, prev = None, False, '-', None
         splits.append({
             'ctrl_name': ctrl['ctrl_name'],
-            'abs_time':  format_time(abs_t) if abs_t > 0 else '-',
+            'abs_time':  abs_display,
             'leg_time':  format_time(leg)   if leg is not None else '-',
             'leg_raw':   leg,
-            'abs_raw':   abs_t if abs_t > 0 else None,
-            'neg_leg':   leg is not None and leg < 0,
+            'abs_raw':   None if ctrl['ctrl_id'] in prestart_ctrls else abs_t,
+            'neg_leg':   neg_leg,
             'is_best':   False,
             'leg_rank':  None,
             'abs_rank':  None,
         })
-        prev = abs_t if abs_t > 0 else -1
     return splits
 
 
@@ -200,10 +219,11 @@ def get_negative_time_stats(cid):
             continue
         controls_seq, _ = get_class_controls(cid, cls.id)
         radio_map       = get_radio_map(cid, [c.id for c in competitors])
+        presumed        = find_presumed_prestart(competitors, controls_seq, radio_map)
         for c in competitors:
             if c.id in affected:
                 continue
-            splits = compute_splits(c.id, controls_seq, radio_map)
+            splits = compute_splits(c.id, controls_seq, radio_map, presumed.get(c.id))
             neg_ctrls = [sp['ctrl_name'] for sp in splits if sp['neg_leg']]
             if c.rt > 0 and splits:
                 last_abs = splits[-1]['abs_raw']
@@ -792,11 +812,11 @@ def mark_negative_times(competitors, controls_seq, radio_map):
         rt     = getattr(c, 'rt', None)
         prev, neg = 0, False
         for ctrl in controls_seq:
-            abs_t = radios.get(ctrl['ctrl_id'], -1)
-            if abs_t > 0 and prev >= 0 and abs_t < prev:
+            abs_t = radios.get(ctrl['ctrl_id'])
+            if abs_t is not None and prev is not None and abs_t < prev:
                 neg = True
                 break
-            prev = abs_t if abs_t > 0 else -1
+            prev = abs_t
         if not neg and rt is not None and rt < 0:
             neg = True
         if not neg and rt and rt > 0:
@@ -810,12 +830,78 @@ def mark_negative_times(competitors, controls_seq, radio_map):
         c.neg_time = neg
 
 
-def rank_live(competitors, radio_map, now):
+def is_definitive_ok(c):
+    """Coureur classé OK avec un statut définitif (carte lue à la GEC).
+
+    ``stat`` est le statut courant ; ``tstat`` est le statut attribué à la
+    lecture de la puce. Un résultat préliminaire (arrivé, carte non lue)
+    n'est pas définitif.
+    """
+    return (
+        getattr(c, 'stat', None) == STAT_OK
+        and getattr(c, 'tstat', None) == STAT_OK
+        and (getattr(c, 'rt', 0) or 0) > 0
+    )
+
+
+def find_presumed_prestart(competitors, controls_seq, radio_map):
+    """Postes présumés pointés avant le départ, par coureur OK définitif.
+
+    Un coureur classé OK après lecture de la carte a validé tous les postes
+    de son circuit : un poste attesté (pointé par au moins un autre coureur
+    de la catégorie — boîtier vivant) mais absent de ses poinçons radio a
+    été filtré par l'export MOP de MeOS (temps de course ≤ 0, seule
+    condition de filtre connue). Il a donc été pointé avant son départ ;
+    la valeur exacte du temps négatif n'est pas transmise.
+
+    Returns
+    -------
+    dict {id coureur: set de ctrl_id présumés}.
+    """
+    attested = Counter(
+        ctrl for c in competitors for ctrl in radio_map.get(c.id, {})
+    )
+    presumed = {}
+    for c in competitors:
+        if not is_definitive_ok(c):
+            continue
+        radios  = radio_map.get(c.id, {})
+        missing = [
+            ctrl['ctrl_id'] for ctrl in controls_seq
+            if ctrl['ctrl_id'] not in radios
+            and attested[ctrl['ctrl_id']] > 0
+        ]
+        if missing:
+            presumed[c.id] = set(missing)
+    return presumed
+
+
+def mark_presumed_prestart(competitors, controls_seq, radio_map):
+    """Pose ``c.prestart_ctrls`` et ``c.neg_time = True`` sur les coureurs
+    OK définitifs ayant un poste attesté manquant (présumé pointé avant
+    le départ). Complète ``mark_negative_times``.
+    """
+    presumed = find_presumed_prestart(competitors, controls_seq, radio_map)
+    for c in competitors:
+        ctrls = presumed.get(c.id)
+        if ctrls:
+            c.prestart_ctrls = ctrls
+            c.neg_time       = True
+        else:
+            c.prestart_ctrls = set()
+            c.neg_time = bool(getattr(c, 'neg_time', False))
+
+
+def rank_live(competitors, radio_map, now, controls_seq=None):
     """Classe les coureurs pour l'affichage live.
 
     Mutates : attache à chaque coureur ``live_group``, ``live_rank``,
     ``n_punches``, ``last_ctrl``, ``last_time`` (1/10 s de course) et
     ``last_punch_clock`` (horloge murale = st + last_time).
+
+    La progression suit l'ordre imposé par le circuit (``controls_seq``) :
+    ``last_ctrl`` est le poste le plus avancé dans cet ordre, et non le
+    poinçon le plus récent ou le poste au plus grand identifiant.
 
     Les coureurs marqués ``neg_time`` (à poser via ``mark_negative_times``
     avant l'appel, ou ``rt < 0`` détecté ici) n'obtiennent pas de rang
@@ -827,19 +913,25 @@ def rank_live(competitors, radio_map, now):
     Liste ordonnée des coureurs : en_course, arrives, en_attente, termine.
     """
     now_t = clock_tenths(now)
+    ctrl_order = {
+        ctrl['ctrl_id']: i for i, ctrl in enumerate(controls_seq or [])
+    }
 
     for c in competitors:
         c.neg_time = getattr(c, 'neg_time', False) is True or (
             c.rt is not None and c.rt < 0
         )
         radios  = radio_map.get(c.id, {})
-        punches = sorted(
+        punches = [
             (ctrl, rt) for ctrl, rt in radios.items() if rt and rt > 0
-        )
+        ]
         c.n_punches = len(punches)
         if punches:
-            c.last_ctrl         = punches[-1][0]
-            c.last_time         = punches[-1][1]
+            furthest = max(
+                punches, key=lambda p: (ctrl_order.get(p[0], -1), p[1])
+            )
+            c.last_ctrl         = furthest[0]
+            c.last_time         = furthest[1]
             c.last_punch_clock  = (c.st + c.last_time) if c.st and c.st > 0 else None
         else:
             c.last_ctrl = None
