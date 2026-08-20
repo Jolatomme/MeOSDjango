@@ -183,31 +183,159 @@ class TestRankLive:
         self._rank([c])
         assert c.live_group == 'en_attente'
 
-    def test_sans_poincon_virtuellement_en_tete(self):
+    def test_sans_info_virtuellement_en_tete_avant_premier_radio(self):
+        # N est parti depuis peu (écoulé 100 < 5000 au 1er poste radio) → reste devant
+        n = make_competitor(1, st=431900)
+        i = make_competitor(2, st=431900)
+        radio_map = {2: {101: 5000}}
+        ranked = self._rank([n, i], radio_map, [
+            {'ctrl_id': 101, 'ctrl_name': '1-101'},
+            {'ctrl_id': 102, 'ctrl_name': '2-102'},
+        ])
+        assert [r.id for r in ranked] == [1, 2]
+        assert n.live_rank == 1 and i.live_rank == 2
+
+    def test_sans_info_descend_derriere_informe(self):
+        # N court depuis longtemps (écoulé 52000 > 5000 au 1er poste radio) → passe derrière
+        n = make_competitor(1, st=380000)
+        i = make_competitor(2, st=380000)
+        radio_map = {2: {101: 5000}}
+        ranked = self._rank([n, i], radio_map, [
+            {'ctrl_id': 101, 'ctrl_name': '1-101'},
+            {'ctrl_id': 102, 'ctrl_name': '2-102'},
+        ])
+        assert [r.id for r in ranked] == [2, 1]
+        assert i.live_rank == 1
+
+    def test_sans_controls_seq_tri_par_st(self):
+        # Sans ordre de circuit : personne n'a d'info de position → tri par st
         a = make_competitor(1, st=200000)
         b = make_competitor(2, st=300000)
-        c = make_competitor(3, st=250000)   # parti plus tôt que b, avec poinçons
+        c = make_competitor(3, st=250000)
         radio_map = {3: {101: 5000}}
         ranked = self._rank([a, b, c], radio_map)
-        # sans poinçon d'abord (tri par st), puis ceux qui ont pointé
-        assert [r.id for r in ranked] == [1, 2, 3]
-        assert a.live_rank == 1 and b.live_rank == 2
+        assert [r.id for r in ranked] == [1, 3, 2]
+        assert a.live_rank == 1
 
     def test_progression_nb_postes(self):
-        fast = make_competitor(1, st=200000)   # 2 postes
-        slow = make_competitor(2, st=200000)   # 1 poste
+        fast = make_competitor(1, st=200000)   # position 2 (postes 101, 102)
+        slow = make_competitor(2, st=200000)   # position 1 (poste 101)
         radio_map = {1: {101: 3000, 102: 6000}, 2: {101: 3000}}
-        ranked = self._rank([fast, slow], radio_map)
+        ranked = self._rank([fast, slow], radio_map, [
+            {'ctrl_id': 101, 'ctrl_name': '1-101'},
+            {'ctrl_id': 102, 'ctrl_name': '2-102'},
+            {'ctrl_id': 103, 'ctrl_name': '3-103'},
+        ])
         assert [r.id for r in ranked] == [1, 2]
         assert fast.live_rank == 1
+        assert fast.progress_pos == 2
+        assert slow.progress_pos == 1
 
     def test_egalite_progression_temps_au_dernier_poste(self):
         rapide = make_competitor(1, st=200000)
         lent = make_competitor(2, st=200000)
         radio_map = {1: {101: 3000, 102: 6000}, 2: {101: 3000, 102: 9000}}
-        ranked = self._rank([rapide, lent], radio_map)
+        ranked = self._rank([rapide, lent], radio_map, [
+            {'ctrl_id': 101, 'ctrl_name': '1-101'},
+            {'ctrl_id': 102, 'ctrl_name': '2-102'},
+        ])
         assert [r.id for r in ranked] == [1, 2]
         assert rapide.last_time == 6000
+
+    def test_progress_pos_position_reelle_du_poste(self):
+        """progress_pos = position du poste dans le parcours, pas le nombre de poinçons."""
+        c = make_competitor(1, st=100000)
+        radio_map = {1: {103: 5000}}
+        controls = [{'ctrl_id': cid, 'ctrl_name': str(i)}
+                    for i, cid in enumerate([101, 102, 103, 104, 105, 106, 107, 108, 109], start=1)]
+        self._rank([c], radio_map, controls)
+        assert c.progress_pos == 3
+        assert c.n_punches == 1
+
+    def test_progress_pos_ignore_poincon_hors_parcours(self):
+        c = make_competitor(1, st=100000)
+        radio_map = {1: {150: 2000, 103: 6000}}
+        controls = [{'ctrl_id': cid, 'ctrl_name': str(i)}
+                    for i, cid in enumerate([101, 102, 103], start=1)]
+        self._rank([c], radio_map, controls)
+        assert c.progress_pos == 3
+        assert c.last_ctrl == 103
+
+    def test_progress_pos_zero_sans_poincon(self):
+        c = make_competitor(1, st=100000)
+        self._rank([c])
+        assert c.progress_pos == 0
+
+    def test_first_radio_time_temps_au_poste_le_moins_avance(self):
+        c = make_competitor(1, st=100000)
+        radio_map = {1: {101: 3000, 103: 9000}}
+        controls = [{'ctrl_id': cid, 'ctrl_name': str(i)}
+                    for i, cid in enumerate([101, 102, 103], start=1)]
+        self._rank([c], radio_map, controls)
+        assert c.first_radio_time == 3000
+        assert c.last_time == 9000
+
+    def test_tri_informe_plus_avance_dabord(self):
+        a = make_competitor(1, st=200000)   # position 2
+        b = make_competitor(2, st=200000)   # position 1
+        radio_map = {1: {101: 3000, 102: 6000}, 2: {101: 1000}}
+        ranked = self._rank([a, b], radio_map, [
+            {'ctrl_id': 101, 'ctrl_name': '1-101'},
+            {'ctrl_id': 102, 'ctrl_name': '2-102'},
+            {'ctrl_id': 103, 'ctrl_name': '3-103'},
+        ])
+        assert [r.id for r in ranked] == [1, 2]
+
+    def test_dernier_poste_pointe_groupe_valid_gec(self):
+        """Dernier poste du parcours pointé (radio) → groupe valid_gec."""
+        c = make_competitor(1, st=100000)
+        radio_map = {1: {101: 3000, 102: 6000, 103: 9000}}
+        controls = [{'ctrl_id': cid, 'ctrl_name': str(i)}
+                    for i, cid in enumerate([101, 102, 103], start=1)]
+        ranked = self._rank([c], radio_map, controls)
+        assert c.live_group == 'valid_gec'
+        assert [r.id for r in ranked] == [1]
+        assert c.live_rank == 1
+
+    def test_avant_dernier_poste_reste_en_course(self):
+        c = make_competitor(1, st=100000)
+        radio_map = {1: {101: 3000, 102: 6000}}
+        controls = [{'ctrl_id': cid, 'ctrl_name': str(i)}
+                    for i, cid in enumerate([101, 102, 103], start=1)]
+        self._rank([c], radio_map, controls)
+        assert c.live_group == 'en_course'
+
+    def test_valid_gec_pas_sans_ordre_de_circuit(self):
+        """Sans controls_seq, impossible de savoir que le parcours est terminé."""
+        c = make_competitor(1, st=100000)
+        radio_map = {1: {101: 3000, 102: 6000, 103: 9000}}
+        self._rank([c], radio_map)
+        assert c.live_group == 'en_course'
+
+    def test_valid_gec_tries_par_temps_au_dernier_poste(self):
+        rapide = make_competitor(1, st=200000)
+        lent = make_competitor(2, st=200000)
+        radio_map = {1: {101: 3000, 102: 6000, 103: 8000},
+                     2: {101: 3000, 102: 6000, 103: 11000}}
+        controls = [{'ctrl_id': cid, 'ctrl_name': str(i)}
+                    for i, cid in enumerate([101, 102, 103], start=1)]
+        ranked = self._rank([rapide, lent], radio_map, controls)
+        assert [r.id for r in ranked] == [1, 2]
+        assert rapide.live_group == 'valid_gec'
+        assert rapide.live_rank == 1
+        assert lent.live_rank == 2
+
+    def test_valid_gec_separe_du_groupe_en_course(self):
+        """Le groupe valid_gec s'affiche après en_course, rangs séparés."""
+        ec = make_competitor(1, st=100000)          # en course (position 2)
+        vg = make_competitor(2, st=100000)          # valid_gec (dernier poste)
+        radio_map = {1: {101: 3000, 102: 6000},
+                     2: {101: 3000, 102: 6000, 103: 9000}}
+        controls = [{'ctrl_id': cid, 'ctrl_name': str(i)}
+                    for i, cid in enumerate([101, 102, 103], start=1)]
+        ranked = self._rank([ec, vg], radio_map, controls)
+        assert [r.live_group for r in ranked] == ['en_course', 'valid_gec']
+        assert ec.live_rank == 1 and vg.live_rank == 1
 
     def test_arrives_tries_par_rt(self):
         a = make_competitor(1, st=100000, stat=STAT_OK, rt=6000)
@@ -567,17 +695,19 @@ class TestApiLiveResults:
         r.is_ok = False
         r.n_punches = 1; r.last_ctrl = 101
         r.last_time = 5000; r.last_punch_clock = 205000
+        r.progress_pos = 3
         r.class_obj = None
         return r
 
-    def _run(self, competitors=None, course=None, class_name='H21', race_start=180000):
+    def _run(self, competitors=None, course=None, class_name='H21', race_start=180000,
+             radio_map=None):
         competitors = competitors or []
         cls = SimpleNamespace(id=10, name=class_name)
         with patch('results.views._load_class_context',
                    return_value=(MagicMock(), cls, competitors, course)), \
              patch('results.views.Mopteam') as MockTeam, \
              patch('results.views.get_org_map', return_value={1: 'Club'}), \
-             patch('results.views.get_radio_map', return_value={}), \
+             patch('results.views.get_radio_map', return_value=radio_map or {}), \
              patch('results.views._controls_for', return_value=[
                  {'ctrl_id': 101, 'ctrl_name': '1-101'},
                  {'ctrl_id': 102, 'ctrl_name': '2-102'},
@@ -602,8 +732,18 @@ class TestApiLiveResults:
         assert r['group'] == 'en_course'
         assert r['rank'] == 1
         assert r['n_punches'] == 1
+        assert r['progress_pos'] == 3
         assert r['last_ctrl'] == 101
         assert r['last_punch_clock'] == 205000
+        assert r['radio_punches'] == []
+
+    def test_radio_punches_tries_et_filtres_au_parcours(self):
+        r = self._runner(id=1)
+        data = self._run(competitors=[r], radio_map={1: {101: 3000, 102: 6000, 150: 9000}})
+        assert data['runners'][0]['radio_punches'] == [
+            {'ctrl': 101, 'time': 3000},
+            {'ctrl': 102, 'time': 6000},
+        ]
 
     def test_race_state_live(self):
         data = self._run(competitors=[self._runner()])

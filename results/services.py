@@ -16,6 +16,7 @@ from .models import (
 import re
 from collections import Counter
 from datetime import datetime
+from functools import cmp_to_key
 from markdown.extensions.toc import slugify_unicode
 from django.db import connection
 
@@ -707,6 +708,11 @@ def get_courses_map(cid, relay_class_ids=None, class_totals=None):
 #                heure de départ), puis viennent ceux qui ont pointé (triés
 #                par progression : plus de postes devant, à égalité le temps
 #                au dernier poste radio départage).
+#   valid_gec  — en_course ayant pointé le dernier poste du parcours (poste
+#                radio) : parcours terminé mais carte non lue à la GEC, le
+#                statut officiel n'est pas encore attribué par MeOS. Trié
+#                comme en_course (progression identique → temps au dernier
+#                poste radio départage).
 #   arrives    — données complètes : statut OK et rt > 0 (carte vidée à la
 #                GEC + statut attribué par MeOS). Tri par rt.
 #   en_attente — st == 0 (départ inconnu) ou départ dans le futur.
@@ -723,7 +729,7 @@ LIVE_DONE_PRIORITY = {
     STAT_DNS: 4, STAT_NP: 4, STAT_CANCEL: 4,
 }
 
-LIVE_GROUPS = ('en_course', 'arrives', 'en_attente', 'termine')
+LIVE_GROUPS = ('en_course', 'valid_gec', 'arrives', 'en_attente', 'termine')
 
 
 def clock_tenths(dt):
@@ -892,16 +898,69 @@ def mark_presumed_prestart(competitors, controls_seq, radio_map):
             c.neg_time = bool(getattr(c, 'neg_time', False))
 
 
+def _cmp_en_course(a, b):
+    """Compare deux coureurs « en course » pour le classement live.
+
+    Un coureur est « informé » dès qu'il a pointé un poste du parcours
+    (``progress_pos > 0``). Règles :
+      - deux informés : le plus avancé d'abord, départagé à égalité par
+        le meilleur temps au poste le plus avancé (``ref_time``) ;
+      - deux sans info : le départ le plus tôt d'abord ;
+      - informé vs sans-info : l'informé passe devant si son temps au
+        premier poste radio est inférieur au temps de course écoulé du
+        sans-info, sinon le sans-info reste devant (virtuellement en tête).
+    """
+    a_info = getattr(a, 'progress_pos', 0) > 0
+    b_info = getattr(b, 'progress_pos', 0) > 0
+
+    if a_info and b_info:
+        if a.progress_pos != b.progress_pos:
+            return b.progress_pos - a.progress_pos
+        a_ref = a.ref_time if a.ref_time is not None else 0
+        b_ref = b.ref_time if b.ref_time is not None else 0
+        return (a_ref > b_ref) - (a_ref < b_ref)
+
+    if not a_info and not b_info:
+        return (a.st > b.st) - (a.st < b.st)
+
+    informed, noinfo = (a, b) if a_info else (b, a)
+    inf_first  = informed.first_radio_time
+    no_elapsed = noinfo.elapsed
+    if inf_first is not None and no_elapsed is not None and inf_first < no_elapsed:
+        return -1 if a_info else 1
+    return 1 if a_info else -1
+
+
 def rank_live(competitors, radio_map, now, controls_seq=None):
     """Classe les coureurs pour l'affichage live.
 
     Mutates : attache à chaque coureur ``live_group``, ``live_rank``,
-    ``n_punches``, ``last_ctrl``, ``last_time`` (1/10 s de course) et
-    ``last_punch_clock`` (horloge murale = st + last_time).
+    ``n_punches``, ``last_ctrl``, ``last_time`` (1/10 s de course),
+    ``last_punch_clock`` (horloge murale = st + last_time) et
+    ``progress_pos`` (position 1-based dans ``controls_seq`` du poste le
+    plus avancé ; 0 si aucun poinçon de parcours connu).
 
     La progression suit l'ordre imposé par le circuit (``controls_seq``) :
-    ``last_ctrl`` est le poste le plus avancé dans cet ordre, et non le
-    poinçon le plus récent ou le poste au plus grand identifiant.
+    ``last_ctrl`` / ``progress_pos`` désignent le poste le plus avancé
+    dans cet ordre, et non le poinçon le plus récent ou le poste au plus
+    grand identifiant. ``controls_seq`` contient tous les postes du
+    parcours (MeOS est configuré avec tous les postes en radio) ; seuls
+    les poinçons des postes réellement équipés remontent en direct.
+
+    Un coureur « en course » ayant pointé le dernier poste du parcours
+    (``progress_pos`` == nombre de postes, ``controls_seq`` non vide)
+    passe dans le groupe ``valid_gec`` : le dernier poste est radio, le
+    parcours est terminé, mais la carte n'a pas encore été lue à la GEC
+    et MeOS n'a pas encore attribué le statut officiel.
+
+    Classement « en course » :
+      - deux coureurs sans info radio (``progress_pos = 0``) : le départ
+        le plus tôt d'abord (virtuellement en tête) ;
+      - deux coureurs informés : le plus avancé d'abord, départagé à
+        égalité par le meilleur temps au poste le plus avancé ;
+      - informé vs sans-info : l'informé passe devant si son temps au
+        premier poste radio est inférieur au temps de course écoulé du
+        sans-info, sinon le sans-info reste devant.
 
     Les coureurs marqués ``neg_time`` (à poser via ``mark_negative_times``
     avant l'appel, ou ``rt < 0`` détecté ici) n'obtiennent pas de rang
@@ -910,7 +969,8 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
 
     Returns
     -------
-    Liste ordonnée des coureurs : en_course, arrives, en_attente, termine.
+    Liste ordonnée des coureurs : en_course, valid_gec, arrives,
+    en_attente, termine.
     """
     now_t = clock_tenths(now)
     ctrl_order = {
@@ -926,17 +986,30 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
             (ctrl, rt) for ctrl, rt in radios.items() if rt and rt > 0
         ]
         c.n_punches = len(punches)
-        if punches:
-            furthest = max(
-                punches, key=lambda p: (ctrl_order.get(p[0], -1), p[1])
-            )
-            c.last_ctrl         = furthest[0]
+        # Postes du parcours pointés (position 1-based + temps de course)
+        positions = [
+            (ctrl_order[ctrl] + 1, rt, ctrl)
+            for ctrl, rt in punches if ctrl in ctrl_order
+        ]
+        c.progress_pos      = max((p for p, _, _ in positions), default=0)
+        c.first_radio_time  = min(positions, default=None)[1] if positions else None
+        c.elapsed           = (now_t - c.st) if c.st and c.st > 0 and c.st <= now_t else None
+        if positions:
+            furthest = max(positions)          # poste le plus avancé, puis temps
+            c.last_ctrl         = furthest[2]
             c.last_time         = furthest[1]
+            c.last_punch_clock  = (c.st + c.last_time) if c.st and c.st > 0 else None
+        elif punches:
+            # Repli sans ordre de circuit : poste au temps de poinçon le plus grand
+            fallback = max(punches, key=lambda p: p[1])
+            c.last_ctrl         = fallback[0]
+            c.last_time         = fallback[1]
             c.last_punch_clock  = (c.st + c.last_time) if c.st and c.st > 0 else None
         else:
             c.last_ctrl = None
             c.last_time = None
             c.last_punch_clock = None
+        c.ref_time = c.last_time
 
         if c.is_ok:
             c.live_group = 'arrives'
@@ -949,16 +1022,27 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
         else:
             c.live_group = 'en_attente'
 
+        # Dernier poste du parcours pointé (poste radio) : parcours terminé,
+        # mais carte non lue à la GEC et statut pas encore attribué par MeOS.
+        if (
+            c.live_group == 'en_course'
+            and controls_seq
+            and c.progress_pos == len(controls_seq)
+        ):
+            c.live_group = 'valid_gec'
+
     en_course = sorted(
         [c for c in competitors if c.live_group == 'en_course'],
-        key=lambda c: (
-            1 if c.n_punches else 0,          # sans poinçon : virtuellement en tête
-            -c.n_punches,                     # puis progression sur les postes radio
-            c.last_time if c.last_time is not None else 0,
-            c.st,
-        ),
+        key=cmp_to_key(_cmp_en_course),
     )
     for i, c in enumerate(en_course, start=1):
+        c.live_rank = None if getattr(c, 'neg_time', False) else i
+
+    valid_gec = sorted(
+        [c for c in competitors if c.live_group == 'valid_gec'],
+        key=cmp_to_key(_cmp_en_course),
+    )
+    for i, c in enumerate(valid_gec, start=1):
         c.live_rank = None if getattr(c, 'neg_time', False) else i
 
     arrives = sorted(
@@ -979,4 +1063,4 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
     for c in en_attente + termine:
         c.live_rank = None
 
-    return en_course + arrives + en_attente + termine
+    return en_course + valid_gec + arrives + en_attente + termine

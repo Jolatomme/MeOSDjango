@@ -342,7 +342,7 @@ def api_class_results(request, cid, class_id):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def live_results(request, cid, class_id):
-    """Page live : suivi en temps réel des postes radio.
+    """Page live : suivi en temps réel de la progression sur le parcours.
 
     Aucune analyse n'est calculée ici (données incomplètes tant que les
     coureurs ne sont pas passés à la GEC) — uniquement le classement live.
@@ -418,6 +418,7 @@ def api_live_results(request, cid, class_id):
         race_end = race_end_clock(competitors) or clock_tenths(now)
 
     runners = []
+    ctrl_ids = {c['ctrl_id'] for c in controls_seq}
     for c in live:
         runners.append({
             'id':                c.id,
@@ -433,9 +434,17 @@ def api_live_results(request, cid, class_id):
             'rt':                c.rt if c.live_group == 'arrives' else None,
             'neg_time':          bool(getattr(c, 'neg_time', False)),
             'n_punches':         c.n_punches,
+            'progress_pos':      getattr(c, 'progress_pos', 0),
             'last_ctrl':         c.last_ctrl,
             'last_time':         c.last_time,
             'last_punch_clock':  c.last_punch_clock,
+            'radio_punches':     [
+                {'ctrl': ctrl, 'time': rt}
+                for ctrl, rt in sorted(
+                    radio_map.get(c.id, {}).items(), key=lambda x: x[1]
+                )
+                if rt and rt > 0 and ctrl in ctrl_ids
+            ],
         })
 
     return JsonResponse({

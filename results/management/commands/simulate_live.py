@@ -6,8 +6,31 @@ de test Django, qui appelle la vue en interne — pas besoin de réseau), comme 
 ferait MeOS : les coureurs partent les uns après les autres, pointent leurs
 postes radio, certains abandonnent / sont PM / DNS, d'autres finissent.
 
+Comme dans MeOS (tous les postes cochés « radio »), l'attribut radio du <cls>
+contient TOUS les postes du parcours ; seuls les postes réellement équipés
+transmettent leurs poinçons pendant la course. La puce complète n'arrive
+qu'à la lecture à la GEC : le statut OK est attribué après un délai
+(--gec-delay) — entre le dernier poste radio et la validation, la page Live
+affiche « Valid. GEC ».
+
 Usage :
-    python manage.py simulate_live [--cid 9001] [--runners 14] [--interval 4]
+    python manage.py simulate_live [--cid 9001] [--runners 14] [--posts 9]
+                                   [--controls 4] [--interval 4] [--scale 0.3]
+
+La simulation tourne en temps réel : l'option --scale compresse les durées
+(tronçons, écarts de départ, délai GEC) et l'intervalle d'envoi — ex.
+--scale 0.3 pour une vérification rapide (~10 min au lieu de ~30).
+
+Cas de figure simulés :
+  - départs échelonnés : les sans-info radio sont virtuellement en tête,
+    puis les informés progressent selon leur dernier poste ;
+  - un coureur lent (×1,8) : dépassé par les sans-info puis rattrapé ;
+  - un poste radio en panne : poinçon jamais émis en course pour un coureur
+    (présent sur la puce complète à l'arrivée) ;
+  - un poinçon hors parcours (poste 900), ignoré par la progression ;
+  - « Valid. GEC » : le dernier poste est radio, chaque finissant affiche ce
+    statut entre le dernier poinçon et la validation à la GEC ;
+  - DNS / PM / Abandon.
 
 La base doit contenir les tables mop* (lancer `manage.py setup_db` au besoin) ;
 lancer le serveur de dev à côté puis ouvrir :
@@ -23,7 +46,7 @@ from datetime import datetime
 from xml.sax.saxutils import escape
 
 from django.conf import settings
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.test import Client
 
 from results.models import CompetitionConfig
@@ -63,10 +86,24 @@ class Command(BaseCommand):
                             help="Nom de la catégorie simulée (défaut: H21)")
         parser.add_argument('--runners', type=int, default=14,
                             help="Nombre de coureurs (défaut: 14)")
+        parser.add_argument('--posts', type=int, default=9,
+                            help='Nombre total de postes du parcours (défaut: 9)')
         parser.add_argument('--controls', type=int, default=4,
-                            help='Nombre de postes radio (défaut: 4)')
+                            help='Nombre de postes radio parmi les postes du '
+                                 'parcours (défaut: 4)')
+        parser.add_argument('--radio-positions', default=None,
+                            help="Positions (1-based) des postes radio, séparées "
+                                 "par des virgules, ex. '3,5,7,9' (défaut: tirage "
+                                 'aléatoire sans le poste 1, dernier poste inclus)')
+        parser.add_argument('--gec-delay', type=float, default=2.0,
+                            help="Minutes entre l'arrivée du coureur et la "
+                                 'lecture de sa puce à la GEC (défaut: 2)')
         parser.add_argument('--interval', type=float, default=4.0,
                             help='Secondes entre deux envois MOPDiff (défaut: 4)')
+        parser.add_argument('--scale', type=float, default=1.0,
+                            help='Facteur de temps global : multiplie leg-time, '
+                                 'stagger, gec-delay et intervalle (défaut: 1). '
+                                 "Ex. --scale 0.3 pour vérifier rapidement.")
         parser.add_argument('--leg-time', type=float, default=2.0,
                             help='Temps moyen entre deux postes, minutes (défaut: 2)')
         parser.add_argument('--elapsed', type=float, default=16.0,
@@ -78,25 +115,48 @@ class Command(BaseCommand):
 
     # ─── Plan de simulation ─────────────────────────────────────────────────
 
+    def _select_radio_positions(self, n_posts, n_controls, override):
+        """Positions (1-based) des postes radio du parcours.
+
+        Jamais le poste 1 (le premier poinçon radio arrive après le départ),
+        toujours le dernier poste (démo « Valid. GEC »). ``override``
+        (ex. '3,5,7,9') impose les positions exactes.
+        """
+        if override:
+            positions = [int(p.strip()) for p in override.split(',')]
+            if any(p < 1 or p > n_posts for p in positions):
+                raise CommandError(
+                    '--radio-positions doit contenir des positions entre 1 et --posts'
+                )
+            return sorted(set(positions))
+        if n_controls >= n_posts:
+            return list(range(1, n_posts + 1))
+        if n_controls == 1:
+            return [n_posts]
+        return sorted(
+            random.sample(range(2, n_posts), n_controls - 1) + [n_posts]
+        )
+
     def _plan_runner(self, index, st):
         """Plan d'un coureur : st (1/10 s), temps absolus aux postes, statut final."""
-        legs = []
-        total = 0
-        for _ in range(self.n_ctrl):
-            leg = random.uniform(0.6, 1.4) * self.leg_tenths
-            legs.append(leg)
-            total += leg
-        punches = []
+        factor = 1.8 if index == self.slow_index else 1.0
+        legs = [
+            random.uniform(0.6, 1.4) * self.leg_tenths * factor
+            for _ in range(self.n_posts)
+        ]
+        post_times = []
         acc = 0
         for leg in legs:
             acc += leg
-            punches.append(round(acc))      # relatif au départ (1/10 s)
-        finish_leg = round(total * random.uniform(0.2, 0.3))
+            post_times.append(round(acc))      # relatif au départ (1/10 s)
+        finish_leg = round(sum(legs) * random.uniform(0.2, 0.3))
         return {
-            'st':         st,
-            'punches':    punches,
-            'finish':     st + round(total) + finish_leg,   # absolu (1/10 s)
-            'end_status': None,     # None → finit OK
+            'st':          st,
+            'post_times':  post_times,
+            'finish':      st + round(sum(legs)) + finish_leg,  # absolu (1/10 s)
+            'end_status':  None,     # None → finit OK
+            'skip_punch':  None,     # position d'un poste radio jamais émis
+            'extra_punch': None,     # (ctrl, t) poinçon hors parcours
         }
 
     def _end_status_for(self, index):
@@ -132,12 +192,15 @@ class Command(BaseCommand):
 
     def _complete_xml(self):
         ctrls = ''.join(
-            f'<ctrl id="{101 + j}">{101 + j}</ctrl>' for j in range(self.n_ctrl)
+            f'<ctrl id="{101 + j}">{101 + j}</ctrl>' for j in range(self.n_posts)
         )
-        # Postes non-radio (jamais dans l'attribut radio du <cls>, donc
-        # invisibles pour le site) — prouve que seuls les postes radio comptent.
-        ctrls += '<ctrl id="901">901</ctrl><ctrl id="902">902</ctrl>'
-        radio_attr = ','.join(str(101 + j) for j in range(self.n_ctrl))
+        # Poste hors parcours (coureur de démonstration) : poinçon émis mais
+        # absent du parcours → ignoré par la progression et le classement.
+        ctrls += '<ctrl id="900">900</ctrl>'
+        # Comme dans MeOS (tous les postes cochés « radio ») : l'attribut radio
+        # du <cls> contient TOUS les postes du parcours ; seuls les postes
+        # réellement équipés transmettent leurs poinçons pendant la course.
+        radio_attr = ','.join(str(101 + j) for j in range(self.n_posts))
         orgs = ''.join(
             f'<org id="{org_id}">{escape(name)}</org>' for name, org_id in ORGS
         )
@@ -160,20 +223,47 @@ class Command(BaseCommand):
         elems = []
         for runner, plan in enumerate(self.plans):
             elapsed = sim_t - plan['st']     # temps écoulé depuis son départ
-            punches = [p for p in plan['punches'] if p <= elapsed]
-            now_punches = [
-                (101 + j, t) for j, t in enumerate(punches)
-            ]
+            finished = plan.get('stat') == STAT_OK
+            is_dns = plan['end_status'] and plan['end_status'][1] == STAT_DNS
+            if is_dns:
+                # Jamais parti (DNS) : aucun poinçon radio ne remonte, même
+                # après son heure de départ planifiée (l'heure reste affichée
+                # dans « En attente » jusqu'au passage en Non partant).
+                positions = []
+            elif finished:
+                # Puce lue à la GEC : tous les poinçons du parcours remontent.
+                positions = list(range(1, self.n_posts + 1))
+            else:
+                # En course : seuls les postes radio équipés transmettent.
+                positions = [
+                    p for p in self.radio_positions
+                    if plan['post_times'][p - 1] <= elapsed
+                ]
+                if plan['skip_punch'] in positions:
+                    positions.remove(plan['skip_punch'])
+            # Statut définitif de ce diff (avant le calcul des poinçons du
+            # passage en Arrivés).
             if plan['end_status']:
                 after, status = plan['end_status']
-                if len(punches) >= after and status == STAT_DNF:
+                if len(positions) >= after and status in (STAT_DNF, STAT_MP):
                     plan['stat'], plan['rt'] = status, None
-                elif len(punches) >= after and status == STAT_MP:
+                elif status == STAT_DNS and sim_t >= plan['st']:
+                    # DNS dès son heure de départ : il n'est jamais parti.
                     plan['stat'], plan['rt'] = status, None
-                elif status == STAT_DNS and sim_t >= self.race_end_t:
-                    plan['stat'], plan['rt'] = status, None
-            elif sim_t >= plan['finish']:
+            elif sim_t >= plan['finish'] + self.gec_delay_tenths and not finished:
+                # Valid. GEC → Arrivés : la puce est lue à la GEC, tous les
+                # poinçons du parcours remontent dès ce même diff (évite un
+                # intervalle où l'arrivant n'affiche que les postes radio).
                 plan['stat'], plan['rt'] = STAT_OK, plan['finish'] - plan['st']
+                positions = list(range(1, self.n_posts + 1))
+            now_punches = [
+                (101 + p - 1, plan['post_times'][p - 1]) for p in positions
+            ]
+            if plan['extra_punch'] and not finished:
+                ctrl, t = plan['extra_punch']
+                if t <= elapsed:
+                    now_punches.append((ctrl, t))
+            now_punches.sort(key=lambda x: x[1])
             elems.append(self._cmp_xml(runner, plan, now_punches))
         return f'<MOPDiff xmlns="{MOP_NS}">{"" .join(elems)}</MOPDiff>'
 
@@ -185,11 +275,30 @@ class Command(BaseCommand):
         self.cls_name   = options['class_name']
         self.cls_id     = 10
         self.n_runners  = options['runners']
-        self.n_ctrl     = options['controls']
+        self.n_posts    = options['posts']
+        if self.n_posts < 1:
+            raise CommandError('--posts doit être >= 1')
         self.leg_tenths = int(options['leg_time'] * 600)
+        self.gec_delay_tenths = int(options['gec_delay'] * 600)
         self.comp_name  = options['competition']
-        self.interval   = options['interval']
+        scale = max(0.05, options['scale'])
+        # Le facteur --scale compresse les durées simulées (tronçons, écarts de
+        # départ, délai GEC) et l'intervalle d'envoi pour une vérification rapide.
+        self.leg_tenths = int(self.leg_tenths * scale)
+        self.gec_delay_tenths = int(self.gec_delay_tenths * scale)
+        self.stagger_tenths = int(options['stagger'] * scale * 600)
+        self.interval   = max(0.3, options['interval'] * scale)
         self.today      = datetime.now().date().isoformat()
+
+        self.radio_positions = self._select_radio_positions(
+            self.n_posts, options['controls'], options['radio_positions']
+        )
+        self.n_ctrl = len(self.radio_positions)
+
+        # Coureurs de démonstration (tous finissent OK)
+        self.slow_index  = 0   # lent (×1,8) : descend puis est rattrapé
+        self.skip_index  = 1   # poste radio en panne (jamais émis en course)
+        self.extra_index = 2   # poinçon hors parcours (poste 900)
 
         # Heure locale (datetime.now() naïve) : cohérente avec les vues du
         # site (clock_tenths(datetime.now())) et avec l'horloge murale MeOS.
@@ -198,16 +307,29 @@ class Command(BaseCommand):
         for i in range(self.n_runners):
             org = ORGS[i % len(ORGS)]
             first, last = NAMES[i % len(NAMES)]
-            plan = self._plan_runner(i, base_t + int(i * options['stagger'] * 600))
+            plan = self._plan_runner(i, base_t + int(i * self.stagger_tenths))
             plan['org']  = org[1]
             plan['name'] = f'{first} {last}'
             plan['stat'] = 0          # Unknown (en course) au départ
             plan['rt']   = None
             plan['end_status'] = self._end_status_for(i)
+            # Le DNS garde son heure de départ planifiée (affichée côté site
+            # dans « En attente ») mais ne pointe jamais de poste.
+            if plan['end_status'] is None:
+                if i == self.skip_index and len(self.radio_positions) >= 3:
+                    plan['skip_punch'] = (
+                        self.radio_positions[len(self.radio_positions) // 2]
+                    )
+                elif i == self.extra_index:
+                    first_radio = self.radio_positions[0]
+                    plan['extra_punch'] = (
+                        900,
+                        round(plan['post_times'][first_radio - 1] + 0.7 * self.leg_tenths),
+                    )
             self.plans.append(plan)
         self.race_end_t = max(p['finish'] for p in self.plans)
         # réserve de temps propre (départ du 1er au dernier départ)
-        self.race_end_t = max(self.race_end_t, base_t + self.n_runners * int(options['stagger'] * 600))
+        self.race_end_t = max(self.race_end_t, base_t + self.n_runners * self.stagger_tenths)
 
         # Compétition visible côté site
         CompetitionConfig.objects.update_or_create(
@@ -228,8 +350,15 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.MIGRATE_HEADING(
             f'Simulation live — cid={self.cid} classe={self.cls_name} '
-            f'({self.n_runners} coureurs, {self.n_ctrl} postes radio)'
+            f'({self.n_runners} coureurs, {self.n_posts} postes de parcours, '
+            f'{self.n_ctrl} postes radio : positions {self.radio_positions})'
         ))
+        self.stdout.write(
+            f'Temps : tronçons ~{self.leg_tenths / 600:.1f} min, '
+            f'écarts départ {self.stagger_tenths / 600:.1f} min, '
+            f'GEC {self.gec_delay_tenths / 600:.1f} min, '
+            f'intervalle {self.interval:.1f} s'
+        )
         self.stdout.write('Ouvrir la page :  '
                           f'http://127.0.0.1:8000/competition/{self.cid}/class/{self.cls_name}/live/')
         self.stdout.write('API :             '
