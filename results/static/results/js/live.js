@@ -15,25 +15,32 @@ const LiveResults = (() => {
   const POLL_INTERVAL_MS = 5000;
   const DAY_TENTHS = 24 * 3600 * 10;
 
-  const GROUP_ORDER = ['en_course', 'arrives', 'en_attente', 'termine'];
+  const GROUP_ORDER = ['en_course', 'valid_gec', 'arrives', 'en_attente', 'termine'];
   const GROUP_LABELS = {
     en_course:  'En course',
+    valid_gec:  'Valid. GEC',
     arrives:    'Arrivés',
     en_attente: 'En attente',
     termine:    'Terminé',
   };
   const GROUP_ICONS = {
     en_course:  'bi-person-walking',
+    valid_gec:  'bi-clipboard-check',
     arrives:    'bi-flag-fill',
     en_attente: 'bi-hourglass-split',
     termine:    'bi-x-circle',
   };
   const GROUP_EMPTY = {
     en_course:  'Aucun coureur parti pour le moment.',
+    valid_gec:  'Aucun coureur en attente de validation GEC.',
     arrives:    'Aucun arrivé pour le moment.',
     en_attente: 'Aucun coureur en attente.',
     termine:    'Aucun.',
   };
+
+  /** Groupes encore sur le parcours : barre de progression, dernier poste,
+   *  chrono de course et surlignage « en course ». */
+  const RUNNING_GROUPS = ['en_course', 'valid_gec'];
 
   let cfg = null;
   let pollTimer = null;
@@ -112,7 +119,7 @@ const LiveResults = (() => {
   }
 
   function statusBadge(runner) {
-    if (runner.group === 'en_course') {
+    if (RUNNING_GROUPS.includes(runner.group)) {
       return '<span class="badge bg-success">En course</span>';
     }
     return `<span class="badge bg-${esc(runner.stat_badge)}">${esc(runner.stat_label)}</span>`;
@@ -120,22 +127,37 @@ const LiveResults = (() => {
 
   function progressCell(runner, data) {
     const total = data.n_controls || 0;
-    if (runner.group === 'arrives') return '<span class="text-success fw-bold" title="Tous les postes radio">✓</span>';
-    if (runner.group !== 'en_course' || total === 0) return '—';
-    const pct = Math.max(2, Math.round((runner.n_punches / total) * 100));
+    if (runner.group === 'arrives') return '<span class="text-success fw-bold" title="Tous les postes du parcours">✓</span>';
+    // Un coureur « Terminé » (Abandon, PM…) peut avoir pointé des postes : on
+    // conserve sa progression (sans quoi la barre disparaît alors qu'elle est connue).
+    if (!RUNNING_GROUPS.includes(runner.group) && runner.group !== 'termine') return '—';
+    if (total === 0 || !runner.progress_pos) return '—';
+    const segs = total + 1; // +1 = arrivée (poste non numéroté)
+    const pct = Math.min(100, Math.max(2, Math.round((runner.progress_pos / segs) * 100)));
     return `<span class="d-inline-flex align-items-center gap-2 justify-content-end">
-      <span class="small fw-bold" style="min-width:2.5rem">${runner.n_punches}/${total}</span>
+      <span class="small fw-bold" style="min-width:2.5rem">${runner.progress_pos}/${segs}</span>
       <span class="progress" style="width:5.5rem;height:.5rem;margin:0">
         <span class="progress-bar" style="width:${pct}%"></span>
       </span>
     </span>`;
   }
 
-  function lastPunchCell(runner, data) {
-    if (runner.group !== 'en_course' || runner.n_punches === 0) return '<span class="text-muted">—</span>';
-    return `<span class="badge bg-light text-dark border">${esc(ctrlName(data, runner.last_ctrl))}</span>
-            <span class="small text-muted ms-1">${fmtClock(runner.last_punch_clock)}</span>
-            <span class="live-ago small text-muted ms-1" data-punch-clock="${runner.last_punch_clock}"></span>`;
+  function radioPunchCell(runner, data) {
+    // Postes radio pointés avec temps de course, pour En course + Valid. GEC
+    // + Arrivés. Le « il y a X » (qui tique) ne s'affiche que sur le dernier
+    // poste atteint des coureurs encore en course ; les Valid. GEC et Arrivés
+    // ont terminé → pas de « il y a ».
+    const showsPosts = RUNNING_GROUPS.includes(runner.group) || runner.group === 'arrives';
+    if (!showsPosts || !runner.radio_punches || !runner.radio_punches.length) return '<span class="text-muted">—</span>';
+    const items = runner.radio_punches.map((p, i) => {
+      const isLast = i === runner.radio_punches.length - 1;
+      const ago = (runner.group === 'en_course' && isLast && runner.last_punch_clock)
+        ? `<span class="live-ago small text-muted ms-1" data-punch-clock="${runner.last_punch_clock}"></span>`
+        : '';
+      return `<span class="badge bg-light text-dark border">${esc(ctrlName(data, p.ctrl))}</span>
+              <span class="small fw-semibold ms-1">${fmtRaceTime(p.time)}</span>${ago}`;
+    });
+    return `<span class="d-inline-flex flex-wrap gap-1 align-items-center justify-content-end">${items.join('')}</span>`;
   }
 
   function timeCell(runner) {
@@ -146,11 +168,17 @@ const LiveResults = (() => {
       }
       return t;
     }
-    if (runner.group === 'en_course' && runner.st > 0) {
+    if (runner.group === 'valid_gec' && runner.st > 0 && runner.last_time) {
+      // Course terminée : le chrono s'arrête au dernier poste pointé. Seul le
+      // statut définitif manque (lecture de la puce à la GEC) avant les Arrivés.
+      return `<span class="fw-bold" title="Temps au dernier poste — course terminée, validation GEC en attente">${fmtRaceTime(runner.last_time)}</span>`;
+    }
+    if (RUNNING_GROUPS.includes(runner.group) && runner.st > 0) {
       return `<span class="live-time fw-bold" data-st="${runner.st}" title="Temps de course depuis le départ">—</span>`;
     }
     if (runner.group === 'en_attente' && runner.st > 0) {
-      return `<span class="text-muted small" title="Heure de départ">Départ ${fmtClock(runner.st)}</span>`;
+      return `<span class="text-muted small" title="Heure de départ">Départ ${fmtClock(runner.st)}</span>
+              <span class="live-countdown small text-muted ms-1" data-st="${runner.st}"></span>`;
     }
     if (runner.group === 'termine') {
       return statusBadge(runner);
@@ -167,7 +195,7 @@ const LiveResults = (() => {
     const body = document.getElementById('liveBody');
     if (!body) return;
 
-    const counts = { en_course: 0, arrives: 0, en_attente: 0, termine: 0 };
+    const counts = { en_course: 0, valid_gec: 0, arrives: 0, en_attente: 0, termine: 0 };
     for (const r of data.runners) counts[r.group] = (counts[r.group] || 0) + 1;
 
     const html = [];
@@ -184,7 +212,7 @@ const LiveResults = (() => {
         continue;
       }
       for (const r of rows) {
-        html.push(`<tr class="${r.group === 'en_course' ? 'live-running' : ''}">
+        html.push(`<tr class="${RUNNING_GROUPS.includes(r.group) ? 'live-running' : ''}">
           <td>${rankCell(r)}</td>
           <td class="runner-name">
             <a href="/competition/${cfg.cid}/competitor/${r.id}/">${esc(r.name)}</a>
@@ -193,7 +221,7 @@ const LiveResults = (() => {
           ${cfg.isCourse ? `<td>${r.class_name ? `<span class="badge bg-light text-dark border">${esc(r.class_name)}</span>` : '—'}</td>` : ''}
           <td class="club-name text-muted">${r.org ? esc(r.org) : '—'}</td>
           <td class="text-end">${progressCell(r, data)}</td>
-          <td>${lastPunchCell(r, data)}</td>
+          <td>${radioPunchCell(r, data)}</td>
           <td class="text-end">${timeCell(r)}</td>
         </tr>`);
       }
@@ -207,6 +235,7 @@ const LiveResults = (() => {
 
     body.innerHTML = html.join('');
     setText('liveCountEnCourse', counts.en_course);
+    setText('liveCountValidGec', counts.valid_gec);
     setText('liveCountArrives', counts.arrives);
     setText('liveCountWaiting', counts.en_attente);
     setText('liveCountDone', counts.termine);
@@ -258,7 +287,8 @@ const LiveResults = (() => {
     clockTimer = setInterval(tick, 1000);
   }
 
-  /** Recalcule chaque seconde : « il y a X » et chronos des coureurs en course. */
+  /** Recalcule chaque seconde : « il y a X », chronos des coureurs en course
+   *  et compte à rebours des coureurs en attente. */
   function updateTickers(data) {
     if (!data) return;
     const now = tenthsNow(data);
@@ -273,6 +303,14 @@ const LiveResults = (() => {
       let delta = now - st;
       if (delta < 0) delta += DAY_TENTHS; // course à cheval sur minuit
       span.textContent = fmtRaceTime(delta);
+    }
+    // « En attente » : compte à rebours avant le départ.
+    for (const span of document.querySelectorAll('.live-countdown')) {
+      const st = Number(span.dataset.st);
+      if (isNaN(st) || st <= 0) continue;
+      let delta = st - now;
+      if (delta < 0) delta += DAY_TENTHS;
+      span.textContent = delta > 0 ? `· dans ${fmtAgo(delta)}` : '';
     }
   }
 

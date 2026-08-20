@@ -24,8 +24,8 @@
           {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
         </h1>
         <div class="opacity-75 small mt-1">
-          Suivi en temps réel des postes radio
-          {% if controls_seq %}&bull; {{ controls_seq|length }} poste{{ controls_seq|length|pluralize }} radio{% endif %}
+          Suivi en temps réel de la progression sur le parcours
+          {% if controls_seq %}&bull; {{ controls_seq|length }} poste{{ controls_seq|length|pluralize }}{% endif %}
         </div>
       </div>
       <div class="d-flex gap-2 align-items-center flex-wrap">
@@ -56,31 +56,39 @@
 
 <div class="alert alert-info small d-flex align-items-center gap-2">
   <i class="bi bi-info-circle"></i>
-  <span>Poinçons des postes radio affichés en direct. Tous les postes du parcours ne sont pas des postes radio.
-	  Le statut définitif du coureur n'est officiel qu'une fois sa puce lue à la GEC.
+  <span>Seuls les postes équipés d'un émetteur radio remontent leur poinçon en direct. La barre place le coureur sur le parcours en
+	  fonction du dernier poinçon reçu (l'arrivée compte pour un poste). Un coureur ayant pointé le dernier poste radio apparaît
+	  « Valid. GEC » : son parcours est terminé mais sa carte n'a pas encore été lue à la GEC — le statut définitif n'est officiel
+	  qu'une fois sa puce lue.
   </span>
 </div>
 
 <div class="row g-2 mb-3">
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md-2">
     <div class="stat-card p-3 text-center">
       <div class="stat-label small">En course</div>
       <div class="fs-3 fw-bold" id="liveCountEnCourse">…</div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md-2">
+    <div class="stat-card p-3 text-center">
+      <div class="stat-label small">Valid. GEC</div>
+      <div class="fs-3 fw-bold" id="liveCountValidGec">…</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-2">
     <div class="stat-card p-3 text-center">
       <div class="stat-label small">Arrivés</div>
       <div class="fs-3 fw-bold" id="liveCountArrives">…</div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md-2">
     <div class="stat-card p-3 text-center">
       <div class="stat-label small">En attente</div>
       <div class="fs-3 fw-bold" id="liveCountWaiting">…</div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md-2">
     <div class="stat-card p-3 text-center">
       <div class="stat-label small">Terminé</div>
       <div class="fs-3 fw-bold" id="liveCountDone">…</div>
@@ -101,8 +109,8 @@
           <th>Coureur</th>
           {% if course %}<th>Catégorie</th>{% endif %}
           <th>Club</th>
-          <th class="text-end">Postes radio</th>
-          <th>Dernier poste</th>
+          <th class="text-end">Progression</th>
+          <th>Postes radio</th>
           <th class="text-end">Temps</th>
         </tr>
       </thead>
