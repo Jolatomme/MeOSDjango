@@ -708,11 +708,12 @@ def get_courses_map(cid, relay_class_ids=None, class_totals=None):
 #                heure de départ), puis viennent ceux qui ont pointé (triés
 #                par progression : plus de postes devant, à égalité le temps
 #                au dernier poste radio départage).
-#   valid_gec  — en_course ayant pointé le dernier poste du parcours (poste
-#                radio) : parcours terminé mais carte non lue à la GEC, le
-#                statut officiel n'est pas encore attribué par MeOS. Trié
-#                comme en_course (progression identique → temps au dernier
-#                poste radio départage).
+#   valid_gec  — parcours terminé mais statut officiel pas encore attribué :
+#                soit un coureur en_course ayant pointé le dernier poste du
+#                parcours (poste radio), soit un résultat préliminaire MOP
+#                (prel="true" : arrivé par poinçon radio, carte pas encore
+#                lue à la GEC). Trié comme en_course (progression identique
+#                → temps au dernier poste radio départage).
 #   arrives    — données complètes : statut OK et rt > 0 (carte vidée à la
 #                GEC + statut attribué par MeOS). Tri par rt.
 #   en_attente — st == 0 (départ inconnu) ou départ dans le futur.
@@ -811,7 +812,9 @@ def mark_negative_times(competitors, controls_seq, radio_map):
 
     Mêmes règles que ``get_negative_time_stats`` / ``compute_splits`` :
     tronçon radio négatif, arrivée antérieure au dernier poste radio, ou
-    temps d'arrivée ``rt`` négatif.
+    temps d'arrivée ``rt`` négatif (seulement si le statut est OK — pour
+    les statuts non-OK, ``rt = -1`` est la sentinelle « non classé »,
+    pas un temps négatif).
     """
     for c in competitors:
         radios = radio_map.get(c.id, {})
@@ -823,7 +826,11 @@ def mark_negative_times(competitors, controls_seq, radio_map):
                 neg = True
                 break
             prev = abs_t
-        if not neg and rt is not None and rt < 0:
+        if (
+            not neg
+            and getattr(c, 'stat', None) == STAT_OK
+            and rt is not None and rt < 0
+        ):
             neg = True
         if not neg and rt and rt > 0:
             last_abs = None
@@ -953,6 +960,11 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
     parcours est terminé, mais la carte n'a pas encore été lue à la GEC
     et MeOS n'a pas encore attribué le statut officiel.
 
+    Un résultat préliminaire MeOS (``prel`` = True : arrivée radio, carte
+    pas encore lue) est aussi classé ``valid_gec`` même si ``stat``/``rt``
+    annoncent déjà un OK : le statut n'est officiel qu'après la lecture de
+    la puce à la GEC (diff suivant, ``prel`` absent → ``arrives``).
+
     Classement « en course » :
       - deux coureurs sans info radio (``progress_pos = 0``) : le départ
         le plus tôt d'abord (virtuellement en tête) ;
@@ -963,9 +975,9 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
         sans-info, sinon le sans-info reste devant.
 
     Les coureurs marqués ``neg_time`` (à poser via ``mark_negative_times``
-    avant l'appel, ou ``rt < 0`` détecté ici) n'obtiennent pas de rang
-    (``live_rank = None``). Un ``rt < 0`` avec statut OK est classé
-    « arrives ».
+    avant l'appel, ou ``rt < 0`` avec statut OK détecté ici) n'obtiennent
+    pas de rang (``live_rank = None``). Un ``rt < 0`` avec statut OK est
+    classé « arrives ».
 
     Returns
     -------
@@ -979,7 +991,7 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
 
     for c in competitors:
         c.neg_time = getattr(c, 'neg_time', False) is True or (
-            c.rt is not None and c.rt < 0
+            c.stat == STAT_OK and c.rt is not None and c.rt < 0
         )
         radios  = radio_map.get(c.id, {})
         punches = [
@@ -1012,7 +1024,12 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
         c.ref_time = c.last_time
 
         if c.is_ok:
-            c.live_group = 'arrives'
+            # Résultat préliminaire (arrivée radio, carte pas encore lue à la
+            # GEC — attribut MOP prel="true") : pas encore « Arrivé » officiel.
+            if getattr(c, 'prel', False) == True:
+                c.live_group = 'valid_gec'
+            else:
+                c.live_group = 'arrives'
         elif _is_definitive(c.stat):
             c.live_group = 'termine'
         elif c.stat == STAT_OK and c.rt is not None and c.rt < 0:

@@ -53,7 +53,8 @@ CREATE_TABLES = {
         INDEX(`stat`, `rt`),
         INDEX(`st`),
         `tstat` TINYINT NOT NULL DEFAULT 0,
-        `it` INT NOT NULL DEFAULT 0
+        `it` INT NOT NULL DEFAULT 0,
+        `prel` TINYINT NOT NULL DEFAULT 0
     ) ENGINE = InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""",
 
     "mopTeam": """CREATE TABLE IF NOT EXISTS `mopTeam` (
@@ -69,7 +70,8 @@ CREATE_TABLES = {
         INDEX(`org`),
         INDEX(`cls`),
         INDEX(`stat`, `rt`),
-        INDEX(`st`)
+        INDEX(`st`),
+        `prel` TINYINT NOT NULL DEFAULT 0
     ) ENGINE = InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""",
 
     "mopTeamMember": """CREATE TABLE IF NOT EXISTS `mopTeamMember` (
@@ -118,6 +120,12 @@ MISSING_COLUMN_ALTERS = {
                 "ADD COLUMN `card` VARCHAR(32) NOT NULL DEFAULT ''",
         "bib": "ALTER TABLE `mopCompetitor` "
                "ADD COLUMN `bib` VARCHAR(32) NOT NULL DEFAULT ''",
+        "prel": "ALTER TABLE `mopCompetitor` "
+                "ADD COLUMN `prel` TINYINT NOT NULL DEFAULT 0",
+    },
+    "mopTeam": {
+        "prel": "ALTER TABLE `mopTeam` "
+                "ADD COLUMN `prel` TINYINT NOT NULL DEFAULT 0",
     },
 }
 

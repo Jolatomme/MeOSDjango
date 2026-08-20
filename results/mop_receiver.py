@@ -255,7 +255,8 @@ def process_competitor(cid: int, elem: ET.Element):
       stat=0  : Unknown (en course)
       stat=1  : OK
       stat=15 : OCC (Out-of-competition, v3.7)
-      prel    : résultat préliminaire (arrivé mais carte non lue)
+      prel    : résultat préliminaire (arrivé mais carte non lue) — attribut
+                "true" sur <base> ; absent = résultat officiel (carte lue).
       competing : a pointé mais pas encore arrivé
     """
     id_ = int(elem.get('id'))
@@ -284,6 +285,7 @@ def process_competitor(cid: int, elem: ET.Element):
         'stat':  int(base.get('stat', 0)),
         'st':    int(base.get('st', 0)),
         'rt':    int(base.get('rt', 0)),
+        'prel':  1 if base.get('prel') == 'true' else 0,
     }
 
     # Dossard : seulement si l'attribut est présent, pour ne pas
@@ -370,6 +372,7 @@ def process_team(cid: int, elem: ET.Element):
         'stat': int(base.get('stat', 0)),
         'st':   int(base.get('st', 0)),
         'rt':   int(base.get('rt', 0)),
+        'prel': 1 if base.get('prel') == 'true' else 0,
     }
     _upsert('mopTeam', cid, id_, fields)
 

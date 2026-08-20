@@ -18,7 +18,7 @@ const LiveResults = (() => {
   const GROUP_ORDER = ['en_course', 'valid_gec', 'arrives', 'en_attente', 'termine'];
   const GROUP_LABELS = {
     en_course:  'En course',
-    valid_gec:  'Valid. GEC',
+    valid_gec:  'En attente validation GEC',
     arrives:    'Arrivés',
     en_attente: 'En attente',
     termine:    'Terminé',

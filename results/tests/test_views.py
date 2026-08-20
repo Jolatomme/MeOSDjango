@@ -878,6 +878,51 @@ class TestCompetitorDetailView:
         assert last['leg_raw'] == 3800   # 5000 - 1200
         assert last['abs_raw'] == 5000
 
+    @patch('results.views.get_object_or_404')
+    def test_poste_presume_avant_depart_sans_attribut_prestart(self, mock_get404):
+        """La fiche coureur ne doit pas crasher : ``competitor`` (instance
+        get_object_or_404) est une instance ORM distincte de celles annotées
+        par ``mark_presumed_prestart`` — elle doit être annotée aussi, et un
+        poste présumé manquant s'affiche « avant départ »."""
+        from types import SimpleNamespace
+        comp = make_competition()
+        competitor = SimpleNamespace(
+            id=1, name='Alice', rt=9000, stat=STAT_OK, org=1, cls=10, st=100000,
+            tstat=STAT_OK, is_ok=True, status_label='OK', status_badge='success',
+        )
+        # Même ligne en base, mais INSTANCE ORM distincte : comme en
+        # production, celle annotée par mark_presumed_prestart est celle
+        # de la requête class_competitors, pas celle de get_object_or_404.
+        competitor_in_cls = SimpleNamespace(
+            id=1, name='Alice', rt=9000, stat=STAT_OK, org=1, cls=10, st=100000,
+            tstat=STAT_OK, is_ok=True, status_label='OK', status_badge='success',
+        )
+        classmate = SimpleNamespace(
+            id=2, name='Bob', rt=8000, stat=STAT_OK, org=1, cls=10, st=100000,
+            tstat=STAT_OK, is_ok=True, status_label='OK', status_badge='success',
+        )
+        mock_get404.side_effect = [comp, competitor]
+        controls_seq = [
+            {'ctrl_id': 101, 'ctrl_name': '1-101'},
+            {'ctrl_id': 102, 'ctrl_name': '2-102'},
+        ]
+        radio_map = {1: {101: 3000}, 2: {101: 3000, 102: 6000}}
+        with patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views.get_class_controls', return_value=(controls_seq, {})), \
+             patch('results.views.get_radio_map', return_value=radio_map), \
+             patch('results.views.Moporganization') as MockOrg, \
+             patch('results.views.Mopclass') as MockClass, \
+             patch('results.views.render') as mock_render:
+            MockComp.objects.filter.return_value = [competitor_in_cls, classmate]
+            MockOrg.objects.filter.return_value.first.return_value = None
+            MockClass.objects.filter.return_value.first.return_value = None
+            from results.views import competitor_detail
+            competitor_detail(rf_get(), cid=1, competitor_id=1)
+            _, _, ctx = mock_render.call_args[0]
+        presumed = [sp for sp in ctx['splits'] if sp['ctrl_name'] == '2-102']
+        assert presumed and presumed[0]['abs_time'] == 'avant départ'
+        assert presumed[0]['neg_leg'] is True
+
     @patch('results.views.render')  # non atteint (le 404 précède)
     @patch('results.views.get_object_or_404')
     def test_invisible_leve_404(self, mock_get404, mock_render):
