@@ -257,7 +257,7 @@ def competitor_detail(request, cid, competitor_id):
     controls_seq, _ = get_class_controls(cid, competitor.cls)
     class_competitors = list(Mopcompetitor.objects.filter(cid=cid, cls=competitor.cls))
     radio_map = get_radio_map(cid, [c.id for c in class_competitors])
-    mark_presumed_prestart(class_competitors, controls_seq, radio_map)
+    mark_presumed_prestart([competitor] + class_competitors, controls_seq, radio_map)
     splits = compute_splits(competitor_id, controls_seq, radio_map,
                             competitor.prestart_ctrls)
     # Ajout du tronçon arrivée

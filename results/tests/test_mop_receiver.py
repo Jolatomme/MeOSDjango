@@ -789,6 +789,38 @@ class TestProcessCompetitorComplement:
 
     @patch('results.mop_receiver._upsert')
     @patch('results.mop_receiver.connection')
+    def test_base_prel_true_stocke_prel(self, mock_conn, mock_upsert):
+        """prel="true" sur <base> (arrivée radio, carte non lue) → prel=1."""
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
+        from results.mop_receiver import process_competitor
+        el = elem('cmp', {'id': '9'}, children=[
+            ('base', {'org': '1', 'cls': '1', 'stat': '1',
+                      'st': '0', 'rt': '3000', 'prel': 'true'}, 'A'),
+        ])
+        process_competitor(1, el)
+        fields = mock_upsert.call_args[0][3]
+        assert fields['prel'] == 1
+
+    @patch('results.mop_receiver._upsert')
+    @patch('results.mop_receiver.connection')
+    def test_base_sans_prel_efface_prel(self, mock_conn, mock_upsert):
+        """Attribut prel absent (résultat officiel, carte lue) → prel=0."""
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
+        from results.mop_receiver import process_competitor
+        el = elem('cmp', {'id': '9'}, children=[
+            ('base', {'org': '1', 'cls': '1', 'stat': '1',
+                      'st': '0', 'rt': '3000'}, 'A'),
+        ])
+        process_competitor(1, el)
+        fields = mock_upsert.call_args[0][3]
+        assert fields['prel'] == 0
+
+    @patch('results.mop_receiver._upsert')
+    @patch('results.mop_receiver.connection')
     def test_radio_entrees_vides_ignorees(self, mock_conn, mock_upsert):
         """'70,1;;80,2;' → les segments vides sont ignorés."""
         cur = MagicMock()
@@ -817,6 +849,22 @@ class TestProcessTeamComplement:
         el = elem('tm', {'id': '100'})
         process_team(1, el)
         mock_upsert.assert_not_called()
+
+    @patch('results.mop_receiver._upsert')
+    @patch('results.mop_receiver.connection')
+    def test_base_prel_true_stocke_prel(self, mock_conn, mock_upsert):
+        """prel="true" sur <tm><base> → prel=1."""
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
+        from results.mop_receiver import process_team
+        el = elem('tm', {'id': '100'}, children=[
+            ('base', {'org': '1', 'cls': '1', 'stat': '1',
+                      'st': '0', 'rt': '3000', 'prel': 'true'}, 'Équipe A'),
+        ])
+        process_team(1, el)
+        fields = mock_upsert.call_args[0][3]
+        assert fields['prel'] == 1
 
 
 class TestProcessMopXmlFrozen:

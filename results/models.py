@@ -103,6 +103,10 @@ class Mopcompetitor(models.Model):
     rt    = models.IntegerField()
     tstat = models.IntegerField()
     it    = models.IntegerField()
+    prel  = models.BooleanField(
+        default=False,
+        help_text="Résultat préliminaire MOP (arrivé, carte pas encore lue à la GEC)",
+    )
 
     class Meta:
         managed         = False
@@ -175,6 +179,10 @@ class Mopteam(models.Model):
     stat = models.IntegerField()
     st   = models.IntegerField()
     rt   = models.IntegerField()
+    prel = models.BooleanField(
+        default=False,
+        help_text="Résultat préliminaire MOP (arrivée radio, carte pas encore lue à la GEC)",
+    )
 
     class Meta:
         managed         = False

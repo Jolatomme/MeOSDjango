@@ -29,10 +29,12 @@ NOW = datetime(2025, 8, 14, 12, 0, 0)   # 12:00:00 → 432000 (1/10 s depuis min
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
-def make_competitor(id=1, st=100000, stat=0, rt=0, name='Coureur', org=1, cls=10):
+def make_competitor(id=1, st=100000, stat=0, rt=0, name='Coureur', org=1, cls=10,
+                    prel=False):
     c = MagicMock()
     c.id = id; c.st = st; c.stat = stat; c.rt = rt
     c.name = name; c.org = org; c.cls = cls
+    c.prel = prel
     c.is_ok = (stat == STAT_OK and rt > 0)
     c.status_label = 'Inconnu'; c.status_badge = 'info'
     return c
@@ -344,6 +346,51 @@ class TestRankLive:
         assert [r.id for r in ranked] == [2, 1]
         assert a.live_group == 'arrives' and a.live_rank == 2
 
+    def test_prel_ok_va_en_valid_gec(self):
+        """Résultat préliminaire (arrivée radio, carte non lue — prel=true)
+        → groupe valid_gec, même avec stat=1 et rt>0."""
+        c = make_competitor(1, st=100000, stat=STAT_OK, rt=6000, prel=True)
+        self._rank([c])
+        assert c.live_group == 'valid_gec'
+        assert c.live_rank == 1
+
+    def test_prel_ok_valid_gec_sans_ordre_de_circuit(self):
+        """Le passage en valid_gec ne dépend pas de progress_pos : prel=true
+        signifie que le parcours est terminé."""
+        c = make_competitor(1, st=100000, stat=STAT_OK, rt=6000, prel=True)
+        self._rank([c], {1: {101: 3000, 102: 6000}})
+        assert c.live_group == 'valid_gec'
+
+    def test_prel_false_ok_reste_arrives(self):
+        """Sans prel (résultat officiel) : stat=1 + rt>0 → arrives."""
+        c = make_competitor(1, st=100000, stat=STAT_OK, rt=6000, prel=False)
+        self._rank([c])
+        assert c.live_group == 'arrives'
+        assert c.live_rank == 1
+
+    def test_prel_true_puis_officiel_passe_en_arrives(self):
+        """Transition arrivée radio → lecture GEC : prel retiré au diff
+        suivant, le coureur passe de valid_gec à arrives."""
+        c = make_competitor(1, st=100000, stat=STAT_OK, rt=6000, prel=True)
+        self._rank([c])
+        assert c.live_group == 'valid_gec'
+        c.prel = False
+        self._rank([c])
+        assert c.live_group == 'arrives'
+
+    def test_prel_trie_par_temps_au_dernier_poste(self):
+        """Deux préliminaires : tri comme valid_gec (temps au dernier poste)."""
+        rapide = make_competitor(1, st=200000, stat=STAT_OK, rt=8000, prel=True)
+        lent   = make_competitor(2, st=200000, stat=STAT_OK, rt=11000, prel=True)
+        radio_map = {1: {101: 3000, 102: 6000, 103: 8000},
+                     2: {101: 3000, 102: 6000, 103: 11000}}
+        controls = [{'ctrl_id': cid, 'ctrl_name': str(i)}
+                    for i, cid in enumerate([101, 102, 103], start=1)]
+        ranked = self._rank([rapide, lent], radio_map, controls)
+        assert [r.id for r in ranked] == [1, 2]
+        assert rapide.live_group == 'valid_gec' and rapide.live_rank == 1
+        assert lent.live_group == 'valid_gec' and lent.live_rank == 2
+
     def test_rt_negatif_stat_ok_va_dans_arrives_sans_rang(self):
         c = make_competitor(1, st=100000, stat=STAT_OK, rt=-500)
         self._rank([c])
@@ -391,6 +438,14 @@ class TestRankLive:
         c = make_competitor(1, st=100000, stat=STAT_MP)
         radio_map = {1: {101: 5000}}
         self._rank([c], radio_map)
+        assert c.live_group == 'termine'
+
+    def test_mp_rt_sentinelle_non_marque_negatif(self):
+        """PM non classé (rt=-1) avec poinçons monotones → pas de temps
+        négatif, malgré la sentinelle rt=-1."""
+        c = make_competitor(1, st=100000, stat=STAT_MP, rt=-1)
+        self._rank([c], {1: {101: 3000, 102: 6000}}, CONTROLS)
+        assert c.neg_time is False
         assert c.live_group == 'termine'
 
     def test_occ_peut_etre_en_course(self):
@@ -468,6 +523,16 @@ class TestMarkNegativeTimes:
     def test_rt_negatif(self):
         c = make_competitor(1, st=100000, stat=STAT_OK, rt=-500)
         assert self._mark(c) is True
+
+    def test_rt_sentinelle_non_classifie_pas_negatif(self):
+        """PM/DNF avec rt=-1 (sentinelle « non classé ») et poinçons
+        monotones → pas de temps négatif."""
+        c = make_competitor(1, st=100000, stat=STAT_MP, rt=-1)
+        assert self._mark(c, {1: {101: 3000, 102: 6000}}) is False
+
+    def test_rt_sentinelle_dnf_pas_negatif(self):
+        c = make_competitor(1, st=100000, stat=STAT_DNF, rt=-1)
+        assert self._mark(c, {1: {101: 3000, 102: 6000}}) is False
 
     def test_cas_sain(self):
         c = make_competitor(1, st=100000, stat=STAT_OK, rt=9000)
@@ -765,7 +830,7 @@ class TestApiLiveResults:
 
     def test_neg_time_renvoye_avec_rt_negatif(self):
         r = self._runner(id=1, group='arrives')
-        r.rt = -500; r.neg_time = True
+        r.stat = STAT_OK; r.rt = -500; r.neg_time = True
         data = self._run(competitors=[r])
         assert data['runners'][0]['rt'] == -500
         assert data['runners'][0]['neg_time'] is True

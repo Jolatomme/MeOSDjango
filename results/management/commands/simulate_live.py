@@ -16,6 +16,7 @@ affiche « Valid. GEC ».
 Usage :
     python manage.py simulate_live [--cid 9001] [--runners 14] [--posts 9]
                                    [--controls 4] [--interval 4] [--scale 0.3]
+                                   [--radio-finish]
 
 La simulation tourne en temps réel : l'option --scale compresse les durées
 (tronçons, écarts de départ, délai GEC) et l'intervalle d'envoi — ex.
@@ -30,6 +31,9 @@ Cas de figure simulés :
   - un poinçon hors parcours (poste 900), ignoré par la progression ;
   - « Valid. GEC » : le dernier poste est radio, chaque finissant affiche ce
     statut entre le dernier poinçon et la validation à la GEC ;
+  - --radio-finish : l'arrivée est un poste radio — au poinçon d'arrivée,
+    MeOS émet un résultat préliminaire (stat="1" rt="…" prel="true"),
+    « En attente validation GEC » tant que la carte n'est pas lue ;
   - DNS / PM / Abandon.
 
 La base doit contenir les tables mop* (lancer `manage.py setup_db` au besoin) ;
@@ -98,6 +102,10 @@ class Command(BaseCommand):
         parser.add_argument('--gec-delay', type=float, default=2.0,
                             help="Minutes entre l'arrivée du coureur et la "
                                  'lecture de sa puce à la GEC (défaut: 2)')
+        parser.add_argument('--radio-finish', action='store_true',
+                            help="L'arrivée est un poste radio : au poinçon "
+                                 "d'arrivée MeOS émet un résultat préliminaire "
+                                 '(prel="true"), validé à la lecture GEC.')
         parser.add_argument('--interval', type=float, default=4.0,
                             help='Secondes entre deux envois MOPDiff (défaut: 4)')
         parser.add_argument('--scale', type=float, default=1.0,
@@ -157,6 +165,8 @@ class Command(BaseCommand):
             'end_status':  None,     # None → finit OK
             'skip_punch':  None,     # position d'un poste radio jamais émis
             'extra_punch': None,     # (ctrl, t) poinçon hors parcours
+            'prel':        False,    # résultat préliminaire (arrivée radio)
+            'gec_read':    False,    # puce lue à la GEC (statut officiel)
         }
 
     def _end_status_for(self, index):
@@ -180,11 +190,12 @@ class Command(BaseCommand):
             rt = plan['rt']
         if plan.get('stat') is not None:
             stat = plan['stat']
+        prel = ' prel="true"' if plan.get('prel') else ''
         bib = 100 + runner
         return (
             f'<cmp id="{runner}" card="{100000 + runner}">'
             f'<base org="{plan["org"]}" cls="{self.cls_id}" stat="{stat}" '
-            f'st="{st}" rt="{rt}" bib="{bib}">{escape(plan["name"])}</base>'
+            f'st="{st}" rt="{rt}" bib="{bib}"{prel}>{escape(plan["name"])}</base>'
             f'<input it="0" tstat="0"/>'
             f'<radio>{escape(radio)}</radio>'
             f'</cmp>'
@@ -223,14 +234,13 @@ class Command(BaseCommand):
         elems = []
         for runner, plan in enumerate(self.plans):
             elapsed = sim_t - plan['st']     # temps écoulé depuis son départ
-            finished = plan.get('stat') == STAT_OK
             is_dns = plan['end_status'] and plan['end_status'][1] == STAT_DNS
             if is_dns:
                 # Jamais parti (DNS) : aucun poinçon radio ne remonte, même
                 # après son heure de départ planifiée (l'heure reste affichée
                 # dans « En attente » jusqu'au passage en Non partant).
                 positions = []
-            elif finished:
+            elif plan.get('gec_read'):
                 # Puce lue à la GEC : tous les poinçons du parcours remontent.
                 positions = list(range(1, self.n_posts + 1))
             else:
@@ -250,16 +260,24 @@ class Command(BaseCommand):
                 elif status == STAT_DNS and sim_t >= plan['st']:
                     # DNS dès son heure de départ : il n'est jamais parti.
                     plan['stat'], plan['rt'] = status, None
-            elif sim_t >= plan['finish'] + self.gec_delay_tenths and not finished:
+            elif sim_t >= plan['finish'] + self.gec_delay_tenths and not plan.get('gec_read'):
                 # Valid. GEC → Arrivés : la puce est lue à la GEC, tous les
                 # poinçons du parcours remontent dès ce même diff (évite un
                 # intervalle où l'arrivant n'affiche que les postes radio).
                 plan['stat'], plan['rt'] = STAT_OK, plan['finish'] - plan['st']
+                plan['prel']     = False
+                plan['gec_read'] = True
                 positions = list(range(1, self.n_posts + 1))
+            elif getattr(self, 'radio_finish', False) and sim_t >= plan['finish'] and not plan.get('gec_read'):
+                # Arrivée radio : le poinçon d'arrivée remonte en direct, MeOS
+                # calcule un résultat préliminaire (prel="true") — la carte
+                # n'est pas encore lue à la GEC.
+                plan['stat'], plan['rt'] = STAT_OK, plan['finish'] - plan['st']
+                plan['prel'] = True
             now_punches = [
                 (101 + p - 1, plan['post_times'][p - 1]) for p in positions
             ]
-            if plan['extra_punch'] and not finished:
+            if plan['extra_punch'] and not plan.get('gec_read'):
                 ctrl, t = plan['extra_punch']
                 if t <= elapsed:
                     now_punches.append((ctrl, t))
@@ -281,6 +299,7 @@ class Command(BaseCommand):
         self.leg_tenths = int(options['leg_time'] * 600)
         self.gec_delay_tenths = int(options['gec_delay'] * 600)
         self.comp_name  = options['competition']
+        self.radio_finish = options['radio_finish']
         scale = max(0.05, options['scale'])
         # Le facteur --scale compresse les durées simulées (tronçons, écarts de
         # départ, délai GEC) et l'intervalle d'envoi pour une vérification rapide.
@@ -359,6 +378,11 @@ class Command(BaseCommand):
             f'GEC {self.gec_delay_tenths / 600:.1f} min, '
             f'intervalle {self.interval:.1f} s'
         )
+        if self.radio_finish:
+            self.stdout.write(
+                'Arrivée radio : résultat préliminaire (prel) au poinçon '
+                "d'arrivée, statut officiel après lecture à la GEC."
+            )
         self.stdout.write('Ouvrir la page :  '
                           f'http://127.0.0.1:8000/competition/{self.cid}/class/{self.cls_name}/live/')
         self.stdout.write('API :             '
