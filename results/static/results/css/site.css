@@ -163,6 +163,99 @@ body { font-family: var(--font-body); background: var(--co-light); color: #1a1a1
 .runner-name a:hover { color: var(--co-green); text-decoration: underline; }
 .club-name { color: var(--co-grey); font-size: .875rem; }
 
+/* ─── Page Live — lignes 3 colonnes (classement | coureur + postes | temps + progression) ── */
+
+#liveTable thead { display: none; }
+#liveTable tbody tr.live-runner {
+  display: grid;
+  /* Largeur fixe pour la colonne classement : chaque ligne étant une grille
+     indépendante, une colonne « auto » casserait l'alignement des noms. */
+  grid-template-columns: 2rem minmax(0, 1fr) max-content;
+  gap: .1rem .75rem;
+  padding: .5rem .75rem;
+}
+#liveTable tbody tr.live-runner > td { padding: 0; }
+.live-cell-rank { align-self: start; }
+.live-cell-main { min-width: 0; }
+.live-cell-side {
+  display: flex; flex-direction: column; align-items: flex-end;
+  gap: .15rem; text-align: right;
+}
+.live-runner-line {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  column-gap: .35rem; min-width: 0;
+}
+.live-runner-line .club-name { white-space: nowrap; font-size: .8rem; }
+.live-time-line { line-height: 1.25; }
+.live-time-value {
+  font-family: var(--font-display); font-weight: 700; font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Couples poste/temps : grille à piste fixe. Les largeurs --lp-badge-w /
+   --lp-time-w sont mesurées en JS (live.js syncPunchWidths) d'après le plus
+   long libellé réel : étiquettes et temps partagent donc leur largeur et les
+   poinçons s'alignent verticalement d'une ligne sur l'autre. */
+.live-punches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill,
+    calc(var(--lp-badge-w, 2.4rem) + .2rem + var(--lp-time-w, 3.6rem)));
+  gap: .2rem .5rem;
+  margin-top: .15rem;
+}
+.live-punch {
+  display: inline-grid;
+  grid-template-columns: var(--lp-badge-w, 2.4rem) var(--lp-time-w, 3.6rem);
+  column-gap: .2rem;
+}
+.live-punch .badge {
+  justify-self: stretch; min-width: 0; white-space: nowrap;
+  text-align: center; overflow: hidden; text-overflow: ellipsis;
+}
+.live-punch-time {
+  font-family: var(--font-display); font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right; white-space: nowrap;
+}
+.live-ago {
+  /* Ticker « il y a X s » : posé sous la grille des couples (colonne 1 étant
+     occupée par le premier couple, il passe systématiquement à la ligne),
+     hors géométrie étiquette/temps — span 2 pour respirer. */
+  grid-column: 1 / span 2;
+  color: var(--co-grey); font-size: .76rem; white-space: nowrap;
+}
+
+/* Progression compacte */
+.live-progress { display: inline-flex; align-items: center; gap: .35rem; }
+.live-progress-count {
+  font-size: .76rem; font-weight: 700; color: var(--co-grey);
+  font-variant-numeric: tabular-nums;
+}
+.live-progress-track {
+  width: 4rem; height: .45rem; border-radius: 999px;
+  background: rgba(0,0,0,.09); overflow: hidden;
+}
+.live-progress-bar { display: block; height: 100%; border-radius: 999px; background: var(--co-green); }
+.live-progress-done { font-weight: 700; }
+html[data-theme="dark"] .live-progress-track { background: rgba(255,255,255,.14); }
+
+/* Styles live (déplacés depuis live_results.html) */
+.live-dot { display:inline-block; width:.6rem; height:.6rem; border-radius:50%;
+            background:currentColor; margin-right:.4rem; animation:livePulse 1.5s infinite; }
+@keyframes livePulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+.live-group-row { background: var(--co-forest) !important; }
+.live-group-row td { color: #fff !important; padding: .45rem 1rem !important; }
+.live-running { animation: liveFlash 2s infinite; }
+@keyframes liveFlash { 0%,100% { background: transparent; } 50% { background: rgba(25,135,84,.08); } }
+.live-time { font-variant-numeric: tabular-nums; }
+.live-clock { font-variant-numeric: tabular-nums; letter-spacing: .05em; }
+
+@media (max-width: 576px) {
+  #liveTable tbody tr.live-runner { padding: .45rem .6rem; gap: .05rem .5rem; }
+  .live-time-value { font-size: 1rem; }
+  .live-progress-track { width: 3.2rem; }
+}
+
 /* ─── Stat cards ─────────────────────────────────────────────────────────────── */
 
 .stat-card {

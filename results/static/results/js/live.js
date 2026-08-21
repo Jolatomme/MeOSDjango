@@ -125,44 +125,50 @@ const LiveResults = (() => {
     return `<span class="badge bg-${esc(runner.stat_badge)}">${esc(runner.stat_label)}</span>`;
   }
 
+  /** Progression compacte pour la colonne de droite (compteur + mini-barre).
+   *  Retourne '' quand rien n'est connu : la ligne de progression est absente
+   *  plutôt que d'afficher un « — » inutile. */
   function progressCell(runner, data) {
     const total = data.n_controls || 0;
-    if (runner.group === 'arrives') return '<span class="text-success fw-bold" title="Tous les postes du parcours">✓</span>';
+    if (runner.group === 'arrives') return '<span class="live-progress-done text-success" title="Tous les postes du parcours">✓</span>';
     // Un coureur « Terminé » (Abandon, PM…) peut avoir pointé des postes : on
     // conserve sa progression (sans quoi la barre disparaît alors qu'elle est connue).
-    if (!RUNNING_GROUPS.includes(runner.group) && runner.group !== 'termine') return '—';
-    if (total === 0 || !runner.progress_pos) return '—';
+    if (!RUNNING_GROUPS.includes(runner.group) && runner.group !== 'termine') return '';
+    if (total === 0 || !runner.progress_pos) return '';
     const segs = total + 1; // +1 = arrivée (poste non numéroté)
     const pct = Math.min(100, Math.max(2, Math.round((runner.progress_pos / segs) * 100)));
-    return `<span class="d-inline-flex align-items-center gap-2 justify-content-end">
-      <span class="small fw-bold" style="min-width:2.5rem">${runner.progress_pos}/${segs}</span>
-      <span class="progress" style="width:5.5rem;height:.5rem;margin:0">
-        <span class="progress-bar" style="width:${pct}%"></span>
-      </span>
+    return `<span class="live-progress">
+      <span class="live-progress-count">${runner.progress_pos}/${segs}</span>
+      <span class="live-progress-track"><span class="live-progress-bar" style="width:${pct}%"></span></span>
     </span>`;
   }
 
+  /** Couples poste/temps des postes radio pointés (En course + Valid. GEC +
+   *  Arrivés), rendus en grille à piste fixe (.live-punches) : toutes les
+   *  étiquettes partagent la même largeur, tous les temps aussi, pour un
+   *  alignement vertical des poinçons d'une ligne sur l'autre. Le « il y a X »
+   *  (qui tique) est posé hors géométrie en fin de liste — il ne concerne que
+   *  le dernier poste atteint des coureurs encore en course.
+   *  Retourne '' si aucun poste à afficher. */
   function radioPunchCell(runner, data) {
-    // Postes radio pointés avec temps de course, pour En course + Valid. GEC
-    // + Arrivés. Le « il y a X » (qui tique) ne s'affiche que sur le dernier
-    // poste atteint des coureurs encore en course ; les Valid. GEC et Arrivés
-    // ont terminé → pas de « il y a ».
     const showsPosts = RUNNING_GROUPS.includes(runner.group) || runner.group === 'arrives';
-    if (!showsPosts || !runner.radio_punches || !runner.radio_punches.length) return '<span class="text-muted">—</span>';
-    const items = runner.radio_punches.map((p, i) => {
-      const isLast = i === runner.radio_punches.length - 1;
-      const ago = (runner.group === 'en_course' && isLast && runner.last_punch_clock)
-        ? `<span class="live-ago small text-muted ms-1" data-punch-clock="${runner.last_punch_clock}"></span>`
-        : '';
-      return `<span class="badge bg-light text-dark border">${esc(ctrlName(data, p.ctrl))}</span>
-              <span class="small fw-semibold ms-1">${fmtRaceTime(p.time)}</span>${ago}`;
+    if (!showsPosts || !runner.radio_punches || !runner.radio_punches.length) return '';
+    const items = runner.radio_punches.map((p) => {
+      const name = esc(ctrlName(data, p.ctrl));
+      return `<span class="live-punch">` +
+        `<span class="badge bg-light text-dark border" title="${name}">${name}</span>` +
+        `<span class="live-punch-time">${fmtRaceTime(p.time)}</span>` +
+        `</span>`;
     });
-    return `<span class="d-inline-flex flex-wrap gap-1 align-items-center justify-content-end">${items.join('')}</span>`;
+    if (runner.group === 'en_course' && runner.last_punch_clock) {
+      items.push(`<span class="live-ago" data-punch-clock="${runner.last_punch_clock}"></span>`);
+    }
+    return items.join('');
   }
 
   function timeCell(runner) {
     if (runner.group === 'arrives') {
-      const t = `<span class="fw-bold">${fmtRaceTime(runner.rt)}</span>`;
+      const t = `<span class="live-time-value fw-bold">${fmtRaceTime(runner.rt)}</span>`;
       if (runner.neg_time) {
         return `${t} <span class="badge neg-badge ms-1" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>`;
       }
@@ -171,10 +177,10 @@ const LiveResults = (() => {
     if (runner.group === 'valid_gec' && runner.st > 0 && runner.last_time) {
       // Course terminée : le chrono s'arrête au dernier poste pointé. Seul le
       // statut définitif manque (lecture de la puce à la GEC) avant les Arrivés.
-      return `<span class="fw-bold" title="Temps au dernier poste — course terminée, validation GEC en attente">${fmtRaceTime(runner.last_time)}</span>`;
+      return `<span class="live-time-value fw-bold" title="Temps au dernier poste — course terminée, validation GEC en attente">${fmtRaceTime(runner.last_time)}</span>`;
     }
     if (RUNNING_GROUPS.includes(runner.group) && runner.st > 0) {
-      return `<span class="live-time fw-bold" data-st="${runner.st}" title="Temps de course depuis le départ">—</span>`;
+      return `<span class="live-time live-time-value fw-bold" data-st="${runner.st}" title="Temps de course depuis le départ">—</span>`;
     }
     if (runner.group === 'en_attente' && runner.st > 0) {
       return `<span class="text-muted small" title="Heure de départ">Départ ${fmtClock(runner.st)}</span>
@@ -186,9 +192,92 @@ const LiveResults = (() => {
     return '—';
   }
 
+  // ── Mesure des largeurs étiquette/temps ────────────────────────────────────
+
+  /** Étalon caché hébergé par #liveTable (et non #liveBody, écrasé à chaque
+   *  rendu) pour hériter exactement des polices/tailles du tableau. */
+  let measureSpan = null;
+  const measureCache = new Map();
+
+  /** Largeur intrinsèque du texte rendu avec les classes de l'élément source
+   *  (le padding Bootstrap des badges est ainsi inclus). Cache par libellé :
+   *  seuls les textes jamais vus déclenchent une mesure. */
+  function textWidth(text, className) {
+    const key = className + '\u0000' + text;
+    let w = measureCache.get(key);
+    if (w != null) return w;
+    if (!measureSpan) {
+      const tbl = document.getElementById('liveTable');
+      if (!tbl) return 0;
+      measureSpan = document.createElement('span');
+      measureSpan.style.cssText =
+        'position:absolute;visibility:hidden;white-space:nowrap;top:-9999px;left:-9999px;';
+      tbl.appendChild(measureSpan);
+    }
+    measureSpan.className = className;
+    measureSpan.textContent = text;
+    w = measureSpan.getBoundingClientRect().width;
+    measureCache.set(key, w);
+    return w;
+  }
+
+  /** Mesure les libellés réels et pose --lp-badge-w / --lp-time-w sur la
+   *  table : toutes les étiquettes de poste prennent la même largeur, tous
+   *  les temps aussi → grille alignée d'une ligne sur l'autre. Planchers
+   *  ~2.25rem / ~3rem pour rester lisible avec un poste court. */
+  function syncPunchWidths() {
+    const tbl = document.getElementById('liveTable');
+    if (!tbl) return;
+    let badgeW = 0;
+    let timeW = 0;
+    for (const punch of document.querySelectorAll('#liveBody .live-punch')) {
+      const badge = punch.querySelector('.badge');
+      const time = punch.querySelector('.live-punch-time');
+      if (badge) badgeW = Math.max(badgeW, textWidth(badge.textContent, badge.className));
+      if (time) timeW = Math.max(timeW, textWidth(time.textContent, time.className));
+    }
+    if (!badgeW && !timeW) return;
+    tbl.style.setProperty('--lp-badge-w', `${Math.ceil(Math.max(badgeW, 36))}px`);
+    tbl.style.setProperty('--lp-time-w', `${Math.ceil(Math.max(timeW, 48))}px`);
+  }
+
+  /** Les mesures dépendent de la police active et du palier responsive
+   *  (.results-table change de taille à 768px) : purge du cache + resync. */
+  function watchMeasureContext() {
+    const onChange = () => { measureCache.clear(); syncPunchWidths(); };
+    if (window.matchMedia) {
+      const mq = window.matchMedia('(max-width: 768px)');
+      if (mq.addEventListener) mq.addEventListener('change', onChange);
+      else if (mq.addListener) mq.addListener(onChange); // vieux navigateurs
+    }
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(onChange);
+    }
+  }
+
   // ── Rendu ──────────────────────────────────────────────────────────────────
 
-  function colSpan() { return cfg.isCourse ? 7 : 6; }
+  /** Une ligne coureur = grille 3 colonnes :
+   *  classement | nom (club) + couples poste/temps | temps + progression. */
+  function runnerRow(r, data) {
+    const punches = radioPunchCell(r, data);
+    const progress = progressCell(r, data);
+    return `<tr class="live-runner${RUNNING_GROUPS.includes(r.group) ? ' live-running' : ''}">
+      <td class="live-cell-rank">${rankCell(r)}</td>
+      <td class="live-cell-main">
+        <div class="live-runner-line runner-name">
+          <a href="/competition/${cfg.cid}/competitor/${r.id}/">${esc(r.name)}</a>
+          ${r.org ? `<span class="club-name">(${esc(r.org)})</span>` : ''}
+          ${r.neg_time ? `<span class="badge neg-badge" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>` : ''}
+        </div>
+        ${punches ? `<div class="live-punches">${punches}</div>` : ''}
+      </td>
+      <td class="live-cell-side">
+        <div class="live-time-line">${timeCell(r)}</div>
+        ${progress ? `<div class="live-progress-line">${progress}</div>` : ''}
+      </td>
+    </tr>`;
+  }
 
   function render(data) {
     lastData = data;
@@ -201,39 +290,25 @@ const LiveResults = (() => {
     const html = [];
     for (const group of GROUP_ORDER) {
       const rows = data.runners.filter((r) => r.group === group);
-      html.push(`<tr class="live-group-row">
-        <td colspan="${colSpan()}">
+      html.push(`<tr class="live-group-row"><td>
           <i class="bi ${GROUP_ICONS[group]} me-2"></i>${GROUP_LABELS[group]}
           <span class="badge bg-light text-dark ms-2">${rows.length}</span>
-        </td>
-      </tr>`);
+        </td></tr>`);
       if (!rows.length) {
-        html.push(`<tr><td colspan="${colSpan()}" class="text-muted small p-2 ps-4">${GROUP_EMPTY[group]}</td></tr>`);
+        html.push(`<tr><td class="text-muted small p-2 ps-4">${GROUP_EMPTY[group]}</td></tr>`);
         continue;
       }
-      for (const r of rows) {
-        html.push(`<tr class="${RUNNING_GROUPS.includes(r.group) ? 'live-running' : ''}">
-          <td>${rankCell(r)}</td>
-          <td class="runner-name">
-            <a href="/competition/${cfg.cid}/competitor/${r.id}/">${esc(r.name)}</a>
-            ${r.neg_time ? `<span class="badge neg-badge ms-1" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>` : ''}
-          </td>
-          ${cfg.isCourse ? `<td>${r.class_name ? `<span class="badge bg-light text-dark border">${esc(r.class_name)}</span>` : '—'}</td>` : ''}
-          <td class="club-name text-muted">${r.org ? esc(r.org) : '—'}</td>
-          <td class="text-end">${progressCell(r, data)}</td>
-          <td>${radioPunchCell(r, data)}</td>
-          <td class="text-end">${timeCell(r)}</td>
-        </tr>`);
-      }
+      for (const r of rows) html.push(runnerRow(r, data));
     }
 
     if (!data.runners.length) {
-      html.push(`<tr><td colspan="${colSpan()}" class="text-center text-muted p-4">
+      html.push(`<tr><td class="text-center text-muted p-4">
         <i class="bi bi-inbox me-2"></i>Aucun coureur — le flux MOP n'a peut-être pas encore été reçu.
       </td></tr>`);
     }
 
     body.innerHTML = html.join('');
+    syncPunchWidths();
     setText('liveCountEnCourse', counts.en_course);
     setText('liveCountValidGec', counts.valid_gec);
     setText('liveCountArrives', counts.arrives);
@@ -354,6 +429,7 @@ const LiveResults = (() => {
   function init(config) {
     cfg = config;
     lastFetchClientMs = Date.now();
+    watchMeasureContext();
     startClock({
       race_start_clock: cfg.initialRaceStart,
       server_now_clock: cfg.initialNowClock,
