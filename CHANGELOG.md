@@ -23,6 +23,8 @@ Tous les changements notables de ce projet sont documentés ici.
 - Temps live affichés à la seconde (sans dixième), les écarts « il y a » étant formatés `X h Y min Z s` / `X min Y s` / `X s`.
 - `format_time` accepte les valeurs négatives et les préfixe par `-` (ex. `-00:50`).
 - `meos_time` renvoie `-` pour les temps négatifs (non classés `rt=-1` inchangés).
+- Page Live : lignes coureurs remaniées en **3 colonnes** à toutes les tailles d'écran (`live.js`, `site.css`) — classement | nom (club) avec les couples poste/temps en flux wrapant | temps au-dessus de la progression compacte ; plus de scroll horizontal sur petit écran, colonnes Club/Catégorie supprimées (club rappelé entre parenthèses après le nom), en-têtes de tableau et wrapper `table-responsive` retirés (les lignes de groupe « En course / Arrivés… » servent de repère) ; progression et barre reposent sur des classes CSS (`.live-progress*`) au lieu de styles inline, styles live regroupés dans `site.css`.
+- Page Live : couples poste/temps alignés verticalement d'une ligne sur l'autre — grille à piste fixe dont la largeur est mesurée sur les libellés réels (`syncPunchWidths`, cache invalidé au changement de police ou de palier responsive) : toutes les étiquettes de poste partagent la même largeur, tous les temps aussi (alignés à droite) ; le ticker « il y a X s » est posé sous la grille des poinçons.
 
 ### Deprecated
 - 

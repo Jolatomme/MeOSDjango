@@ -101,26 +101,13 @@
     <span><i class="bi bi-broadcast me-2"></i>Classement live</span>
     <span class="badge bg-secondary" id="liveLastUpdate" title="Dernière mise à jour">—</span>
   </div>
-  <div class="table-responsive">
-    <table class="results-table" id="liveTable">
-      <thead>
-        <tr>
-          <th style="width:3rem">#</th>
-          <th>Coureur</th>
-          {% if course %}<th>Catégorie</th>{% endif %}
-          <th>Club</th>
-          <th class="text-end">Progression</th>
-          <th>Postes radio</th>
-          <th class="text-end">Temps</th>
-        </tr>
-      </thead>
-      <tbody id="liveBody">
-        <tr><td colspan="{{ course|yesno:'7,6' }}" class="text-center text-muted p-4">
-          <span class="spinner-border spinner-border-sm me-2" role="status"></span>Chargement…
-        </td></tr>
-      </tbody>
-    </table>
-  </div>
+  <table class="results-table" id="liveTable">
+    <tbody id="liveBody">
+      <tr><td class="text-center text-muted p-4">
+        <span class="spinner-border spinner-border-sm me-2" role="status"></span>Chargement…
+      </td></tr>
+    </tbody>
+  </table>
 </div>
 
 {# ── Navigation catégories (seulement pour les vraies catégories) ───────────── #}
@@ -154,20 +141,6 @@
 </div>
 {% endif %}
 
-{% endblock %}
-
-{% block extra_head %}
-<style>
-  .live-dot { display:inline-block; width:.6rem; height:.6rem; border-radius:50%;
-              background:currentColor; margin-right:.4rem; animation:livePulse 1.5s infinite; }
-  @keyframes livePulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
-  .live-group-row { background: var(--co-forest) !important; }
-  .live-group-row td { color: #fff !important; padding: .45rem 1rem !important; }
-  .live-running { animation: liveFlash 2s infinite; }
-  @keyframes liveFlash { 0%,100% { background: transparent; } 50% { background: rgba(25,135,84,.08); } }
-  .live-time { font-variant-numeric: tabular-nums; }
-  .live-clock { font-variant-numeric: tabular-nums; letter-spacing: .05em; }
-</style>
 {% endblock %}
 
 {% block extra_js %}
