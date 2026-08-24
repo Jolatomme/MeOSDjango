@@ -212,9 +212,10 @@ class TestComputeSplits:
         assert splits[0]['leg_raw']  == -350
         assert splits[0]['neg_leg']  is True
 
-    def test_poincon_presume_avant_depart(self):
-        """Poste présumé pointé avant le départ : valeur inconnue, tronçon
-        négatif signalé, et la chaîne reprend au poinçon connu suivant."""
+    def test_poste_manquant_chaine_reprend(self):
+        """Poste manquant : tronçons adjacents inconnus, affichage '-',
+        et la chaîne reprend au poinçon connu suivant (plus d'affichage
+        « avant départ » ni de badge sur simple poste manquant)."""
         controls_seq = [
             {'ctrl_id': 53, 'ctrl_name': 'P53'},
             {'ctrl_id': 55, 'ctrl_name': 'P55'},
@@ -224,16 +225,90 @@ class TestComputeSplits:
             {'ctrl_id': 54, 'ctrl_name': 'P54'},
         ]
         radio_map = {1: {53: 210, 31: 310, 179: 520, 52: 630, 54: 660}}
-        splits = self._call(1, controls_seq, radio_map, prestart_ctrls={55})
-        assert splits[1]['abs_time'] == 'avant départ'
+        splits = self._call(1, controls_seq, radio_map)
+        assert splits[1]['abs_time'] == '-'          # P55 manquant
         assert splits[1]['abs_raw']  is None
         assert splits[1]['leg_raw']  is None
-        assert splits[1]['neg_leg']  is True
+        assert splits[1]['neg_leg']  is False
         assert splits[2]['leg_raw']  is None       # 55→31 : valeur inconnue
         assert splits[3]['leg_raw']  == 210        # 31→179 : chaîne reprise
         assert splits[4]['leg_raw']  == 110
         assert splits[5]['leg_raw']  == 30
         assert splits[3]['neg_leg']  is False
+
+    def test_poste_prestart_cellule_temps_negatif(self):
+        """Poste présumé pointé avant le départ : cellule « Temps négatif »,
+        tronçon inconnu, et la chaîne reprend au poinçon connu suivant."""
+        controls_seq = [
+            {'ctrl_id': 53, 'ctrl_name': 'P53'},
+            {'ctrl_id': 55, 'ctrl_name': 'P55'},
+            {'ctrl_id': 31, 'ctrl_name': 'P31'},
+            {'ctrl_id': 179, 'ctrl_name': 'P179'},
+        ]
+        radio_map = {1: {53: 210, 31: 310, 179: 520}}
+        splits = self._call(1, controls_seq, radio_map, prestart_ctrls={55})
+        assert splits[1]['leg_time'] == 'Temps négatif'
+        assert splits[1]['leg_raw']  is None
+        assert splits[1]['abs_time'] == '-'
+        assert splits[1]['neg_leg']  is True
+        assert splits[2]['leg_raw']  is None       # 55→31 : valeur inconnue
+        assert splits[3]['leg_raw']  == 210        # 31→179 : chaîne reprise
+        assert splits[3]['neg_leg']  is False
+
+
+class TestDetectPrestartCtrls:
+    """Postes manquants d'un coureur OK définitif = pointés avant départ."""
+
+    CONTROLS = [
+        {'ctrl_id': 101, 'ctrl_name': 'P101'},
+        {'ctrl_id': 102, 'ctrl_name': 'P102'},
+    ]
+
+    def _c(self, id=1, rt=9000, tstat=STAT_OK, stat=STAT_OK):
+        c = make_competitor(id, rt, stat=stat)
+        c.tstat = tstat
+        return c
+
+    def _detect(self, competitors, radio_map):
+        from results.services import attested_ctrls, detect_prestart_ctrls
+        attested = attested_ctrls(radio_map)
+        return {
+            c.id: detect_prestart_ctrls(c, self.CONTROLS, radio_map, attested)
+            for c in competitors
+        }
+
+    def test_ok_definitif_trou_atteste_detecte(self):
+        """Scénario BARROS-VALLET : OK définitif, poste 102 attesté par un
+        autre coureur mais absent de ses poinçons → pointé avant départ."""
+        c1 = self._c(1)                                   # trou au 102
+        c2 = self._c(2)
+        result = self._detect(
+            [c1, c2], {1: {101: 3000}, 2: {101: 3000, 102: 6000}})
+        assert result[1] == {102}
+        assert result[2] == set()
+
+    def test_poste_non_atteste_ignore(self):
+        """Personne n'a transmis le 102 (boîtier mort / config partielle)
+        → pas de diagnostic individuel."""
+        c1 = self._c(1)
+        c2 = self._c(2)
+        result = self._detect([c1, c2], {1: {101: 3000}, 2: {101: 3000}})
+        assert result[1] == set()
+
+    def test_non_definitif_pas_de_detection(self):
+        """Carte pas encore lue (tstat≠OK) ou statut non-OK : les poinçons
+        ne sont pas complets, aucun diagnostic."""
+        prel = self._c(1, tstat=0)
+        mp   = self._c(2, stat=STAT_MP, rt=-1)
+        result = self._detect(
+            [prel, mp], {1: {101: 3000}, 2: {101: 3000}})
+        assert result[1] == set()
+        assert result[2] == set()
+
+    def test_parcours_complet_sans_trou(self):
+        c = self._c(1)
+        result = self._detect([c], {1: {101: 3000, 102: 6000}})
+        assert result[1] == set()
 
 
 # ─── Tests build_finish_split ─────────────────────────────────────────────────
@@ -437,9 +512,11 @@ class TestGetNegativeTimeStats:
             {'id': 1, 'name': 'Coureur', 'cls_name': 'H21', 'controls': ['P32']}
         ]
 
-    def test_poste_atteste_manquant_ok_presume(self):
-        """Coureur OK définitif avec un poste attesté manquant → poste
-        présumé pointé avant le départ, fusionné dans le bandeau."""
+    def test_poste_atteste_manquant_ok_temps_negatif(self):
+        """Coureur OK définitif avec un poste radio attesté manquant :
+        MeOS étant configuré avec tous les postes en radio, la lecture de
+        puce devait tout remonter — un trou signifie « pointé avant le
+        départ » (carte SI non effacée) → badge + bandeau."""
         comps = [make_competitor(1, 3000), make_competitor(2, 4000)]
         for c in comps:
             c.tstat = STAT_OK
@@ -452,68 +529,26 @@ class TestGetNegativeTimeStats:
         assert stats['runners'][0]['controls'] == ['P32']
         assert 'non effacée' in stats['message']
 
+    def test_poste_manquant_coureur_non_definitif_pas_de_badge(self):
+        """Coureur OK non définitif (prel / carte pas encore lue) : les
+        poinçons ne sont pas complets, aucun badge sur poste manquant."""
+        comps = [make_competitor(1, 3000), make_competitor(2, 4000)]
+        for c in comps:
+            c.tstat = STAT_OK
+        comps[1].tstat = 0          # coureur 2 : carte non lue
+        radios = {1: {31: 1000, 32: 2500}, 2: {31: 1100}}
+        assert self._call(1, comps, radios, [{'ctrl_id': 31, 'ctrl_name': 'P31'},
+                                             {'ctrl_id': 32, 'ctrl_name': 'P32'}]) is None
+
     def test_poste_manquant_pas_atteste_non_presume(self):
-        """Poste absent des poinçons de TOUS les coureurs → pas présumé
-        (boîtier mort ou poste optionnel), aucun signal."""
+        """Poste absent des poinçons de TOUS les coureurs → aucun signal
+        (boîtier mort ou poste optionnel)."""
         comps = [make_competitor(1, 3000), make_competitor(2, 4000)]
         for c in comps:
             c.tstat = STAT_OK
         radios = {1: {31: 1000}, 2: {31: 1100}}
         assert self._call(1, comps, radios, [{'ctrl_id': 31, 'ctrl_name': 'P31'},
                                              {'ctrl_id': 32, 'ctrl_name': 'P32'}]) is None
-
-
-# ─── Tests find_presumed_prestart / mark_presumed_prestart ────────────────────
-
-class TestPresumedPrestart:
-    """Détection des postes présumés pointés avant le départ."""
-
-    CONTROLS = [
-        {'ctrl_id': 101, 'ctrl_name': 'P101'},
-        {'ctrl_id': 102, 'ctrl_name': 'P102'},
-    ]
-
-    def _ok(self, id, rt=9000, tstat=STAT_OK, **kw):
-        c = make_competitor(id, rt, **kw)
-        c.tstat = tstat
-        c.neg_time = False
-        return c
-
-    def _call(self, competitors, radio_map=None):
-        from results.services import mark_presumed_prestart
-        mark_presumed_prestart(competitors, self.CONTROLS, radio_map or {})
-        return competitors
-
-    def test_ok_definitif_poste_atteste_manquant(self):
-        c1 = self._ok(1)
-        c2 = self._ok(2)
-        self._call([c1, c2], {1: {101: 3000}, 2: {101: 3000, 102: 6000}})
-        assert c1.neg_time is True
-        assert c1.prestart_ctrls == {102}
-        assert c2.neg_time is False
-        assert c2.prestart_ctrls == set()
-
-    def test_poste_non_atteste_non_marque(self):
-        """Personne n'a pointé 102 → boîtier mort/optionnel → pas de signal."""
-        c1 = self._ok(1)
-        c2 = self._ok(2)
-        self._call([c1, c2], {1: {101: 3000}, 2: {101: 3000}})
-        assert c1.neg_time is False
-        assert c1.prestart_ctrls == set()
-
-    def test_statut_non_definitif_non_marque(self):
-        """tstat=0 (carte non lue) ou statut non-OK → pas de présomption."""
-        c1 = self._ok(1, tstat=0)
-        c2 = self._ok(2, stat=STAT_MP)
-        self._call([c1, c2], {1: {101: 3000}, 2: {101: 3000, 102: 6000}})
-        assert c1.neg_time is False
-        assert c2.neg_time is False
-
-    def test_poincons_complets_non_marque(self):
-        c1 = self._ok(1)
-        self._call([c1], {1: {101: 3000, 102: 6000}})
-        assert c1.neg_time is False
-        assert c1.prestart_ctrls == set()
 
 
 # ─── Tests mark_best_splits ───────────────────────────────────────────────────

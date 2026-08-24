@@ -125,6 +125,16 @@ const LiveResults = (() => {
     return `<span class="badge bg-${esc(runner.stat_badge)}">${esc(runner.stat_label)}</span>`;
   }
 
+  /** Badge « Temps négatif » ; le tooltip détaille les postes en cause
+   *  quand l'API les fournit (neg_ctrls). */
+  function negBadge(r, extraClass) {
+    const ctrls = (r.neg_ctrls || []).filter(Boolean);
+    const title = ctrls.length
+      ? `Temps négatif au poste ${ctrls.length > 1 ? 's' : ''} ${ctrls.join(', ')}`
+      : 'Temps négatif : boîtier mal synchronisé ou carte SI non effacée';
+    return `<span class="badge neg-badge${extraClass ? ' ' + extraClass : ''}" title="${esc(title)}">Temps négatif</span>`;
+  }
+
   /** Progression compacte pour la colonne de droite (compteur + mini-barre).
    *  Retourne '' quand rien n'est connu : la ligne de progression est absente
    *  plutôt que d'afficher un « — » inutile. */
@@ -155,9 +165,13 @@ const LiveResults = (() => {
     if (!showsPosts || !runner.radio_punches || !runner.radio_punches.length) return '';
     const items = runner.radio_punches.map((p) => {
       const name = esc(ctrlName(data, p.ctrl));
+      const beforeStart = p.time <= 0;
+      const timeTitle = beforeStart
+        ? `${name} — poinçon avant le départ`
+        : name;
       return `<span class="live-punch">` +
         `<span class="badge bg-light text-dark border" title="${name}">${name}</span>` +
-        `<span class="live-punch-time">${fmtRaceTime(p.time)}</span>` +
+        `<span class="live-punch-time${beforeStart ? ' live-punch-prestart' : ''}" title="${esc(timeTitle)}">${fmtRaceTime(p.time)}</span>` +
         `</span>`;
     });
     if (runner.group === 'en_course' && runner.last_punch_clock) {
@@ -170,14 +184,15 @@ const LiveResults = (() => {
     if (runner.group === 'arrives') {
       const t = `<span class="live-time-value fw-bold">${fmtRaceTime(runner.rt)}</span>`;
       if (runner.neg_time) {
-        return `${t} <span class="badge neg-badge ms-1" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>`;
+        return `${t} ${negBadge(runner, 'ms-1')}`;
       }
       return t;
     }
-    if (runner.group === 'valid_gec' && runner.st > 0 && runner.last_time) {
-      // Course terminée : le chrono s'arrête au dernier poste pointé. Seul le
-      // statut définitif manque (lecture de la puce à la GEC) avant les Arrivés.
-      return `<span class="live-time-value fw-bold" title="Temps au dernier poste — course terminée, validation GEC en attente">${fmtRaceTime(runner.last_time)}</span>`;
+    if (runner.group === 'valid_gec' && runner.st > 0 && (runner.provisional_rt != null || runner.last_time)) {
+      // Poinçon d'arrivée radio (ou résultat préliminaire) : temps final
+      // provisoire affiché, en attendant la validation GEC.
+      const t = runner.provisional_rt != null ? runner.provisional_rt : runner.last_time;
+      return `<span class="live-time-value fw-bold" title="Temps final provisoire — validation GEC en attente">${fmtRaceTime(t)}</span>`;
     }
     if (RUNNING_GROUPS.includes(runner.group) && runner.st > 0) {
       return `<span class="live-time live-time-value fw-bold" data-st="${runner.st}" title="Temps de course depuis le départ">—</span>`;
@@ -268,7 +283,7 @@ const LiveResults = (() => {
         <div class="live-runner-line runner-name">
           <a href="/competition/${cfg.cid}/competitor/${r.id}/">${esc(r.name)}</a>
           ${r.org ? `<span class="club-name">(${esc(r.org)})</span>` : ''}
-          ${r.neg_time ? `<span class="badge neg-badge" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>` : ''}
+          ${r.neg_time ? negBadge(r) : ''}
         </div>
         ${punches ? `<div class="live-punches">${punches}</div>` : ''}
       </td>

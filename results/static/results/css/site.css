@@ -217,6 +217,10 @@ body { font-family: var(--font-body); background: var(--co-light); color: #1a1a1
   font-variant-numeric: tabular-nums;
   text-align: right; white-space: nowrap;
 }
+.live-punch-time.live-punch-prestart {
+  /* Poinçon antérieur au départ (temps négatif) : signalé visuellement. */
+  color: var(--bs-danger, #dc3545);
+}
 .live-ago {
   /* Ticker « il y a X s » : posé sous la grille des couples (colonne 1 étant
      occupée par le premier couple, il passe systématiquement à la ligne),

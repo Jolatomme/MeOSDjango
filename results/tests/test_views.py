@@ -589,6 +589,17 @@ class TestClassResultsView:
         _, ctx = self._run([make_competitor()], controls_seq=[{'ctrl_id': 31, 'ctrl_name': 'P31'}])
         assert ctx['has_splits'] is True
 
+    def test_troncon_arrivee_pour_non_classe_avec_temps(self):
+        """Un non-classé passé par l'arrivée (rt > 0, ex. PM comme LUO,
+        CHENSHENG) a lui aussi son split « Arrivée » au dépliage des
+        résultats — la ligne n'est plus réservée aux coureurs classés."""
+        mp = make_competitor(1765, rt=56150, stat=STAT_MP)
+        mp.is_ok = False
+        _, ctx = self._run([mp], controls_seq=[{'ctrl_id': 99, 'ctrl_name': 'P99'}])
+        splits = ctx['results'][0].splits
+        assert [sp['ctrl_name'] for sp in splits] == ['Arrivée']
+        assert splits[-1]['abs_raw'] == 56150
+
     def test_course_hash_present(self):
         _, ctx = self._run([make_competitor()])
         assert 'course_hash' in ctx
@@ -878,21 +889,68 @@ class TestCompetitorDetailView:
         assert last['leg_raw'] == 3800   # 5000 - 1200
         assert last['abs_raw'] == 5000
 
+    @patch('results.views.compute_splits', return_value=[{'ctrl_name': 'P99', 'abs_raw': 55940}])
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.Moporganization')
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.render')
     @patch('results.views.get_object_or_404')
-    def test_poste_presume_avant_depart_sans_attribut_prestart(self, mock_get404):
-        """La fiche coureur ne doit pas crasher : ``competitor`` (instance
-        get_object_or_404) est une instance ORM distincte de celles annotées
-        par ``mark_presumed_prestart`` — elle doit être annotée aussi, et un
-        poste présumé manquant s'affiche « avant départ »."""
+    def test_troncon_arrivee_pour_non_classe_avec_temps(self, mock_get404, mock_render,
+                                                        MockComp, MockClass, MockOrg, *_):
+        """Scénario LUO, CHENSHENG : un coureur PM passé par l'arrivée (rt > 0)
+        reçoit lui aussi la ligne « Arrivée » sur sa fiche — temps total et
+        tronçon depuis son dernier poste pointé."""
+        comp = make_competition()
+        mp = make_competitor(1765, rt=56150, stat=STAT_MP)
+        mp.is_ok = False
+        mock_get404.side_effect = [comp, mp]
+        MockComp.objects.filter.return_value = []
+        MockOrg.objects.filter.return_value.first.return_value = None
+        MockClass.objects.filter.return_value.first.return_value = None
+        from results.views import competitor_detail
+        competitor_detail(rf_get(), cid=4, competitor_id=1765)
+        _, _, ctx = mock_render.call_args[0]
+        last = ctx['splits'][-1]
+        assert last['ctrl_name'] == 'Arrivée'
+        assert last['abs_raw'] == 56150
+        assert last['leg_raw'] == 56150 - 55940   # 210 : dernier poste → ligne
+
+    @patch('results.views.compute_splits', return_value=[{'ctrl_name': 'P31', 'abs_raw': 1200}])
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.get_class_controls', return_value=([], {}))
+    @patch('results.views.Moporganization')
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    def test_pas_de_troncon_arrivee_sans_temps(self, mock_get404, mock_render,
+                                               MockComp, MockClass, MockOrg, *_):
+        """Un non-classé sans temps de course (DNF/DNS, rt ≤ 0) n'a pas de
+        ligne « Arrivée » : il n'a pas franchi la ligne."""
+        comp = make_competition(); dnf = make_competitor(1, rt=-1, stat=STAT_DNF)
+        dnf.is_ok = False
+        mock_get404.side_effect = [comp, dnf]
+        MockComp.objects.filter.return_value = []
+        MockOrg.objects.filter.return_value.first.return_value = None
+        MockClass.objects.filter.return_value.first.return_value = None
+        from results.views import competitor_detail
+        competitor_detail(rf_get(), cid=1, competitor_id=1)
+        _, _, ctx = mock_render.call_args[0]
+        assert [sp['ctrl_name'] for sp in ctx['splits']] == ['P31']
+
+    @patch('results.views.get_object_or_404')
+    def test_poste_manquant_ok_definitif_cellule_temps_negatif(self, mock_get404):
+        """Coureur OK définitif avec un poste radio attesté manquant :
+        la cellule du split affiche « Temps négatif » et le coureur est
+        badgé (pointé avant le départ — carte SI non effacée)."""
         from types import SimpleNamespace
         comp = make_competition()
         competitor = SimpleNamespace(
             id=1, name='Alice', rt=9000, stat=STAT_OK, org=1, cls=10, st=100000,
             tstat=STAT_OK, is_ok=True, status_label='OK', status_badge='success',
         )
-        # Même ligne en base, mais INSTANCE ORM distincte : comme en
-        # production, celle annotée par mark_presumed_prestart est celle
-        # de la requête class_competitors, pas celle de get_object_or_404.
         competitor_in_cls = SimpleNamespace(
             id=1, name='Alice', rt=9000, stat=STAT_OK, org=1, cls=10, st=100000,
             tstat=STAT_OK, is_ok=True, status_label='OK', status_badge='success',
@@ -919,9 +977,10 @@ class TestCompetitorDetailView:
             from results.views import competitor_detail
             competitor_detail(rf_get(), cid=1, competitor_id=1)
             _, _, ctx = mock_render.call_args[0]
-        presumed = [sp for sp in ctx['splits'] if sp['ctrl_name'] == '2-102']
-        assert presumed and presumed[0]['abs_time'] == 'avant départ'
-        assert presumed[0]['neg_leg'] is True
+        missing = [sp for sp in ctx['splits'] if sp['ctrl_name'] == '2-102']
+        assert missing and missing[0]['leg_time'] == 'Temps négatif'
+        assert missing[0]['neg_leg'] is True
+        assert ctx['competitor'].neg_time is True
 
     @patch('results.views.render')  # non atteint (le 404 précède)
     @patch('results.views.get_object_or_404')

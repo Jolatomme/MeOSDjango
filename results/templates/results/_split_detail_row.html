@@ -27,7 +27,8 @@
         {% endif %}
         {% endfor %}
         {% with last=comp.splits|last %}
-        {% if comp.is_ok and last.ctrl_name == "Arrivée" %}
+        {% if last.ctrl_name == "Arrivée" and last.abs_raw %}
+        {# Ligne affichée pour tout coureur ayant franchi la ligne (rt > 0), y compris non classés (PM…) ; masquée quand il n'y a pas de temps #}
         <div class="split-cell split-finish{% if last.is_best %} split-best{% elif last.leg_rank == 2 or last.leg_rank == 3 %} split-podium{% endif %}">
           <span class="split-ctrl-name">Arrivée</span>
           <span class="split-time-abs">{{ last.abs_time }}{% if last.abs_rank %} <span class="split-rank">{{ last.abs_rank }}</span>{% endif %}</span>

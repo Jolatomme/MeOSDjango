@@ -558,7 +558,13 @@ class TestParseId:
 
     def test_chaine_sans_chiffre_leve_valuerror(self):
         with pytest.raises(ValueError):
-            self._call('-1')
+            self._call('abc')
+
+    def test_signe_negatif_conserve(self):
+        """Un identifiant négatif initial est conservé (boîtier d'arrivée
+        radio hors plage positive)."""
+        assert self._call('-1') == -1
+        assert self._call(' -77 ') == -77
 
     def test_grand_numero(self):
         assert self._call('12345-1') == 12345

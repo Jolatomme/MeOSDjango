@@ -5,7 +5,17 @@ Tous les changements notables de ce projet sont documentés ici.
 ## [Unreleased]
 
 ### Added
-- Résultat **préliminaire MOP** (`prel="true"` sur `<base>`) : l'attribut est désormais parsé et stocké (`mopCompetitor.prel`, `mopTeam.prel`, colonne ajoutée par `setup_db`) — un coureur arrivé par un **poste radio** passe par « En attente validation GEC » au lieu de sauter directement « Arrivé » tant que sa carte n'a pas été lue à la GEC (statut officiel au diff suivant, `prel` absent → « Arrivé »).
+- **Règle « poste manquant ⇒ temps négatif »** (config MeOS « tous les postes en radio », choix de l'organisateur) : un coureur classé **OK définitif** (`stat` et `tstat` OK, carte lue à la GEC) dont un poste radio **attesté** (transmis par au moins un autre coureur du groupe) est absent de ses poinçons a forcément pointé ce poste avant son départ — MeOS filtre les temps ≤ 0 à l'export. La cellule du split affiche « Temps négatif », le coureur porte le badge et figure dans le bandeau diagnostic (carte SI non effacée / départ avancé). Détecté par `detect_prestart_ctrls`, fusionné dans la source unique `collect_negative_ctrls`.
+- **Gestion de l'arrivée configurée comme poste radio** : le poinçon d'arrivée (poste hors circuit, reçu une fois tous les postes du circuit pointés) est identifié (`detect_arrival_punch`) — le coureur passe « En attente validation GEC » au poinçon d'arrivée (et non plus au dernier poste du parcours), le chrono s'arrête et le temps final provisoire s'affiche immédiatement (`last_time` porté par le poinçon d'arrivée ; `provisional_rt` dans l'API live, utilisé par `live.js`). Sans arrivée radio, pointer le dernier poste ne fait plus changer de groupe : le coureur reste « En course » jusqu'à la lecture de la puce. Le badge « Temps négatif » n'est plus déclenché à tort par ce poinçon d'arrivée.
+- `simulate_live --radio-finish --finish-ctrl N` : le poinçon d'arrivée est réellement émis dans `<radio>` sous l'identifiant `--finish-ctrl` (défaut `-77`, hors circuit — à caler sur l'identifiant émis par MeOS en course réelle), en plus du résultat préliminaire.
+- Tooltip du badge « Temps négatif » détaillant les postes en cause (`neg_ctrls` dans l'API live).
+- Page Live : les poinçons radio antérieurs au départ (temps ≤ 0) sont affichés dans la liste des postes (en rouge, info-bulle « poinçon avant le départ ») au lieu d'être masqués.
+
+### Changed
+- **Ligne « Arrivée » pour tout coureur ayant franchi la ligne** — un non-classé avec un temps de course (`rt > 0`, ex. PM passé par l'arrivée) voit désormais son tronçon Arrivée (temps total + écart depuis son dernier poste pointé) sur sa **fiche coureur** et dans le **dépliage des intermédiaires des résultats** (catégorie et circuit) ; les listes et le live continuent de n'afficher que le badge statut, et les non-classés sans temps (DNS/DNF) restent sans ligne Arrivée.
+- Détection des temps négatifs unifiée : `negative_leg_names` / `collect_negative_ctrls` servent désormais de source unique au badge coureur (`mark_negative_times`), au bandeau diagnostic (`get_negative_time_stats`) et aux splits (`compute_splits`) — le comparateur du tronçon « Arrivée » est le dernier poinçon radio présent et non plus le dernier poste du circuit.
+- **Le badge « Temps négatif » n'exclut plus du classement live** : les coureurs badgés (tronçon négatif, poste manquant, arrivée anticipée) conservent leur rang (`rank_live`).
+- Résultat préliminaire MOP (`prel="true"` sur `<base>`) : l'attribut est désormais parsé et stocké (`mopCompetitor.prel`, `mopTeam.prel`, colonne ajoutée par `setup_db`) — un coureur arrivé par un **poste radio** passe par « En attente validation GEC » au lieu de sauter directement « Arrivé » tant que sa carte n'a pas été lue à la GEC (statut officiel au diff suivant, `prel` absent → « Arrivé »).
 - `simulate_live --radio-finish` : simule une arrivée en poste radio — résultat préliminaire (`stat="1" rt="…" prel="true"`) au poinçon d'arrivée, validé après `--gec-delay`.
 - Suivi « Live » des postes radio en temps réel : nouvel onglet (catégories et circuits) avec classement regroupé « En course / Arrivés / En attente / Terminé », horloge de course depuis le premier départ, chrono individuel défilant depuis le départ, temps « il y a X h / Y min / Z s » et badge En direct/Hors ligne ; rafraîchi par polling JSON 5 s (`live.js`, pause quand l'onglet est caché).
 - Un coureur dont l'heure de départ est passée apparaît « En course » même sans poinçon radio (virtuellement en tête), puis le classement live s'établit sur le nombre de postes radio pointés et le temps au dernier poste ; un coureur n'est « Arrivé » que lorsque ses données sont complètes (statut OK et `rt > 0`, carte vidée à la GEC).
@@ -30,7 +40,7 @@ Tous les changements notables de ce projet sont documentés ici.
 - 
 
 ### Removed
-- 
+- Fonctions `find_presumed_prestart` / `mark_presumed_prestart` (mutation d'attributs `prestart_ctrls` sur les instances ORM) : remplacées par `detect_prestart_ctrls`, intégré à la source unique des temps négatifs — même règle métier, un seul pipeline pour le badge, le bandeau et les splits.
 
 ### Fixed
 - Fiche coureur (temps intermédiaires, lien depuis le live) : erreur 500 systématique depuis la détection des postes présumés pointés avant le départ — `competitor.prestart_ctrls` était lu sur l'instance renvoyée par `get_object_or_404`, alors que `mark_presumed_prestart` annotait les instances de la requête `class_competitors` (instances ORM distinctes) : l'attribut est désormais posé sur l'instance du coureur elle-même.

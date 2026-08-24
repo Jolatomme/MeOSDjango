@@ -31,7 +31,8 @@ Cas de figure simulés :
   - un poinçon hors parcours (poste 900), ignoré par la progression ;
   - « Valid. GEC » : le dernier poste est radio, chaque finissant affiche ce
     statut entre le dernier poinçon et la validation à la GEC ;
-  - --radio-finish : l'arrivée est un poste radio — au poinçon d'arrivée,
+  - --radio-finish : l'arrivée est un poste radio — le poinçon d'arrivée est
+    émis dans <radio> sous l'identifiant --finish-ctrl (hors circuit), et
     MeOS émet un résultat préliminaire (stat="1" rt="…" prel="true"),
     « En attente validation GEC » tant que la carte n'est pas lue ;
   - DNS / PM / Abandon.
@@ -103,9 +104,15 @@ class Command(BaseCommand):
                             help="Minutes entre l'arrivée du coureur et la "
                                  'lecture de sa puce à la GEC (défaut: 2)')
         parser.add_argument('--radio-finish', action='store_true',
-                            help="L'arrivée est un poste radio : au poinçon "
-                                 "d'arrivée MeOS émet un résultat préliminaire "
-                                 '(prel="true"), validé à la lecture GEC.')
+                            help="L'arrivée est un poste radio : le poinçon "
+                                 "d'arrivée est émis dans <radio> et MeOS émet "
+                                 'un résultat préliminaire (prel="true"), '
+                                 'validé à la lecture GEC.')
+        parser.add_argument('--finish-ctrl', type=int, default=-77,
+                            help="Identifiant du poste d'arrivée radio dans "
+                                 '<radio> (hors circuit ; défaut: -77). À '
+                                 "caler sur l'identifiant réellement émis par "
+                                 'MeOS — voir mopRadio en course réelle.')
         parser.add_argument('--interval', type=float, default=4.0,
                             help='Secondes entre deux envois MOPDiff (défaut: 4)')
         parser.add_argument('--scale', type=float, default=1.0,
@@ -281,6 +288,17 @@ class Command(BaseCommand):
                 ctrl, t = plan['extra_punch']
                 if t <= elapsed:
                     now_punches.append((ctrl, t))
+            if (
+                getattr(self, 'radio_finish', False)
+                and not plan['end_status']      # seuls les finisseurs OK franchissent la ligne
+                and sim_t >= plan['finish']
+            ):
+                # Poinçon d'arrivée radio : émis au franchissement de la ligne
+                # sous l'identifiant du boîtier d'arrivée (hors circuit), puis
+                # conservé dans <radio> — comme dans mopRadio côté MeOS.
+                now_punches.append(
+                    (self.finish_ctrl, plan['finish'] - plan['st'])
+                )
             now_punches.sort(key=lambda x: x[1])
             elems.append(self._cmp_xml(runner, plan, now_punches))
         return f'<MOPDiff xmlns="{MOP_NS}">{"" .join(elems)}</MOPDiff>'
@@ -300,6 +318,7 @@ class Command(BaseCommand):
         self.gec_delay_tenths = int(options['gec_delay'] * 600)
         self.comp_name  = options['competition']
         self.radio_finish = options['radio_finish']
+        self.finish_ctrl  = options['finish_ctrl']
         scale = max(0.05, options['scale'])
         # Le facteur --scale compresse les durées simulées (tronçons, écarts de
         # départ, délai GEC) et l'intervalle d'envoi pour une vérification rapide.

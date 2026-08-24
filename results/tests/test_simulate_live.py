@@ -14,7 +14,7 @@ from datetime import datetime
 import pytest
 
 from results.management.commands.simulate_live import (
-    Command, STAT_OK, STAT_DNS, STAT_MP,
+    Command, STAT_OK, STAT_DNS, STAT_MP, STAT_DNF,
 )
 
 POST_TIMES = [600, 1200, 1800, 2400, 3000, 3600, 4200, 4800, 5400]
@@ -36,7 +36,13 @@ def make_command(**overrides):
     cmd.skip_index = 1
     cmd.extra_index = 2
     cmd.race_end_t = 10 ** 9
+    cmd.radio_finish = overrides.get('radio_finish', False)
+    cmd.finish_ctrl = overrides.get('finish_ctrl', -77)
     return cmd
+
+
+# Poinçon d'arrivée radio par défaut (hors circuit).
+FINISH_CTRL = -77
 
 
 def make_plan(st=100000, post_times=None, finish=None, end_status=None,
@@ -271,21 +277,35 @@ class TestRadioFinish:
 
     def test_arrivee_radio_emmet_prel_des_le_poincon_finish(self):
         """Au poinçon d'arrivée (avant GEC) : stat=1, rt, prel="true",
-        poinçons radio en direct."""
-        cmd = make_command(radio_positions=[3, 5, 7, 9])
-        cmd.radio_finish = True
+        poinçons radio en direct + poinçon d'arrivée sous finish-ctrl."""
+        cmd = make_command(radio_positions=[3, 5, 7, 9], radio_finish=True)
         plan = make_plan()
         xml = diff(cmd, plan, sim_t=plan['finish'] + 1)
         assert re.search(r'stat="1"', xml)
         assert re.search(r'rt="6000"', xml)
         assert 'prel="true"' in xml
-        assert punches(xml) == {103: 1800, 105: 3000, 107: 4200, 109: 5400}
+        assert punches(xml) == {103: 1800, 105: 3000, 107: 4200, 109: 5400,
+                                FINISH_CTRL: 6000}
+
+    def test_poincon_arrivee_pas_emis_avant_la_ligne(self):
+        """Avant le franchissement de la ligne : pas de poinçon d'arrivée."""
+        cmd = make_command(radio_positions=[3, 5, 7, 9], radio_finish=True)
+        plan = make_plan()
+        xml = diff(cmd, plan, sim_t=plan['finish'] - 1)
+        assert FINISH_CTRL not in punches(xml)
+
+    def test_poincon_arrivee_pas_emis_pour_abandon(self):
+        """Un coureur qui n'atteint pas la ligne (DNF/DNS) n'émet jamais
+        de poinçon d'arrivée."""
+        cmd = make_command(radio_positions=[3, 5, 7, 9], radio_finish=True)
+        dnf = make_plan(end_status=(2, STAT_DNF))
+        xml = diff(cmd, dnf, sim_t=dnf['finish'] + 500)
+        assert FINISH_CTRL not in punches(xml)
 
     def test_arrivee_radio_fenetre_avant_gec_garde_prel(self):
         """Entre l'arrivée radio et la lecture GEC : le diff suivant garde
         prel (la carte n'est toujours pas lue)."""
-        cmd = make_command(radio_positions=[3, 5, 7, 9])
-        cmd.radio_finish = True
+        cmd = make_command(radio_positions=[3, 5, 7, 9], radio_finish=True)
         plan = make_plan()
         diff(cmd, plan, sim_t=plan['finish'] + 1)
         xml = diff(cmd, plan, sim_t=plan['finish'] + cmd.gec_delay_tenths - 1)
@@ -294,21 +314,21 @@ class TestRadioFinish:
 
     def test_arrivee_radio_apres_gec_prel_retire(self):
         """Après la lecture GEC : prel retiré, puce complète (tous les
-        poinçons du parcours)."""
-        cmd = make_command(radio_positions=[3, 5, 7, 9])
-        cmd.radio_finish = True
+        poinçons du parcours + arrivée conservée)."""
+        cmd = make_command(radio_positions=[3, 5, 7, 9], radio_finish=True)
         plan = make_plan()
         xml = diff(cmd, plan, sim_t=plan['finish'] + cmd.gec_delay_tenths + 1)
         assert re.search(r'stat="1"', xml)
         assert re.search(r'rt="6000"', xml)
         assert 'prel' not in xml
-        assert punches(xml) == {101 + i: t for i, t in enumerate(POST_TIMES)}
+        expected = {101 + i: t for i, t in enumerate(POST_TIMES)}
+        expected[FINISH_CTRL] = 6000
+        assert punches(xml) == expected
 
     def test_poste_en_panne_revele_a_la_gec_radio_finish(self):
         """Arrivée radio : le poinçon jamais émis en course n'apparaît
         qu'à la lecture GEC."""
-        cmd = make_command(radio_positions=[3, 5, 7, 9])
-        cmd.radio_finish = True
+        cmd = make_command(radio_positions=[3, 5, 7, 9], radio_finish=True)
         plan = make_plan(skip_punch=5)
         xml = diff(cmd, plan, sim_t=plan['finish'] + 1)
         assert 105 not in punches(xml)
@@ -318,10 +338,10 @@ class TestRadioFinish:
         assert 'prel' not in xml
 
     def test_sans_radio_finish_aucun_prel(self):
-        """Sans --radio-finish, aucun prel n'est émis (comportement actuel)."""
-        cmd = make_command()
-        cmd.radio_finish = False
+        """Sans --radio-finish, aucun prel ni poinçon d'arrivée."""
+        cmd = make_command(radio_finish=False)
         plan = make_plan()
         xml = diff(cmd, plan, sim_t=plan['finish'] + cmd.gec_delay_tenths + 1)
         assert 'prel' not in xml
+        assert FINISH_CTRL not in punches(xml)
         assert re.search(r'stat="1"', xml)

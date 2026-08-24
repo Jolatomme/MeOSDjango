@@ -109,7 +109,8 @@
             {% endif %}
             {% endfor %}
             {% with last=splits|last %}
-            {% if competitor.is_ok and last.ctrl_name == "Arrivée" %}
+            {% if last.ctrl_name == "Arrivée" %}
+            {# Ligne affichée pour tout coureur ayant franchi la ligne (rt > 0), y compris non classés (PM…) #}
             <tr class="split-row" style="border-top:2px solid var(--co-green)">
               <td><i class="bi bi-flag-fill text-danger"></i> Arrivée</td>
               <td class="text-end split-abs fw-bold" style="color:var(--co-green)">{{ last.abs_time }}</td>

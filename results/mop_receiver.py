@@ -61,12 +61,14 @@ def _parse_id(value_str: str) -> int:
 
     MeOS peut suffixer les identifiants de postes avec "-1" ou d'autres
     caractères non numériques (ex: "31-1" → 31, "70" → 70).
-    Seule la séquence de chiffres en tête de chaîne est conservée.
+    Seule la séquence de chiffres en tête de chaîne est conservée ; un
+    signe négatif initial est conservé (l'identifiant du boîtier d'arrivée
+    radio peut être hors plage positive, ex. "-77").
 
     Raises:
         ValueError: si aucun chiffre n'est trouvé en tête.
     """
-    m = re.match(r'(\d+)', value_str.strip())
+    m = re.match(r'(-?\d+)', value_str.strip())
     if not m:
         raise ValueError(f"Identifiant invalide : {value_str!r}")
     return int(m.group(1))

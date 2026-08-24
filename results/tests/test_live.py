@@ -21,7 +21,8 @@ from results.models import (
 )
 from results.services import (
     rank_live, race_start_clock, race_end_clock, race_state,
-    race_in_progress, mark_negative_times, mark_presumed_prestart, format_clock,
+    race_in_progress, mark_negative_times, format_clock,
+    detect_arrival_punch, collect_negative_ctrls,
 )
 
 NOW = datetime(2025, 8, 14, 12, 0, 0)   # 12:00:00 → 432000 (1/10 s depuis minuit)
@@ -37,6 +38,9 @@ def make_competitor(id=1, st=100000, stat=0, rt=0, name='Coureur', org=1, cls=10
     c.prel = prel
     c.is_ok = (stat == STAT_OK and rt > 0)
     c.status_label = 'Inconnu'; c.status_badge = 'info'
+    # Annotations posées par mark_negative_times / rank_live en production.
+    c.neg_time = False; c.neg_ctrls = []
+    c.arrival_ctrl = None; c.arrival_rt = None
     return c
 
 
@@ -288,16 +292,45 @@ class TestRankLive:
         ])
         assert [r.id for r in ranked] == [1, 2]
 
-    def test_dernier_poste_pointe_groupe_valid_gec(self):
-        """Dernier poste du parcours pointé (radio) → groupe valid_gec."""
+    def test_dernier_poste_pointe_reste_en_course(self):
+        """Dernier poste du parcours pointé (radio), arrivée non radio :
+        le coureur reste en course (chrono qui tourne) jusqu'à la lecture
+        de la puce — plus de passage automatique en valid_gec."""
         c = make_competitor(1, st=100000)
         radio_map = {1: {101: 3000, 102: 6000, 103: 9000}}
         controls = [{'ctrl_id': cid, 'ctrl_name': str(i)}
                     for i, cid in enumerate([101, 102, 103], start=1)]
         ranked = self._rank([c], radio_map, controls)
+        assert c.live_group == 'en_course'
+        assert [r.id for r in ranked] == [1]
+        assert c.live_rank == 1
+
+    def test_poincon_arrivee_radio_passe_valid_gec(self):
+        """Scénario « 2 radios » (31 + Arrivée) : après le poinçon d'arrivée
+        (poste hors circuit), le coureur passe en valid_gec et last_time
+        porte le temps d'arrivée."""
+        c = make_competitor(1, st=100000)
+        radio_map = {1: {101: 3000, -77: 9000}}
+        controls = [{'ctrl_id': 101, 'ctrl_name': '1-101'}]
+        ranked = self._rank([c], radio_map, controls)
         assert c.live_group == 'valid_gec'
         assert [r.id for r in ranked] == [1]
         assert c.live_rank == 1
+        assert c.last_time == 9000
+        assert c.arrival_rt == 9000
+
+    def test_arrivee_radio_sans_parcours_complet_pas_detectee(self):
+        """Un poinçon hors circuit avant la fin du parcours n'est pas une
+        arrivée (ex. poste 900 de démonstration) : reste en course."""
+        c = make_competitor(1, st=100000)
+        radio_map = {1: {101: 3000, -77: 4000}}
+        controls = [
+            {'ctrl_id': 101, 'ctrl_name': '1-101'},
+            {'ctrl_id': 102, 'ctrl_name': '2-102'},
+        ]
+        self._rank([c], radio_map, controls)
+        assert c.live_group == 'en_course'
+        assert c.arrival_rt is None
 
     def test_avant_dernier_poste_reste_en_course(self):
         c = make_competitor(1, st=100000)
@@ -308,17 +341,19 @@ class TestRankLive:
         assert c.live_group == 'en_course'
 
     def test_valid_gec_pas_sans_ordre_de_circuit(self):
-        """Sans controls_seq, impossible de savoir que le parcours est terminé."""
+        """Sans controls_seq, aucun poinçon ne peut être qualifié d'arrivée :
+        seul prel=true fait passer en valid_gec."""
         c = make_competitor(1, st=100000)
         radio_map = {1: {101: 3000, 102: 6000, 103: 9000}}
         self._rank([c], radio_map)
         assert c.live_group == 'en_course'
 
-    def test_valid_gec_tries_par_temps_au_dernier_poste(self):
+    def test_valid_gec_tries_par_temps_darrivee(self):
+        """Deux arrivées radio : tri par temps d'arrivée (last_time)."""
         rapide = make_competitor(1, st=200000)
         lent = make_competitor(2, st=200000)
-        radio_map = {1: {101: 3000, 102: 6000, 103: 8000},
-                     2: {101: 3000, 102: 6000, 103: 11000}}
+        radio_map = {1: {101: 3000, 102: 6000, 103: 8000, -77: 9500},
+                     2: {101: 3000, 102: 6000, 103: 11000, -77: 13000}}
         controls = [{'ctrl_id': cid, 'ctrl_name': str(i)}
                     for i, cid in enumerate([101, 102, 103], start=1)]
         ranked = self._rank([rapide, lent], radio_map, controls)
@@ -330,9 +365,9 @@ class TestRankLive:
     def test_valid_gec_separe_du_groupe_en_course(self):
         """Le groupe valid_gec s'affiche après en_course, rangs séparés."""
         ec = make_competitor(1, st=100000)          # en course (position 2)
-        vg = make_competitor(2, st=100000)          # valid_gec (dernier poste)
+        vg = make_competitor(2, st=100000)          # valid_gec (arrivée radio)
         radio_map = {1: {101: 3000, 102: 6000},
-                     2: {101: 3000, 102: 6000, 103: 9000}}
+                     2: {101: 3000, 102: 6000, 103: 9000, -77: 12000}}
         controls = [{'ctrl_id': cid, 'ctrl_name': str(i)}
                     for i, cid in enumerate([101, 102, 103], start=1)]
         ranked = self._rank([ec, vg], radio_map, controls)
@@ -391,18 +426,19 @@ class TestRankLive:
         assert rapide.live_group == 'valid_gec' and rapide.live_rank == 1
         assert lent.live_group == 'valid_gec' and lent.live_rank == 2
 
-    def test_rt_negatif_stat_ok_va_dans_arrives_sans_rang(self):
+    def test_rt_negatif_stat_ok_va_dans_arrives_avec_rang(self):
+        """rt négatif + statut OK → « Arrivé » badgé, rang conservé."""
         c = make_competitor(1, st=100000, stat=STAT_OK, rt=-500)
         self._rank([c])
         assert c.live_group == 'arrives'
-        assert c.live_rank is None
+        assert c.live_rank == 1
         assert c.neg_time is True
 
     def test_rt_negatif_statut_definitif_reste_termine(self):
         c = make_competitor(1, st=100000, stat=STAT_DNF, rt=-500)
         self._rank([c])
         assert c.live_group == 'termine'
-        assert c.live_rank is None
+        assert c.live_rank is None   # groupe Terminé : pas de rang, hors neg_time
 
     def test_arrive_negatif_au_milieu_rangs_sequentiels(self):
         neg = make_competitor(1, st=100000, stat=STAT_OK, rt=5500)
@@ -412,15 +448,16 @@ class TestRankLive:
         ranked = self._rank([neg, a, b])
         assert [r.id for r in ranked] == [2, 1, 3]
         assert a.live_rank == 1
-        assert neg.live_rank is None
+        assert neg.live_rank == 2    # badgé mais classé
         assert b.live_rank == 3
 
-    def test_en_course_troncon_negatif_sans_rang(self):
+    def test_en_course_troncon_negatif_avec_rang(self):
+        """Badge temps négatif sans exclusion du classement live."""
         c = make_competitor(1, st=100000, stat=0)
         c.neg_time = True
         self._rank([c])
         assert c.live_group == 'en_course'
-        assert c.live_rank is None
+        assert c.live_rank == 1
 
     def test_ordre_finished_done_waiting(self):
         c_dnf = make_competitor(1, st=100000, stat=STAT_DNF, name='BBB')
@@ -556,52 +593,201 @@ class TestMarkNegativeTimes:
         assert self._mark(c, {1: {101: -350}}) is True
 
 
-class TestPresumedPrestartLive:
-    """OK définitif + poste attesté manquant → badge « Temps négatif » live."""
+class TestMarkNegativeTimesPosteManquant:
+    """Coureur OK définitif avec poste radio attesté manquant : MeOS étant
+    configuré avec tous les postes en radio, la lecture de puce devait tout
+    remonter — le trou signifie « pointé avant le départ »."""
 
-    def _mark(self, competitors, radio_map=None):
-        for c in competitors:
-            c.neg_time = False
-        mark_presumed_prestart(competitors, CONTROLS, radio_map or {})
-        return competitors
-
-    def _ok(self, id, **kw):
-        kw.setdefault('rt', 9000)
-        c = make_competitor(id, stat=STAT_OK, **kw)
+    def _ok(self, id, rt):
+        c = make_competitor(id, st=100000, stat=STAT_OK, rt=rt)
         c.tstat = STAT_OK
         return c
 
-    def test_poste_atteste_manquant_marque(self):
-        c1 = self._ok(1)
-        c2 = self._ok(2)
-        self._mark([c1, c2], {1: {101: 3000}, 2: {101: 3000, 102: 6000}})
+    def test_scenario_barros_vallet(self):
+        c1 = self._ok(1, rt=4220)                     # manque le 102
+        c2 = self._ok(2, rt=5000)
+        mark_negative_times([c1, c2], CONTROLS,
+                            {1: {101: 1860}, 2: {101: 1900, 102: 4010}})
         assert c1.neg_time is True
-        assert c1.prestart_ctrls == {102}
+        assert c1.neg_ctrls == ['2-102']
         assert c2.neg_time is False
 
-    def test_poste_non_atteste_non_marque(self):
-        c1 = self._ok(1)
-        c2 = self._ok(2)
-        self._mark([c1, c2], {1: {101: 3000}, 2: {101: 3000}})
+    def test_non_definitif_pas_de_badge_sur_trou(self):
+        """prel / carte non lue : les poinçons ne sont pas complets, un trou
+        n'est pas un diagnostic."""
+        c1 = make_competitor(1, st=100000)            # en course, tstat absent
+        c2 = self._ok(2, rt=4000)
+        mark_negative_times([c1, c2], CONTROLS,
+                            {1: {101: 1860}, 2: {101: 1900, 102: 4010}})
         assert c1.neg_time is False
 
-    def test_statut_ok_non_definitif_non_marque(self):
-        c1 = self._ok(1)
-        c1.tstat = 0
-        c2 = self._ok(2)
-        self._mark([c1, c2], {1: {101: 3000}, 2: {101: 3000, 102: 6000}})
-        assert c1.neg_time is False
-
-    def test_live_sans_rang_pour_presume(self):
-        """Coureur présumé → neg_time → exclu du classement live."""
-        c1 = self._ok(1)
-        c2 = self._ok(2, rt=8000)
-        self._mark([c1, c2], {1: {101: 3000}, 2: {101: 3000, 102: 6000}})
-        ranked = rank_live([c1, c2], {1: {101: 3000}, 2: {101: 3000, 102: 6000}},
-                           NOW, CONTROLS)
+    def test_rang_live_conserve_pour_un_badge(self):
+        """Le badge temps négatif n'exclut plus du classement live."""
+        c1 = self._ok(1, rt=4220)                     # badgé (manque 102)
+        c2 = self._ok(2, rt=5000)
+        mark_negative_times([c1, c2], CONTROLS,
+                            {1: {101: 1860}, 2: {101: 1900, 102: 4010}})
+        ranked = rank_live([c1, c2], {}, NOW)
+        assert [r.id for r in ranked] == [1, 2]
         assert c1.live_group == 'arrives'
-        assert c1.live_rank is None
-        assert c2.live_rank == 1
+        assert c1.live_rank == 1                      # badgé mais classé
+        assert c1.neg_time is True
+
+
+class TestDetectArrivalPunch:
+    """Détection du poinçon d'arrivée radio (boîtier d'arrivée équipé)."""
+
+    CONTROLS_ARR = [
+        {'ctrl_id': 31, 'ctrl_name': '1-31'},
+        {'ctrl_id': 179, 'ctrl_name': '2-179'},
+    ]
+
+    def test_detecte_hors_circuit_apres_parcours_complet(self):
+        radios = {31: 3000, 179: 6000, -77: 9000}
+        assert detect_arrival_punch(radios, self.CONTROLS_ARR) == (-77, 9000)
+
+    def test_pas_sans_parcours_complet(self):
+        """Un poste du circuit manque : pas d'arrivée détectable."""
+        radios = {31: 3000, -77: 9000}
+        assert detect_arrival_punch(radios, self.CONTROLS_ARR) is None
+
+    def test_pas_avant_dernier_poste(self):
+        """Poinçon hors circuit antérieur au dernier poste : pas une arrivée."""
+        radios = {31: 3000, 179: 6000, -77: 4000}
+        assert detect_arrival_punch(radios, self.CONTROLS_ARR) is None
+
+    def test_pas_de_circuit_vide(self):
+        """Sans ordre de circuit, l'heuristique ne qualifie rien."""
+        radios = {-77: 9000}
+        assert detect_arrival_punch(radios, []) is None
+
+    def test_plusieurs_candidats_le_plus_tardif(self):
+        radios = {31: 3000, 179: 6000, -77: 9000, -78: 9500}
+        assert detect_arrival_punch(radios, self.CONTROLS_ARR) == (-78, 9500)
+
+
+class TestScenariosRadioFinish:
+    """Scénarios « arrivée en radio » du rapport temps_negatif.txt."""
+
+    C2 = [{'ctrl_id': 31, 'ctrl_name': '1-31'}]                # 2 radios : 31 + Arrivée
+    C3 = [{'ctrl_id': 31, 'ctrl_name': '1-31'},                # 3 radios : 31, 179 + Arrivée
+          {'ctrl_id': 179, 'ctrl_name': '2-179'}]
+
+    def _rank(self, competitors, radio_map, controls):
+        return rank_live(competitors, radio_map, NOW, controls)
+
+    def test_deux_radios_dernier_poste_reste_en_course(self):
+        """2 radios : au poinçon du 31, le coureur reste En course (le chrono
+        continue), il ne passe plus en Valid GEC."""
+        c = make_competitor(1, st=100000)
+        self._rank([c], {1: {31: 3000}}, self.C2)
+        assert c.live_group == 'en_course'
+        assert c.last_time == 3000
+
+    def test_deux_radios_arrivee_pointee_valid_gec_temps_final(self):
+        """2 radios : au poinçon de l'arrivée, passage en Valid GEC avec le
+        temps final provisoire (et non plus le temps figé du 31)."""
+        c = make_competitor(1, st=100000)
+        self._rank([c], {1: {31: 3000, -77: 5000}}, self.C2)
+        assert c.live_group == 'valid_gec'
+        assert c.last_time == 5000
+
+    def test_trois_radios_arrivee_pointee_sans_faux_negatif(self):
+        """3 radios (31, 179 + Arrivée) : bons pointages — aucun badge
+        « Temps négatif » au poinçon de l'arrivée, passage en Valid GEC,
+        chrono arrêté au temps d'arrivée."""
+        c = make_competitor(1, st=100000)
+        mark_negative_times([c], self.C3, {1: {31: 3000, 179: 6000, -77: 8000}})
+        self._rank([c], {1: {31: 3000, 179: 6000, -77: 8000}}, self.C3)
+        assert c.live_group == 'valid_gec'
+        assert c.neg_time is False
+        assert c.last_time == 8000
+
+    def test_trois_radios_en_course_chrono_non_fige(self):
+        """3 radios : entre le poinçon du 179 et l'arrivée, le coureur reste
+        En course avec son dernier temps au poste (chrono vivant côté JS)."""
+        c = make_competitor(1, st=100000)
+        self._rank([c], {1: {31: 3000, 179: 6000}}, self.C3)
+        assert c.live_group == 'en_course'
+
+    def test_futur_pm_arrivee_radio_valid_gec_jusqua_lecture(self):
+        """Futur PM avec arrivée radio : avant la lecture de puce, stat
+        reste « inconnu » — le coureur passe bien en Valid GEC au poinçon
+        d'arrivée, sans badge temps négatif ; ce sera « Terminé » (PM)
+        après la lecture."""
+        c = make_competitor(1, st=100000, stat=0, rt=0)
+        radio_map = {1: {31: 3000, -77: 5000}}
+        mark_negative_times([c], self.C2, radio_map)
+        self._rank([c], radio_map, self.C2)
+        assert c.live_group == 'valid_gec'
+        assert c.neg_time is False
+        # Après lecture : PM classé dans Terminé.
+        c.stat = STAT_MP
+        c.rt = -1
+        self._rank([c], radio_map, self.C2)
+        assert c.live_group == 'termine'
+
+    def test_poincon_avant_depart_badge_conserve(self):
+        """Pointage d'un poste avant départ : badge Temps négatif affiché
+        dans Valid GEC (comportement validé par le rapport)."""
+        c = make_competitor(1, st=100000)
+        radio_map = {1: {31: -350, -77: 5000}}
+        mark_negative_times([c], self.C2, radio_map)
+        self._rank([c], radio_map, self.C2)
+        assert c.live_group == 'valid_gec'
+        assert c.neg_time is True
+        assert c.neg_ctrls == ['1-31']
+
+
+class TestCollectNegativeCtrls:
+    def _c(self, **kw):
+        kw.setdefault('rt', 9000)
+        return make_competitor(kw.pop('id', 1), stat=kw.pop('stat', STAT_OK),
+                               st=100000, **kw)
+
+    def test_troncon_negatif_nomme_le_poste(self):
+        c = self._c()
+        ctrls = collect_negative_ctrls(
+            c, CONTROLS, {1: {101: 6000, 102: 3000}})
+        assert ctrls == ['2-102']
+
+    def test_rt_negatif_stat_ok_arrivee(self):
+        c = self._c(rt=-500)
+        ctrls = collect_negative_ctrls(c, CONTROLS, {})
+        assert ctrls == ['Arrivée']
+
+    def test_rt_sentinelle_non_classifie_pas_negatif(self):
+        c = self._c(stat=STAT_MP, rt=-1)
+        assert collect_negative_ctrls(
+            c, CONTROLS, {1: {101: 3000, 102: 6000}}) == []
+
+    def test_arrivee_avant_dernier_poincon_present(self):
+        """Le comparateur est le dernier poinçon PRÉSENT, pas le dernier
+        poste du circuit (divergence historique corrigée)."""
+        controls = CONTROLS + [{'ctrl_id': 103, 'ctrl_name': '3-103'}]
+        c = self._c(rt=4000)
+        # 102 absent → dernier présent = 101 (3000) ; rt 4000 > 3000 → sain.
+        assert collect_negative_ctrls(c, controls, {1: {101: 3000}}) == []
+        c2 = self._c(rt=2500)
+        assert collect_negative_ctrls(
+            c2, controls, {1: {101: 3000}}) == ['Arrivée']
+
+    def test_fusion_ordre_circuit(self):
+        """Poste manquant (OK définitif), tronçon négatif et Arrivée sont
+        fusionnés dans l'ordre du circuit."""
+        from collections import Counter
+        c = self._c(rt=1200)
+        c.tstat = STAT_OK
+        ctrls = [
+            {'ctrl_id': 101, 'ctrl_name': '1-101'},   # sain
+            {'ctrl_id': 102, 'ctrl_name': '2-102'},   # manquant + attesté
+            {'ctrl_id': 103, 'ctrl_name': '3-103'},   # sain (reprise de chaîne)
+            {'ctrl_id': 104, 'ctrl_name': '4-104'},   # tronçon négatif
+        ]
+        radios = {1: {101: 3000, 103: 2000, 104: 1500}}
+        attested = Counter({101: 2, 102: 2, 103: 2, 104: 1})
+        assert collect_negative_ctrls(
+            c, ctrls, radios, attested) == ['2-102', '4-104', 'Arrivée']
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -622,7 +808,9 @@ class TestLiveResultsView:
              patch('results.views._controls_for', return_value=[]), \
              patch('results.views.rank_live', return_value=competitors), \
              patch('results.views.race_start_clock', return_value=race_start), \
+             patch('results.views.datetime') as mock_dt, \
              patch('results.views.render') as mock_render:
+            mock_dt.now.return_value = NOW
             MockTeam.objects.filter.return_value.exists.return_value = False
             from results.views import live_results
             live_results(rf_get(), cid=1, class_id='H21')
@@ -762,6 +950,8 @@ class TestApiLiveResults:
         r.last_time = 5000; r.last_punch_clock = 205000
         r.progress_pos = 3
         r.class_obj = None
+        r.neg_time = False; r.neg_ctrls = []
+        r.arrival_ctrl = None; r.arrival_rt = None
         return r
 
     def _run(self, competitors=None, course=None, class_name='H21', race_start=180000,
@@ -778,7 +968,9 @@ class TestApiLiveResults:
                  {'ctrl_id': 102, 'ctrl_name': '2-102'},
              ]), \
              patch('results.views.rank_live', return_value=competitors), \
-             patch('results.views.race_start_clock', return_value=race_start):
+             patch('results.views.race_start_clock', return_value=race_start), \
+             patch('results.views.datetime') as mock_dt:
+            mock_dt.now.return_value = NOW
             MockTeam.objects.filter.return_value.exists.return_value = False
             from results.views import api_live_results
             return json.loads(api_live_results(rf_get(), cid=1, class_id='H21').content)
@@ -809,6 +1001,53 @@ class TestApiLiveResults:
             {'ctrl': 101, 'time': 3000},
             {'ctrl': 102, 'time': 6000},
         ]
+
+    def test_radio_punches_negatifs_inclus(self):
+        """Les poinçons antérieurs au départ (rt ≤ 0) sont transmis à
+        l'API pour affichage « avant départ » (plus de filtre rt > 0)."""
+        r = self._runner(id=1)
+        data = self._run(competitors=[r], radio_map={1: {101: -350, 102: 6000}})
+        assert data['runners'][0]['radio_punches'] == [
+            {'ctrl': 101, 'time': -350},
+            {'ctrl': 102, 'time': 6000},
+        ]
+
+    def test_provisional_rt_arrivee_radio(self):
+        """Valid. GEC avec poinçon d'arrivée radio : le temps final
+        provisoire est exposé."""
+        r = self._runner(id=1, group='valid_gec')
+        r.arrival_rt = 8000
+        data = self._run(competitors=[r])
+        assert data['runners'][0]['provisional_rt'] == 8000
+
+    def test_provisional_rt_prel_meos(self):
+        """Valid. GEC via prel : rt préliminaire MeOS prioritaire sur le
+        temps du poinçon d'arrivée."""
+        r = self._runner(id=1, group='valid_gec')
+        r.rt = 7500; r.is_ok = True; r.arrival_rt = 8000
+        data = self._run(competitors=[r])
+        assert data['runners'][0]['provisional_rt'] == 7500
+
+    def test_provisional_rt_absent_hors_valid_gec(self):
+        r = self._runner(id=1, group='en_course')
+        data = self._run(competitors=[r])
+        assert data['runners'][0]['provisional_rt'] is None
+
+    def test_neg_ctrls_renvoyes(self):
+        """neg_ctrls est recalculé par mark_negative_times côté vue :
+        rt négatif + statut OK → ['Arrivée']."""
+        r = self._runner(id=1, group='arrives')
+        r.stat = STAT_OK; r.rt = -500
+        data = self._run(competitors=[r])
+        assert data['runners'][0]['neg_time'] is True
+        assert data['runners'][0]['neg_ctrls'] == ['Arrivée']
+
+    def test_neg_ctrls_troncon_negatif_nomme(self):
+        r = self._runner(id=1, group='en_course')
+        data = self._run(competitors=[r],
+                         radio_map={1: {101: 6000, 102: 3000}})
+        assert data['runners'][0]['neg_time'] is True
+        assert data['runners'][0]['neg_ctrls'] == ['2-102']
 
     def test_race_state_live(self):
         data = self._run(competitors=[self._runner()])

@@ -17,6 +17,7 @@ from .services import (
     get_org_map, get_class_controls, get_controls_by_leg,
     get_radio_map, compute_splits, build_finish_split,
     get_negative_time_stats,
+    attested_ctrls, detect_prestart_ctrls,
     mark_best_splits, rank_splits,
     rank_finishers, build_rank_map,
     build_leg_matrix, compute_leg_refs,
@@ -25,7 +26,7 @@ from .services import (
     compute_course_hash, get_courses_map,
     competition_visible,
     rank_live, race_start_clock, race_end_clock, race_state,
-    race_in_progress, mark_negative_times, mark_presumed_prestart, clock_tenths,
+    race_in_progress, mark_negative_times, clock_tenths,
     LIVE_GROUPS,
 )
 
@@ -185,11 +186,12 @@ def class_results(request, cid, class_id):
     results      = finishers + _sort_non_finishers(non_finishers)
     controls_seq = _controls_for(cid, cls, course)
     radio_map    = get_radio_map(cid, [c.id for c in results])
-    mark_presumed_prestart(results, controls_seq, radio_map)
+    attested     = attested_ctrls(radio_map)
 
     for c in results:
-        c.splits = compute_splits(c.id, controls_seq, radio_map,
-                                  c.prestart_ctrls)
+        c.splits = compute_splits(
+            c.id, controls_seq, radio_map,
+            detect_prestart_ctrls(c, controls_seq, radio_map, attested))
 
     # Ajout du tronçon arrivée pour tous (cohérence mark_best_splits / rank_splits)
     for c in results:
@@ -257,11 +259,14 @@ def competitor_detail(request, cid, competitor_id):
     controls_seq, _ = get_class_controls(cid, competitor.cls)
     class_competitors = list(Mopcompetitor.objects.filter(cid=cid, cls=competitor.cls))
     radio_map = get_radio_map(cid, [c.id for c in class_competitors])
-    mark_presumed_prestart([competitor] + class_competitors, controls_seq, radio_map)
-    splits = compute_splits(competitor_id, controls_seq, radio_map,
-                            competitor.prestart_ctrls)
-    # Ajout du tronçon arrivée
-    if competitor.is_ok and splits and competitor.rt > 0:
+    attested  = attested_ctrls(radio_map)
+    splits = compute_splits(
+        competitor_id, controls_seq, radio_map,
+        detect_prestart_ctrls(competitor, controls_seq, radio_map, attested))
+    # Tronçon arrivée : tout coureur avec un temps de course a franchi la
+    # ligne, y compris les non-classés (PM/DQ/OT…) — le temps est alors
+    # visible sur sa fiche, sans valeur de classement.
+    if splits and competitor.rt > 0:
         last_abs = splits[-1]['abs_raw']
         splits.append(build_finish_split(competitor.rt, last_abs))
     competitor.neg_time = any(sp.get('neg_leg') for sp in splits)
@@ -366,7 +371,6 @@ def live_results(request, cid, class_id):
     radio_map    = get_radio_map(cid, [c.id for c in competitors])
     now          = datetime.now()
     mark_negative_times(competitors, controls_seq or [], radio_map)
-    mark_presumed_prestart(competitors, controls_seq or [], radio_map)
     live         = rank_live(competitors, radio_map, now, controls_seq or [])
 
     groups = {g: [c for c in live if c.live_group == g] for g in LIVE_GROUPS}
@@ -408,7 +412,6 @@ def api_live_results(request, cid, class_id):
     radio_map    = get_radio_map(cid, [c.id for c in competitors])
     now          = datetime.now()
     mark_negative_times(competitors, controls_seq or [], radio_map)
-    mark_presumed_prestart(competitors, controls_seq or [], radio_map)
     live         = rank_live(competitors, radio_map, now, controls_seq or [])
 
     race_start = race_start_clock(competitors)
@@ -433,17 +436,24 @@ def api_live_results(request, cid, class_id):
             'st':                c.st,
             'rt':                c.rt if c.live_group == 'arrives' else None,
             'neg_time':          bool(getattr(c, 'neg_time', False)),
+            'neg_ctrls':         list(getattr(c, 'neg_ctrls', []) or []),
             'n_punches':         c.n_punches,
             'progress_pos':      getattr(c, 'progress_pos', 0),
             'last_ctrl':         c.last_ctrl,
             'last_time':         c.last_time,
             'last_punch_clock':  c.last_punch_clock,
+            # Temps final provisoire (valid. GEC) : rt préliminaire MeOS ou
+            # temps au poinçon d'arrivée radio détecté par rank_live.
+            'provisional_rt':    (
+                (c.rt if (getattr(c, 'rt', None) or 0) > 0 else None)
+                or getattr(c, 'arrival_rt', None)
+            ),
             'radio_punches':     [
                 {'ctrl': ctrl, 'time': rt}
                 for ctrl, rt in sorted(
                     radio_map.get(c.id, {}).items(), key=lambda x: x[1]
                 )
-                if rt and rt > 0 and ctrl in ctrl_ids
+                if ctrl in ctrl_ids
             ],
         })
 
@@ -810,11 +820,12 @@ def duel_analysis(request, cid, class_id):
     org_map      = get_org_map(cid)
     controls_seq = _controls_for(cid, cls, course)
     radio_map    = get_radio_map(cid, [c.id for c in competitors])
-    mark_presumed_prestart(competitors, controls_seq, radio_map)
+    attested     = attested_ctrls(radio_map)
     runners_data = []
     for c in all_results:
-        splits = compute_splits(c.id, controls_seq, radio_map,
-                                c.prestart_ctrls)
+        splits = compute_splits(
+            c.id, controls_seq, radio_map,
+            detect_prestart_ctrls(c, controls_seq, radio_map, attested))
         runners_data.append({
             'id': c.id, 'name': c.name, 'org': org_map.get(c.org, ''),
             'rank': getattr(c, 'rank', None),
@@ -875,11 +886,12 @@ def _load_recapitulatif_data(cid, class_id, context=None):
     results      = finishers
     controls_seq = _controls_for(cid, cls, course)
     radio_map   = get_radio_map(cid, [c.id for c in competitors])
-    mark_presumed_prestart(competitors, controls_seq, radio_map)
+    attested    = attested_ctrls(radio_map)
 
     for c in results:
-        c.splits = compute_splits(c.id, controls_seq, radio_map,
-                                  c.prestart_ctrls)
+        c.splits = compute_splits(
+            c.id, controls_seq, radio_map,
+            detect_prestart_ctrls(c, controls_seq, radio_map, attested))
         last_abs = c.splits[-1]['abs_raw'] if c.splits else None
         c.splits.append(build_finish_split(c.rt, last_abs))
         c.neg_time = any(sp.get('neg_leg') for sp in c.splits)
@@ -1046,6 +1058,8 @@ def relay_results(request, cid, class_id):
     controls_by_leg, control_name_map = get_controls_by_leg(cid, class_id)
     radio_map = get_radio_map(cid, runner_ids)
 
+    # Attestation et postes présumés pointés avant le départ, par manche
+    # (l'attestation se juge parmi les coureurs de la même manche).
     prestart_by_leg = {}
     for leg_num in range(1, n_legs + 1):
         leg_runners = [competitors[m.rid] for m in all_members
@@ -1054,9 +1068,11 @@ def relay_results(request, cid, class_id):
             {'ctrl_id': cv, 'ctrl_name': f"{idx+1}-{control_name_map.get(cv, str(cv))}"}
             for idx, cv in enumerate(controls_by_leg.get(leg_num, []))
         ]
-        mark_presumed_prestart(leg_runners, ctrl_seq, radio_map)
+        attested = attested_ctrls({r.id: radio_map.get(r.id, {})
+                                   for r in leg_runners})
         prestart_by_leg[leg_num] = {
-            r.id: r.prestart_ctrls for r in leg_runners
+            r.id: detect_prestart_ctrls(r, ctrl_seq, radio_map, attested)
+            for r in leg_runners
         }
 
     teams_data = []
@@ -1075,8 +1091,9 @@ def relay_results(request, cid, class_id):
                     {'ctrl_id': cv, 'ctrl_name': f"{idx+1}-{control_name_map.get(cv, str(cv))}"}
                     for idx, cv in enumerate(controls_by_leg.get(leg_num, []))
                 ]
-                splits = compute_splits(runner.id, ctrl_seq, radio_map,
-                                        prestart_by_leg.get(leg_num, {}).get(runner.id))
+                splits = compute_splits(
+                    runner.id, ctrl_seq, radio_map,
+                    prestart_by_leg.get(leg_num, {}).get(runner.id))
                 last_ctrl_abs = splits[-1]['abs_raw'] if splits and splits[-1]['abs_raw'] is not None else None
                 splits.append(build_finish_split(leg_time_raw, last_ctrl_abs, leg_full_race_if_missing=False))
                 legs_data.append({

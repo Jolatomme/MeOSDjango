@@ -104,19 +104,174 @@ def get_radio_map(cid, runner_ids):
     return radio_map
 
 
+# ─── Temps négatifs & poinçon d'arrivée ────────────────────────────────────────
+
+def _circuit_negatives(controls_seq, radios, prestart=frozenset()):
+    """Libellés des postes en anomalie, dans l'ordre du circuit :
+
+      - poste présumé pointé avant le départ (dans ``prestart``) ;
+      - tronçon strictement négatif depuis le poinçon connu précédent.
+
+    La chaîne des tronçons est rompue par un poste manquant ou présumé :
+    elle reprend au poinçon connu suivant (les tronçons entre deux
+    poinçons connus restent comparés).
+    """
+    names = []
+    prev  = 0
+    for ctrl in controls_seq:
+        cid_ = ctrl['ctrl_id']
+        if cid_ in prestart:
+            names.append(ctrl['ctrl_name'])
+            prev = None
+            continue
+        abs_t = radios.get(cid_)
+        if abs_t is None:
+            prev = None
+            continue
+        if prev is not None and abs_t < prev:
+            names.append(ctrl['ctrl_name'])
+        prev = abs_t
+    return names
+
+
+def negative_leg_names(runner_id, controls_seq, radio_map):
+    """Noms des postes dont le tronçon depuis le poinçon connu précédent
+    est strictement négatif (boîtier mal synchronisé, carte SI non
+    effacée — poinçon antérieur au départ)."""
+    return _circuit_negatives(controls_seq, radio_map.get(runner_id, {}))
+
+
+def is_definitive_ok(c):
+    """Coureur classé OK avec un statut définitif (carte lue à la GEC).
+
+    ``stat`` est le statut courant ; ``tstat`` est le statut attribué à la
+    lecture de la puce. Un résultat préliminaire (arrivé, carte non lue)
+    n'est pas définitif.
+    """
+    return (
+        getattr(c, 'stat', None) == STAT_OK
+        and getattr(c, 'tstat', None) == STAT_OK
+        and (getattr(c, 'rt', 0) or 0) > 0
+    )
+
+
+def attested_ctrls(radio_map):
+    """Nombre de coureurs ayant transmis un poinçon, par poste.
+
+    Un poste jamais pointé par personne (boîtier mort, configuration
+    partielle) ne peut pas servir à diagnostiquer un trou individuel."""
+    attested = Counter()
+    for radios in radio_map.values():
+        attested.update(radios.keys())
+    return attested
+
+
+def detect_prestart_ctrls(c, controls_seq, radio_map, attested=None):
+    """Postes manquant des poinçons radio d'un coureur OK définitif.
+
+    MeOS étant configuré avec tous les postes en radio, la lecture de la
+    puce à la GEC remonte tout le parcours — sauf les poinçons filtrés à
+    l'export MOP (temps de course ≤ 0). Un trou chez un coureur classé OK
+    signifie donc « pointé avant le départ » : carte SI non effacée,
+    départ avancé. La valeur exacte du temps n'est pas transmise.
+
+    ``attested`` (voir ``attested_ctrls``) évite de flagger un poste dont
+    personne n'a jamais transmis (boîtier mort / configuration partielle).
+
+    Returns
+    -------
+    Ensemble de ctrl_id.
+    """
+    if not is_definitive_ok(c):
+        return set()
+    radios = radio_map.get(getattr(c, 'id', None), {})
+    return {
+        ctrl['ctrl_id'] for ctrl in controls_seq
+        if ctrl['ctrl_id'] not in radios
+        and (attested is None or attested.get(ctrl['ctrl_id'], 0) > 0)
+    }
+
+
+def collect_negative_ctrls(c, controls_seq, radio_map, attested=None):
+    """Liste des libellés en anomalie pour un coureur (source unique du
+    badge « Temps négatif » et du bandeau diagnostic), dans l'ordre du
+    circuit :
+
+      - postes à tronçon négatif, et postes manquants d'un coureur OK
+        définitif attesté (= pointés avant le départ, voir
+        ``detect_prestart_ctrls``) ;
+      - « Arrivée » si le temps de course (rt > 0 — la sentinelle rt=-1
+        des non-classés n'est pas une anomalie) est antérieur au dernier
+        poinçon radio présent, ou négatif avec statut OK.
+    """
+    rt     = getattr(c, 'rt', None)
+    radios = radio_map.get(getattr(c, 'id', None), {})
+    prestart = detect_prestart_ctrls(c, controls_seq, radio_map, attested)
+    negs = _circuit_negatives(controls_seq, radios, prestart)
+    if getattr(c, 'stat', None) == STAT_OK and rt is not None and rt < 0:
+        negs.append('Arrivée')
+    elif rt and rt > 0:
+        last_abs = None
+        for ctrl in controls_seq:
+            abs_t = radios.get(ctrl['ctrl_id'], -1)
+            if abs_t > 0:
+                last_abs = abs_t
+        if last_abs and c.rt < last_abs:
+            negs.append('Arrivée')
+    return negs
+
+
+def detect_arrival_punch(radios, controls_seq):
+    """Détecte le poinçon d'arrivée radio (boîtier d'arrivée équipé).
+
+    Un poinçon dont le poste est hors du circuit (``controls_seq``),
+    reçu alors que tous les postes du circuit sont pointés et après le
+    dernier d'entre eux, signale l'arrivée : le temps final remonte en
+    direct, avant la lecture de la puce à la GEC.
+
+    Returns
+    -------
+    Tuple ``(ctrl_id, rt)`` si un poinçon d'arrivée est identifié, sinon
+    ``None``. Sans ordre de circuit (``controls_seq`` vide), aucun
+    poinçon ne peut être qualifié d'« arrivée » par cette heuristique.
+    """
+    if not radios or not controls_seq:
+        return None
+    known = {c['ctrl_id'] for c in controls_seq}
+    # Parcours complet : chaque poste radio du circuit a un poinçon (un
+    # poinçon antérieur au départ, transmis négatif, reste toléré).
+    course_times = {ctrl: rt for ctrl, rt in radios.items() if ctrl in known}
+    if len(course_times) < len(known):
+        return None
+    positives = [rt for rt in course_times.values() if rt and rt > 0]
+    # Référence temporelle : dernier poinçon positif ; si tous les poinçons
+    # du circuit sont antérieurs au départ (négatifs), le plus tardif d'entre
+    # eux fait office de référence.
+    ref_t = max(positives) if positives else max(course_times.values())
+    candidates = [
+        (rt, ctrl) for ctrl, rt in radios.items()
+        if ctrl not in known and rt and rt > ref_t
+    ]
+    if not candidates:
+        return None
+    rt, ctrl = max(candidates)
+    return (ctrl, rt)
+
+
 # ─── Calcul des splits ─────────────────────────────────────────────────────────
 
 def compute_splits(runner_id, controls_seq, radio_map, prestart_ctrls=None):
     """Calcule les temps intermédiaires d'un coureur.
 
-    ``prestart_ctrls`` : ensemble de postes présumés pointés avant le
-    départ (statut OK définitif + poste attesté manquant, voir
-    ``mark_presumed_prestart``). Leur valeur exacte est inconnue :
-    affichage « avant départ », tronçon inconnu, marqué négatif.
+    ``prestart_ctrls`` : postes présumés pointés avant le départ d'un
+    coureur OK définitif (voir ``detect_prestart_ctrls``). Leur valeur
+    exacte est filtrée par l'export MOP : la cellule affiche
+    « Temps négatif », le tronçon est inconnu et marqué négatif.
 
-    Chaîne des tronçons : un poste inconnu (manquant ou présumé) rend
-    les tronçons adjacents inconnus, mais la chaîne reprend au poinçon
-    connu suivant (les tronçons entre deux poinçons connus sont valides).
+    Chaîne des tronçons : un poste manquant ou présumé rend les tronçons
+    adjacents inconnus, mais la chaîne reprend au poinçon connu suivant
+    (les tronçons entre deux poinçons connus restent valides). Un tronçon
+    négatif est signalé via ``neg_leg``.
     """
     radios = radio_map.get(runner_id, {})
     prestart_ctrls = prestart_ctrls or set()
@@ -125,25 +280,36 @@ def compute_splits(runner_id, controls_seq, radio_map, prestart_ctrls=None):
     for ctrl in controls_seq:
         abs_t = radios.get(ctrl['ctrl_id'])
         if ctrl['ctrl_id'] in prestart_ctrls:
-            leg, neg_leg, abs_display, prev = None, True, 'avant départ', None
-        elif abs_t is not None and prev is not None:
-            leg = abs_t - prev
-            neg_leg, abs_display, prev = leg < 0, format_time(abs_t), abs_t
-        elif abs_t is not None:
-            leg, neg_leg, abs_display, prev = None, False, format_time(abs_t), abs_t
+            splits.append({
+                'ctrl_name': ctrl['ctrl_name'],
+                'abs_time':  '-',
+                'leg_time':  'Temps négatif',
+                'leg_raw':   None,
+                'abs_raw':   None,
+                'neg_leg':   True,
+                'is_best':   False,
+                'leg_rank':  None,
+                'abs_rank':  None,
+            })
+            prev = None
+            continue
+        if abs_t is not None and prev is not None:
+            leg     = abs_t - prev
+            neg_leg = leg < 0
         else:
-            leg, neg_leg, abs_display, prev = None, False, '-', None
+            leg, neg_leg = None, False
         splits.append({
             'ctrl_name': ctrl['ctrl_name'],
-            'abs_time':  abs_display,
+            'abs_time':  format_time(abs_t) if abs_t is not None else '-',
             'leg_time':  format_time(leg)   if leg is not None else '-',
             'leg_raw':   leg,
-            'abs_raw':   None if ctrl['ctrl_id'] in prestart_ctrls else abs_t,
+            'abs_raw':   abs_t,
             'neg_leg':   neg_leg,
             'is_best':   False,
             'leg_rank':  None,
             'abs_rank':  None,
         })
+        prev = abs_t
     return splits
 
 
@@ -220,16 +386,12 @@ def get_negative_time_stats(cid):
             continue
         controls_seq, _ = get_class_controls(cid, cls.id)
         radio_map       = get_radio_map(cid, [c.id for c in competitors])
-        presumed        = find_presumed_prestart(competitors, controls_seq, radio_map)
+        attested        = attested_ctrls(radio_map)
         for c in competitors:
             if c.id in affected:
                 continue
-            splits = compute_splits(c.id, controls_seq, radio_map, presumed.get(c.id))
-            neg_ctrls = [sp['ctrl_name'] for sp in splits if sp['neg_leg']]
-            if c.rt > 0 and splits:
-                last_abs = splits[-1]['abs_raw']
-                if last_abs and c.rt < last_abs:
-                    neg_ctrls.append('Arrivée')
+            neg_ctrls = collect_negative_ctrls(c, controls_seq, radio_map,
+                                               attested)
             if neg_ctrls:
                 affected[c.id] = {
                     'name':    c.name,
@@ -808,101 +970,22 @@ def race_in_progress(competitors, now=None):
 
 
 def mark_negative_times(competitors, controls_seq, radio_map):
-    """Pose ``c.neg_time`` sur les coureurs ayant au moins un temps négatif.
+    """Pose ``c.neg_time`` et ``c.neg_ctrls`` sur les coureurs ayant au
+    moins un temps négatif.
 
-    Mêmes règles que ``get_negative_time_stats`` / ``compute_splits`` :
-    tronçon radio négatif, arrivée antérieure au dernier poste radio, ou
-    temps d'arrivée ``rt`` négatif (seulement si le statut est OK — pour
-    les statuts non-OK, ``rt = -1`` est la sentinelle « non classé »,
-    pas un temps négatif).
+    Règles unifiées (voir ``collect_negative_ctrls``, partagées avec
+    ``get_negative_time_stats`` et ``compute_splits``) : tronçon radio
+    négatif, poste manquant d'un coureur OK définitif attesté (pointé
+    avant le départ), arrivée antérieure au dernier poste radio, ou temps
+    d'arrivée ``rt`` négatif (seulement si le statut est OK — pour les
+    statuts non-OK, ``rt = -1`` est la sentinelle « non classé », pas un
+    temps négatif).
     """
+    attested = attested_ctrls(radio_map)
     for c in competitors:
-        radios = radio_map.get(c.id, {})
-        rt     = getattr(c, 'rt', None)
-        prev, neg = 0, False
-        for ctrl in controls_seq:
-            abs_t = radios.get(ctrl['ctrl_id'])
-            if abs_t is not None and prev is not None and abs_t < prev:
-                neg = True
-                break
-            prev = abs_t
-        if (
-            not neg
-            and getattr(c, 'stat', None) == STAT_OK
-            and rt is not None and rt < 0
-        ):
-            neg = True
-        if not neg and rt and rt > 0:
-            last_abs = None
-            for ctrl in controls_seq:
-                abs_t = radios.get(ctrl['ctrl_id'], -1)
-                if abs_t > 0:
-                    last_abs = abs_t
-            if last_abs and c.rt < last_abs:
-                neg = True
-        c.neg_time = neg
-
-
-def is_definitive_ok(c):
-    """Coureur classé OK avec un statut définitif (carte lue à la GEC).
-
-    ``stat`` est le statut courant ; ``tstat`` est le statut attribué à la
-    lecture de la puce. Un résultat préliminaire (arrivé, carte non lue)
-    n'est pas définitif.
-    """
-    return (
-        getattr(c, 'stat', None) == STAT_OK
-        and getattr(c, 'tstat', None) == STAT_OK
-        and (getattr(c, 'rt', 0) or 0) > 0
-    )
-
-
-def find_presumed_prestart(competitors, controls_seq, radio_map):
-    """Postes présumés pointés avant le départ, par coureur OK définitif.
-
-    Un coureur classé OK après lecture de la carte a validé tous les postes
-    de son circuit : un poste attesté (pointé par au moins un autre coureur
-    de la catégorie — boîtier vivant) mais absent de ses poinçons radio a
-    été filtré par l'export MOP de MeOS (temps de course ≤ 0, seule
-    condition de filtre connue). Il a donc été pointé avant son départ ;
-    la valeur exacte du temps négatif n'est pas transmise.
-
-    Returns
-    -------
-    dict {id coureur: set de ctrl_id présumés}.
-    """
-    attested = Counter(
-        ctrl for c in competitors for ctrl in radio_map.get(c.id, {})
-    )
-    presumed = {}
-    for c in competitors:
-        if not is_definitive_ok(c):
-            continue
-        radios  = radio_map.get(c.id, {})
-        missing = [
-            ctrl['ctrl_id'] for ctrl in controls_seq
-            if ctrl['ctrl_id'] not in radios
-            and attested[ctrl['ctrl_id']] > 0
-        ]
-        if missing:
-            presumed[c.id] = set(missing)
-    return presumed
-
-
-def mark_presumed_prestart(competitors, controls_seq, radio_map):
-    """Pose ``c.prestart_ctrls`` et ``c.neg_time = True`` sur les coureurs
-    OK définitifs ayant un poste attesté manquant (présumé pointé avant
-    le départ). Complète ``mark_negative_times``.
-    """
-    presumed = find_presumed_prestart(competitors, controls_seq, radio_map)
-    for c in competitors:
-        ctrls = presumed.get(c.id)
-        if ctrls:
-            c.prestart_ctrls = ctrls
-            c.neg_time       = True
-        else:
-            c.prestart_ctrls = set()
-            c.neg_time = bool(getattr(c, 'neg_time', False))
+        neg_ctrls = collect_negative_ctrls(c, controls_seq, radio_map, attested)
+        c.neg_ctrls = neg_ctrls
+        c.neg_time  = bool(neg_ctrls)
 
 
 def _cmp_en_course(a, b):
@@ -943,27 +1026,29 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
 
     Mutates : attache à chaque coureur ``live_group``, ``live_rank``,
     ``n_punches``, ``last_ctrl``, ``last_time`` (1/10 s de course),
-    ``last_punch_clock`` (horloge murale = st + last_time) et
+    ``last_punch_clock`` (horloge murale = st + last_time), ``ref_time``,
     ``progress_pos`` (position 1-based dans ``controls_seq`` du poste le
-    plus avancé ; 0 si aucun poinçon de parcours connu).
+    plus avancé ; 0 si aucun poinçon de parcours connu) et
+    ``arrival_rt`` (temps au poinçon d'arrivée radio, sinon None).
 
     La progression suit l'ordre imposé par le circuit (``controls_seq``) :
     ``last_ctrl`` / ``progress_pos`` désignent le poste le plus avancé
     dans cet ordre, et non le poinçon le plus récent ou le poste au plus
-    grand identifiant. ``controls_seq`` contient tous les postes du
-    parcours (MeOS est configuré avec tous les postes en radio) ; seuls
-    les poinçons des postes réellement équipés remontent en direct.
+    grand identifiant. ``controls_seq`` contient les postes radio
+    déclarés pour la classe ; seuls les poinçons des postes réellement
+    équipés remontent en direct.
 
-    Un coureur « en course » ayant pointé le dernier poste du parcours
-    (``progress_pos`` == nombre de postes, ``controls_seq`` non vide)
-    passe dans le groupe ``valid_gec`` : le dernier poste est radio, le
-    parcours est terminé, mais la carte n'a pas encore été lue à la GEC
-    et MeOS n'a pas encore attribué le statut officiel.
+    Passage en ``valid_gec`` sur preuve d'arrivée uniquement :
+      - résultat préliminaire MeOS (``prel`` = True : poinçon d'arrivée
+        radio traité par MeOS, carte pas encore lue) ;
+      - ou poinçon d'arrivée radio détecté (voir
+        ``detect_arrival_punch`` : poste hors circuit, reçu une fois le
+        parcours complet). Dans ce cas ``last_time`` porte le temps
+        d'arrivée (provisoire) et le chrono s'arrête.
 
-    Un résultat préliminaire MeOS (``prel`` = True : arrivée radio, carte
-    pas encore lue) est aussi classé ``valid_gec`` même si ``stat``/``rt``
-    annoncent déjà un OK : le statut n'est officiel qu'après la lecture de
-    la puce à la GEC (diff suivant, ``prel`` absent → ``arrives``).
+    Sans arrivée radio, pointer le dernier poste ne change pas de groupe :
+    le coureur reste « en course » (chrono qui tourne) jusqu'à la lecture
+    de la puce, qui le fait passer « arrives » (statut OK) ou « termine ».
 
     Classement « en course » :
       - deux coureurs sans info radio (``progress_pos = 0``) : le départ
@@ -974,10 +1059,9 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
         premier poste radio est inférieur au temps de course écoulé du
         sans-info, sinon le sans-info reste devant.
 
-    Les coureurs marqués ``neg_time`` (à poser via ``mark_negative_times``
-    avant l'appel, ou ``rt < 0`` avec statut OK détecté ici) n'obtiennent
-    pas de rang (``live_rank = None``). Un ``rt < 0`` avec statut OK est
-    classé « arrives ».
+    Les coureurs marqués ``neg_time`` (badge « Temps négatif ») gardent
+    leur rang : le badge signale l'anomalie sans les exclure du
+    classement. Un ``rt < 0`` avec statut OK est classé « arrives ».
 
     Returns
     -------
@@ -1006,6 +1090,9 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
         c.progress_pos      = max((p for p, _, _ in positions), default=0)
         c.first_radio_time  = min(positions, default=None)[1] if positions else None
         c.elapsed           = (now_t - c.st) if c.st and c.st > 0 and c.st <= now_t else None
+        arrival             = detect_arrival_punch(radios, controls_seq or [])
+        c.arrival_ctrl      = arrival[0] if arrival else None
+        c.arrival_rt        = arrival[1] if arrival else None
         if positions:
             furthest = max(positions)          # poste le plus avancé, puis temps
             c.last_ctrl         = furthest[2]
@@ -1021,6 +1108,12 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
             c.last_ctrl = None
             c.last_time = None
             c.last_punch_clock = None
+        if arrival is not None:
+            # Poinçon d'arrivée reçu : le temps affiché devient le temps
+            # d'arrivée (provisoire — carte pas encore lue à la GEC).
+            c.last_ctrl        = arrival[0]
+            c.last_time        = arrival[1]
+            c.last_punch_clock = (c.st + c.last_time) if c.st and c.st > 0 else None
         c.ref_time = c.last_time
 
         if c.is_ok:
@@ -1034,40 +1127,35 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
             c.live_group = 'termine'
         elif c.stat == STAT_OK and c.rt is not None and c.rt < 0:
             c.live_group = 'arrives'
+        elif arrival is not None:
+            # Poinçon d'arrivée radio reçu : course terminée, carte pas
+            # encore lue à la GEC et statut pas encore attribué par MeOS.
+            c.live_group = 'valid_gec'
         elif c.st > 0 and c.st <= now_t:
             c.live_group = 'en_course'
         else:
             c.live_group = 'en_attente'
-
-        # Dernier poste du parcours pointé (poste radio) : parcours terminé,
-        # mais carte non lue à la GEC et statut pas encore attribué par MeOS.
-        if (
-            c.live_group == 'en_course'
-            and controls_seq
-            and c.progress_pos == len(controls_seq)
-        ):
-            c.live_group = 'valid_gec'
 
     en_course = sorted(
         [c for c in competitors if c.live_group == 'en_course'],
         key=cmp_to_key(_cmp_en_course),
     )
     for i, c in enumerate(en_course, start=1):
-        c.live_rank = None if getattr(c, 'neg_time', False) else i
+        c.live_rank = i   # les temps négatifs n'excluent plus du classement live
 
     valid_gec = sorted(
         [c for c in competitors if c.live_group == 'valid_gec'],
         key=cmp_to_key(_cmp_en_course),
     )
     for i, c in enumerate(valid_gec, start=1):
-        c.live_rank = None if getattr(c, 'neg_time', False) else i
+        c.live_rank = i   # les temps négatifs n'excluent plus du classement live
 
     arrives = sorted(
         [c for c in competitors if c.live_group == 'arrives'],
         key=lambda c: c.rt,
     )
     for i, c in enumerate(arrives, start=1):
-        c.live_rank = None if getattr(c, 'neg_time', False) else i
+        c.live_rank = i   # les temps négatifs n'excluent plus du classement live
 
     en_attente = sorted(
         [c for c in competitors if c.live_group == 'en_attente'],
