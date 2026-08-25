@@ -549,16 +549,25 @@ class TestMarkNegativeTimes:
         mark_negative_times([competitor], controls or CONTROLS, radio_map or {})
         return competitor.neg_time
 
+    def _classified(self, id=1, **kw):
+        """Coureur classé à l'arrivée (statut + tstat OK) : seul cas où
+        le calcul des temps négatifs a lieu."""
+        c = make_competitor(id, st=100000, stat=STAT_OK,
+                            rt=kw.pop('rt', 9000), **kw)
+        c.tstat = STAT_OK
+        return c
+
     def test_troncon_radio_negatif(self):
-        c = make_competitor(1, st=100000)
+        c = self._classified()
         assert self._mark(c, {1: {101: 6000, 102: 3000}}) is True
 
     def test_arrivee_avant_dernier_poste(self):
-        c = make_competitor(1, st=100000, stat=STAT_OK, rt=2000)
+        c = self._classified(rt=2000)
         assert self._mark(c, {1: {101: 5000, 102: 7000}}) is True
 
     def test_rt_negatif(self):
         c = make_competitor(1, st=100000, stat=STAT_OK, rt=-500)
+        c.tstat = STAT_OK
         assert self._mark(c) is True
 
     def test_rt_sentinelle_non_classifie_pas_negatif(self):
@@ -572,24 +581,24 @@ class TestMarkNegativeTimes:
         assert self._mark(c, {1: {101: 3000, 102: 6000}}) is False
 
     def test_cas_sain(self):
-        c = make_competitor(1, st=100000, stat=STAT_OK, rt=9000)
+        c = self._classified()
         assert self._mark(c, {1: {101: 3000, 102: 6000}}) is False
 
     def test_arrivee_apres_dernier_poste_saine(self):
-        c = make_competitor(1, st=100000, stat=STAT_OK, rt=9000)
+        c = self._classified()
         assert self._mark(c, {1: {101: 3000, 102: 6000}}) is False
 
     def test_aucun_poincon_rt_positif_sain(self):
-        c = make_competitor(1, st=100000, stat=STAT_OK, rt=5000)
+        c = self._classified(rt=5000)
         assert self._mark(c) is False
 
     def test_poincon_avant_depart_negatif(self):
         """Un poinçon antérieur au départ (temps relatif négatif) → neg_time."""
-        c = make_competitor(1, st=100000, stat=STAT_OK, rt=9000)
+        c = self._classified()
         assert self._mark(c, {1: {101: 210, 102: -350}}) is True
 
     def test_poincon_avant_depart_unique(self):
-        c = make_competitor(1, st=100000, stat=STAT_OK, rt=9000)
+        c = self._classified()
         assert self._mark(c, {1: {101: -350}}) is True
 
 
@@ -727,14 +736,27 @@ class TestScenariosRadioFinish:
         self._rank([c], radio_map, self.C2)
         assert c.live_group == 'termine'
 
-    def test_poincon_avant_depart_badge_conserve(self):
-        """Pointage d'un poste avant départ : badge Temps négatif affiché
-        dans Valid GEC (comportement validé par le rapport)."""
+    def test_valid_gec_sans_calcul_negatif(self):
+        """Poinçon radio négatif en Valid GEC (carte non lue) : aucun
+        badge — données incomplètes, pas de calcul avant le classement."""
         c = make_competitor(1, st=100000)
         radio_map = {1: {31: -350, -77: 5000}}
         mark_negative_times([c], self.C2, radio_map)
         self._rank([c], radio_map, self.C2)
         assert c.live_group == 'valid_gec'
+        assert c.neg_time is False
+        assert c.neg_ctrls == []
+
+    def test_badge_apparait_apres_classement_arrivee(self):
+        """Transition Valid GEC → Arrivé (lecture GEC : tstat OK, prel
+        retiré) : la détection des temps négatifs reprend."""
+        c = make_competitor(1, st=100000, stat=STAT_OK, rt=9000, prel=True)
+        radio_map = {1: {31: -350}}
+        mark_negative_times([c], self.C2, radio_map)
+        assert c.neg_time is False          # résultat préliminaire → rien
+        c.prel  = False
+        c.tstat = STAT_OK                   # carte lue à la GEC : classé
+        mark_negative_times([c], self.C2, radio_map)
         assert c.neg_time is True
         assert c.neg_ctrls == ['1-31']
 
@@ -742,8 +764,10 @@ class TestScenariosRadioFinish:
 class TestCollectNegativeCtrls:
     def _c(self, **kw):
         kw.setdefault('rt', 9000)
-        return make_competitor(kw.pop('id', 1), stat=kw.pop('stat', STAT_OK),
-                               st=100000, **kw)
+        c = make_competitor(kw.pop('id', 1), stat=kw.pop('stat', STAT_OK),
+                            st=100000, **kw)
+        c.tstat = STAT_OK          # classé à l'arrivée : prérequis du calcul
+        return c
 
     def test_troncon_negatif_nomme_le_poste(self):
         c = self._c()
@@ -764,13 +788,18 @@ class TestCollectNegativeCtrls:
     def test_arrivee_avant_dernier_poincon_present(self):
         """Le comparateur est le dernier poinçon PRÉSENT, pas le dernier
         poste du circuit (divergence historique corrigée)."""
+        from collections import Counter
         controls = CONTROLS + [{'ctrl_id': 103, 'ctrl_name': '3-103'}]
+        # 102 et 103 jamais transmis par personne (non attestés) : seuls
+        # les tronçons et l'« Arrivée » sont testés ici, pas les trous.
+        attested = Counter({101: 2})
         c = self._c(rt=4000)
         # 102 absent → dernier présent = 101 (3000) ; rt 4000 > 3000 → sain.
-        assert collect_negative_ctrls(c, controls, {1: {101: 3000}}) == []
+        assert collect_negative_ctrls(
+            c, controls, {1: {101: 3000}}, attested) == []
         c2 = self._c(rt=2500)
         assert collect_negative_ctrls(
-            c2, controls, {1: {101: 3000}}) == ['Arrivée']
+            c2, controls, {1: {101: 3000}}, attested) == ['Arrivée']
 
     def test_fusion_ordre_circuit(self):
         """Poste manquant (OK définitif), tronçon négatif et Arrivée sont
@@ -1035,19 +1064,31 @@ class TestApiLiveResults:
 
     def test_neg_ctrls_renvoyes(self):
         """neg_ctrls est recalculé par mark_negative_times côté vue :
-        rt négatif + statut OK → ['Arrivée']."""
+        rt négatif + statut OK classé → ['Arrivée']."""
         r = self._runner(id=1, group='arrives')
         r.stat = STAT_OK; r.rt = -500
+        r.tstat = STAT_OK                   # classé à l'arrivée
         data = self._run(competitors=[r])
         assert data['runners'][0]['neg_time'] is True
         assert data['runners'][0]['neg_ctrls'] == ['Arrivée']
 
     def test_neg_ctrls_troncon_negatif_nomme(self):
-        r = self._runner(id=1, group='en_course')
+        r = self._runner(id=1, group='arrives')
+        r.stat = STAT_OK; r.rt = 9000; r.is_ok = True
+        r.tstat = STAT_OK                   # classé à l'arrivée
         data = self._run(competitors=[r],
                          radio_map={1: {101: 6000, 102: 3000}})
         assert data['runners'][0]['neg_time'] is True
         assert data['runners'][0]['neg_ctrls'] == ['2-102']
+
+    def test_pas_de_calcul_negatif_en_course(self):
+        """Coureur en course (carte non lue) : aucune détection, même avec
+        un tronçon radio négatif."""
+        r = self._runner(id=1, group='en_course')
+        data = self._run(competitors=[r],
+                         radio_map={1: {101: 6000, 102: 3000}})
+        assert data['runners'][0]['neg_time'] is False
+        assert data['runners'][0]['neg_ctrls'] == []
 
     def test_race_state_live(self):
         data = self._run(competitors=[self._runner()])
@@ -1070,6 +1111,7 @@ class TestApiLiveResults:
     def test_neg_time_renvoye_avec_rt_negatif(self):
         r = self._runner(id=1, group='arrives')
         r.stat = STAT_OK; r.rt = -500; r.neg_time = True
+        r.tstat = STAT_OK                   # classé à l'arrivée
         data = self._run(competitors=[r])
         assert data['runners'][0]['rt'] == -500
         assert data['runners'][0]['neg_time'] is True

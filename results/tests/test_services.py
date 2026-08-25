@@ -363,6 +363,11 @@ class TestGetNegativeTimeStats:
         from results.services import get_negative_time_stats
         cls_mock = MagicMock(id=1)
         cls_mock.name = 'H21'
+        for c in competitors:
+            # Coureurs classés à l'arrivée par défaut (prérequis du
+            # calcul) — sauf tstat posé explicitement par le test.
+            if not isinstance(getattr(c, 'tstat', None), int):
+                c.tstat = STAT_OK
         with patch('results.services.Mopclass.objects') as mock_cls, \
              patch('results.services.Mopcompetitor.objects') as mock_comp, \
              patch('results.services.get_class_controls', return_value=(controls, {})), \
@@ -479,6 +484,7 @@ class TestGetNegativeTimeStats:
         """Une classe sans coureurs (vide) est ignorée."""
         from results.services import get_negative_time_stats
         comps = [make_competitor(1, 3000)]
+        comps[0].tstat = STAT_OK
         radios = {1: {31: 1000, 32: 2500}}
         with patch('results.services.Mopclass.objects') as mock_cls, \
              patch('results.services.Mopcompetitor.objects') as mock_comp, \
@@ -495,6 +501,7 @@ class TestGetNegativeTimeStats:
         """Un coureur présent dans 2 classes n'est traité qu'une seule fois."""
         from results.services import get_negative_time_stats
         comps = [make_competitor(1, 3000)]
+        comps[0].tstat = STAT_OK
         radios = {1: {31: 2000, 32: 1500}}
         with patch('results.services.Mopclass.objects') as mock_cls, \
              patch('results.services.Mopcompetitor.objects') as mock_comp, \

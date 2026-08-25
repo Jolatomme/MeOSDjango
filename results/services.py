@@ -203,7 +203,16 @@ def collect_negative_ctrls(c, controls_seq, radio_map, attested=None):
       - « Arrivée » si le temps de course (rt > 0 — la sentinelle rt=-1
         des non-classés n'est pas une anomalie) est antérieur au dernier
         poinçon radio présent, ou négatif avec statut OK.
+
+    Le calcul n'a lieu que pour un coureur **classé à l'arrivée**
+    (statut et tstat OK — carte lue à la GEC). Avant la lecture de la
+    puce (en course, Valid. GEC, résultat préliminaire), les poinçons
+    radio seuls et un rt parfois figé par MeOS ne permettent pas de
+    conclure : aucune anomalie n'est remontée.
     """
+    if (getattr(c, 'stat', None) != STAT_OK
+            or getattr(c, 'tstat', None) != STAT_OK):
+        return []
     rt     = getattr(c, 'rt', None)
     radios = radio_map.get(getattr(c, 'id', None), {})
     prestart = detect_prestart_ctrls(c, controls_seq, radio_map, attested)
@@ -360,6 +369,9 @@ def build_finish_split(rt, last_abs, *, leg_full_race_if_missing=True):
 
 def get_negative_time_stats(cid):
     """Compte les coureurs de la compétition ayant au moins un temps négatif.
+
+    Seuls les coureurs classés à l'arrivée sont pris en compte
+    (statut et tstat OK — voir ``collect_negative_ctrls``).
 
     Diagnostic :
       - boîtier mal synchronisé ('multiple') si plusieurs coureurs ont un
@@ -974,7 +986,8 @@ def mark_negative_times(competitors, controls_seq, radio_map):
     moins un temps négatif.
 
     Règles unifiées (voir ``collect_negative_ctrls``, partagées avec
-    ``get_negative_time_stats`` et ``compute_splits``) : tronçon radio
+    ``get_negative_time_stats`` et ``compute_splits``), réservées aux
+    coureurs classés à l'arrivée (statut et tstat OK) : tronçon radio
     négatif, poste manquant d'un coureur OK définitif attesté (pointé
     avant le départ), arrivée antérieure au dernier poste radio, ou temps
     d'arrivée ``rt`` négatif (seulement si le statut est OK — pour les
