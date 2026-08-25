@@ -13,6 +13,7 @@ const LiveResults = (() => {
   'use strict';
 
   const POLL_INTERVAL_MS = 5000;
+  const POLL_MAX_INTERVAL_MS = 30000;
   const DAY_TENTHS = 24 * 3600 * 10;
 
   const GROUP_ORDER = ['en_course', 'valid_gec', 'arrives', 'en_attente', 'termine'];
@@ -47,6 +48,11 @@ const LiveResults = (() => {
   let clockTimer = null;
   let lastData = null;
   let lastFetchClientMs = 0;
+  // Polling conditionnel : ETag de la dernière réponse + intervalle courant
+  // (backoff ×2 jusqu'à POLL_MAX_INTERVAL_MS tant que rien ne change, reset
+  // à POLL_INTERVAL_MS dès une mise à jour).
+  let lastEtag = null;
+  let pollIntervalMs = POLL_INTERVAL_MS;
 
   // ── Petits utilitaires ───────────────────────────────────────────────────
 
@@ -430,19 +436,39 @@ const LiveResults = (() => {
     badge.innerHTML = `<span class="live-dot"></span>${ok ? 'En direct' : 'Hors ligne'}`;
   }
 
+  function schedulePoll(ms) {
+    clearTimeout(pollTimer);
+    pollTimer = setTimeout(poll, ms);
+  }
+
   async function poll() {
     try {
-      const resp = await fetch(cfg.apiUrl, { headers: { 'Accept': 'application/json' } });
+      const headers = { 'Accept': 'application/json' };
+      if (lastEtag) headers['If-None-Match'] = lastEtag;
+      const resp = await fetch(cfg.apiUrl, { headers });
+      if (resp.status === 304) {
+        // Rien de nouveau depuis le dernier poll : on ralentit progressivement
+        setLiveStatus(true);
+        pollIntervalMs = Math.min(pollIntervalMs * 2, POLL_MAX_INTERVAL_MS);
+        schedulePoll(pollIntervalMs);
+        return;
+      }
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       if (!data.success) throw new Error(data.error || 'erreur API');
+      lastEtag = resp.headers.get('ETag');
       lastFetchClientMs = Date.now();
       render(data);
       startClock(data);
       setRaceState(data.race_state);
+      setLiveStatus(true);
+      pollIntervalMs = POLL_INTERVAL_MS;
     } catch (err) {
       setLiveStatus(false);
+      // Erreur : on garde l'intervalle courant (pas de charge supplémentaire
+      // si le serveur souffre déjà).
     }
+    schedulePoll(pollIntervalMs);
   }
 
   function init(config) {
@@ -456,13 +482,13 @@ const LiveResults = (() => {
       race_end_clock: cfg.initialRaceEndClock,
     });
     poll();
-    pollTimer = setInterval(poll, POLL_INTERVAL_MS);
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        if (pollTimer) clearInterval(pollTimer);
+        clearTimeout(pollTimer);
       } else {
+        // Retour sur l'onglet : poll immédiat + intervalle de base
+        pollIntervalMs = POLL_INTERVAL_MS;
         poll();
-        pollTimer = setInterval(poll, POLL_INTERVAL_MS);
       }
     });
   }

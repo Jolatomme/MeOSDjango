@@ -1,7 +1,9 @@
+import hashlib
 import json
 import re
 from types import SimpleNamespace
 from datetime import datetime
+from django.core.cache import cache
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import Http404, HttpResponse, JsonResponse
 
@@ -400,13 +402,12 @@ def live_results(request, cid, class_id):
     })
 
 
-def api_live_results(request, cid, class_id):
-    """JSON API — données live pour le polling JS (catégorie ou circuit)."""
-    competition, cls, competitors, course = _load_class_context(cid, class_id)
+_LIVE_CACHE_TTL = 3   # s — < intervalle de polling (5 s) : partage du calcul entre spectateurs
 
-    if course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists():
-        return JsonResponse({'success': False, 'error': 'relay'}, status=422)
 
+def _build_live_payload(cid, cls, competitors, course):
+    """Construit le payload live complet (hors champs volatils d'horloge,
+    réinjectés à chaque réponse) et son empreinte ETag."""
     org_map      = get_org_map(cid)
     controls_seq = _controls_for(cid, cls, course)
     radio_map    = get_radio_map(cid, [c.id for c in competitors])
@@ -458,10 +459,8 @@ def api_live_results(request, cid, class_id):
             ],
         })
 
-    return JsonResponse({
+    payload = {
         'success':            True,
-        'server_now':         int(now.timestamp() * 1000),
-        'server_now_clock':   clock_tenths(now),
         'race_start_clock':   race_start,
         'race_state':         state,
         'race_end_clock':     race_end,
@@ -471,7 +470,46 @@ def api_live_results(request, cid, class_id):
         'controls':           controls_seq,
         'n_controls':         len(controls_seq),
         'runners':            runners,
-    })
+    }
+    etag = '"%s"' % hashlib.sha1(
+        json.dumps(payload, sort_keys=True).encode('utf-8')
+    ).hexdigest()
+    return payload, etag
+
+
+def api_live_results(request, cid, class_id):
+    """JSON API — données live pour le polling JS (catégorie ou circuit).
+
+    Charge partagée : le calcul complet est mis en cache ~3 s par
+    classe/circuit — N spectateurs ne coûtent qu'un calcul. Réponses
+    conditionnelles : l'empreinte porte sur les champs stables uniquement
+    (les horloges serveur sont réinjectées fraîches), donc un poll sans
+    nouvelle donnée MeOS renvoie un 304 sans corps.
+    """
+    cache_key = f'live:{cid}:{class_id}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        payload, etag = cached
+    else:
+        competition, cls, competitors, course = _load_class_context(cid, class_id)
+
+        if course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists():
+            return JsonResponse({'success': False, 'error': 'relay'}, status=422)
+
+        payload, etag = _build_live_payload(cid, cls, competitors, course)
+        cache.set(cache_key, (payload, etag), _LIVE_CACHE_TTL)
+
+    if request.headers.get('If-None-Match') == etag:
+        return HttpResponse(status=304, headers={'ETag': etag, 'Cache-Control': 'no-cache'})
+
+    now = datetime.now()
+    data = dict(payload)
+    data['server_now']       = int(now.timestamp() * 1000)
+    data['server_now_clock'] = clock_tenths(now)
+    resp = JsonResponse(data)
+    resp['ETag'] = etag
+    resp['Cache-Control'] = 'no-cache'
+    return resp
 
 
 # ══════════════════════════════════════════════════════════════════════════════

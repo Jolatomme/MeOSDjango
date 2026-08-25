@@ -8,11 +8,12 @@ Couvre :
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.core.cache import cache
 from django.test import RequestFactory
 from django.urls import reverse, resolve
 
@@ -53,8 +54,8 @@ def make_runner(id=1, group='en_course', rank=1):
     return c
 
 
-def rf_get(url='/'):
-    return RequestFactory().get(url)
+def rf_get(url='/', **headers):
+    return RequestFactory().get(url, **headers)
 
 
 def patch_live_view(defaults=None):
@@ -985,6 +986,13 @@ class TestLiveResultsView:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestApiLiveResults:
+    @pytest.fixture(autouse=True)
+    def _clear_cache(self):
+        # Cache LocMem partagé par le processus de tests : chaque test
+        # repart d'un cache vide (clé live:{cid}:{class_id} commune).
+        cache.clear()
+        yield
+
     def _runner(self, id=1, group='en_course', rank=1):
         r = MagicMock()
         r.id = id; r.name = 'Alice'; r.org = 1; r.stat = 0
@@ -1002,9 +1010,11 @@ class TestApiLiveResults:
         return r
 
     def _run(self, competitors=None, course=None, class_name='H21', race_start=180000,
-             radio_map=None):
+             radio_map=None, now=NOW, if_none_match=None, raw=False):
         competitors = competitors or []
         cls = SimpleNamespace(id=10, name=class_name)
+        req = (rf_get(HTTP_IF_NONE_MATCH=if_none_match)
+               if if_none_match else rf_get())
         with patch('results.views._load_class_context',
                    return_value=(MagicMock(), cls, competitors, course)), \
              patch('results.views.Mopteam') as MockTeam, \
@@ -1017,10 +1027,11 @@ class TestApiLiveResults:
              patch('results.views.rank_live', return_value=competitors), \
              patch('results.views.race_start_clock', return_value=race_start), \
              patch('results.views.datetime') as mock_dt:
-            mock_dt.now.return_value = NOW
+            mock_dt.now.return_value = now
             MockTeam.objects.filter.return_value.exists.return_value = False
             from results.views import api_live_results
-            return json.loads(api_live_results(rf_get(), cid=1, class_id='H21').content)
+            resp = api_live_results(req, cid=1, class_id='H21')
+            return resp if raw else json.loads(resp.content)
 
     def test_json_complet(self):
         data = self._run(competitors=[self._runner()])
@@ -1158,6 +1169,48 @@ class TestApiLiveResults:
             from results.views import api_live_results
             resp = api_live_results(rf_get(), cid=1, class_id='H21')
             assert resp.status_code == 422
+
+    def test_etag_puis_304_sans_corps(self):
+        """Premier poll : 200 + ETag + Cache-Control. Poll conditionnel avec
+        If-None-Match correspondant → 304 sans corps (trafic minimal)."""
+        r1 = self._run(competitors=[self._runner()], raw=True)
+        assert r1.status_code == 200
+        assert r1['Cache-Control'] == 'no-cache'
+        etag = r1['ETag']
+        assert etag
+        assert json.loads(r1.content)['success'] is True
+        r2 = self._run(competitors=[self._runner()], raw=True, if_none_match=etag)
+        assert r2.status_code == 304
+        assert r2.content == b''
+        assert r2['ETag'] == etag
+
+    def test_donnees_modifiees_renvoie_200(self):
+        """Nouvelles données MeOS après expiration du cache serveur :
+        empreinte différente → 200 avec le JSON à jour."""
+        runner = self._runner()
+        r1 = self._run(competitors=[runner], raw=True)
+        cache.clear()          # simule l'expiration du TTL de cache
+        r2 = self._run(competitors=[self._runner()], radio_map={1: {101: 3000}},
+                       raw=True, if_none_match=r1['ETag'])
+        assert r2.status_code == 200
+        data = json.loads(r2.content)
+        assert data['runners'][0]['radio_punches'] == [{'ctrl': 101, 'time': 3000}]
+
+    def test_etag_ignore_horloges_volatiles(self):
+        """server_now / server_now_clock sont hors empreinte : deux polls à
+        une seconde d'écart sans nouvelle donnée → 304."""
+        r1 = self._run(raw=True)
+        later = NOW + timedelta(seconds=1)
+        r2 = self._run(raw=True, now=later, if_none_match=r1['ETag'])
+        assert r2.status_code == 304
+
+    def test_cache_partage_entre_spectateurs(self):
+        """Deux polls < TTL de cache : le second est servi depuis le cache
+        serveur (payload identique, nouveaux mocks ignorés) — la charge ne
+        croît pas avec le nombre de spectateurs."""
+        d1 = self._run()
+        d2 = self._run(competitors=[self._runner(id=2)], radio_map={2: {101: 1000}})
+        assert d2 == d1
 
 
 # ══════════════════════════════════════════════════════════════════════════════

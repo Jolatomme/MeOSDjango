@@ -14,7 +14,8 @@ from datetime import datetime
 import pytest
 
 from results.management.commands.simulate_live import (
-    Command, STAT_OK, STAT_DNS, STAT_MP, STAT_DNF,
+    Command, STAT_OK, STAT_DNS, STAT_MP, STAT_DNF, is_plan_final,
+    race_base_time,
 )
 
 POST_TIMES = [600, 1200, 1800, 2400, 3000, 3600, 4200, 4800, 5400]
@@ -345,3 +346,114 @@ class TestRadioFinish:
         assert 'prel' not in xml
         assert FINISH_CTRL not in punches(xml)
         assert re.search(r'stat="1"', xml)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Condition d'arrêt de la boucle — is_plan_final
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestConditionFin:
+    """La simulation ne s'arrête que sur des statuts réellement définitifs.
+
+    Régression : avec --radio-finish, le résultat préliminaire du dernier
+    arrivant (prel="true", stat=1) satisfaisait déjà la condition d'arrêt
+    « tous les coureurs ont un statut » — la validation GEC n'était jamais
+    envoyée et le coureur restait figé en « En attente validation GEC »
+    côté site.
+    """
+
+    def test_prel_n_est_pas_definitif(self):
+        """Résultat préliminaire (arrivée radio, carte non lue) : pas final."""
+        assert not is_plan_final(
+            make_plan(stat=STAT_OK, rt=6000, prel=True)
+        )
+
+    def test_gec_read_est_definitif(self):
+        assert is_plan_final(make_plan(stat=STAT_OK, rt=6000, gec_read=True))
+
+    def test_end_status_definitif_sans_gec_read(self):
+        """DNS / PM / Abandon : finaux dès l'attribution (jamais de GEC)."""
+        for status in (STAT_DNS, STAT_MP, STAT_DNF):
+            plan = make_plan(end_status=(1, status), stat=status)
+            assert is_plan_final(plan), status
+
+    def test_en_course_n_est_pas_definitif(self):
+        assert not is_plan_final(make_plan(stat=0))
+
+    def test_passage_ok_pose_gec_read_sans_radio_finish(self):
+        """Sans --radio-finish, le passage OK coïncide avec la lecture GEC."""
+        cmd = make_command(radio_finish=False)
+        plan = make_plan()
+        diff(cmd, plan, sim_t=plan['finish'] + cmd.gec_delay_tenths + 1)
+        assert plan['gec_read'] is True
+
+    def test_dernier_arrivant_valide_avant_arret(self):
+        """Scénario du bug : rapide déjà final + lent en fenêtre prelim.
+
+        La condition d'arrêt ne doit devenir vraie qu'à la deadline GEC du
+        lent, et le diff poussé à ce moment porte le statut officiel sans
+        prel (le dernier fragment reçu par le site n'est plus « Valid. GEC »).
+        """
+        cmd = make_command(radio_positions=[3, 5, 7, 9], radio_finish=True)
+        st = 100000
+        cmd.plans = [
+            make_plan(st=st, name='rapide'),                    # finit à st+6000
+            make_plan(st=st, name='lent', finish=st + 12000),   # dernier arrivant
+        ]
+        deadline = st + 12000 + cmd.gec_delay_tenths
+        step = 18                             # pas temps réel (--interval 4 × scale 0.45)
+        sim_t = st + 5900                      # avant même l'arrivée du rapide
+        flip_xml = flip_t = None
+        while sim_t < deadline + 10 * step:
+            xml = cmd._diff_xml(sim_t)
+            if all(is_plan_final(p) for p in cmd.plans):
+                flip_xml, flip_t = xml, sim_t
+                break
+            sim_t += step
+        # L'arrêt n'intervient qu'une fois la deadline GEC dépassée…
+        assert flip_t is not None
+        assert deadline <= flip_t < deadline + step
+        # …et le diff final donne le résultat officiel (plus aucun prel).
+        assert 'prel' not in flip_xml
+        assert re.search(r'stat="1" st="%d" rt="12000"' % st, flip_xml)
+
+    def test_avant_deadline_gec_la_course_continue(self):
+        """Pendant la fenêtre prelim du dernier arrivant : pas d'arrêt."""
+        cmd = make_command(radio_positions=[3, 5, 7, 9], radio_finish=True)
+        st = 100000
+        cmd.plans = [
+            make_plan(st=st, name='rapide'),
+            make_plan(st=st, name='lent', finish=st + 12000),
+        ]
+        sim_t = st + 12000 + 50                # lent arrivé, carte pas lue
+        cmd._diff_xml(sim_t)
+        assert not all(is_plan_final(p) for p in cmd.plans)
+        assert cmd.plans[1]['prel'] is True    # en attente validation GEC
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Heure de base de la course — race_base_time
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestRaceBaseTime:
+    """Lancement autour de minuit : ``--elapsed`` ne doit pas produire des
+    heures de départ négatives (« En attente » sans chrono côté site)."""
+
+    def test_en_journee_recul_normal(self):
+        assert race_base_time(360000, 9600) == 350400
+
+    def test_juste_apres_minuit_borne_a_zero(self):
+        """00:08:40 avec --elapsed 16 min : 5200 − 9600 < 0 → 0."""
+        assert race_base_time(5200, 9600) == 0
+
+    def test_limite_exacte(self):
+        assert race_base_time(9600, 9600) == 0
+
+    def test_tous_les_departs_restent_positifs(self):
+        """Un plan complet construit après clamp n'a que des st >= 0."""
+        random.seed(3)
+        base_t = race_base_time(3000, int(16.0 * 600))
+        assert base_t == 0
+        stagger = int(1.5 * 600)
+        for i in range(14):
+            assert base_t + int(i * stagger) >= 0

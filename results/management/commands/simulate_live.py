@@ -80,6 +80,31 @@ STAT_DNF = 4
 STAT_DNS = 20
 
 
+def is_plan_final(plan):
+    """Statut réellement définitif d'un plan de coureur.
+
+    Final = fin prématurée (DNS / PM / Abandon — ``end_status``) ou puce
+    lue à la GEC (``gec_read``, statut OK officiel). Un résultat
+    préliminaire (arrivée radio, ``prel=True``) porte déjà ``stat=1``
+    mais n'est pas final : la simulation doit continuer jusqu'à la
+    validation GEC, sans quoi le dernier arrivant reste figé côté site
+    en « En attente validation GEC ».
+    """
+    return bool(plan['end_status']) or plan.get('gec_read', False)
+
+
+def race_base_time(now_tenths, elapsed_tenths):
+    """Instant (1/10 s depuis minuit) du départ du premier coureur.
+
+    Autour de minuit, le recul demandé (``--elapsed``) dépasserait minuit :
+    borné à 0 pour éviter des heures de départ négatives — inexploitables
+    côté site (« En attente » sans heure de départ ni compte à rebours,
+    ``rank_live`` et le JS exigent ``st > 0``). La course démarre alors
+    aussitôt, avec des départs échelonnés à venir.
+    """
+    return max(0, now_tenths - elapsed_tenths)
+
+
 class Command(BaseCommand):
     help = ('Simule un flux MOP temps réel (postes radio + statuts) '
             'vers /mop/update/ pour tester la page Live.')
@@ -340,7 +365,9 @@ class Command(BaseCommand):
 
         # Heure locale (datetime.now() naïve) : cohérente avec les vues du
         # site (clock_tenths(datetime.now())) et avec l'horloge murale MeOS.
-        base_t = clock_tenths(datetime.now()) - int(options['elapsed'] * 600)
+        base_t = race_base_time(
+            clock_tenths(datetime.now()), int(options['elapsed'] * 600)
+        )
         self.plans = []
         for i in range(self.n_runners):
             org = ORGS[i % len(ORGS)]
@@ -431,13 +458,13 @@ class Command(BaseCommand):
                 ))
                 return
 
-            finished = sum(1 for p in self.plans if p['stat'])
+            finished = sum(1 for p in self.plans if is_plan_final(p))
             self.stdout.write(
                 f'{step:>4} · {driver:<11} → 200 OK   '
                 f'({finished}/{self.n_runners} statuts définitifs)'
             )
 
-            if all(p['stat'] for p in self.plans):
+            if all(is_plan_final(p) for p in self.plans):
                 self.stdout.write(self.style.SUCCESS(
                     '\nTous les coureurs ont un statut définitif — simulation terminée.'
                 ))
