@@ -144,11 +144,15 @@ const LiveResults = (() => {
     // Un coureur « Terminé » (Abandon, PM…) peut avoir pointé des postes : on
     // conserve sa progression (sans quoi la barre disparaît alors qu'elle est connue).
     if (!RUNNING_GROUPS.includes(runner.group) && runner.group !== 'termine') return '';
-    if (total === 0 || !runner.progress_pos) return '';
-    const segs = total + 1; // +1 = arrivée (poste non numéroté)
-    const pct = Math.min(100, Math.max(2, Math.round((runner.progress_pos / segs) * 100)));
+    // Un coureur « Terminé » (Abandon, PM…) peut avoir sauté des postes puis
+    // atteint le dernier : on compte les postes réellement pointés plutôt que
+    // la position du poste le plus avancé (progress_pos).
+    const pos = runner.group === 'termine' ? (runner.progress_count || 0) : runner.progress_pos;
+    if (total === 0 || !pos) return '';
+    // Dénominateur : postes du parcours uniquement (le poste d'arrivée ne compte pas)
+    const pct = Math.min(100, Math.max(2, Math.round((pos / total) * 100)));
     return `<span class="live-progress">
-      <span class="live-progress-count">${runner.progress_pos}/${segs}</span>
+      <span class="live-progress-count">${pos}/${total}</span>
       <span class="live-progress-track"><span class="live-progress-bar" style="width:${pct}%"></span></span>
     </span>`;
   }

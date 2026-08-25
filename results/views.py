@@ -439,6 +439,7 @@ def api_live_results(request, cid, class_id):
             'neg_ctrls':         list(getattr(c, 'neg_ctrls', []) or []),
             'n_punches':         c.n_punches,
             'progress_pos':      getattr(c, 'progress_pos', 0),
+            'progress_count':    getattr(c, 'progress_count', 0),
             'last_ctrl':         c.last_ctrl,
             'last_time':         c.last_time,
             'last_punch_clock':  c.last_punch_clock,

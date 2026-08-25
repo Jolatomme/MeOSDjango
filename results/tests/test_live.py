@@ -257,6 +257,20 @@ class TestRankLive:
         self._rank([c], radio_map, controls)
         assert c.progress_pos == 3
         assert c.n_punches == 1
+        assert c.progress_count == 1
+
+    def test_progress_count_postes_reellement_pointes(self):
+        """Scénario type Luo (PM) : carte lue à l'arrivée → tous les splits
+        remontent ; le coureur a sauté des postes mais atteint le dernier.
+        progress_count compte les postes du parcours réellement pointés,
+        contrairement à progress_pos (position du poste le plus avancé)."""
+        c = make_competitor(1, st=100000)
+        radio_map = {1: {101: 3000, 104: 12000, 107: 21000, 109: 27000}}
+        controls = [{'ctrl_id': cid, 'ctrl_name': str(i)}
+                    for i, cid in enumerate([101, 102, 103, 104, 105, 106, 107, 108, 109], start=1)]
+        self._rank([c], radio_map, controls)
+        assert c.progress_pos == 9
+        assert c.progress_count == 4
 
     def test_progress_pos_ignore_poincon_hors_parcours(self):
         c = make_competitor(1, st=100000)
@@ -266,11 +280,14 @@ class TestRankLive:
         self._rank([c], radio_map, controls)
         assert c.progress_pos == 3
         assert c.last_ctrl == 103
+        # Le poste 150 est hors parcours : il ne compte pas dans progress_count
+        assert c.progress_count == 1
 
     def test_progress_pos_zero_sans_poincon(self):
         c = make_competitor(1, st=100000)
         self._rank([c])
         assert c.progress_pos == 0
+        assert c.progress_count == 0
 
     def test_first_radio_time_temps_au_poste_le_moins_avance(self):
         c = make_competitor(1, st=100000)
@@ -978,6 +995,7 @@ class TestApiLiveResults:
         r.n_punches = 1; r.last_ctrl = 101
         r.last_time = 5000; r.last_punch_clock = 205000
         r.progress_pos = 3
+        r.progress_count = 2
         r.class_obj = None
         r.neg_time = False; r.neg_ctrls = []
         r.arrival_ctrl = None; r.arrival_rt = None
@@ -1019,6 +1037,7 @@ class TestApiLiveResults:
         assert r['rank'] == 1
         assert r['n_punches'] == 1
         assert r['progress_pos'] == 3
+        assert r['progress_count'] == 2
         assert r['last_ctrl'] == 101
         assert r['last_punch_clock'] == 205000
         assert r['radio_punches'] == []

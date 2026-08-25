@@ -1101,6 +1101,10 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
             for ctrl, rt in punches if ctrl in ctrl_order
         ]
         c.progress_pos      = max((p for p, _, _ in positions), default=0)
+        # Nombre de postes du parcours réellement pointés (≠ progress_pos,
+        # position du poste le plus avancé : un non-classé peut avoir sauté
+        # des postes puis atteint le dernier).
+        c.progress_count    = len(positions)
         c.first_radio_time  = min(positions, default=None)[1] if positions else None
         c.elapsed           = (now_t - c.st) if c.st and c.st > 0 and c.st <= now_t else None
         arrival             = detect_arrival_punch(radios, controls_seq or [])
