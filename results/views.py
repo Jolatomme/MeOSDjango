@@ -1,6 +1,7 @@
 import hashlib
 import json
 import re
+from collections import Counter
 from types import SimpleNamespace
 from datetime import datetime
 from django.core.cache import cache
@@ -348,6 +349,61 @@ def api_class_results(request, cid, class_id):
 # Suivi live — catégorie ET circuit (via _load_class_context unifié)
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _live_neg_time_warning(cid):
+    """Bandeau « Temps négatif » pour l'affichage live.
+
+    Identique à ``get_negative_time_stats`` mais expurge les coureurs en
+    validation GEC (``prel=True`` : puce pas encore lue) — leurs poinçons
+    sont incomplets, la détection y est sans objet en live. Helper
+    strictement live : n'altère pas le diagnostic des pages d'analyse.
+    """
+    warning = get_negative_time_stats(cid)
+    if not warning:
+        return None
+    valid_gec_ids = set(
+        Mopcompetitor.objects.filter(cid=cid, prel=True)
+        .values_list('id', flat=True))
+    runners = [r for r in warning['runners'] if r['id'] not in valid_gec_ids]
+    if not runners:
+        return None
+    ctrl_counts = Counter(c for r in runners for c in r['controls'])
+    box_controls = {
+        name: n
+        for name, n in sorted(ctrl_counts.items(), key=lambda kv: (-kv[1], kv[0]))
+        if n >= 2
+    }
+    count = len(runners)
+    if box_controls:
+        kind = 'multiple'
+        box_names = ', '.join(box_controls)
+        postes = f"au poste {box_names}" if len(box_controls) == 1 else f"aux postes {box_names}"
+        message = (
+            f"{count} coureurs ont des temps négatifs {postes} : "
+            "probable boîtier mal synchronisé."
+        )
+        tooltip = 'Temps négatif : boîtier probablement mal synchronisé'
+    elif count == 1:
+        kind = 'single'
+        message = (
+            "1 coureur a un temps négatif : probable carte SI non effacée "
+            "(problème d'effacement de doigts)."
+        )
+        tooltip = 'Temps négatif : carte SI probablement non effacée'
+    else:
+        kind = 'single'
+        message = (
+            f"{count} coureurs ont des temps négatifs sur des postes "
+            "différents : probables cartes SI non effacées "
+            "(effacement de doigts)."
+        )
+        tooltip = ('Temps négatifs sur des postes différents : '
+                   'cartes SI probablement non effacées')
+    return {
+        'count': count, 'kind': kind, 'message': message, 'tooltip': tooltip,
+        'box_controls': box_controls, 'runners': runners,
+    }
+
+
 def live_results(request, cid, class_id):
     """Page live : suivi en temps réel de la progression sur le parcours.
 
@@ -372,8 +428,16 @@ def live_results(request, cid, class_id):
     controls_seq = _controls_for(cid, cls, course)
     radio_map    = get_radio_map(cid, [c.id for c in competitors])
     now          = datetime.now()
-    mark_negative_times(competitors, controls_seq or [], radio_map)
     live         = rank_live(competitors, radio_map, now, controls_seq or [])
+
+    # Validation GEC (prel) : pas de détection des temps négatifs en live.
+    mark_negative_times(
+        [c for c in live if c.live_group != 'valid_gec'],
+        controls_seq or [], radio_map)
+    for c in live:
+        if c.live_group == 'valid_gec':
+            c.neg_time  = False
+            c.neg_ctrls = []
 
     groups = {g: [c for c in live if c.live_group == g] for g in LIVE_GROUPS}
 
@@ -396,7 +460,7 @@ def live_results(request, cid, class_id):
         'server_now_clock':  clock_tenths(now),
         'course_hash':       course['hash'] if course else compute_course_hash(controls_seq),
         'current_analysis':  'live',
-        'neg_time_warning':  get_negative_time_stats(cid),
+        'neg_time_warning':  _live_neg_time_warning(cid),
         'prev_cls':          prev_cls,
         'next_cls':          next_cls,
     })
@@ -412,8 +476,16 @@ def _build_live_payload(cid, cls, competitors, course):
     controls_seq = _controls_for(cid, cls, course)
     radio_map    = get_radio_map(cid, [c.id for c in competitors])
     now          = datetime.now()
-    mark_negative_times(competitors, controls_seq or [], radio_map)
     live         = rank_live(competitors, radio_map, now, controls_seq or [])
+
+    # Validation GEC (prel) : pas de détection des temps négatifs en live.
+    mark_negative_times(
+        [c for c in live if c.live_group != 'valid_gec'],
+        controls_seq or [], radio_map)
+    for c in live:
+        if c.live_group == 'valid_gec':
+            c.neg_time  = False
+            c.neg_ctrls = []
 
     race_start = race_start_clock(competitors)
     state      = race_state(live, now, race_start)

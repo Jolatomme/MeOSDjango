@@ -980,6 +980,113 @@ class TestLiveResultsView:
             mock_render.assert_called_once()
             assert runner.org_obj is org
 
+    def test_valid_gec_pas_de_temps_negatif(self):
+        """Coureur en validation GEC (prel=True, puce non lue) avec un
+        poinçon négatif : l'affichage live ne doit pas signaler de temps
+        négatif (données incomplètes tant que la carte n'est pas lue)."""
+        c = make_competitor(1, st=100000, stat=STAT_OK, rt=6000, prel=True)
+        c.tstat = STAT_OK
+        controls  = [{'ctrl_id': 31, 'ctrl_name': '1-31'}]
+        radio_map = {1: {31: -350}}   # poinçon négatif (boîtier non sync.)
+        with patch('results.views._load_class_context',
+                   return_value=(MagicMock(cid=1, name='Test'),
+                                 MagicMock(id=10, name='H21'), [c], None)), \
+             patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views.get_org_map', return_value={}), \
+             patch('results.views.get_radio_map', return_value=radio_map), \
+             patch('results.views._controls_for', return_value=controls), \
+             patch('results.views.race_start_clock', return_value=None), \
+             patch('results.views.render') as mock_render:
+            MockTeam.objects.filter.return_value.exists.return_value = False
+            from results.views import live_results
+            live_results(rf_get(), cid=1, class_id='H21')
+            _, _, ctx = mock_render.call_args[0]
+            runner = ctx['live'][0]
+            assert runner.live_group == 'valid_gec'
+            assert runner.neg_time is False
+            assert runner.neg_ctrls == []
+
+    def test_arrive_avec_negatif_reste_signale(self):
+        """À l'inverse, un coureur officiellement arrivé (prel=False,
+        tstat OK) avec un temps négatif est bien signalé en live."""
+        c = make_competitor(1, st=100000, stat=STAT_OK, rt=6000, prel=False)
+        c.tstat = STAT_OK
+        controls  = [{'ctrl_id': 31, 'ctrl_name': '1-31'}]
+        radio_map = {1: {31: -350}}
+        with patch('results.views._load_class_context',
+                   return_value=(MagicMock(cid=1, name='Test'),
+                                 MagicMock(id=10, name='H21'), [c], None)), \
+             patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views.get_org_map', return_value={}), \
+             patch('results.views.get_radio_map', return_value=radio_map), \
+             patch('results.views._controls_for', return_value=controls), \
+             patch('results.views.race_start_clock', return_value=None), \
+             patch('results.views.render') as mock_render:
+            MockTeam.objects.filter.return_value.exists.return_value = False
+            from results.views import live_results
+            live_results(rf_get(), cid=1, class_id='H21')
+            _, _, ctx = mock_render.call_args[0]
+            runner = ctx['live'][0]
+            assert runner.live_group == 'arrives'
+            assert runner.neg_time is True
+            assert runner.neg_ctrls == ['1-31']
+
+
+class TestLiveNegTimeWarning:
+    """Le bandeau live expurge les coureurs en validation GEC (prel)."""
+
+    def _warning(self, runner_id=5, controls=('1-31',)):
+        return {
+            'count': 1, 'kind': 'single',
+            'message': 'msg', 'tooltip': 'tip',
+            'box_controls': {},
+            'runners': [{'id': runner_id, 'name': 'A', 'cls_name': 'H21',
+                         'controls': list(controls)}],
+        }
+
+    def test_exclut_coureur_prel(self):
+        from results.views import _live_neg_time_warning
+        with patch('results.views.get_negative_time_stats',
+                   return_value=self._warning()), \
+             patch('results.views.Mopcompetitor') as MockC:
+            MockC.objects.filter.return_value.values_list.return_value = [5]
+            assert _live_neg_time_warning(1) is None
+
+    def test_garde_coureur_non_prel(self):
+        from results.views import _live_neg_time_warning
+        with patch('results.views.get_negative_time_stats',
+                   return_value=self._warning()), \
+             patch('results.views.Mopcompetitor') as MockC:
+            MockC.objects.filter.return_value.values_list.return_value = []
+            res = _live_neg_time_warning(1)
+            assert res is not None
+            assert res['count'] == 1
+            assert res['runners'][0]['id'] == 5
+
+    def test_recompose_postes_suspects(self):
+        from results.views import _live_neg_time_warning
+        warning = {
+            'count': 2, 'kind': 'multiple',
+            'message': 'msg', 'tooltip': 'tip',
+            'box_controls': {'1-31': 2},
+            'runners': [
+                {'id': 5, 'name': 'A', 'cls_name': 'H21', 'controls': ['1-31']},
+                {'id': 6, 'name': 'B', 'cls_name': 'H21', 'controls': ['1-31', '2-179']},
+            ],
+        }
+        with patch('results.views.get_negative_time_stats', return_value=warning), \
+             patch('results.views.Mopcompetitor') as MockC:
+            # 6 n'est pas en validation GEC → reste ; 5 l'est → expurgé.
+            MockC.objects.filter.return_value.values_list.return_value = [5]
+            res = _live_neg_time_warning(1)
+            assert res is not None
+            assert res['count'] == 1
+            assert [r['id'] for r in res['runners']] == [6]
+            # 1-31 n'est plus partagé par ≥2 coureurs → plus de boîtier suspect.
+            assert res['box_controls'] == {}
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # api_live_results (JSON)
