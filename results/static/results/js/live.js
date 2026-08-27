@@ -53,6 +53,7 @@ const LiveResults = (() => {
   // à POLL_INTERVAL_MS dès une mise à jour).
   let lastEtag = null;
   let pollIntervalMs = POLL_INTERVAL_MS;
+  let currentRaceState = 'live';
 
   // ── Petits utilitaires ───────────────────────────────────────────────────
 
@@ -121,7 +122,10 @@ const LiveResults = (() => {
 
   function rankCell(runner) {
     if (runner.rank == null) return '<span class="text-muted">—</span>';
-    return COUtils.renderMedal(runner.rank);
+    if (runner.group === 'arrives' || runner.group === 'termine') {
+      return COUtils.renderMedal(runner.rank);
+    }
+    return `<span class="rank-n">${runner.rank}</span>`;
   }
 
   function statusBadge(runner) {
@@ -415,6 +419,7 @@ const LiveResults = (() => {
   }
 
   function setRaceState(state) {
+    currentRaceState = state;
     const badge = document.getElementById('liveStatusBadge');
     if (!badge) return;
     if (state === 'finished') {
@@ -430,6 +435,7 @@ const LiveResults = (() => {
   }
 
   function setLiveStatus(ok) {
+    if (currentRaceState === 'finished' || currentRaceState === 'upcoming') return;
     const badge = document.getElementById('liveStatusBadge');
     if (!badge) return;
     badge.className = ok ? 'badge bg-success fs-6' : 'badge bg-danger fs-6';
@@ -474,6 +480,7 @@ const LiveResults = (() => {
   function init(config) {
     cfg = config;
     lastFetchClientMs = Date.now();
+    currentRaceState = cfg.initialRaceState || 'live';
     watchMeasureContext();
     startClock({
       race_start_clock: cfg.initialRaceStart,
