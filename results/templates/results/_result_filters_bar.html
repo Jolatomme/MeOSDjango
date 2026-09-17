@@ -9,7 +9,7 @@
   <button class="btn btn-outline-secondary btn-sm" onclick="toggleNonFinishers()">
     <i class="bi bi-eye me-1"></i><span id="toggleLabel">Masquer abandons</span>
   </button>
-  {% if has_splits %}
+  {% if has_splits and can_show_splits != False %}
   <button class="btn btn-outline-primary btn-sm" onclick="toggleAllSplits()">
     <i class="bi bi-clock-history me-1"></i><span id="allSplitsLabel">Développer tous les intermédiaires</span>
   </button>

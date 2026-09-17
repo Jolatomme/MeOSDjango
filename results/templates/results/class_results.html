@@ -25,8 +25,7 @@
         </h1>
         {% if course %}
           <div class="opacity-75 small mt-1">
-            Circuit · {{ course.n_controls }} poste{{ course.n_controls|pluralize }}
-            &bull; {{ course.classes|length }} catégorie{{ course.classes|length|pluralize }}
+            {% if can_show_splits %}Circuit · {{ course.n_controls }} poste{{ course.n_controls|pluralize }} &bull; {% endif %}{{ course.classes|length }} catégorie{{ course.classes|length|pluralize }}
           </div>
         {% endif %}
       </div>
@@ -129,7 +128,7 @@
             {% else %}—{% endif %}
           </td>
 
-          {% if has_splits and comp.splits %}
+          {% if has_splits and can_show_splits and comp.splits %}
           <td class="text-end time-col time-col-splits"
               onclick="toggleSplits('{{ comp.id }}', this.querySelector('.split-toggle'))"
               title="Afficher les intermédiaires">
@@ -214,13 +213,14 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'results/js/chart.umd.min.js' %}"></script>
+{% if has_splits and can_show_splits %}<script src="{% static 'results/js/chart.umd.min.js' %}"></script>{% endif %}
 <script src="{% static 'results/js/results-splits.js' %}"></script>
 <script>
-  COResultsSplits.init({{ leg_error_data_json|default:"[]"|safe }});
+  {% if has_splits and can_show_splits %}COResultsSplits.init({{ leg_error_data_json|default:"[]"|safe }});{% endif %}
   const _toggleNF = COUtils.makeNonFinisherToggle('toggleLabel');
   function toggleNonFinishers() { _toggleNF(); }
   COUtils.bindRowSearch('runnerSearch', 'tr.result-row:not(.splits-row)', 'splits-row');
+  {% if has_splits and can_show_splits %}
   function toggleSplits(compId, btn) { COUtils.toggleDetailRow('splits-' + compId, btn, COResultsSplits.applyErrorThresholds); }
   const _allSplitsToggle = COUtils.makeAllToggle({
     rowSelector: '.splits-row', btnSelector: '.split-toggle',
@@ -230,5 +230,6 @@
     onOpen: () => COResultsSplits.applyErrorThresholds(),
   });
   function toggleAllSplits() { _allSplitsToggle(); }
+  {% endif %}
 </script>
 {% endblock %}

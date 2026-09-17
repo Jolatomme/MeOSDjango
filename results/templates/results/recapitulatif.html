@@ -39,7 +39,7 @@
         </span>
         {% endif %}
         <span class="badge bg-light text-dark fs-6">{{ results|length }} coureur{{ results|length|pluralize }}</span>
-        {% if has_splits %}
+        {% if has_splits and can_show_splits %}
         <span class="badge bg-light text-dark fs-6">{{ controls_seq|length }} poste{{ controls_seq|length|pluralize }}</span>
         {% endif %}
       </div>
@@ -102,8 +102,8 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
     <span><i class="bi bi-table me-2"></i>Temps intermédiaires —
       {% if course %}Circuit {{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
     </span>
-    <span class="d-flex align-items-center gap-2 flex-wrap">
-      {% if has_splits %}
+      <span class="d-flex align-items-center gap-2 flex-wrap">
+      {% if has_splits and can_show_splits %}
       <div class="d-flex align-items-center gap-2" id="errorThresholds">
         <span class="small fw-bold" style="color:var(--co-gold)">Seuil erreur :</span>
         <div class="input-group input-group-sm" style="width:100px">
@@ -131,7 +131,7 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
           <th style="width:8rem;min-width:8rem" data-sticky="1">Concurrent</th>
           {% if course %}<th style="width:10rem;min-width:10rem" data-sticky="2" class="col-category">Catégorie</th>{% endif %}
           <th style="width:9rem;min-width:9rem" data-sticky="{% if course %}3{% else %}2{% endif %}" class="col-club">Club</th>
-          {% if has_splits %}
+          {% if has_splits and can_show_splits %}
             {% for ctrl in controls_seq %}
             <th class="text-end" title="{{ ctrl.ctrl_name }}">{{ ctrl.ctrl_name }}</th>
             {% endfor %}
@@ -142,7 +142,7 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
       <tbody>
         {% if results %}
           {% for comp in results %}
-            {% if comp.is_ok and has_splits %}
+            {% if comp.is_ok and has_splits and can_show_splits %}
             <tr class="runner-row leg-row">
               <td class="rank-col" rowspan="2" data-sticky="0">{{ comp.rank }}</td>
               <td rowspan="2" class="runner-name" data-sticky="1">
@@ -180,7 +180,7 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
               </td>
               {% endfor %}
             </tr>
-            {% elif comp.is_ok and not has_splits %}
+            {% elif comp.is_ok and not has_splits or comp.is_ok and has_splits and not can_show_splits %}
             <tr class="runner-row">
               <td class="rank-col" data-sticky="0">{{ comp.rank }}</td>
               <td class="runner-name" data-sticky="1"><a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a></td>
@@ -193,7 +193,7 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
               <td class="runner-name" data-sticky="1"><a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a>{% if comp.neg_time %} <span class="badge neg-badge ms-1" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>{% endif %}</td>
               {% if course %}<td data-sticky="2" class="col-category">{% if comp.class_obj %}{{ comp.class_obj.name }}{% else %}—{% endif %}</td>{% endif %}
               <td class="club-name col-club" data-sticky="{% if course %}3{% else %}2{% endif %}">{% if comp.org_obj %}{{ comp.org_obj.name }}{% else %}—{% endif %}</td>
-              {% if has_splits %}
+              {% if has_splits and can_show_splits %}
               <td colspan="{{ controls_seq|length|add:1 }}" class="text-end time-col">
                 <span class="badge bg-{{ comp.stat|status_badge }}">{{ comp.stat|status_label }}</span>
               </td>
@@ -251,7 +251,7 @@ html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
 
 
 {% block extra_js %}
-{% if has_splits %}
+{% if has_splits and can_show_splits %}
 <script>
 function applyRecapThresholds() {
   const thSec = parseFloat(document.getElementById('thresholdSec')?.value) || 0;

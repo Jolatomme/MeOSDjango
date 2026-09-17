@@ -1,4 +1,4 @@
-{% if has_splits and comp.splits %}
+{% if has_splits and can_show_splits and comp.splits %}
 <tr id="splits-{{ comp.id }}"
     class="splits-row d-none result-row {% if not comp.is_ok %}non-finisher{% endif %}"
     data-name="{{ comp.name|lower }}">

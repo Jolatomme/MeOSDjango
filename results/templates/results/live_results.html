@@ -151,9 +151,13 @@
     cid: {{ competition.cid }},
     isCourse: {% if course %}true{% else %}false{% endif %},
     initialRaceStart: {{ race_start_clock|default:"null" }},
+    initialRaceStartAbs: {{ race_start_abs|default:"null" }},
     initialNowClock: {{ server_now_clock }},
+    initialNowAbs: {{ server_now_abs|default:"null" }},
     initialRaceState: "{{ race_state }}",
     initialRaceEndClock: {{ race_end_clock|default:"null" }},
+    initialRaceEndAbs: {{ race_end_abs|default:"null" }},
+    competitionDate: "{{ competition_date }}",
   });
 </script>
 {% endblock %}

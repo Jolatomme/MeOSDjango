@@ -84,7 +84,7 @@
                  class="text-muted text-decoration-none">{{ comp.org_obj.name }}</a>
             {% else %}—{% endif %}
           </td>
-          {% if has_splits and comp.splits %}
+          {% if has_splits and can_show_splits and comp.splits %}
           <td class="text-end time-col time-col-splits"
               onclick="toggleSplits('{{ comp.id }}', this.querySelector('.split-toggle'))"
               title="Afficher les intermédiaires">
@@ -134,18 +134,18 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if has_splits %}
+{% if has_splits and can_show_splits %}
 <script src="{% static 'results/js/chart.umd.min.js' %}"></script>
 {% endif %}
 <script src="{% static 'results/js/results-splits.js' %}"></script>
 <script>
-  {% if has_splits %}
+  {% if has_splits and can_show_splits %}
   COResultsSplits.init({{ leg_error_data_json|default:"[]"|safe }});
   {% endif %}
   const _toggleNF = COUtils.makeNonFinisherToggle('toggleLabel');
   function toggleNonFinishers() { _toggleNF(); }
   COUtils.bindRowSearch('runnerSearch', 'tr.result-row:not(.splits-row)', 'splits-row');
-  {% if has_splits %}
+  {% if has_splits and can_show_splits %}
   function toggleSplits(compId, btn) { COUtils.toggleDetailRow('splits-' + compId, btn, COResultsSplits.applyErrorThresholds); }
   const _allSplitsToggle = COUtils.makeAllToggle({
     rowSelector: '.splits-row', btnSelector: '.split-toggle',

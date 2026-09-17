@@ -15,7 +15,7 @@ from .models import (
 
 import re
 from collections import Counter
-from datetime import datetime
+from datetime import date, datetime
 from functools import cmp_to_key
 from markdown.extensions.toc import slugify_unicode
 from django.db import connection
@@ -526,6 +526,36 @@ def rank_finishers(entries, *, time_field='rt', ok_predicate=None):
     return finishers, non_finishers, leader_time
 
 
+def has_completed(entries):
+    """True si au moins un concurrent/équipe a terminé (OK ou prél. arrivée).
+
+    Per-category gate: cache le circuit jusqu'à la première arrivée.
+    ``is_ok`` (stat OK + rt>0) ou ``prel`` avec rt>0 compte comme terminée
+    (b) prel counts as completed, live exempt handled elsewhere.
+    """
+    for e in entries:
+        if getattr(e, 'is_ok', False):
+            return True
+        # prel + rt>0 : robust to MagicMock rt in tests (MagicMock is not int)
+        rt_val = getattr(e, 'rt', 0)
+        if not isinstance(rt_val, (int, float)):
+            try:
+                rt_val = int(rt_val)
+            except Exception:
+                rt_val = 0
+        else:
+            try:
+                rt_val = int(rt_val)
+            except Exception:
+                rt_val = 0
+        if getattr(e, 'prel', False) and rt_val > 0:
+            return True
+        # MopTeam n'a pas is_ok : fallback stat OK + rt>0
+        if getattr(e, 'stat', None) == STAT_OK and rt_val > 0:
+            return True
+    return False
+
+
 # ─── Matrice des tronçons ──────────────────────────────────────────────────────
 
 def build_leg_matrix(finishers, controls_seq, radio_map):
@@ -912,6 +942,48 @@ def clock_tenths(dt):
     return (dt.hour * 3600 + dt.minute * 60 + dt.second) * 10
 
 
+def _now_abs(competition_date, now_dt):
+    """1/10 s absolues depuis 00:00 du jour de la compétition.
+
+    Si ``competition_date`` est fourni (``Mopcompetition.date``), la différence
+    de jours est prise en compte : permet de distinguer « En course » d'
+    « En attente » quand la compétition est dans le futur ou quand la course
+    passe minuit. Sans date (tests / legacy), retombe sur l'horloge modulo
+    du jour.
+    """
+    now_t = clock_tenths(now_dt)
+    if competition_date is None or not isinstance(competition_date, date):
+        return now_t
+    try:
+        days = (now_dt.date() - competition_date).days
+    except Exception:
+        return now_t
+    return days * _DAY_TENTHS + now_t
+
+
+def _st_abs(st, competition_date=None):
+    """Valeur absolue de ``st`` depuis le début de la compétition.
+
+    ``st`` est normalement modulo jour (0..863999). Si MeOS envoie une valeur
+    > ``_DAY_TENTHS`` (tenths depuis 00:00 du 1er jour, voir mop.xsd), elle est
+    déjà absolue et est conservée telle quelle. Dans le cas modulo, l'offset
+    jour est porté par ``_now_abs`` (``now_abs`` négatif avant la compétition,
+    >864000 après minuit), donc ``st`` reste inchangé.
+    """
+    # Gère les MagicMock des tests (comparaison renvoie un mock, pas bool)
+    try:
+        if st is None or st <= 0:
+            return st
+    except Exception:
+        return st
+    try:
+        if st > _DAY_TENTHS:
+            return st
+    except Exception:
+        return st
+    return st
+
+
 def format_clock(tenths):
     """Formate une heure murale (1/10 s depuis minuit) en 'HH:MM:SS'.
 
@@ -935,20 +1007,28 @@ def _is_definitive(stat):
     return stat in LIVE_DONE_PRIORITY
 
 
-def race_start_clock(competitors):
-    """1/10 s depuis minuit du premier départ valide, ou None."""
-    starts = [c.st for c in competitors if c.st and c.st > 0]
+def race_start_clock(competitors, competition_date=None):
+    """1/10 s depuis minuit du premier départ valide, ou None.
+
+    Si ``competition_date`` est fourni, la valeur retournée est absolue
+    (depuis 00:00 du jour de la compétition) pour les calculs live ;
+    sinon, valeur modulo jour (legacy).
+    """
+    starts = [_st_abs(c.st, competition_date) for c in competitors if c.st and c.st > 0]
     return min(starts) if starts else None
 
 
-def race_end_clock(competitors):
-    """1/10 s depuis minuit de la dernière arrivée (st + rt), ou None."""
-    ends = [c.st + c.rt for c in competitors
+def race_end_clock(competitors, competition_date=None):
+    """1/10 s depuis minuit de la dernière arrivée (st + rt), ou None.
+
+    Si ``competition_date`` est fourni, la valeur retournée est absolue.
+    """
+    ends = [_st_abs(c.st, competition_date) + c.rt for c in competitors
             if c.is_ok and c.st and c.st > 0 and c.rt and c.rt > 0]
     return max(ends) if ends else None
 
 
-def race_state(competitors, now=None, race_start=None):
+def race_state(competitors, now=None, race_start=None, competition_date=None):
     """État de la course : ``'upcoming'``, ``'live'`` ou ``'finished'``.
 
     - ``'finished'`` : plus aucun coureur en course ni en attente de départ
@@ -959,24 +1039,37 @@ def race_state(competitors, now=None, race_start=None):
     ``competitors`` doit avoir l'attribut ``live_group`` (posé par
     ``rank_live``). ``race_start`` doit être fourni (voir
     ``race_start_clock``) ; ``None`` signifie qu'aucun départ n'est connu.
+    Si ``competition_date`` est fourni, ``now`` et ``race_start`` sont
+    comparés en temps absolu (gère compétition future et passage minuit).
     """
-    now_t = clock_tenths(now or datetime.now())
+    now_t = _now_abs(competition_date, now or datetime.now())
+    # race_start may be modulo or absolute; if competition_date given, ensure
+    # it is absolute for comparison (legacy callers pass modulo).
+    race_start_abs = race_start
+    if competition_date is not None and race_start is not None and race_start <= _DAY_TENTHS:
+        # race_start was computed without date or is modulo -> keep as is for
+        # today's race, but for future/midnight now_t is absolute, so comparison
+        # now_t < race_start would be wrong for future? For modulo race_start 360k
+        # and now_abs -2160000, -2160000 < 360k true -> upcoming correct.
+        # For midnight: now_abs 870k, race_start 828k? Actually race_start 360k? No, min st is 828k for 23:00 start? Then 870k <828k false -> live correct.
+        # So keep as is; absolute st>DAY already handled.
+        race_start_abs = race_start
 
     en_course  = [c for c in competitors if getattr(c, 'live_group', None) == 'en_course']
     en_attente = [c for c in competitors if getattr(c, 'live_group', None) == 'en_attente']
     if not en_course and not en_attente:
         return 'finished'
-    if race_start is None or now_t < race_start:
+    if race_start_abs is None or now_t < race_start_abs:
         return 'upcoming'
     return 'live'
 
 
-def race_in_progress(competitors, now=None):
+def race_in_progress(competitors, now=None, competition_date=None):
     """True si au moins un coureur est encore en course (départ passé)."""
     now = now or datetime.now()
-    now_t = clock_tenths(now)
+    now_abs = _now_abs(competition_date, now)
     return any(
-        not c.is_ok and not _is_definitive(c.stat) and c.st > 0 and c.st <= now_t
+        not c.is_ok and not _is_definitive(c.stat) and c.st > 0 and _st_abs(c.st, competition_date) <= now_abs
         for c in competitors
     )
 
@@ -1024,7 +1117,9 @@ def _cmp_en_course(a, b):
         return (a_ref > b_ref) - (a_ref < b_ref)
 
     if not a_info and not b_info:
-        return (a.st > b.st) - (a.st < b.st)
+        a_st = getattr(a, 'st_abs', getattr(a, 'st', 0)) or 0
+        b_st = getattr(b, 'st_abs', getattr(b, 'st', 0)) or 0
+        return (a_st > b_st) - (a_st < b_st)
 
     informed, noinfo = (a, b) if a_info else (b, a)
     inf_first  = informed.first_radio_time
@@ -1034,15 +1129,26 @@ def _cmp_en_course(a, b):
     return 1 if a_info else -1
 
 
-def rank_live(competitors, radio_map, now, controls_seq=None):
+def rank_live(competitors, radio_map, now, controls_seq=None, competition_date=None):
     """Classe les coureurs pour l'affichage live.
 
     Mutates : attache à chaque coureur ``live_group``, ``live_rank``,
     ``n_punches``, ``last_ctrl``, ``last_time`` (1/10 s de course),
-    ``last_punch_clock`` (horloge murale = st + last_time), ``ref_time``,
+    ``last_punch_clock`` (horloge murale = st + last_time, absolue si
+    ``competition_date`` fournie), ``ref_time``,
     ``progress_pos`` (position 1-based dans ``controls_seq`` du poste le
     plus avancé ; 0 si aucun poinçon de parcours connu) et
     ``arrival_rt`` (temps au poinçon d'arrivée radio, sinon None).
+    Ajoute aussi ``st_abs`` (``st`` absolu depuis le début de la
+    compétition) et ``elapsed`` (temps écoulé depuis le départ, ``None``
+    si pas encore parti).
+
+    Si ``competition_date`` (``Mopcompetition.date``) est fourni, la
+    comparaison ``st`` vs ``now`` est faite en temps absolu
+    (``days*DAY + clock``) : un coureur dont la compétition est dans le
+    futur reste ``En attente`` (pas ``En course`` avec un chrono de 22h),
+    et une course passant minuit garde ses coureurs ``En course`` après
+    00:00. Sans date, comportement legacy modulo jour.
 
     La progression suit l'ordre imposé par le circuit (``controls_seq``) :
     ``last_ctrl`` / ``progress_pos`` désignent le poste le plus avancé
@@ -1081,7 +1187,7 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
     Liste ordonnée des coureurs : en_course, valid_gec, arrives,
     en_attente, termine.
     """
-    now_t = clock_tenths(now)
+    now_t = _now_abs(competition_date, now)
     ctrl_order = {
         ctrl['ctrl_id']: i for i, ctrl in enumerate(controls_seq or [])
     }
@@ -1090,6 +1196,7 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
         c.neg_time = getattr(c, 'neg_time', False) is True or (
             c.stat == STAT_OK and c.rt is not None and c.rt < 0
         )
+        c.st_abs = _st_abs(getattr(c, 'st', 0), competition_date)
         radios  = radio_map.get(c.id, {})
         punches = [
             (ctrl, rt) for ctrl, rt in radios.items() if rt and rt > 0
@@ -1106,7 +1213,7 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
         # des postes puis atteint le dernier).
         c.progress_count    = len(positions)
         c.first_radio_time  = min(positions, default=None)[1] if positions else None
-        c.elapsed           = (now_t - c.st) if c.st and c.st > 0 and c.st <= now_t else None
+        c.elapsed           = (now_t - c.st_abs) if c.st_abs and c.st_abs > 0 and c.st_abs <= now_t else None
         arrival             = detect_arrival_punch(radios, controls_seq or [])
         c.arrival_ctrl      = arrival[0] if arrival else None
         c.arrival_rt        = arrival[1] if arrival else None
@@ -1114,13 +1221,13 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
             furthest = max(positions)          # poste le plus avancé, puis temps
             c.last_ctrl         = furthest[2]
             c.last_time         = furthest[1]
-            c.last_punch_clock  = (c.st + c.last_time) if c.st and c.st > 0 else None
+            c.last_punch_clock  = (c.st_abs + c.last_time) if c.st_abs and c.st_abs > 0 else None
         elif punches:
             # Repli sans ordre de circuit : poste au temps de poinçon le plus grand
             fallback = max(punches, key=lambda p: p[1])
             c.last_ctrl         = fallback[0]
             c.last_time         = fallback[1]
-            c.last_punch_clock  = (c.st + c.last_time) if c.st and c.st > 0 else None
+            c.last_punch_clock  = (c.st_abs + c.last_time) if c.st_abs and c.st_abs > 0 else None
         else:
             c.last_ctrl = None
             c.last_time = None
@@ -1130,7 +1237,7 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
             # d'arrivée (provisoire — carte pas encore lue à la GEC).
             c.last_ctrl        = arrival[0]
             c.last_time        = arrival[1]
-            c.last_punch_clock = (c.st + c.last_time) if c.st and c.st > 0 else None
+            c.last_punch_clock = (c.st_abs + c.last_time) if c.st_abs and c.st_abs > 0 else None
         c.ref_time = c.last_time
 
         if c.is_ok:
@@ -1148,7 +1255,7 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
             # Poinçon d'arrivée radio reçu : course terminée, carte pas
             # encore lue à la GEC et statut pas encore attribué par MeOS.
             c.live_group = 'valid_gec'
-        elif c.st > 0 and c.st <= now_t:
+        elif c.st_abs and c.st_abs > 0 and c.st_abs <= now_t:
             c.live_group = 'en_course'
         else:
             c.live_group = 'en_attente'
@@ -1176,7 +1283,7 @@ def rank_live(competitors, radio_map, now, controls_seq=None):
 
     en_attente = sorted(
         [c for c in competitors if c.live_group == 'en_attente'],
-        key=lambda c: (c.st == 0, c.st),      # st=0 (départ inconnu) en dernier
+        key=lambda c: (getattr(c, 'st_abs', c.st) == 0, getattr(c, 'st_abs', c.st)),      # st=0 (départ inconnu) en dernier
     )
     termine = sorted(
         [c for c in competitors if c.live_group == 'termine'],

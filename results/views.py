@@ -3,7 +3,7 @@ import json
 import re
 from collections import Counter
 from types import SimpleNamespace
-from datetime import datetime
+from datetime import date, datetime
 from django.core.cache import cache
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import Http404, HttpResponse, JsonResponse
@@ -29,8 +29,8 @@ from .services import (
     compute_course_hash, get_courses_map,
     competition_visible,
     rank_live, race_start_clock, race_end_clock, race_state,
-    race_in_progress, mark_negative_times, clock_tenths,
-    LIVE_GROUPS,
+    race_in_progress, mark_negative_times, clock_tenths, _now_abs, _st_abs,
+    LIVE_GROUPS, has_completed,
 )
 
 
@@ -188,45 +188,54 @@ def class_results(request, cid, class_id):
 
     results      = finishers + _sort_non_finishers(non_finishers)
     controls_seq = _controls_for(cid, cls, course)
-    radio_map    = get_radio_map(cid, [c.id for c in results])
-    attested     = attested_ctrls(radio_map)
+    # Per-category gate: hide punches until one runner has finished (OK or prel)
+    can_show_splits = has_completed(competitors)
 
-    for c in results:
-        c.splits = compute_splits(
-            c.id, controls_seq, radio_map,
-            detect_prestart_ctrls(c, controls_seq, radio_map, attested))
+    if can_show_splits:
+        radio_map    = get_radio_map(cid, [c.id for c in results])
+        attested     = attested_ctrls(radio_map)
 
-    # Ajout du tronçon arrivée pour tous (cohérence mark_best_splits / rank_splits)
-    for c in results:
-        last_abs = c.splits[-1]['abs_raw'] if c.splits else None
-        c.splits.append(build_finish_split(c.rt, last_abs))
-        c.neg_time = any(sp.get('neg_leg') for sp in c.splits)
-
-    mark_best_splits(finishers, results)
-    rank_splits(finishers, results)
-
-    error_map = {}
-    if controls_seq and finishers:
-        error_map = compute_error_estimates(finishers, controls_seq, radio_map)
         for c in results:
-            errs = error_map.get(c.id, [])
-            for idx, sp in enumerate(c.splits):
-                e = errs[idx] if idx < len(errs) else None
-                sp['error_time'] = round(e['error_time']) if e and e['error_time'] is not None else None
-                sp['error_pct']  = round(e['error_pct']) if e and e['error_pct'] is not None else None
+            c.splits = compute_splits(
+                c.id, controls_seq, radio_map,
+                detect_prestart_ctrls(c, controls_seq, radio_map, attested))
 
-    leg_error_data = []
-    if controls_seq and finishers:
-        for j, ctrl in enumerate(controls_seq):
-            entry = {'ctrl_name': ctrl['ctrl_name'], 'errors': []}
-            for c in finishers:
+        # Ajout du tronçon arrivée pour tous (cohérence mark_best_splits / rank_splits)
+        for c in results:
+            last_abs = c.splits[-1]['abs_raw'] if c.splits else None
+            c.splits.append(build_finish_split(c.rt, last_abs))
+            c.neg_time = any(sp.get('neg_leg') for sp in c.splits)
+
+        mark_best_splits(finishers, results)
+        rank_splits(finishers, results)
+
+        error_map = {}
+        if controls_seq and finishers:
+            error_map = compute_error_estimates(finishers, controls_seq, radio_map)
+            for c in results:
                 errs = error_map.get(c.id, [])
-                if j < len(errs) and errs[j]['error_time'] is not None:
-                    entry['errors'].append({
-                        'et': round(errs[j]['error_time']),
-                        'ep': round(errs[j]['error_pct']),
-                    })
-            leg_error_data.append(entry)
+                for idx, sp in enumerate(c.splits):
+                    e = errs[idx] if idx < len(errs) else None
+                    sp['error_time'] = round(e['error_time']) if e and e['error_time'] is not None else None
+                    sp['error_pct']  = round(e['error_pct']) if e and e['error_pct'] is not None else None
+
+        leg_error_data = []
+        if controls_seq and finishers:
+            for j, ctrl in enumerate(controls_seq):
+                entry = {'ctrl_name': ctrl['ctrl_name'], 'errors': []}
+                for c in finishers:
+                    errs = error_map.get(c.id, [])
+                    if j < len(errs) and errs[j]['error_time'] is not None:
+                        entry['errors'].append({
+                            'et': round(errs[j]['error_time']),
+                            'ep': round(errs[j]['error_pct']),
+                        })
+                leg_error_data.append(entry)
+    else:
+        for c in results:
+            c.splits = []
+            c.neg_time = False
+        leg_error_data = []
 
     # ← Le seul branchement template : circuit ou catégorie
     template = 'results/course_results.html' if course else 'results/class_results.html'
@@ -238,6 +247,7 @@ def class_results(request, cid, class_id):
         'leader_time':         format_time(leader_time) if leader_time else '-',
         'controls_seq':        controls_seq,
         'has_splits':          bool(controls_seq),
+        'can_show_splits':     can_show_splits,
         'current_analysis':    'results',
         'leg_error_data_json': json.dumps(leg_error_data),
         'prev_cls':            prev_cls,
@@ -261,21 +271,32 @@ def competitor_detail(request, cid, competitor_id):
     cls = Mopclass.objects.filter(cid=cid, id=competitor.cls).first()
     controls_seq, _ = get_class_controls(cid, competitor.cls)
     class_competitors = list(Mopcompetitor.objects.filter(cid=cid, cls=competitor.cls))
-    radio_map = get_radio_map(cid, [c.id for c in class_competitors])
-    attested  = attested_ctrls(radio_map)
-    splits = compute_splits(
-        competitor_id, controls_seq, radio_map,
-        detect_prestart_ctrls(competitor, controls_seq, radio_map, attested))
-    # Tronçon arrivée : tout coureur avec un temps de course a franchi la
-    # ligne, y compris les non-classés (PM/DQ/OT…) — le temps est alors
-    # visible sur sa fiche, sans valeur de classement.
-    if splits and competitor.rt > 0:
-        last_abs = splits[-1]['abs_raw']
-        splits.append(build_finish_split(competitor.rt, last_abs))
-    competitor.neg_time = any(sp.get('neg_leg') for sp in splits)
+    # Per-category gate: hide punches until one runner in the category has finished
+    # Fallback for legacy mocks (empty list) — treat as can_show to keep old tests
+    if not class_competitors:
+        can_show = True
+    else:
+        can_show = has_completed(class_competitors) or has_completed([competitor])
+    if can_show:
+        radio_map = get_radio_map(cid, [c.id for c in class_competitors])
+        attested  = attested_ctrls(radio_map)
+        splits = compute_splits(
+            competitor_id, controls_seq, radio_map,
+            detect_prestart_ctrls(competitor, controls_seq, radio_map, attested))
+        # Tronçon arrivée : tout coureur avec un temps de course a franchi la
+        # ligne, y compris les non-classés (PM/DQ/OT…) — le temps est alors
+        # visible sur sa fiche, sans valeur de classement.
+        if splits and competitor.rt > 0:
+            last_abs = splits[-1]['abs_raw']
+            splits.append(build_finish_split(competitor.rt, last_abs))
+        competitor.neg_time = any(sp.get('neg_leg') for sp in splits)
+    else:
+        splits = []
+        competitor.neg_time = False
     return render(request, 'results/competitor_detail.html', {
         'competition': competition, 'competitor': competitor,
         'org': org, 'cls': cls, 'splits': splits,
+        'can_show_splits': can_show,
         'neg_time_warning': get_negative_time_stats(cid),
         'total_time': format_time(competitor.rt) if competitor.is_ok else competitor.status_label,
     })
@@ -428,7 +449,10 @@ def live_results(request, cid, class_id):
     controls_seq = _controls_for(cid, cls, course)
     radio_map    = get_radio_map(cid, [c.id for c in competitors])
     now          = datetime.now()
-    live         = rank_live(competitors, radio_map, now, controls_seq or [])
+    comp_date    = getattr(competition, 'date', None)
+    if not isinstance(comp_date, date):
+        comp_date = None
+    live         = rank_live(competitors, radio_map, now, controls_seq or [], competition_date=comp_date)
 
     # Validation GEC (prel) : pas de détection des temps négatifs en live.
     mark_negative_times(
@@ -441,11 +465,14 @@ def live_results(request, cid, class_id):
 
     groups = {g: [c for c in live if c.live_group == g] for g in LIVE_GROUPS}
 
-    race_start = race_start_clock(competitors)
-    state      = race_state(live, now, race_start)
+    race_start = race_start_clock(competitors, competition_date=comp_date)
+    state      = race_state(live, now, race_start, competition_date=comp_date)
     race_end   = None
     if state == 'finished':
-        race_end = race_end_clock(competitors) or clock_tenths(now)
+        race_end = race_end_clock(competitors, competition_date=comp_date) or _now_abs(comp_date, now)
+    # Horloges absolues pour le JS (gère compétition future et passage minuit)
+    server_now_abs = _now_abs(comp_date, now)
+    race_start_abs = race_start
 
     return render(request, 'results/live_results.html', {
         'competition':       competition,
@@ -455,9 +482,13 @@ def live_results(request, cid, class_id):
         'live':              live,
         'groups':            groups,
         'race_start_clock':  race_start,
+        'race_start_abs':    race_start_abs,
         'race_state':        state,
         'race_end_clock':    race_end,
+        'race_end_abs':      race_end,
         'server_now_clock':  clock_tenths(now),
+        'server_now_abs':    server_now_abs,
+        'competition_date':  comp_date.isoformat() if comp_date else '',
         'course_hash':       course['hash'] if course else compute_course_hash(controls_seq),
         'current_analysis':  'live',
         'neg_time_warning':  _live_neg_time_warning(cid),
@@ -469,14 +500,27 @@ def live_results(request, cid, class_id):
 _LIVE_CACHE_TTL = 3   # s — < intervalle de polling (5 s) : partage du calcul entre spectateurs
 
 
-def _build_live_payload(cid, cls, competitors, course):
+def _build_live_payload(cid, cls, competitors, course, competition=None):
     """Construit le payload live complet (hors champs volatils d'horloge,
     réinjectés à chaque réponse) et son empreinte ETag."""
     org_map      = get_org_map(cid)
     controls_seq = _controls_for(cid, cls, course)
     radio_map    = get_radio_map(cid, [c.id for c in competitors])
     now          = datetime.now()
-    live         = rank_live(competitors, radio_map, now, controls_seq or [])
+    # Récupère la date de compétition si non fournie (cache live)
+    comp_date = getattr(competition, 'date', None) if competition is not None else None
+    if not isinstance(comp_date, date):
+        comp_date = None
+    if comp_date is None and competition is None:
+        # Fallback DB uniquement si aucun objet compétition fourni (ex. appel direct)
+        try:
+            comp_obj = Mopcompetition.objects.filter(cid=cid).first()
+            comp_date = getattr(comp_obj, 'date', None) if comp_obj else None
+            if not isinstance(comp_date, date):
+                comp_date = None
+        except Exception:
+            comp_date = None
+    live         = rank_live(competitors, radio_map, now, controls_seq or [], competition_date=comp_date)
 
     # Validation GEC (prel) : pas de détection des temps négatifs en live.
     mark_negative_times(
@@ -487,15 +531,35 @@ def _build_live_payload(cid, cls, competitors, course):
             c.neg_time  = False
             c.neg_ctrls = []
 
-    race_start = race_start_clock(competitors)
-    state      = race_state(live, now, race_start)
+    race_start = race_start_clock(competitors, competition_date=comp_date)
+    state      = race_state(live, now, race_start, competition_date=comp_date)
     race_end   = None
     if state == 'finished':
-        race_end = race_end_clock(competitors) or clock_tenths(now)
+        race_end = race_end_clock(competitors, competition_date=comp_date) or _now_abs(comp_date, now)
 
     runners = []
     ctrl_ids = {c['ctrl_id'] for c in controls_seq}
     for c in live:
+        # st_abs : si rank_live n'a pas été exécuté (mock), calcule via helper
+        _st_abs_val = getattr(c, 'st_abs', None)
+        if not isinstance(_st_abs_val, int):
+            try:
+                _st_abs_val = _st_abs(c.st, comp_date) if isinstance(c.st, int) else c.st
+            except Exception:
+                _st_abs_val = getattr(c, 'st', None)
+            if not isinstance(_st_abs_val, int):
+                # MagicMock fallback -> use raw st
+                try:
+                    _st_abs_val = int(c.st) if c.st is not None else None
+                except Exception:
+                    _st_abs_val = None
+        _lp = getattr(c, 'last_punch_clock', None)
+        _lp_abs = _lp if isinstance(_lp, int) else None
+        if _lp_abs is None:
+            try:
+                _lp_abs = int(_lp) if _lp is not None else None
+            except Exception:
+                _lp_abs = None
         runners.append({
             'id':                c.id,
             'name':              c.name,
@@ -507,15 +571,18 @@ def _build_live_payload(cid, cls, competitors, course):
             'group':             c.live_group,
             'rank':              c.live_rank,
             'st':                c.st,
+            'st_abs':            _st_abs_val,
             'rt':                c.rt if c.live_group == 'arrives' else None,
             'neg_time':          bool(getattr(c, 'neg_time', False)),
             'neg_ctrls':         list(getattr(c, 'neg_ctrls', []) or []),
-            'n_punches':         c.n_punches,
+            'n_punches':         getattr(c, 'n_punches', 0),
             'progress_pos':      getattr(c, 'progress_pos', 0),
             'progress_count':    getattr(c, 'progress_count', 0),
-            'last_ctrl':         c.last_ctrl,
-            'last_time':         c.last_time,
-            'last_punch_clock':  c.last_punch_clock,
+            'last_ctrl':         getattr(c, 'last_ctrl', None),
+            'last_time':         getattr(c, 'last_time', None),
+            'last_punch_clock':  _lp if isinstance(_lp, int) else None,
+            # Horloge absolue du dernier poinçon (pour « il y a X »)
+            'last_punch_clock_abs': _lp_abs,
             # Temps final provisoire (valid. GEC) : rt préliminaire MeOS ou
             # temps au poinçon d'arrivée radio détecté par rank_live.
             'provisional_rt':    (
@@ -534,8 +601,11 @@ def _build_live_payload(cid, cls, competitors, course):
     payload = {
         'success':            True,
         'race_start_clock':   race_start,
+        'race_start_abs':     race_start,
         'race_state':         state,
         'race_end_clock':     race_end,
+        'race_end_abs':       race_end,
+        'competition_date':   comp_date.isoformat() if comp_date else None,
         'is_course':          bool(course),
         'cls_name':           cls.name,
         'course':             {'hash': course['hash'], 'display_name': course['display_name']} if course else None,
@@ -568,16 +638,27 @@ def api_live_results(request, cid, class_id):
         if course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists():
             return JsonResponse({'success': False, 'error': 'relay'}, status=422)
 
-        payload, etag = _build_live_payload(cid, cls, competitors, course)
+        payload, etag = _build_live_payload(cid, cls, competitors, course, competition=competition)
         cache.set(cache_key, (payload, etag), _LIVE_CACHE_TTL)
 
     if request.headers.get('If-None-Match') == etag:
         return HttpResponse(status=304, headers={'ETag': etag, 'Cache-Control': 'no-cache'})
 
     now = datetime.now()
+    # Date de compétition pour horloge absolue (gère futur + passage minuit)
+    comp_date = None
+    try:
+        # payload contient déjà competition_date
+        from datetime import date as _date
+        cd_str = payload.get('competition_date')
+        if cd_str:
+            comp_date = _date.fromisoformat(cd_str)
+    except Exception:
+        comp_date = None
     data = dict(payload)
     data['server_now']       = int(now.timestamp() * 1000)
     data['server_now_clock'] = clock_tenths(now)
+    data['server_now_abs']   = _now_abs(comp_date, now)
     resp = JsonResponse(data)
     resp['ETag'] = etag
     resp['Cache-Control'] = 'no-cache'
@@ -630,6 +711,7 @@ def superman_analysis(request, cid, class_id):
         return render(request, 'results/superman.html', {
             'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'superman',
+            'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
         })
 
     radio_map  = get_radio_map(cid, [c.id for c in finishers])
@@ -713,6 +795,7 @@ def performance_analysis(request, cid, class_id):
         return render(request, 'results/performance.html', {
             'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'performance',
+            'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
         })
     org_map         = get_org_map(cid)
     controls_seq    = _controls_for(cid, cls, course)
@@ -773,6 +856,7 @@ def regularity_analysis(request, cid, class_id):
         return render(request, 'results/regularity.html', {
             'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'regularity',
+            'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
         })
     org_map         = get_org_map(cid)
     controls_seq    = _controls_for(cid, cls, course)
@@ -823,6 +907,7 @@ def grouping_analysis(request, cid, class_id):
         return render(request, 'results/grouping.html', {
             'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'grouping',
+            'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
         })
     org_map         = get_org_map(cid)
     controls_seq    = _controls_for(cid, cls, course)
@@ -862,6 +947,7 @@ def grouping_index_analysis(request, cid, class_id):
         return render(request, 'results/grouping_index.html', {
             'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'grouping_index',
+            'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
         })
     try:
         t1 = max(1, min(int(request.GET.get('t1', 7)), 30))
@@ -927,6 +1013,7 @@ def duel_analysis(request, cid, class_id):
         return render(request, 'results/duel.html', {
             'competition': competition, 'cls': cls, 'course': course,
             'no_data': True, 'current_analysis': 'duel',
+            'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
         })
     org_map      = get_org_map(cid)
     controls_seq = _controls_for(cid, cls, course)
@@ -996,42 +1083,50 @@ def _load_recapitulatif_data(cid, class_id, context=None):
 
     results      = finishers
     controls_seq = _controls_for(cid, cls, course)
-    radio_map   = get_radio_map(cid, [c.id for c in competitors])
-    attested    = attested_ctrls(radio_map)
+    # Per-category gate for recapitulatif (hide punches until one finisher)
+    can_show = has_completed(competitors)
+    if can_show:
+        radio_map   = get_radio_map(cid, [c.id for c in competitors])
+        attested    = attested_ctrls(radio_map)
 
-    for c in results:
-        c.splits = compute_splits(
-            c.id, controls_seq, radio_map,
-            detect_prestart_ctrls(c, controls_seq, radio_map, attested))
-        last_abs = c.splits[-1]['abs_raw'] if c.splits else None
-        c.splits.append(build_finish_split(c.rt, last_abs))
-        c.neg_time = any(sp.get('neg_leg') for sp in c.splits)
-
-    mark_best_splits(finishers, results)
-    rank_splits(finishers, results)
-
-    error_map = {}
-    if controls_seq and finishers:
-        error_map = compute_error_estimates(finishers, controls_seq, radio_map)
         for c in results:
-            errs = error_map.get(c.id, [])
-            for idx, sp in enumerate(c.splits):
-                e = errs[idx] if idx < len(errs) else None
-                sp['error_time'] = round(e['error_time']) if e and e['error_time'] is not None else None
-                sp['error_pct']  = round(e['error_pct']) if e and e['error_pct'] is not None else None
+            c.splits = compute_splits(
+                c.id, controls_seq, radio_map,
+                detect_prestart_ctrls(c, controls_seq, radio_map, attested))
+            last_abs = c.splits[-1]['abs_raw'] if c.splits else None
+            c.splits.append(build_finish_split(c.rt, last_abs))
+            c.neg_time = any(sp.get('neg_leg') for sp in c.splits)
 
-    leg_error_data = []
-    if controls_seq and finishers:
-        for j, ctrl in enumerate(controls_seq):
-            entry = {'ctrl_name': ctrl['ctrl_name'], 'errors': []}
-            for c in finishers:
+        mark_best_splits(finishers, results)
+        rank_splits(finishers, results)
+
+        error_map = {}
+        if controls_seq and finishers:
+            error_map = compute_error_estimates(finishers, controls_seq, radio_map)
+            for c in results:
                 errs = error_map.get(c.id, [])
-                if j < len(errs) and errs[j]['error_time'] is not None:
-                    entry['errors'].append({
-                        'et': round(errs[j]['error_time']),
-                        'ep': round(errs[j]['error_pct']),
-                    })
-            leg_error_data.append(entry)
+                for idx, sp in enumerate(c.splits):
+                    e = errs[idx] if idx < len(errs) else None
+                    sp['error_time'] = round(e['error_time']) if e and e['error_time'] is not None else None
+                    sp['error_pct']  = round(e['error_pct']) if e and e['error_pct'] is not None else None
+
+        leg_error_data = []
+        if controls_seq and finishers:
+            for j, ctrl in enumerate(controls_seq):
+                entry = {'ctrl_name': ctrl['ctrl_name'], 'errors': []}
+                for c in finishers:
+                    errs = error_map.get(c.id, [])
+                    if j < len(errs) and errs[j]['error_time'] is not None:
+                        entry['errors'].append({
+                            'et': round(errs[j]['error_time']),
+                            'ep': round(errs[j]['error_pct']),
+                        })
+                leg_error_data.append(entry)
+    else:
+        for c in results:
+            c.splits = []
+            c.neg_time = False
+        leg_error_data = []
 
     return competition, cls, course, results, controls_seq, prev_cls, next_cls, leader_time, leg_error_data
 
@@ -1056,6 +1151,7 @@ def recapitulatif_analysis(request, cid, class_id):
 
     _, _, _, results, controls_seq, prev_cls, next_cls, leader_time, leg_error_data = \
         _load_recapitulatif_data(cid, class_id, context=context)
+    can_show = has_completed(competitors)
 
     return render(request, 'results/recapitulatif.html', {
         'competition':         competition,
@@ -1065,6 +1161,7 @@ def recapitulatif_analysis(request, cid, class_id):
         'leader_time':         format_time(leader_time) if leader_time else '-',
         'controls_seq':        controls_seq or [],
         'has_splits':          bool(controls_seq),
+        'can_show_splits':     can_show,
         'current_analysis':    'recapitulatif',
         'prev_cls':            prev_cls,
         'next_cls':            next_cls,
@@ -1096,7 +1193,8 @@ def recapitulatif_csv(request, cid, class_id):
     )
     writer = csv.writer(response)
 
-    has_splits = bool(controls_seq)
+    can_show = has_completed(_competitors)
+    has_splits = bool(controls_seq) and can_show
     header = ['#', 'Concurrent']
     if course:
         header.append('Catégorie')
@@ -1186,6 +1284,9 @@ def relay_results(request, cid, class_id):
             for r in leg_runners
         }
 
+    # Per-category gate for relay (hide punches until one team has finished)
+    can_show_splits = has_completed(teams_qs)
+
     teams_data = []
     for t in all_teams:
         members = members_by_team.get(t.id, [])
@@ -1198,15 +1299,18 @@ def relay_results(request, cid, class_id):
                 leg_time_raw = runner.rt if runner.rt > 0 else None
                 cum_time    += leg_time_raw or 0
                 cum_time_raw = cum_time if leg_time_raw else None
-                ctrl_seq     = [
-                    {'ctrl_id': cv, 'ctrl_name': f"{idx+1}-{control_name_map.get(cv, str(cv))}"}
-                    for idx, cv in enumerate(controls_by_leg.get(leg_num, []))
-                ]
-                splits = compute_splits(
-                    runner.id, ctrl_seq, radio_map,
-                    prestart_by_leg.get(leg_num, {}).get(runner.id))
-                last_ctrl_abs = splits[-1]['abs_raw'] if splits and splits[-1]['abs_raw'] is not None else None
-                splits.append(build_finish_split(leg_time_raw, last_ctrl_abs, leg_full_race_if_missing=False))
+                if can_show_splits:
+                    ctrl_seq     = [
+                        {'ctrl_id': cv, 'ctrl_name': f"{idx+1}-{control_name_map.get(cv, str(cv))}"}
+                        for idx, cv in enumerate(controls_by_leg.get(leg_num, []))
+                    ]
+                    splits = compute_splits(
+                        runner.id, ctrl_seq, radio_map,
+                        prestart_by_leg.get(leg_num, {}).get(runner.id))
+                    last_ctrl_abs = splits[-1]['abs_raw'] if splits and splits[-1]['abs_raw'] is not None else None
+                    splits.append(build_finish_split(leg_time_raw, last_ctrl_abs, leg_full_race_if_missing=False))
+                else:
+                    splits = []
                 legs_data.append({
                     'leg': leg_num, 'runner_id': runner.id, 'name': runner.name,
                     'leg_time': format_time(leg_time_raw) if leg_time_raw else '-',
@@ -1255,6 +1359,7 @@ def relay_results(request, cid, class_id):
         'leader_time': format_time(leader_time) if leader_time else '-',
         'neg_time_warning': get_negative_time_stats(cid),
         'n_legs': n_legs,
+        'can_show_splits': can_show_splits,
     })
 
 

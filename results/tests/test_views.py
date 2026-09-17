@@ -1705,11 +1705,20 @@ class TestRecapitulatifCsv:
 
     def _call(self, runner, controls=None, course=None, relay=False):
         competition = make_competition(); cls_ = make_cls(1, 10)
+        # For CSV gate (has_completed) to be true when controls exist, ensure
+        # at least one finisher in _competitors. Add dummy finisher if needed.
+        competitors_ctx = [runner]
+        if controls and not runner.is_ok:
+            # Add an OK finisher so can_show_splits stays True and header not hidden
+            dummy = self._csv_runner(id_=999, ok=True)
+            dummy.rt = 5000
+            dummy.prel = False
+            competitors_ctx = [runner, dummy]
         with patch('results.views._load_class_context') as mock_ctx, \
              patch('results.views._is_relay', return_value=relay), \
              patch('results.views._load_recapitulatif_data') as mock_data, \
              patch('results.views.redirect') as mock_redirect:
-            mock_ctx.return_value = (competition, cls_, [runner], course)
+            mock_ctx.return_value = (competition, cls_, competitors_ctx, course)
             mock_data.return_value = (competition, cls_, course, [runner],
                                       controls or [], None, None, None, [])
             from results.views import recapitulatif_csv

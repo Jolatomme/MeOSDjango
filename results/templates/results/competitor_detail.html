@@ -83,7 +83,7 @@
   <div class="col-12 col-md-8">
     <div class="co-card">
       <div class="co-card-header"><i class="bi bi-diagram-3 me-2"></i>Temps intermédiaires</div>
-      {% if splits %}
+      {% if splits and can_show_splits %}
       <div class="table-responsive">
         <table class="results-table">
           <thead>
@@ -120,6 +120,11 @@
             {% endwith %}
           </tbody>
         </table>
+      </div>
+      {% elif not can_show_splits %}
+      <div class="p-4 text-center text-muted">
+        <i class="bi bi-hourglass-split me-2"></i>
+        Temps intermédiaires masqués tant qu’aucun coureur n’a terminé le circuit dans cette catégorie.
       </div>
       {% else %}
       <div class="p-4 text-center text-muted">

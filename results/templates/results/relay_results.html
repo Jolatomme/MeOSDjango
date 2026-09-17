@@ -136,7 +136,7 @@
                   {% if leg.cum_rank %}<span class="leg-rank-badge cum">({{ leg.cum_rank }})</span>{% else %}<span class="leg-rank-empty"></span>{% endif %}
                 </div>
                 <div class="lg-splits">
-                  {% if leg.splits %}
+                  {% if can_show_splits and leg.splits %}
                   <button class="btn btn-xs btn-link p-0 splits-toggle"
                           onclick="toggleSplits('{{ td.team.id }}-{{ leg.leg }}', this)"
                           title="Intermédiaires">
@@ -145,7 +145,7 @@
                   </button>
                   {% endif %}
                 </div>
-                {% if leg.splits %}
+                {% if can_show_splits and leg.splits %}
                 <div class="lg-splits-content d-none" id="splits-{{ td.team.id }}-{{ leg.leg }}">
                   <div class="splits-grid">
                     <div class="split-cell split-start">

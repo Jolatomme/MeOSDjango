@@ -99,20 +99,41 @@ const LiveResults = (() => {
     return String(ctrlId);
   }
 
-  /** 1/10 s serveur « tic-tac » à la milliseconde client entre deux polls. */
+  /** 1/10 s serveur « tic-tac » à la milliseconde client entre deux polls (modulo jour, legacy). */
   function tenthsNow(data) {
     const extra = (Date.now() - lastFetchClientMs) * 10 / 1000;
     return (data.server_now_clock + Math.floor(extra)) % DAY_TENTHS;
   }
 
-  /** Écart depuis un poinçon (1/10 s) → 'X h Y min Z s', 'X min Y s' ou 'X s'. */
+  /** 1/10 s absolues depuis 00:00 du jour de la compétition (gère futur + passage minuit). */
+  function absNow(data) {
+    if (data.server_now_abs != null) {
+      const extra = (Date.now() - lastFetchClientMs) * 10 / 1000;
+      return data.server_now_abs + Math.floor(extra);
+    }
+    // Fallback legacy sans date : modulo jour
+    return tenthsNow(data);
+  }
+
+  /** Écart (1/10 s) → 'X j Y h ...', 'X h Y min Z s', 'X min Y s' ou 'X s'. Gère jours. */
   function fmtAgo(tenths) {
     let delta = tenths;
-    if (delta < 0) delta += DAY_TENTHS; // course à cheval sur minuit
+    // Legacy modulo : si delta négatif et pas d'absolu, on wrappe à 24h
+    if (delta < 0) {
+      if (lastData && lastData.server_now_abs != null) {
+        delta = 0;
+      } else {
+        delta += DAY_TENTHS;
+      }
+    }
+    if (delta < 0) delta = 0;
     const totalSec = Math.floor(delta / 10);
-    const h = Math.floor(totalSec / 3600);
-    const m = Math.floor((totalSec % 3600) / 60);
-    const s = totalSec % 60;
+    const d = Math.floor(totalSec / 86400);
+    const rem = totalSec % 86400;
+    const h = Math.floor(rem / 3600);
+    const m = Math.floor((rem % 3600) / 60);
+    const s = rem % 60;
+    if (d > 0) return `${d} j ${h} h ${m} min ${s} s`;
     if (h > 0) return `${h} h ${m} min ${s} s`;
     if (m > 0) return `${m} min ${s} s`;
     return `${s} s`;
@@ -189,7 +210,8 @@ const LiveResults = (() => {
         `</span>`;
     });
     if (runner.group === 'en_course' && runner.last_punch_clock) {
-      items.push(`<span class="live-ago" data-punch-clock="${runner.last_punch_clock}"></span>`);
+      const punchAbs = runner.last_punch_clock_abs != null ? runner.last_punch_clock_abs : runner.last_punch_clock;
+      items.push(`<span class="live-ago" data-punch-clock="${punchAbs}"></span>`);
     }
     return items.join('');
   }
@@ -209,11 +231,13 @@ const LiveResults = (() => {
       return `<span class="live-time-value fw-bold" title="Temps final provisoire — validation GEC en attente">${fmtRaceTime(t)}</span>`;
     }
     if (RUNNING_GROUPS.includes(runner.group) && runner.st > 0) {
-      return `<span class="live-time live-time-value fw-bold" data-st="${runner.st}" title="Temps de course depuis le départ">—</span>`;
+      const stAbs = runner.st_abs != null ? runner.st_abs : runner.st;
+      return `<span class="live-time live-time-value fw-bold" data-st="${stAbs}" title="Temps de course depuis le départ">—</span>`;
     }
     if (runner.group === 'en_attente' && runner.st > 0) {
+      const stAbs = runner.st_abs != null ? runner.st_abs : runner.st;
       return `<span class="text-muted small" title="Heure de départ">Départ ${fmtClock(runner.st)}</span>
-              <span class="live-countdown small text-muted ms-1" data-st="${runner.st}"></span>`;
+              <span class="live-countdown small text-muted ms-1" data-st="${stAbs}"></span>`;
     }
     if (runner.group === 'termine') {
       return statusBadge(runner);
@@ -347,6 +371,10 @@ const LiveResults = (() => {
   }
 
   function raceElapsed(data) {
+    // Préfère les horloges absolues si disponibles (gère futur + minuit)
+    if (data.server_now_abs != null && data.race_start_abs != null) {
+      return data.server_now_abs - data.race_start_abs;
+    }
     if (data.race_start_clock == null) return null;
     let delta = data.server_now_clock - data.race_start_clock;
     if (delta < 0) delta += DAY_TENTHS;
@@ -361,14 +389,20 @@ const LiveResults = (() => {
       return;
     }
     if (data.race_state === 'finished') {
-      const end = data.race_end_clock != null ? data.race_end_clock : data.server_now_clock;
-      let delta = end - data.race_start_clock;
-      if (delta < 0) delta += DAY_TENTHS;
+      let delta;
+      if (data.race_end_abs != null && data.race_start_abs != null) {
+        delta = data.race_end_abs - data.race_start_abs;
+      } else {
+        const end = data.race_end_clock != null ? data.race_end_clock : data.server_now_clock;
+        delta = end - data.race_start_clock;
+        if (delta < 0) delta += DAY_TENTHS;
+      }
       el.textContent = fmtClock(delta);
       return;
     }
     const base = raceElapsed(data);
     if (base == null) { el.textContent = '--:--:--'; return; }
+    if (base < 0) { el.textContent = '--:--:--'; return; }
     const now = Date.now();
     const sinceFetch = lastFetchClientMs ? (now - lastFetchClientMs) / 1000 : 0;
     el.textContent = fmtClock(base + sinceFetch * 10);
@@ -392,28 +426,48 @@ const LiveResults = (() => {
   }
 
   /** Recalcule chaque seconde : « il y a X », chronos des coureurs en course
-   *  et compte à rebours des coureurs en attente. */
+   *  et compte à rebours des coureurs en attente. Gère les horloges absolues. */
   function updateTickers(data) {
     if (!data) return;
-    const now = tenthsNow(data);
+    const useAbs = data.server_now_abs != null;
+    const now = useAbs ? absNow(data) : tenthsNow(data);
     for (const span of document.querySelectorAll('.live-ago')) {
       const punch = Number(span.dataset.punchClock);
       if (isNaN(punch)) continue;
-      span.textContent = `· il y a ${fmtAgo(now - punch)}`;
+      let delta;
+      if (useAbs) {
+        delta = now - punch;
+      } else {
+        delta = now - punch;
+        if (delta < 0) delta += DAY_TENTHS;
+      }
+      if (delta < 0) delta = 0;
+      span.textContent = `· il y a ${fmtAgo(delta)}`;
     }
     for (const span of document.querySelectorAll('.live-time')) {
       const st = Number(span.dataset.st);
       if (isNaN(st) || st <= 0) continue;
-      let delta = now - st;
-      if (delta < 0) delta += DAY_TENTHS; // course à cheval sur minuit
+      let delta;
+      if (useAbs) {
+        delta = now - st;
+      } else {
+        delta = now - st;
+        if (delta < 0) delta += DAY_TENTHS;
+      }
+      if (delta < 0) delta = 0;
       span.textContent = fmtRaceTime(delta);
     }
-    // « En attente » : compte à rebours avant le départ.
+    // « En attente » : compte à rebours avant le départ (affiche jours si >24h).
     for (const span of document.querySelectorAll('.live-countdown')) {
       const st = Number(span.dataset.st);
       if (isNaN(st) || st <= 0) continue;
-      let delta = st - now;
-      if (delta < 0) delta += DAY_TENTHS;
+      let delta;
+      if (useAbs) {
+        delta = st - now;
+      } else {
+        delta = st - now;
+        if (delta < 0) delta += DAY_TENTHS;
+      }
       span.textContent = delta > 0 ? `· dans ${fmtAgo(delta)}` : '';
     }
   }
@@ -484,9 +538,13 @@ const LiveResults = (() => {
     watchMeasureContext();
     startClock({
       race_start_clock: cfg.initialRaceStart,
+      race_start_abs: cfg.initialRaceStartAbs,
       server_now_clock: cfg.initialNowClock,
+      server_now_abs: cfg.initialNowAbs,
       race_state: cfg.initialRaceState || 'live',
       race_end_clock: cfg.initialRaceEndClock,
+      race_end_abs: cfg.initialRaceEndAbs,
+      competition_date: cfg.competitionDate,
     });
     poll();
     document.addEventListener('visibilitychange', () => {
