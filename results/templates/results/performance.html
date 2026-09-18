@@ -187,7 +187,10 @@ function initChart() {
         y: {
           title: { display: true, text: 'Densité (pondérée par longueur)',
                    font: { family: "'Barlow', sans-serif", size: 12 }, color: '#6c757d' },
-          ticks: { font: { family: "'Barlow Condensed', sans-serif", size: 11 } },
+          ticks: {
+            font: { family: "'Barlow Condensed', sans-serif", size: 11 },
+            padding: 18  // ← MODIFICATION : Ajout du padding pour libérer de l'espace
+          },
           grid:  { color: '#e8e8e8' },
         }
       }
@@ -205,7 +208,7 @@ function initChart() {
         ctx2.stroke();
         ctx2.font = "11px 'Barlow Condensed', sans-serif";
         ctx2.fillStyle = '#dc3545'; ctx2.textAlign = 'center';
-        ctx2.fillText('IP = 1.0', x, yScale.top - 6);
+        ctx2.fillText('IP = 1.00', x, yScale.top - 6);
         ctx2.restore();
       }
     }]
