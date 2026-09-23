@@ -27,7 +27,7 @@ from .services import (
     build_abs_time_series, compute_error_estimates,
     compute_grouping_index, compute_regularity_analysis,
     compute_course_hash, get_courses_map,
-    competition_visible,
+    competition_visible, run_controls_only,
     rank_live, race_start_clock, race_end_clock, race_state,
     race_in_progress, mark_negative_times, clock_tenths, _now_abs, _st_abs,
     LIVE_GROUPS, has_completed,
@@ -269,7 +269,13 @@ def competitor_detail(request, cid, competitor_id):
     competitor  = get_object_or_404(Mopcompetitor, cid=cid, id=competitor_id)
     org = Moporganization.objects.filter(cid=cid, id=competitor.org).first()
     cls = Mopclass.objects.filter(cid=cid, id=competitor.cls).first()
-    controls_seq, _ = get_class_controls(cid, competitor.cls)
+    # Relais : fraction du coureur — mopClassControl contient l'union de
+    # toutes les fractions/fourches, inapplicable ici.
+    member = Mopteammember.objects.filter(cid=cid, rid=competitor_id).first()
+    if member is not None:
+        controls_seq, _ = get_class_controls(cid, competitor.cls, leg=member.leg)
+    else:
+        controls_seq, _ = get_class_controls(cid, competitor.cls)
     class_competitors = list(Mopcompetitor.objects.filter(cid=cid, cls=competitor.cls))
     # Per-category gate: hide punches until one runner in the category has finished
     # Fallback for legacy mocks (empty list) — treat as can_show to keep old tests
@@ -280,6 +286,9 @@ def competitor_detail(request, cid, competitor_id):
     if can_show:
         radio_map = get_radio_map(cid, [c.id for c in class_competitors])
         attested  = attested_ctrls(radio_map)
+        # Fourches : n'afficher que les postes poinçonnés par CE coureur.
+        if member is not None:
+            controls_seq = run_controls_only(controls_seq, radio_map.get(competitor_id, {}))
         splits = compute_splits(
             competitor_id, controls_seq, radio_map,
             detect_prestart_ctrls(competitor, controls_seq, radio_map, attested))
@@ -1269,18 +1278,22 @@ def relay_results(request, cid, class_id):
 
     # Attestation et postes présumés pointés avant le départ, par manche
     # (l'attestation se juge parmi les coureurs de la même manche).
+    # En relais avec fourches, chaque coureur ne court qu'une sous-séquence
+    # de la fraction : la détection se fait sur ses seuls poinçons.
     prestart_by_leg = {}
     for leg_num in range(1, n_legs + 1):
         leg_runners = [competitors[m.rid] for m in all_members
                        if m.leg == leg_num and m.rid in competitors]
-        ctrl_seq = [
+        ctrl_seq_full = [
             {'ctrl_id': cv, 'ctrl_name': f"{idx+1}-{control_name_map.get(cv, str(cv))}"}
             for idx, cv in enumerate(controls_by_leg.get(leg_num, []))
         ]
         attested = attested_ctrls({r.id: radio_map.get(r.id, {})
                                    for r in leg_runners})
         prestart_by_leg[leg_num] = {
-            r.id: detect_prestart_ctrls(r, ctrl_seq, radio_map, attested)
+            r.id: detect_prestart_ctrls(
+                r, run_controls_only(ctrl_seq_full, radio_map.get(r.id, {})),
+                radio_map, attested)
             for r in leg_runners
         }
 
@@ -1300,10 +1313,13 @@ def relay_results(request, cid, class_id):
                 cum_time    += leg_time_raw or 0
                 cum_time_raw = cum_time if leg_time_raw else None
                 if can_show_splits:
-                    ctrl_seq     = [
+                    ctrl_seq_full = [
                         {'ctrl_id': cv, 'ctrl_name': f"{idx+1}-{control_name_map.get(cv, str(cv))}"}
                         for idx, cv in enumerate(controls_by_leg.get(leg_num, []))
                     ]
+                    # Fourches : n'afficher que les postes poinçonnés par CE coureur.
+                    ctrl_seq = run_controls_only(
+                        ctrl_seq_full, radio_map.get(runner.id, {}))
                     splits = compute_splits(
                         runner.id, ctrl_seq, radio_map,
                         prestart_by_leg.get(leg_num, {}).get(runner.id))

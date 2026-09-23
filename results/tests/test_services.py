@@ -359,7 +359,8 @@ class TestBuildFinishSplit:
 class TestGetNegativeTimeStats:
     """get_negative_time_stats distingue le problème individuel du boîtier."""
 
-    def _call(self, cid, competitors, radios, controls):
+    def _call(self, cid, competitors, radios, controls, relay_cls_ids=(),
+              leg_by_rid=None, leg_controls=None):
         from results.services import get_negative_time_stats
         cls_mock = MagicMock(id=1)
         cls_mock.name = 'H21'
@@ -368,12 +369,27 @@ class TestGetNegativeTimeStats:
             # calcul) — sauf tstat posé explicitement par le test.
             if not isinstance(getattr(c, 'tstat', None), int):
                 c.tstat = STAT_OK
+
+        def fake_gcc(cid_, class_id, leg=None):
+            if leg is not None and leg_controls is not None:
+                return (leg_controls.get(leg, []), {})
+            return (controls, {})
+
         with patch('results.services.Mopclass.objects') as mock_cls, \
              patch('results.services.Mopcompetitor.objects') as mock_comp, \
-             patch('results.services.get_class_controls', return_value=(controls, {})), \
+             patch('results.services.Mopteam.objects') as mock_team, \
+             patch('results.services.Mopteammember.objects') as mock_tm, \
+             patch('results.services.get_class_controls',
+                   side_effect=fake_gcc), \
              patch('results.services.get_radio_map', return_value=radios):
             mock_cls.filter.return_value = [cls_mock]
             mock_comp.filter.return_value = competitors
+            mock_team.filter.return_value.values_list.return_value \
+                .distinct.return_value = list(relay_cls_ids)
+            mock_tm.filter.return_value = [
+                MagicMock(rid=rid, leg=leg)
+                for rid, leg in (leg_by_rid or {}).items()
+            ]
             return get_negative_time_stats(cid)
 
     def test_aucun_temps_negatif(self):
@@ -488,6 +504,7 @@ class TestGetNegativeTimeStats:
         radios = {1: {31: 1000, 32: 2500}}
         with patch('results.services.Mopclass.objects') as mock_cls, \
              patch('results.services.Mopcompetitor.objects') as mock_comp, \
+             patch('results.services.Mopteam.objects') as mock_team, \
              patch('results.services.get_class_controls',
                    return_value=([{'ctrl_id': 31, 'ctrl_name': 'P31'}], {})), \
              patch('results.services.get_radio_map', return_value=radios):
@@ -495,6 +512,8 @@ class TestGetNegativeTimeStats:
             cls2 = MagicMock(id=2); cls2.name = 'D21'
             mock_cls.filter.return_value = [cls1, cls2]
             mock_comp.filter.side_effect = [comps, []]
+            mock_team.filter.return_value.values_list.return_value \
+                .distinct.return_value = []
             assert get_negative_time_stats(1) is None
 
     def test_coureur_deja_affecte_ignore(self):
@@ -505,6 +524,7 @@ class TestGetNegativeTimeStats:
         radios = {1: {31: 2000, 32: 1500}}
         with patch('results.services.Mopclass.objects') as mock_cls, \
              patch('results.services.Mopcompetitor.objects') as mock_comp, \
+             patch('results.services.Mopteam.objects') as mock_team, \
              patch('results.services.get_class_controls',
                    return_value=([{'ctrl_id': 31, 'ctrl_name': 'P31'},
                                   {'ctrl_id': 32, 'ctrl_name': 'P32'}], {})), \
@@ -513,6 +533,8 @@ class TestGetNegativeTimeStats:
             cls2 = MagicMock(id=2); cls2.name = 'D21'
             mock_cls.filter.return_value = [cls1, cls2]
             mock_comp.filter.return_value = comps
+            mock_team.filter.return_value.values_list.return_value \
+                .distinct.return_value = []
             stats = get_negative_time_stats(1)
         assert stats['count'] == 1
         assert stats['runners'] == [
@@ -556,6 +578,51 @@ class TestGetNegativeTimeStats:
         radios = {1: {31: 1000}, 2: {31: 1100}}
         assert self._call(1, comps, radios, [{'ctrl_id': 31, 'ctrl_name': 'P31'},
                                              {'ctrl_id': 32, 'ctrl_name': 'P32'}]) is None
+
+    def test_relais_pas_de_pseudo_positif_fourches(self):
+        """Relais : les postes des autres fractions (poinçonnés par
+        d'autres) ne flaggent pas un coureur — diagnostic restreint à
+        sa fraction et à ses poinçons."""
+        c1 = make_competitor(1, rt=3000, cls=1)
+        c2 = make_competitor(2, rt=3500, cls=1)
+        # Union des fractions (mopClassControl) : 31 leg1 + 32 leg2.
+        controls = [{'ctrl_id': 31, 'ctrl_name': 'A'},
+                    {'ctrl_id': 32, 'ctrl_name': 'B'}]
+        leg_controls = {1: [{'ctrl_id': 31, 'ctrl_name': 'A'}],
+                        2: [{'ctrl_id': 32, 'ctrl_name': 'B'}]}
+        radios = {1: {31: 1000}, 2: {32: 1500}}
+        # Sans le filtre : 32 manquant chez c1 (attesté par c2) → badge
+        # « pointé avant le départ » pour les DEUX coureurs.
+        stats = self._call(1, [c1, c2], radios, controls,
+                           relay_cls_ids=[1],
+                           leg_by_rid={1: 1, 2: 2},
+                           leg_controls=leg_controls)
+        assert stats is None
+
+    def test_relais_troncon_negatif_reel_detecte(self):
+        """Relais : un vrai tronçon négatif sur la fraction du coureur
+        reste signalé."""
+        c1 = make_competitor(1, rt=3000, cls=1)
+        controls = [{'ctrl_id': 31, 'ctrl_name': 'A'},
+                    {'ctrl_id': 32, 'ctrl_name': 'B'}]
+        radios = {1: {31: 2500, 32: 1500}}
+        stats = self._call(1, [c1], radios, controls,
+                           relay_cls_ids=[1], leg_by_rid={1: 1},
+                           leg_controls={1: controls})
+        assert stats is not None
+        assert stats['count'] == 1
+        assert stats['runners'][0]['controls'] == ['B']
+
+    def test_relais_coureur_hors_equipe_ignore(self):
+        """Relais : fraction inconnue (membre absent de mopteamMember)
+        → coureur non diagnostiqué même si ses poinçons sont négatifs."""
+        c1 = make_competitor(1, rt=3000, cls=1)
+        controls = [{'ctrl_id': 31, 'ctrl_name': 'A'},
+                    {'ctrl_id': 32, 'ctrl_name': 'B'}]
+        radios = {1: {31: 2500, 32: 1500}}
+        stats = self._call(1, [c1], radios, controls,
+                           relay_cls_ids=[1], leg_by_rid={})
+        assert stats is None
 
 
 # ─── Tests mark_best_splits ───────────────────────────────────────────────────
@@ -1003,6 +1070,51 @@ class TestGetControlsByLeg:
         by_leg, name_map = get_controls_by_leg(cid=1, class_id=10)
         assert by_leg == {}
         assert name_map == {}
+
+
+# ─── Tests run_controls_only ──────────────────────────────────────────────────
+
+class TestRunControlsOnly:
+    """Filtrage des fourches : ne garder que les postes poinçonnés."""
+
+    SEQ = [
+        {'ctrl_id': 39, 'ctrl_name': '1-39'},
+        {'ctrl_id': 47, 'ctrl_name': '2-47'},
+        {'ctrl_id': 49, 'ctrl_name': '3-49'},
+        {'ctrl_id': 87, 'ctrl_name': '9-87'},
+        {'ctrl_id': 76, 'ctrl_name': '12-76'},
+    ]
+
+    def _call(self, punches):
+        from results.services import run_controls_only
+        return run_controls_only(self.SEQ, punches)
+
+    def test_sous_sequence_garde_ordre_circuit(self):
+        result = self._call({49: 100, 39: 50, 76: 300})
+        assert [c['ctrl_id'] for c in result] == [39, 49, 76]
+
+    def test_fourche_non_courue_masquee(self):
+        """Postes d'une fourche non poinçonnés absents du résultat."""
+        result = self._call({39: 50, 47: 80, 49: 100, 76: 300})
+        ids = [c['ctrl_id'] for c in result]
+        assert 87 not in ids
+        assert ids == [39, 47, 49, 76]
+
+    def test_libelles_conserves(self):
+        result = self._call({49: 100})
+        assert result == [{'ctrl_id': 49, 'ctrl_name': '3-49'}]
+
+    def test_aucun_poincon_sequence_vide(self):
+        assert self._call({}) == []
+
+    def test_poincons_hors_circuit_ignores(self):
+        """Un poinçon sur un poste hors circuit n'introduit pas de cellule."""
+        result = self._call({999: 10, 49: 100})
+        assert [c['ctrl_id'] for c in result] == [49]
+
+    def test_sequence_vide(self):
+        from results.services import run_controls_only
+        assert run_controls_only([], {49: 100}) == []
 
 
 # ─── Tests build_leg_matrix ───────────────────────────────────────────────────

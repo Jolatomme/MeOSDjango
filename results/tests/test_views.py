@@ -833,12 +833,15 @@ class TestCompetitorDetailView:
     @patch('results.views.get_class_controls', return_value=([], {}))
     @patch('results.views.Moporganization')
     @patch('results.views.Mopclass')
+    @patch('results.views.Mopteammember')
     @patch('results.views.Mopcompetitor')
     @patch('results.views.render')
     @patch('results.views.get_object_or_404')
-    def test_contexte(self, mock_get404, mock_render, MockComp, MockClass, MockOrg, *_):
+    def test_contexte(self, mock_get404, mock_render, MockComp, MockTM,
+                      MockClass, MockOrg, *_):
         mock_get404.side_effect = [make_competition(), make_competitor()]
         MockComp.objects.filter.return_value = []
+        MockTM.objects.filter.return_value.first.return_value = None
         MockOrg.objects.filter.return_value.first.return_value = MagicMock()
         MockClass.objects.filter.return_value.first.return_value = MagicMock()
         from results.views import competitor_detail
@@ -852,13 +855,17 @@ class TestCompetitorDetailView:
     @patch('results.views.get_class_controls', return_value=([], {}))
     @patch('results.views.Moporganization')
     @patch('results.views.Mopclass')
+    @patch('results.views.Mopteammember')
     @patch('results.views.Mopcompetitor')
     @patch('results.views.render')
     @patch('results.views.get_object_or_404')
-    def test_total_time_statut_si_non_classe(self, mock_get404, mock_render, MockComp, MockClass, MockOrg, *_):
+    def test_total_time_statut_si_non_classe(self, mock_get404, mock_render,
+                                             MockComp, MockTM, MockClass,
+                                             MockOrg, *_):
         dnf = make_competitor(1, rt=-1, stat=STAT_DNF); dnf.is_ok = False
         mock_get404.side_effect = [make_competition(), dnf]
         MockComp.objects.filter.return_value = []
+        MockTM.objects.filter.return_value.first.return_value = None
         MockOrg.objects.filter.return_value.first.return_value = None
         MockClass.objects.filter.return_value.first.return_value = None
         from results.views import competitor_detail
@@ -871,14 +878,17 @@ class TestCompetitorDetailView:
     @patch('results.views.get_class_controls', return_value=([], {}))
     @patch('results.views.Moporganization')
     @patch('results.views.Mopclass')
+    @patch('results.views.Mopteammember')
     @patch('results.views.Mopcompetitor')
     @patch('results.views.render')
     @patch('results.views.get_object_or_404')
-    def test_troncon_arrivee_ajoute(self, mock_get404, mock_render, MockComp, MockClass, MockOrg, *_):
+    def test_troncon_arrivee_ajoute(self, mock_get404, mock_render, MockComp,
+                                    MockTM, MockClass, MockOrg, *_):
         """Un coureur classé avec splits reçoit un tronçon « Arrivée »."""
         comp = make_competition(); c = make_competitor(1, rt=5000)
         mock_get404.side_effect = [comp, c]
         MockComp.objects.filter.return_value = []
+        MockTM.objects.filter.return_value.first.return_value = None
         MockOrg.objects.filter.return_value.first.return_value = None
         MockClass.objects.filter.return_value.first.return_value = None
         from results.views import competitor_detail
@@ -894,11 +904,13 @@ class TestCompetitorDetailView:
     @patch('results.views.get_class_controls', return_value=([], {}))
     @patch('results.views.Moporganization')
     @patch('results.views.Mopclass')
+    @patch('results.views.Mopteammember')
     @patch('results.views.Mopcompetitor')
     @patch('results.views.render')
     @patch('results.views.get_object_or_404')
     def test_troncon_arrivee_pour_non_classe_avec_temps(self, mock_get404, mock_render,
-                                                        MockComp, MockClass, MockOrg, *_):
+                                                        MockComp, MockTM, MockClass,
+                                                        MockOrg, *_):
         """Scénario LUO, CHENSHENG : un coureur PM passé par l'arrivée (rt > 0)
         reçoit lui aussi la ligne « Arrivée » sur sa fiche — temps total et
         tronçon depuis son dernier poste pointé."""
@@ -907,6 +919,7 @@ class TestCompetitorDetailView:
         mp.is_ok = False
         mock_get404.side_effect = [comp, mp]
         MockComp.objects.filter.return_value = []
+        MockTM.objects.filter.return_value.first.return_value = None
         MockOrg.objects.filter.return_value.first.return_value = None
         MockClass.objects.filter.return_value.first.return_value = None
         from results.views import competitor_detail
@@ -922,17 +935,20 @@ class TestCompetitorDetailView:
     @patch('results.views.get_class_controls', return_value=([], {}))
     @patch('results.views.Moporganization')
     @patch('results.views.Mopclass')
+    @patch('results.views.Mopteammember')
     @patch('results.views.Mopcompetitor')
     @patch('results.views.render')
     @patch('results.views.get_object_or_404')
     def test_pas_de_troncon_arrivee_sans_temps(self, mock_get404, mock_render,
-                                               MockComp, MockClass, MockOrg, *_):
+                                               MockComp, MockTM, MockClass,
+                                               MockOrg, *_):
         """Un non-classé sans temps de course (DNF/DNS, rt ≤ 0) n'a pas de
         ligne « Arrivée » : il n'a pas franchi la ligne."""
         comp = make_competition(); dnf = make_competitor(1, rt=-1, stat=STAT_DNF)
         dnf.is_ok = False
         mock_get404.side_effect = [comp, dnf]
         MockComp.objects.filter.return_value = []
+        MockTM.objects.filter.return_value.first.return_value = None
         MockOrg.objects.filter.return_value.first.return_value = None
         MockClass.objects.filter.return_value.first.return_value = None
         from results.views import competitor_detail
@@ -966,12 +982,14 @@ class TestCompetitorDetailView:
         ]
         radio_map = {1: {101: 3000}, 2: {101: 3000, 102: 6000}}
         with patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views.Mopteammember') as MockTM, \
              patch('results.views.get_class_controls', return_value=(controls_seq, {})), \
              patch('results.views.get_radio_map', return_value=radio_map), \
              patch('results.views.Moporganization') as MockOrg, \
              patch('results.views.Mopclass') as MockClass, \
              patch('results.views.render') as mock_render:
             MockComp.objects.filter.return_value = [competitor_in_cls, classmate]
+            MockTM.objects.filter.return_value.first.return_value = None
             MockOrg.objects.filter.return_value.first.return_value = None
             MockClass.objects.filter.return_value.first.return_value = None
             from results.views import competitor_detail
@@ -981,6 +999,39 @@ class TestCompetitorDetailView:
         assert missing and missing[0]['leg_time'] == 'Temps négatif'
         assert missing[0]['neg_leg'] is True
         assert ctx['competitor'].neg_time is True
+
+    @patch('results.views.compute_splits', return_value=[])
+    @patch('results.views.get_radio_map')
+    @patch('results.views.get_class_controls')
+    @patch('results.views.Moporganization')
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopteammember')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    def test_relais_fraction_et_poincons_filtres(self, mock_get404, mock_render,
+                                                 MockComp, MockTM, MockClass,
+                                                 MockOrg, mock_gcc, mock_radio,
+                                                 mock_splits):
+        """Coureur relais : circuit restreint à sa fraction (leg) puis à
+        ses seuls poinçons avant calcul des splits."""
+        comp = make_competition()
+        c = make_competitor(1, rt=5000, cls=10)
+        mock_get404.side_effect = [comp, c]
+        MockComp.objects.filter.return_value = [c]
+        MockTM.objects.filter.return_value.first.return_value = MagicMock(leg=2)
+        MockOrg.objects.filter.return_value.first.return_value = None
+        MockClass.objects.filter.return_value.first.return_value = None
+        # Fraction leg=2 : postes 41 et 42, mais poinçon radio que 41.
+        mock_gcc.return_value = ([{'ctrl_id': 41, 'ctrl_name': '1-41'},
+                                  {'ctrl_id': 42, 'ctrl_name': '2-42'}], {})
+        mock_radio.return_value = {1: {41: 1000}}
+        from results.views import competitor_detail
+        competitor_detail(rf_get(), cid=1, competitor_id=1)
+        mock_gcc.assert_called_once_with(1, 10, leg=2)
+        # compute_splits(rid, controls_seq, radio_map, prestart) :
+        seq_arg = mock_splits.call_args[0][1]
+        assert [s['ctrl_id'] for s in seq_arg] == [41]
 
     @patch('results.views.render')  # non atteint (le 404 précède)
     @patch('results.views.get_object_or_404')
@@ -1834,6 +1885,69 @@ class TestRelayResultsView:
         assert team1['legs'][1]['runner_id'] is None
         team2 = ctx['teams_data'][1]
         assert team2['legs'][0]['name'] == '—'       # étape 1 sans coureur
+
+    def _run_splits(self, radio_map, controls_by_leg=None):
+        """Exécute relay_results avec contrôles/radio mockés, rendu capturé.
+
+        Returns ``(ctx, mock_render)`` — splits calculés pour vrai
+        (compute_splits non mocké).
+        """
+        if controls_by_leg is None:
+            # Fraction 1 : union des fourches [39, 47, 49, 87, 76]
+            controls_by_leg = {1: [39, 47, 49, 87, 76]}
+        name_map = {39: '39', 47: '47', 49: '49', 87: '87', 76: '76'}
+        with patch('results.views.get_controls_by_leg',
+                   return_value=(controls_by_leg, name_map)), \
+             patch('results.views.get_radio_map', return_value=radio_map), \
+             patch('results.views.get_org_map', return_value={1: 'COLE'}), \
+             patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views.Mopteammember') as MockTM, \
+             patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views.render') as mock_render, \
+             patch('results.views.get_object_or_404') as mock_get404:
+            mock_get404.side_effect = [make_competition(), make_cls()]
+            t1 = MagicMock(); t1.id = 1; t1.rt = 10000; t1.stat = STAT_OK; t1.org = 1
+            MockTeam.objects.filter.return_value = [t1]
+            m1 = MagicMock(); m1.id = 1; m1.rid = 101; m1.leg = 1; m1.ord = 0
+            MockTM.objects.filter.return_value.order_by.return_value = [m1]
+            c1 = make_competitor(101, rt=10000)
+            MockComp.objects.filter.return_value = [c1]
+            from results.views import relay_results
+            relay_results(rf_get(), cid=1, class_id=10)
+            _, _, ctx = mock_render.call_args[0]
+        return ctx, mock_render
+
+    def test_splits_fourche_filtree_sur_poincons(self):
+        """Seuls les postes poinçonnés par le coureur apparaissent (fourches),
+        dans l'ordre du circuit, plus la cellule Arrivée."""
+        radio = {101: {39: 500, 49: 1000, 76: 2000}}   # 47 et 87 non courus
+        ctx, _ = self._run_splits(radio)
+        splits = ctx['teams_data'][0]['legs'][0]['splits']
+        names = [sp['ctrl_name'] for sp in splits]
+        assert names == ['1-39', '3-49', '5-76', 'Arrivée']
+        assert splits[0]['abs_time'] != '-'            # temps réels conservés
+
+    def test_splits_parcours_complet_non_filtre(self):
+        """Coureur ayant poinçonné toute la fraction → séquence complète."""
+        radio = {101: {39: 500, 47: 700, 49: 1000, 87: 1500, 76: 2000}}
+        ctx, _ = self._run_splits(radio)
+        splits = ctx['teams_data'][0]['legs'][0]['splits']
+        names = [sp['ctrl_name'] for sp in splits]
+        assert names == ['1-39', '2-47', '3-49', '4-87', '5-76', 'Arrivée']
+
+    def test_splits_aucun_poincon_uniquement_arrivee(self):
+        """Coureur sans poinçon radio → seule la cellule Arrivée."""
+        ctx, _ = self._run_splits({})
+        splits = ctx['teams_data'][0]['legs'][0]['splits']
+        assert [sp['ctrl_name'] for sp in splits] == ['Arrivée']
+
+    def test_splits_libelles_renvoient_au_poste_circuit(self):
+        """Les libellés filtrés gardent la numérotation du circuit complet
+        (« 5-76 » et non « 1-76 »)."""
+        radio = {101: {76: 2000}}
+        ctx, _ = self._run_splits(radio)
+        splits = ctx['teams_data'][0]['legs'][0]['splits']
+        assert [sp['ctrl_name'] for sp in splits] == ['5-76', 'Arrivée']
 
 
 # ══════════════════════════════════════════════════════════════════════════════

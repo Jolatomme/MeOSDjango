@@ -7,7 +7,7 @@ Les accès DB restent ici pour pouvoir les mocker facilement dans les tests.
 
 from .models import (
     Moporganization, Mopcontrol, Mopclasscontrol, Mopradio, Mopclass,
-    Mopcompetitor,
+    Mopcompetitor, Mopteam, Mopteammember,
     STAT_OK, STATUS_LABELS, format_time,
     STAT_NT, STAT_MP, STAT_DNF, STAT_DQ, STAT_OT,
     STAT_DNS, STAT_CANCEL, STAT_NP,
@@ -93,6 +93,18 @@ def get_controls_by_leg(cid, class_id):
     for cc in class_controls:
         controls_by_leg.setdefault(cc.leg, []).append(cc.ctrl)
     return controls_by_leg, control_name_map
+
+
+def run_controls_only(controls_seq, punches):
+    """Sous-séquence des postes réellement poinçonnés par un coureur.
+
+    En relais avec fourches, ``mopClassControl`` contient l'union de
+    toutes les fourches de la classe : seuls les postes présents dans
+    ``punches`` (ids poinçonnés, cf. ``mopRadio``) font partie du
+    circuit réellement couru par ce coureur. L'ordre du circuit est
+    conservé.
+    """
+    return [c for c in controls_seq if c['ctrl_id'] in punches]
 
 
 # ─── Temps radio ───────────────────────────────────────────────────────────────
@@ -373,6 +385,13 @@ def get_negative_time_stats(cid):
     Seuls les coureurs classés à l'arrivée sont pris en compte
     (statut et tstat OK — voir ``collect_negative_ctrls``).
 
+    Relais : ``mopClassControl`` contient l'union de toutes les fractions
+    et fourches de la classe. Le diagnostic est restreint à la fraction du
+    coureur (``mopteamMember.leg``) puis à ses seuls poinçons (cf.
+    ``run_controls_only``) — les postes des autres fractions/fourches,
+    poinçonnés par d'autres, ne sont pas des trous individuels. Un coureur
+    hors équipe (fraction inconnue) n'est pas diagnostiqué.
+
     Diagnostic :
       - boîtier mal synchronisé ('multiple') si plusieurs coureurs ont un
         temps négatif au même poste (le boîtier est commun) ;
@@ -392,6 +411,13 @@ def get_negative_time_stats(cid):
     """
     affected    = {}
     ctrl_counts = Counter()
+    relay_cls_ids = set(
+        Mopteam.objects.filter(cid=cid).values_list('cls', flat=True).distinct()
+    )
+    leg_by_rid = (
+        {m.rid: m.leg for m in Mopteammember.objects.filter(cid=cid)}
+        if relay_cls_ids else {}
+    )
     for cls in Mopclass.objects.filter(cid=cid):
         competitors = list(Mopcompetitor.objects.filter(cid=cid, cls=cls.id))
         if not competitors:
@@ -402,7 +428,14 @@ def get_negative_time_stats(cid):
         for c in competitors:
             if c.id in affected:
                 continue
-            neg_ctrls = collect_negative_ctrls(c, controls_seq, radio_map,
+            seq = controls_seq
+            if cls.id in relay_cls_ids:
+                leg = leg_by_rid.get(c.id)
+                if leg is None:
+                    continue
+                leg_seq, _ = get_class_controls(cid, cls.id, leg=leg)
+                seq = run_controls_only(leg_seq, radio_map.get(c.id, {}))
+            neg_ctrls = collect_negative_ctrls(c, seq, radio_map,
                                                attested)
             if neg_ctrls:
                 affected[c.id] = {
