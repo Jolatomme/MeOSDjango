@@ -14,6 +14,7 @@ from results.templatetags.meos_tags import (
     status_label,
     time_behind,
     display_name,
+    org_logo,
 )
 
 
@@ -269,3 +270,49 @@ class TestDisplayNameFilter:
 
     def test_espaces_superflus(self):
         assert display_name('  Luc Martin  ') == 'Martin,<br>Luc'
+
+
+class TestOrgLogoFilter:
+    """Tests pour le filter org_logo (logo d'organisation sur la page d'accueil)."""
+
+    def test_cocs(self):
+        assert org_logo('COCS 7309AURA') == 'results/img/logo-cocs.svg'
+
+    def test_cocs_court(self):
+        assert org_logo('COCS') == 'results/img/logo-cocs.svg'
+
+    def test_cocs_casse_variable(self):
+        assert org_logo('cocs 7309aura') == 'results/img/logo-cocs.svg'
+
+    def test_organisation_inconnue(self):
+        assert org_logo('Autre club inconnu') == ''
+
+    def test_nom_incluant_un_autre_mot(self):
+        """Le nom doit contenir un mot complet égal à l'alias."""
+        assert org_logo('Amis du COCS') == 'results/img/logo-cocs.svg'
+        assert org_logo('SOCSTE') == ''
+
+    def test_vide(self):
+        assert org_logo('') == ''
+
+    def test_none(self):
+        assert org_logo(None) == ''
+
+    def test_espace_seul(self):
+        assert org_logo('   ') == ''
+
+    def test_fichier_conventionnel(self, monkeypatch):
+        """results/img/org/<slug>.svg est utilisé si le fichier existe."""
+        import results.templatetags.meos_tags as mt
+        monkeypatch.setattr(
+            mt.finders, 'find',
+            lambda path: path if path == 'results/img/org/autre-club.svg' else None,
+        )
+        assert org_logo('Autre Club') == 'results/img/org/autre-club.svg'
+
+    def test_fichier_conventionnel_absent(self):
+        """Pas d'alias ni de fichier → chaîne vide."""
+        assert org_logo('Autre club inconnu') == ''
+
+    def test_accentes_ne_crashent_pas(self):
+        assert org_logo('Fédération Française') == ''

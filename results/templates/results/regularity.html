@@ -65,7 +65,7 @@
 
 {# ── Explication ─────────────────────────────────────────────────────────── #}
 <div class="alert alert-warning border-0 mb-4"
-     style="background:#fffbe6;border-left:4px solid var(--co-gold) !important;">
+     style="background:var(--co-highlight-bg);border-left:4px solid var(--co-gold) !important;">
   <i class="bi bi-info-circle me-2"></i>
   La <strong>régularité</strong> est mesurée par la déviation standard (σ) des
   <strong>indices de performance</strong> — une valeur plus faible indique une
@@ -119,17 +119,26 @@
     </span>
   </div>
   <div class="table-responsive">
-    <table class="results-table">
+    <table class="results-table analysis-table">
       <thead>
         <tr>
-          <th style="width:3rem" title="Rang régularité"># reg.</th>
+          <th style="width:3rem" title="Rang régularité">#<span class="d-none d-md-inline">&nbsp;reg.</span></th>
           <th>Coureur</th>
           <th>Club</th>
-          <th class="text-center" title="Rang course">Rang course</th>
-          <th class="text-end">Temps</th>
-          <th class="text-end" title="Indice de performance moyen pondéré">IP moyen</th>
-          <th class="text-end" title="Déviation standard pondérée">σ (régularité)</th>
-          <th style="width:9rem">Profil σ</th>
+          <th class="text-center d-none d-md-table-cell" title="Rang course">Rang course</th>
+          <th class="text-center d-md-none" title="Rang course">Rg</th>
+          <th class="text-end d-none d-md-table-cell">Temps</th>
+          <th class="text-end d-none d-md-table-cell" title="Indice de performance moyen pondéré">IP moyen</th>
+          <th class="text-end d-none d-md-table-cell" title="Déviation standard pondérée">σ (régularité)</th>
+          <th class="d-none d-md-table-cell" style="width:9rem">Profil σ</th>
+          <th class="text-end d-md-none" title="Temps / IP moyen">
+            <span class="d-block">Temps</span>
+            <span class="d-block">IP moyen</span>
+          </th>
+          <th class="text-end d-md-none" title="Déviation standard pondérée / profil">
+            <span class="d-block">σ</span>
+            <span class="d-block">Profil σ</span>
+          </th>
         </tr>
       </thead>
       <tbody id="regularityTableBody"></tbody>
@@ -143,13 +152,7 @@
 
 {% block extra_head %}
 {% if not no_data %}
-<style>
-  .reg-bar-wrap {
-    position: relative; height: 6px; border-radius: 3px;
-    background: #e9ecef; overflow: hidden; width: 100%;
-  }
-  .reg-bar { position: absolute; top: 0; height: 100%; border-radius: 3px; }
-</style>
+<link rel="stylesheet" href="{% static 'results/css/analysis.css' %}">
 {% endif %}
 {% endblock %}
 
@@ -329,10 +332,21 @@ function buildTable() {
         </td>
         <td class="club-name text-muted">${s.org || '—'}</td>
         <td class="text-center">${COUtils.renderMedal(s.rank)}</td>
-        <td class="text-end time-col">${s.time}</td>
-        <td class="text-end">${piMean}</td>
-        <td class="text-end fw-bold" style="color:${color}">${stdFmt}</td>
-        <td>
+        <td class="text-end time-col d-none d-md-table-cell">${s.time}</td>
+        <td class="text-end d-none d-md-table-cell">${piMean}</td>
+        <td class="text-end fw-bold d-none d-md-table-cell" style="color:${color}">${stdFmt}</td>
+        <td class="d-none d-md-table-cell">
+          <div class="reg-bar-wrap">
+            <div class="reg-bar"
+                 style="width:${barW};background:${color}"></div>
+          </div>
+        </td>
+        <td class="text-end d-md-none time-ip">
+          <span class="d-block time-col time-ip-main">${s.time}</span>
+          <span class="d-block time-ip-sub">${piMean}</span>
+        </td>
+        <td class="text-end d-md-none reg-merge">
+          <span class="d-block fw-bold reg-sigma" style="color:${color}">${stdFmt}</span>
           <div class="reg-bar-wrap">
             <div class="reg-bar"
                  style="width:${barW};background:${color}"></div>

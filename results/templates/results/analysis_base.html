@@ -120,7 +120,7 @@
     <i class="bi bi-table me-2"></i>{% block summary_card_title %}Récapitulatif{% endblock %}
   </div>
   <div class="table-responsive">
-    <table class="results-table">
+    <table class="results-table analysis-table">
       <thead><tr>{% block table_headers %}{% endblock %}</tr></thead>
       {% block table_body %}
       <tbody id="{% block tbody_id %}analysisTableBody{% endblock %}"></tbody>
@@ -135,6 +135,7 @@
 
 {% block extra_head %}
 {% if not no_data %}
+<link rel="stylesheet" href="{% static 'results/css/analysis.css' %}">
 <style>{% block extra_css %}{% endblock %}</style>
 {% endif %}
 {% endblock %}

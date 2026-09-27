@@ -50,33 +50,7 @@
 {% endblock %}
 
 {% block extra_head %}
-<style>
-#recapTable td[data-sticky] {
-  position: sticky;
-  z-index: 3;
-  background: #fff;
-}
-#recapTable [data-sticky="0"] { left: 0; }
-#recapTable [data-sticky="1"] { left: 3rem; }
-#recapTable [data-sticky="2"] { left: 11rem; }
-#recapTable [data-sticky="3"] { left: 21rem; }
-#recapTable thead th {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-#recapTable thead th[data-sticky] {
-  z-index: 12;
-}
-html[data-theme="dark"] #recapTable td[data-sticky] { background: #192118; }
-#recapTable .cumul-row td,
-#recapTable .leg-row td[rowspan="2"] { border-bottom: 2px solid var(--co-border); }
-#recapWrap {
-  max-height: calc(100vh - 250px);
-  overflow-y: auto;
-  overflow-x: auto;
-}
-</style>
+<link rel="stylesheet" href="{% static 'results/css/pages.css' %}">
 {% endblock %}
 
 {% block content %}

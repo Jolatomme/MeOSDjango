@@ -20,7 +20,7 @@
 
 {% block analysis_explanation %}
 <div class="alert alert-warning border-0 mb-4"
-     style="background:#fffbe6;border-left:4px solid var(--co-gold) !important;">
+     style="background:var(--co-highlight-bg);border-left:4px solid var(--co-gold) !important;">
   <i class="bi bi-info-circle me-2"></i>
   Le graphique montre le <strong>déroulé de la course en heure absolue</strong>.
   Des <strong>lignes proches</strong> indiquent des coureurs ayant probablement couru ensemble.
@@ -52,8 +52,12 @@
 <th style="width:3rem">#</th>
 <th>Coureur</th>
 <th>Club</th>
-<th class="text-end">Départ</th>
-<th class="text-end">Arrivée</th>
+<th class="text-end d-none d-md-table-cell">Départ</th>
+<th class="text-end d-none d-md-table-cell">Arrivée</th>
+<th class="text-end d-md-none">
+  <span class="d-block">Départ</span>
+  <span class="d-block">Arrivée</span>
+</th>
 <th class="text-end">Temps de course</th>
 {% endblock %}
 {% block tbody_id %}groupingTableBody{% endblock %}
@@ -109,13 +113,18 @@ function buildTable() {
       ? COUtils.renderMedal(s.rank)
       : `<div style="width:18px;height:3px;border-radius:2px;display:inline-block;` +
         `background:repeating-linear-gradient(90deg,${color} 0px,${color} 6px,transparent 6px,transparent 10px)"></div>`;
+    const startAbs   = fmtAbsTime(s.st_abs);
     return `
       <tr style="${opacity}">
         <td>${rankCell}</td>
         <td class="runner-name fw-bold">${COUtils.renderRunnerDot(color, s.name)}</td>
         <td class="club-name text-muted">${s.org}</td>
-        <td class="text-end font-monospace">${fmtAbsTime(s.st_abs)}</td>
-        <td class="text-end font-monospace">${finishAbs}</td>
+        <td class="text-end font-monospace d-none d-md-table-cell">${startAbs}</td>
+        <td class="text-end font-monospace d-none d-md-table-cell">${finishAbs}</td>
+        <td class="text-end font-monospace d-md-none dep-arr">
+          <span class="d-block dep-arr-start">${startAbs}</span>
+          <span class="d-block">${finishAbs}</span>
+        </td>
         <td class="text-end time-col">${timeFmt}</td>
       </tr>`;
   }).join('');
@@ -147,7 +156,7 @@ function initChart() {
     data: { labels: X_LABELS, datasets: buildDatasets(true) },
     options: {
       responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
-      interaction: { mode: 'index', intersect: false },
+      interaction: { mode: 'nearest', intersect: false },
       plugins: {
         legend: { display: false },
         tooltip: {

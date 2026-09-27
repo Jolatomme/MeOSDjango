@@ -20,7 +20,7 @@
 
 {% block analysis_explanation %}
 <div class="alert alert-warning border-0 mb-4"
-     style="background:#fffbe6;border-left:4px solid var(--co-gold) !important;">
+     style="background:var(--co-highlight-bg);border-left:4px solid var(--co-gold) !important;">
   <i class="bi bi-info-circle me-2"></i>
   L'<strong>indice de performance</strong> d'un coureur sur un tronçon est la
   <strong>moyenne des 25% meilleurs temps</strong> divisée par son propre temps.
@@ -63,10 +63,7 @@
 {% endblock %}
 {% block tbody_id %}perfTableBody{% endblock %}
 
-{% block extra_css %}
-  .ip-bar-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-  .ip-bar      { height: 4px; border-radius: 2px; max-width: 100px; min-width: 4px; }
-{% endblock %}
+{% block extra_css %}{% endblock %}
 
 {% block chart_init_js %}
 const SERIES   = {{ series_json|safe }};
@@ -159,7 +156,7 @@ function initChart() {
     data: { datasets: buildDatasets(sigma) },
     options: {
       responsive: true, maintainAspectRatio: false, animation: { duration: 150 },
-      interaction: { mode: 'index', intersect: false },
+      interaction: { mode: 'nearest', intersect: false },
       plugins: {
         legend: { display: false },
         tooltip: {

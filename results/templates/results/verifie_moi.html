@@ -26,7 +26,7 @@
 
 {# ── Explications ──────────────────────────────────────────────────────────── #}
 <div class="alert alert-warning border-0 mb-4"
-     style="background:#fffbe6;border-left:4px solid var(--co-gold) !important;">
+     style="background:var(--co-highlight-bg);border-left:4px solid var(--co-gold) !important;">
   <i class="bi bi-info-circle me-2"></i>
   <strong>Mode d'emploi :</strong>
   <ol class="mb-0 mt-2 small">
@@ -91,7 +91,7 @@
   {% if result.n_skipped %}
   <div class="col-6 col-md-3">
     <div class="stat-card" style="border-left-color:#6c757d">
-      <div class="stat-value" style="color:#6c757d">{{ result.n_skipped }}</div>
+      <div class="stat-value" style="color:var(--co-grey)">{{ result.n_skipped }}</div>
       <div class="stat-label"><i class="bi bi-skip-forward me-1"></i>Exclus (départ parallèle)</div>
     </div>
   </div>
@@ -172,7 +172,7 @@
       Séparateur : virgule.
     </p>
     <pre class="p-3 rounded small mb-0"
-         style="background:#f0f7f2;border:1px solid #c8e6d0;border-left:4px solid var(--co-green)">// O Checklist / Vérifie moi — généré depuis MeOS
+         style="background:var(--co-surface-2);border:1px solid var(--co-ok-border);border-left:4px solid var(--co-green)">// O Checklist / Vérifie moi — généré depuis MeOS
 // @colDefs: Nom*, Club*, Catégorie*, Dossard, Heure*, Puce, Départ
 Alice Martin,COCS,H21E,,10:00:00,314159,
 Bob Dupont,COCS,H21E,,10:02:00,271828,

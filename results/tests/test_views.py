@@ -401,6 +401,57 @@ class TestHomeView:
             assert comp.has_individual_competitors is True
 
 
+class TestHomeOrgLogoBadge:
+    """Logo d'organisation sur le badge de course de la page d'accueil."""
+
+    @staticmethod
+    def _render(comps):
+        from django.template.loader import render_to_string
+        first = comps[0]
+        years = [(first.date.year if first.date else None, comps)]
+        return render_to_string('results/home.html', {
+            'competitions': comps,
+            'years': years,
+            'available_years': [first.date.year] if first.date else [],
+        })
+
+    @staticmethod
+    def _comp(organizer, cid=1):
+        """SimpleNamespace (et non MagicMock) : comp.cid doit rester un entier
+        pour {% url %} — un MagicMock serait résolu via __getitem__()."""
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            cid=cid, name='Trail des Cimes', date=date(2026, 6, 1),
+            organizer=organizer, homepage=None,
+            has_individual_competitors=True,
+        )
+
+    @staticmethod
+    def _badge(html):
+        """Bloc en-tête du premier badge de course (co-card-header)."""
+        start = html.index('co-card-header')
+        return html[start:start + 600]
+
+    def test_logo_cocs_affiche_dans_le_badge(self):
+        html = self._render([self._comp('COCS 7309AURA')])
+        badge = self._badge(html)
+        assert 'class="org-logo"' in badge
+        assert '/static/results/img/logo-cocs.svg' in badge
+        assert 'bi-compass' not in badge
+
+    def test_organisation_inconnue_retombe_sur_l_icone(self):
+        html = self._render([self._comp('Autre club inconnu')])
+        badge = self._badge(html)
+        assert 'org-logo' not in badge
+        assert 'bi-compass' in badge
+
+    def test_sans_organisation_retombe_sur_l_icone(self):
+        html = self._render([self._comp('')])
+        badge = self._badge(html)
+        assert 'org-logo' not in badge
+        assert 'bi-compass' in badge
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # competition_detail
 # ══════════════════════════════════════════════════════════════════════════════

@@ -6,6 +6,7 @@
     <div class="co-card">
       <div class="co-card-header"><i class="bi bi-person me-2"></i>{{ runner.name }}</div>
       <div class="card-body">
+        <div class="table-responsive">
         <table class="results-table mb-0">
           <tbody>
             <tr><td class="fw-semibold pe-3" style="width:9rem">Nom</td><td>{{ runner.name }}</td></tr>
@@ -47,6 +48,7 @@
             {% endif %}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   </div>
@@ -55,6 +57,7 @@
       <div class="co-card-header"><i class="bi bi-clock-history me-2"></i>Journal des modifications</div>
       <div class="card-body">
         {% if runner.changelog %}
+        <div class="table-responsive">
         <table class="results-table mb-0">
           <tbody>
             <tr><td class="fw-semibold pe-3" style="width:9rem">DNS</td><td>{{ runner.changelog.dns|date:"H:i:s"|default:"—" }}</td></tr>
@@ -64,6 +67,7 @@
             <tr><td class="fw-semibold">Nouveau coureur</td><td>{{ runner.changelog.new_runner|date:"H:i:s"|default:"—" }}</td></tr>
           </tbody>
         </table>
+        </div>
         {% else %}
         <p class="text-muted mb-0">Aucune modification enregistrée.</p>
         {% endif %}
@@ -75,6 +79,7 @@
 <div class="co-card">
   <div class="co-card-header"><i class="bi bi-clipboard-data me-2"></i>Rapport associé</div>
   <div class="card-body">
+    <div class="table-responsive">
     <table class="results-table mb-0">
       <tbody>
         <tr><td class="fw-semibold pe-3" style="width:9rem">Événement</td><td>{{ runner.report.event|default:"—" }}</td></tr>
@@ -84,6 +89,7 @@
         <tr><td class="fw-semibold">Créateur</td><td>{{ runner.report.creator }}</td></tr>
       </tbody>
     </table>
+    </div>
   </div>
 </div>
 

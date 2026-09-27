@@ -65,7 +65,7 @@
 
 {# ── Explication ─────────────────────────────────────────────────────────── #}
 <div class="alert alert-warning border-0 mb-4"
-     style="background:#fffbe6;border-left:4px solid var(--co-gold) !important;">
+     style="background:var(--co-highlight-bg);border-left:4px solid var(--co-gold) !important;">
   <i class="bi bi-info-circle me-2"></i>
   L'<strong>indice lièvre / suiveur</strong> évalue les regroupements à partir
   des heures absolues de passage aux postes.
@@ -156,91 +156,7 @@
 
 {% block extra_head %}
 {% if not no_data %}
-<style>
-  /* ── Table heatmap ─────────────────────────────────────────────────────── */
-  .gi-table {
-    width: max-content; min-width: 100%;
-    border-collapse: separate; border-spacing: 0;
-    font-size: .78rem;
-  }
-  .gi-table thead th {
-    background: var(--co-forest); color: #fff;
-    font-family: var(--font-display); font-weight: 700; font-size: .72rem;
-    letter-spacing: .04em; text-transform: uppercase;
-    padding: .5rem .6rem; white-space: nowrap;
-    position: sticky; top: 0; z-index: 2;
-    border-right: 1px solid rgba(255,255,255,.12);
-  }
-  .gi-table thead th.gi-th-runner {
-    position: sticky; left: 0; z-index: 3;
-    min-width: 10rem; max-width: 14rem;
-  }
-  .gi-table thead th.gi-th-global {
-    border-left: 2px solid var(--co-gold);
-  }
-
-  /* ── Cellules coureur (colonne fixe) ───────────────────────────────────── */
-  .gi-table tbody td.gi-td-runner {
-    position: sticky; left: 0; z-index: 1;
-    background: #fff; border-right: 2px solid var(--co-border);
-    padding: .4rem .6rem; white-space: nowrap;
-    font-size: .8rem;
-  }
-  html[data-theme="dark"] .gi-table tbody td.gi-td-runner {
-    background: #192118 !important;
-    border-right-color: rgba(255,255,255,.1) !important;
-  }
-
-  /* ── Cellules de valeur ────────────────────────────────────────────────── */
-  .gi-table tbody td.gi-td-val {
-    padding: .2rem .3rem; text-align: center;
-    border-right: 1px solid rgba(0,0,0,.05);
-    min-width: 3.5rem; max-width: 6rem;
-    font-family: var(--font-display); font-weight: 700; font-size: .78rem;
-    vertical-align: middle; line-height: 1.2;
-  }
-  .gi-ref-name {
-    display: block;
-    font-family: var(--font-body); font-weight: 400; font-size: .65rem;
-    opacity: .75; white-space: nowrap; overflow: hidden;
-    text-overflow: ellipsis; max-width: 5.5rem; margin: 0 auto;
-  }
-  html[data-theme="dark"] .gi-table tbody td.gi-td-val {
-    border-right-color: rgba(255,255,255,.05) !important;
-  }
-
-  /* ── Cellule indice global ─────────────────────────────────────────────── */
-  .gi-table tbody td.gi-td-global {
-    border-left: 2px solid var(--co-gold);
-    font-size: .85rem;
-  }
-
-  /* ── Lignes alternées ──────────────────────────────────────────────────── */
-  .gi-table tbody tr:nth-child(even) td.gi-td-runner {
-    background: #f8fbf8;
-  }
-  html[data-theme="dark"] .gi-table tbody tr:nth-child(even) td.gi-td-runner {
-    background: #1e2a1e !important;
-  }
-
-  /* ── Cellule indice / profil fusionnée (tableau récap) ─────────────────────── */
-  .gi-cell-profil { padding: .3rem .5rem !important; vertical-align: top; }
-  .gi-profil-pct { font-size: .85rem; line-height: 1.1; margin-bottom: .2rem; }
-  .gi-bar-wrap  { position: relative; height: 6px; border-radius: 3px;
-                  background: #e9ecef; overflow: hidden; width: 100%; }
-  .gi-bar       { position: absolute; top: 0; height: 100%; border-radius: 3px; }
-  .gi-bar-center { position: absolute; left: 50%; top: 0; height: 100%;
-                  width: 1px; background: rgba(0,0,0,.3); }
-
-  html[data-theme="dark"] .gi-bar-wrap { background: #2a2a2a; }
-  html[data-theme="dark"] .gi-bar-center { background: rgba(255,255,255,.3); }
-
-  /* ── Légende swatches ──────────────────────────────────────────────────── */
-  .gi-legend-swatch {
-    display: inline-block; width: 18px; height: 10px;
-    border-radius: 2px; vertical-align: middle;
-  }
-</style>
+<link rel="stylesheet" href="{% static 'results/css/analysis.css' %}">
 {% endif %}
 {% endblock %}
 

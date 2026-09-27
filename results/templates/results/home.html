@@ -1,5 +1,5 @@
 {% extends "results/base.html" %}
-{% load static %}
+{% load static meos_tags %}
 {% block title %}{{ SITE_NAME }} — Accueil{% endblock %}
 {% block nav_home %}active{% endblock %}
 
@@ -68,10 +68,19 @@
       <div class="col-12 col-md-6 col-lg-4">
         <a href="{% url 'results:competition_detail' comp.cid %}" class="text-decoration-none">
           <div class="co-card h-100">
-            <div class="co-card-header d-flex justify-content-between align-items-center">
-              <span><i class="bi bi-compass me-2"></i>{{ comp.name }}</span>
+            <div class="co-card-header d-flex justify-content-between align-items-center gap-2">
+              <span class="d-flex align-items-center gap-2 text-truncate">
+                {% with logo=comp.organizer|org_logo %}
+                  {% if logo %}
+                    <img src="{% static logo %}" alt="" aria-hidden="true" class="org-logo">
+                  {% else %}
+                    <i class="bi bi-compass"></i>
+                  {% endif %}
+                {% endwith %}
+                <span class="text-truncate" title="{{ comp.name }}">{{ comp.name }}</span>
+              </span>
               {% if comp.date %}
-                <span class="badge bg-warning text-dark">{{ comp.date|date:"d/m/Y" }}</span>
+                <span class="badge bg-warning text-dark flex-shrink-0">{{ comp.date|date:"d/m/Y" }}</span>
               {% endif %}
             </div>
             <div class="p-3">

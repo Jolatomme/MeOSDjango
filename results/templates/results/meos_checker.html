@@ -1,4 +1,5 @@
 {% extends "results/base.html" %}
+{% load static %}
 {% block title %}Verificateur de tirage &mdash; {{ SITE_NAME }}{% endblock %}
 
 {% block page_header %}
@@ -21,15 +22,7 @@
 {% endblock %}
 
 {% block extra_head %}
-<style>
-  /* Égalisation hauteur des boîtes de statistiques */
-  .stat-row-equal .stat-card {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-</style>
+<link rel="stylesheet" href="{% static 'results/css/pages.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -138,7 +131,7 @@
       </div>
       <div class="col-6 col-md-2 d-flex">
         <div class="stat-card h-100 stat-card-secondary">
-          <div class="stat-value" style="color:#6c757d">{{ report.n_vacants }}</div>
+          <div class="stat-value" style="color:var(--co-grey)">{{ report.n_vacants }}</div>
           <div class="stat-label"><i class="bi bi-person-dash me-1"></i>Places vacantes</div>
         </div>
       </div>

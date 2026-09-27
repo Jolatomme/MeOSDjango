@@ -1,0 +1,203 @@
+/* ─── Styles des pages « contenu » ──────────────────────────────────────────
+   Extrait des blocs <style> inline de : relay_results.html, recapitulatif.html,
+   meos_checker.html et markdown_content.html.
+   Les couleurs passent par les tokens --co-* (clair / sombre automatiques). */
+
+/* ══ Résultats par relais ═════════════════════════════════════════════════ */
+  /* ── Conteneur fractions ─────────────────────────────────────────── */
+  .legs-td    { padding: 0 !important; }
+  .legs-detail {
+    background: var(--co-surface-2); border-top: 1px solid var(--co-ok-border);
+    border-bottom: 2px solid var(--co-ok-border); padding: .55rem .9rem .65rem;
+  }
+
+  /* ── Grille tableau des fractions ────────────────────────────────── */
+  /*   col 1 : numéro cercle  (fixe)
+       col 2 : nom coureur    (auto)
+       col 3 : tronçon+rang   (auto)
+       col 4 : cumulé+rang    (auto)
+       col 5 : bouton splits  (fixe)               */
+  .legs-grid {
+    display: grid;
+    grid-template-columns: 1.8rem 2fr auto auto 1.6rem;
+    align-items: start;
+    gap: .2rem .5rem;
+  }
+
+  /* Chaque cellule de la grille */
+  .lg-num    { display: flex; align-items: flex-start; justify-content: center; padding-top: .3rem; }
+  .lg-name   { min-width: 0; white-space: normal; word-wrap: break-word; }
+  .lg-leg    { display: flex; align-items: center; gap: .2rem; white-space: nowrap; }
+  .lg-cum    { display: flex; align-items: center; gap: .2rem; white-space: nowrap; }
+  .lg-splits { display: flex; align-items: flex-start; justify-content: center; padding-top: .3rem; }
+
+  /* Time column with inline toggle */
+  .time-with-toggle {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  .time-col {
+    cursor: pointer;
+  }
+  .time-col:hover {
+    background-color: var(--co-surface-3);
+  }
+
+  /* La grille des intermédiaires s'étale sur toutes les colonnes */
+  .lg-splits-content {
+    grid-column: 1 / -1;
+    padding: .3rem 0 .2rem 2.4rem;
+  }
+
+  /* ── Éléments internes ────────────────────────────────────────────── */
+  .leg-number {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.55rem; height: 1.55rem; border-radius: 50%;
+    background: var(--co-green); color: #fff;
+    font-family: var(--font-display); font-weight: 800; font-size: .78rem; flex-shrink: 0;
+  }
+  .leg-runner-name {
+    font-weight: 700; font-size: .95rem; color: var(--co-text-deep);
+  }
+
+  /* Badge temps de tronçon — vert */
+  .leg-time-badge {
+    font-family: var(--font-display); font-weight: 800; font-size: .95rem;
+    color: var(--co-text-accent); background: color-mix(in srgb, var(--co-text-accent) 12%, transparent);
+    border-radius: 4px; padding: .05rem .45rem;
+  }
+  /* Badge temps cumulé — bleu-forêt */
+  .cum-time-badge {
+    font-family: var(--font-display); font-weight: 800; font-size: .95rem;
+    color: var(--co-text-deep); background: color-mix(in srgb, var(--co-text-deep) 12%, transparent);
+    border-radius: 4px; padding: .05rem .45rem;
+  }
+
+  /* Rang — même taille que les temps */
+  .leg-rank-badge {
+    font-family: var(--font-display); font-weight: 800; font-size: .95rem;
+    color: var(--co-grey);
+  }
+  .leg-rank-badge.cum { color: var(--co-text-deep); }
+  .leg-rank-empty { display: inline-block; width: 1.5rem; }
+
+  /* ── Boutons ─────────────────────────────────────────────────────── */
+  .legs-toggle, .splits-toggle { border: none; background: transparent; }
+  .legs-toggle .bi, .splits-toggle .bi { transition: transform .2s; display: inline-block; }
+  .legs-toggle.open .bi-chevron-down,
+  .splits-toggle.open .bi-chevron-down { transform: rotate(180deg); }
+  .btn-xs { font-size: .75rem; }
+
+  /* ── Responsive : sur mobile ───────────────────────────────────────── */
+  @media (max-width: 576px) {
+    .legs-grid {
+      grid-template-columns: 1.6rem 2fr auto auto 1.4rem;
+      gap: .15rem .3rem;
+    }
+    .lg-num, .lg-splits {
+      padding-top: .2rem;
+    }
+  }
+
+/* ══ Récapitulatif ════════════════════════════════════════════════════════ */
+#recapTable td[data-sticky] {
+  position: sticky;
+  z-index: 3;
+  background: var(--co-surface);
+}
+#recapTable [data-sticky="0"] { left: 0; }
+#recapTable [data-sticky="1"] { left: 3rem; }
+#recapTable [data-sticky="2"] { left: 11rem; }
+#recapTable [data-sticky="3"] { left: 21rem; }
+#recapTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+#recapTable thead th[data-sticky] {
+  z-index: 12;
+}
+#recapTable .cumul-row td,
+#recapTable .leg-row td[rowspan="2"] { border-bottom: 2px solid var(--co-border); }
+#recapWrap {
+  max-height: calc(100vh - 250px);
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+/* ══ Vérificateur MeOS ════════════════════════════════════════════════════ */
+  /* Égalisation hauteur des boîtes de statistiques */
+  .stat-row-equal .stat-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+/* ══ Rendu markdown (tutoriels, contenus) ═════════════════════════════════ */
+  /* ── Styles pour le rendu markdown ──────────────────────────────────────── */
+  .md-body { font-size: 1rem; line-height: 1.75; color: inherit; }
+  .md-body h1, .md-body h2, .md-body h3,
+  .md-body h4, .md-body h5, .md-body h6 {
+    font-family: var(--font-display); font-weight: 700;
+    color: var(--co-forest); margin-top: 1.75rem; margin-bottom: .5rem;
+  }
+  html[data-theme="dark"] .md-body h1,
+  html[data-theme="dark"] .md-body h2,
+  html[data-theme="dark"] .md-body h3,
+  html[data-theme="dark"] .md-body h4,
+  html[data-theme="dark"] .md-body h5,
+  html[data-theme="dark"] .md-body h6 { color: #8fcfa0 !important; }
+
+  .md-body h2 {
+    font-size: 1.35rem; border-bottom: 2px solid var(--co-border);
+    padding-bottom: .3rem;
+  }
+  .md-body h3 { font-size: 1.1rem; color: var(--co-green); }
+  html[data-theme="dark"] .md-body h3 { color: var(--co-text-deep) !important; }
+
+  .md-body p  { margin-bottom: 1rem; }
+  .md-body ul, .md-body ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+  .md-body li { margin-bottom: .3rem; }
+
+  .md-body a { color: var(--co-text-accent); text-decoration: underline; }
+  .md-body a:hover { color: var(--co-green-dark); }
+
+  .md-body code {
+    font-size: .875em; background: var(--co-surface-2); border-radius: 3px;
+    padding: .1em .35em; color: var(--co-forest);
+  }
+  .md-body pre {
+    background: var(--co-surface-2); border: 1px solid var(--co-border);
+    border-left: 4px solid var(--co-green); border-radius: 6px;
+    padding: 1rem 1.25rem; overflow-x: auto; margin-bottom: 1.25rem;
+  }
+  .md-body pre code { background: none; padding: 0; font-size: .875rem; color: inherit; }
+
+  html[data-theme="dark"] .md-body code { color: #a8d8a8 !important; }
+
+  .md-body blockquote {
+    border-left: 4px solid var(--co-gold); background: var(--co-highlight-bg);
+    margin: 1rem 0; padding: .75rem 1rem; border-radius: 0 6px 6px 0;
+    color: var(--co-highlight-text);
+  }
+
+  .md-body table {
+    width: 100%; border-collapse: collapse; margin-bottom: 1.25rem; font-size: .925rem;
+  }
+  .md-body table th {
+    background: var(--co-forest); color: #fff;
+    font-family: var(--font-display); font-weight: 700; font-size: .8rem;
+    letter-spacing: .06em; text-transform: uppercase;
+    padding: .6rem 1rem; text-align: left;
+  }
+  .md-body table td {
+    padding: .5rem 1rem; border-bottom: 1px solid var(--co-border);
+    vertical-align: top;
+  }
+  .md-body table tr:hover td { background: var(--co-surface-2); }
+  html[data-theme="dark"] .md-body table td { border-color: rgba(255,255,255,.07) !important; }
+
+  .md-body img { max-width: 100%; border-radius: 6px; margin: .5rem 0; }
+  .md-body hr  { border-color: var(--co-border); margin: 1.5rem 0; }
