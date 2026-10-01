@@ -23,6 +23,17 @@ def mock_settings():
         yield
 
 
+@pytest.fixture(autouse=True)
+def _no_race_key_lookup():
+    """Par défaut, aucune recherche de clé API (la DB n'est pas touchée).
+
+    Les tests dédiés aux clés API re-patchent ``find_race_by_key`` (le patch
+    imbriqué du test l'emporte sur ce patch autouse).
+    """
+    with patch('results.mop_views.find_race_by_key', return_value=None):
+        yield
+
+
 class TestMopUpdateInvalidCid:
     """Tests pour les CID invalides."""
 
@@ -199,3 +210,177 @@ class TestMopUpdateSuccess:
         )
         response = mop_update(request)
         assert response.status_code == 422
+
+
+# ─── Clé API par course ────────────────────────────────────────────────────────
+
+def _race_config(cid=7):
+    config = MagicMock()
+    config.cid = cid
+    config.api_key = 'k' * 43
+    return config
+
+
+class TestMopApiKeyAuth:
+    """Authentification par clé API unique (course créée depuis le site).
+
+    La clé identifie seule la compétition : le numéro de compétition peut
+    rester vide dans MeOS (cf. page /creer-course/).
+    """
+
+    @patch('results.mop_views.process_mop_xml', return_value='OK')
+    @patch('results.mop_views.find_race_by_key')
+    def test_cle_seule_header_competition_vide(self, mock_find, mock_process, factory):
+        """Compétition vide → cid dérivé de la clé."""
+        mock_find.return_value = _race_config(7)
+        request = factory.post(
+            '/mop/update/',
+            data=b'<MeOS/>',
+            content_type='application/xml',
+            HTTP_COMPETITION='',
+            HTTP_PWD='k' * 43,
+        )
+        response = mop_update(request)
+        assert response.status_code == 200
+        mock_process.assert_called_once_with(7, b'<MeOS/>')
+
+    @patch('results.mop_views.process_mop_xml', return_value='OK')
+    @patch('results.mop_views.find_race_by_key')
+    def test_cle_seule_header_competition_absent(self, mock_find, mock_process, factory):
+        """Header Competition absent → cid dérivé de la clé."""
+        mock_find.return_value = _race_config(12)
+        request = factory.post(
+            '/mop/update/',
+            data=b'<MeOS/>',
+            content_type='application/xml',
+            HTTP_PWD='k' * 43,
+        )
+        response = mop_update(request)
+        assert response.status_code == 200
+        mock_process.assert_called_once_with(12, b'<MeOS/>')
+
+    @patch('results.mop_views.process_mop_xml', return_value='OK')
+    @patch('results.mop_views.find_race_by_key')
+    def test_cle_seule_cid_zero(self, mock_find, mock_process, factory):
+        """Compétition = 0 → traitée comme vide, cid dérivé de la clé."""
+        mock_find.return_value = _race_config(7)
+        request = factory.post(
+            '/mop/update/',
+            data=b'<MeOS/>',
+            content_type='application/xml',
+            HTTP_COMPETITION='0',
+            HTTP_PWD='k' * 43,
+        )
+        response = mop_update(request)
+        assert response.status_code == 200
+        mock_process.assert_called_once_with(7, b'<MeOS/>')
+
+    @patch('results.mop_views.process_mop_xml', return_value='OK')
+    @patch('results.mop_views.find_race_by_key')
+    def test_cle_avec_cid_correspondant(self, mock_find, mock_process, factory):
+        """Compétition explicite identique à celle de la clé → accepté."""
+        mock_find.return_value = _race_config(7)
+        request = factory.post(
+            '/mop/update/',
+            data=b'<MeOS/>',
+            content_type='application/xml',
+            HTTP_COMPETITION='7',
+            HTTP_PWD='k' * 43,
+        )
+        response = mop_update(request)
+        assert response.status_code == 200
+        mock_process.assert_called_once_with(7, b'<MeOS/>')
+
+    @patch('results.mop_views.find_race_by_key')
+    def test_cle_avec_cid_divergent(self, mock_find, factory):
+        """Compétition explicite différente de celle de la clé → BADCMP."""
+        mock_find.return_value = _race_config(7)
+        request = factory.post(
+            '/mop/update/',
+            data=b'<MeOS/>',
+            content_type='application/xml',
+            HTTP_COMPETITION='8',
+            HTTP_PWD='k' * 43,
+        )
+        response = mop_update(request)
+        assert response.status_code == 400
+        assert b'BADCMP' in response.content
+
+    @patch('results.mop_views.process_mop_xml', return_value='OK')
+    @patch('results.mop_views.find_race_by_key')
+    @patch.object(settings, 'MOP_PASSWORD', '')
+    def test_cle_fonctionne_sans_mot_de_passe_global(
+        self, mock_find, mock_process, factory,
+    ):
+        """La clé API fonctionne même si MOP_PASSWORD n'est pas configuré."""
+        mock_find.return_value = _race_config(3)
+        request = factory.post(
+            '/mop/update/',
+            data=b'<MeOS/>',
+            content_type='application/xml',
+            HTTP_COMPETITION='',
+            HTTP_PWD='k' * 43,
+        )
+        response = mop_update(request)
+        assert response.status_code == 200
+        mock_process.assert_called_once_with(3, b'<MeOS/>')
+
+
+class TestMopFallbackGlobalPassword:
+    """Repli sur le mot de passe global MOP_PASSWORD."""
+
+    @patch('results.mop_views.process_mop_xml', return_value='OK')
+    def test_cle_inconnue_mot_de_passe_global_valide(self, mock_process, factory, mock_settings):
+        """Clé inconnue + mot de passe global valide → accepté (comportement historique)."""
+        request = factory.post(
+            '/mop/update/',
+            data=b'<MeOS/>',
+            content_type='application/xml',
+            HTTP_COMPETITION='1',
+            HTTP_PWD='testpassword',
+        )
+        response = mop_update(request)
+        assert response.status_code == 200
+        mock_process.assert_called_once_with(1, b'<MeOS/>')
+
+    def test_cle_inconnue_mot_de_passe_global_invalide(self, factory, mock_settings):
+        """Clé inconnue + mauvais mot de passe → 403 BADPWD."""
+        request = factory.post(
+            '/mop/update/',
+            data=b'<MeOS/>',
+            content_type='application/xml',
+            HTTP_COMPETITION='1',
+            HTTP_PWD='mauvaise-cle',
+        )
+        response = mop_update(request)
+        assert response.status_code == 403
+        assert b'BADPWD' in response.content
+
+    def test_cle_inconnue_cid_invalide(self, factory, mock_settings):
+        """Clé inconnue + CID invalide → 400 BADCMP (avant toute comparaison)."""
+        request = factory.post(
+            '/mop/update/',
+            data=b'<MeOS/>',
+            content_type='application/xml',
+            HTTP_COMPETITION='',
+            HTTP_PWD='testpassword',
+        )
+        response = mop_update(request)
+        assert response.status_code == 400
+        assert b'BADCMP' in response.content
+
+    def test_secret_non_journalise_en_clair(self, factory, mock_settings, caplog):
+        """L'identifiant refusé n'apparaît jamais en clair dans les logs."""
+        import logging as _logging
+        with caplog.at_level(_logging.WARNING, logger='results.mop_views'):
+            request = factory.post(
+                '/mop/update/',
+                data=b'<MeOS/>',
+                content_type='application/xml',
+                HTTP_COMPETITION='1',
+                HTTP_PWD='super-secret-password',
+            )
+            response = mop_update(request)
+        assert response.status_code == 403
+        assert 'super-secret-password' not in caplog.text
+        assert 'super-secret-password' not in str(caplog.records)

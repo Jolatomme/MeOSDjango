@@ -79,6 +79,12 @@
                 {% endwith %}
                 <span class="text-truncate" title="{{ comp.name }}">{{ comp.name }}</span>
               </span>
+              {% if comp.pending %}
+                <span class="badge bg-transparent text-warning border border-warning flex-shrink-0"
+                      title="Course en attente du premier import MeOS">
+                  <i class="bi bi-hourglass-split me-1"></i>En attente
+                </span>
+              {% endif %}
               {% if comp.date %}
                 <span class="badge bg-warning text-dark flex-shrink-0">{{ comp.date|date:"d/m/Y" }}</span>
               {% endif %}

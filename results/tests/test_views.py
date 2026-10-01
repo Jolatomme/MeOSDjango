@@ -319,6 +319,12 @@ class TestHomeView:
         ids = [c.cid for c in ctx['competitions']]
         assert ids == [5, 4, 3]
 
+    def test_liste_vide_rend_sans_erreur(self):
+        """Aucune compétition → rendu OK (branche liste vide)."""
+        template, ctx = self._run(comps=[])
+        assert template == 'results/home.html'
+        assert ctx['competitions'] == []
+
     def test_defaut_trie_par_date_decroissante(self):
         _, ctx = self._run(comps=self._comps())
         dates = [c.date for c in ctx['competitions']]

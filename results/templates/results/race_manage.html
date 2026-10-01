@@ -1,0 +1,236 @@
+{% extends "results/base.html" %}
+{% block title %}Gestion — {{ competition.name|default:'course' }} — {{ SITE_NAME }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  @media print {
+    nav, footer, #backToTop, .no-print { display: none !important; }
+    main { padding-top: 0 !important; }
+    .co-card { border: 1px solid #dee2e6 !important; break-inside: avoid; }
+  }
+</style>
+{% endblock %}
+
+{% block page_header %}
+<div class="co-page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="co-breadcrumb">
+      <ol class="breadcrumb mb-2 small">
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'results:race_create' %}">Créer une course</a></li>
+        <li class="breadcrumb-item active">Gestion de course</li>
+      </ol>
+    </nav>
+    <div>
+      <h1><i class="bi bi-gear-wide-connected me-2 opacity-75"></i>
+        {{ competition.name|default:'Course' }}
+      </h1>
+      <p class="opacity-75 small mt-1 mb-0">
+        {% if competition.date %}{{ competition.date|date:"d/m/Y" }} &bull; {% endif %}
+        {% if competition.organizer %}{{ competition.organizer }} &bull; {% endif %}
+        CID interne : {{ config.cid }}
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% if request.GET.ok == 'key' %}
+  <div class="alert alert-success border-0" style="border-left:4px solid #198754 !important;">
+    <i class="bi bi-check-circle-fill me-2"></i>
+    <strong>Nouvelle clé API générée.</strong>
+    Remplacez l'ancienne clé dans MeOS, sans quoi les envois seront refusés.
+  </div>
+{% elif request.GET.ok == 'link' %}
+  <div class="alert alert-success border-0" style="border-left:4px solid #198754 !important;">
+    <i class="bi bi-check-circle-fill me-2"></i>
+    <strong>Nouveau lien de gestion généré.</strong>
+    Mettez à jour vos favoris : l'ancien lien ne fonctionne plus.
+  </div>
+{% elif request.GET.ok == 'info' %}
+  <div class="alert alert-success border-0" style="border-left:4px solid #198754 !important;">
+    <i class="bi bi-check-circle-fill me-2"></i>
+    Informations de la course mises à jour.
+  </div>
+{% endif %}
+
+<div class="alert alert-info border-0 no-print" style="border-left:4px solid #0dcaf0 !important;">
+  <i class="bi bi-link-45deg me-2"></i>
+  Ce lien est <strong>privé</strong> : toute personne qui le possède peut
+  afficher la clé API et la régénérer. Conservez-le précieusement (avec la
+  fiche imprimée ci-dessous).
+  <div class="input-group input-group-sm mt-2" style="max-width:640px;">
+    <input type="text" class="form-control font-monospace" id="manageUrl"
+           value="{{ manage_url }}" readonly>
+    <button class="btn btn-outline-dark" type="button" data-copy="manageUrl"
+            title="Copier le lien de gestion">
+      <i class="bi bi-clipboard"></i>
+    </button>
+  </div>
+  <form method="post" class="mt-2 no-print"
+        onsubmit="return confirm('Régénérer le lien de gestion ? L\'ancien lien ne fonctionnera plus.');">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="regenerate_link">
+    <button type="submit" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-clockwise me-1"></i>Régénérer le lien de gestion
+    </button>
+  </form>
+</div>
+
+<div class="co-card mb-4">
+  <div class="co-card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-sliders me-2"></i>Paramètres à saisir dans MeOS</span>
+    <span class="no-print d-flex gap-2">
+      <button class="btn btn-sm btn-outline-secondary" type="button" onclick="window.print()">
+        <i class="bi bi-printer me-1"></i>Imprimer / PDF
+      </button>
+    </span>
+  </div>
+  <div class="p-4">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <tbody>
+          <tr>
+            <th style="width:220px">URL d'envoi</th>
+            <td>
+              <div class="input-group input-group-sm">
+                <input type="text" class="form-control font-monospace" id="meosUrl"
+                       value="{{ meos_url }}" readonly>
+                <button class="btn btn-outline-secondary" type="button" data-copy="meosUrl"
+                        title="Copier l'URL">
+                  <i class="bi bi-clipboard"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th>Password / API key</th>
+            <td>
+              <div class="input-group input-group-sm">
+                <input type="text" class="form-control font-monospace" id="apiKey"
+                       value="{{ config.api_key }}" readonly>
+                <button class="btn btn-outline-secondary" type="button" data-copy="apiKey"
+                        title="Copier la clé">
+                  <i class="bi bi-clipboard"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th>Compétition</th>
+            <td><code>laisser vide</code></td>
+          </tr>
+          <tr>
+            <th>Compression ZIP</th>
+            <td>Désactivée</td>
+          </tr>
+          <tr>
+            <th>Intervalle</th>
+            <td>0 seconde</td>
+          </tr>
+          <tr>
+            <th>Format</th>
+            <td>MeOS Online Protocol XML 2.0</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <form method="post" class="mt-3 no-print"
+          onsubmit="return confirm('Régénérer la clé API ? L\'ancienne clé deviendra immédiatement invalide.');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="regenerate_key">
+      <button type="submit" class="btn btn-outline-warning btn-sm fw-bold">
+        <i class="bi bi-arrow-clockwise me-1"></i>Régénérer la clé
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="co-card mb-4 no-print">
+  <div class="co-card-header">
+    <i class="bi bi-pencil-square me-2"></i>Modifier l'événement
+  </div>
+  <div class="p-4">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="edit">
+      <div class="row g-3">
+        <div class="col-12">
+          <label for="{{ form.name.id_for_label }}" class="form-label fw-bold small text-muted">
+            Nom de la course *
+          </label>
+          <input type="text" class="form-control{% if form.name.errors %} is-invalid{% endif %}"
+                 id="{{ form.name.id_for_label }}" name="{{ form.name.html_name }}"
+                 value="{{ form.name.value|default:'' }}" maxlength="64" required>
+          {% for error in form.name.errors %}
+            <div class="invalid-feedback">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-12 col-md-6">
+          <label for="{{ form.date.id_for_label }}" class="form-label fw-bold small text-muted">
+            Date *
+          </label>
+          <input type="date" class="form-control{% if form.date.errors %} is-invalid{% endif %}"
+                 id="{{ form.date.id_for_label }}" name="{{ form.date.html_name }}"
+                 value="{{ form.date.value|default:'' }}" required>
+          {% for error in form.date.errors %}
+            <div class="invalid-feedback">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-12 col-md-6">
+          <label for="{{ form.organizer.id_for_label }}" class="form-label fw-bold small text-muted">
+            Organisateur / club *
+          </label>
+          <input type="text" class="form-control{% if form.organizer.errors %} is-invalid{% endif %}"
+                 id="{{ form.organizer.id_for_label }}" name="{{ form.organizer.html_name }}"
+                 value="{{ form.organizer.value|default:'' }}" maxlength="64" required>
+          {% for error in form.organizer.errors %}
+            <div class="invalid-feedback">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-12">
+          <label for="{{ form.homepage.id_for_label }}" class="form-label fw-bold small text-muted">
+            Site web de l'organisateur
+          </label>
+          <input type="url" class="form-control{% if form.homepage.errors %} is-invalid{% endif %}"
+                 id="{{ form.homepage.id_for_label }}" name="{{ form.homepage.html_name }}"
+                 value="{{ form.homepage.value|default:'' }}" maxlength="128"
+                 placeholder="https://…">
+          {% for error in form.homepage.errors %}
+            <div class="invalid-feedback">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <button type="submit" class="btn btn-success fw-bold">
+          <i class="bi bi-check-lg me-1"></i>Enregistrer les modifications
+        </button>
+        <a href="{% url 'results:race_create' %}" class="btn btn-outline-secondary">
+          <i class="bi bi-plus-circle me-1"></i>Créer une autre course
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var el = document.getElementById(btn.getAttribute('data-copy'));
+      if (!el) return;
+      navigator.clipboard.writeText(el.value).then(function () {
+        var icon = btn.querySelector('i');
+        var prev = icon.className;
+        icon.className = 'bi bi-check-lg';
+        setTimeout(function () { icon.className = prev; }, 1500);
+      });
+    });
+  });
+</script>
+{% endblock %}

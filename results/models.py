@@ -209,6 +209,12 @@ class CompetitionConfig(models.Model):
     Table Django-managed séparée des tables mop* (managed=False).
     cid fait référence à Mopcompetition.cid mais sans contrainte FK
     (les tables mop* ne sont pas gérées par Django).
+
+    api_key : clé API unique générée à la création d'une course depuis le site.
+    Utilisée comme « Password » dans MeOS ; identifie seule la compétition
+    (le numéro de compétition peut rester vide). NULL = clé non générée
+    (course créée par MeOS, authentification via le mot de passe global).
+    manage_token : secret du lien privé de gestion de la course.
     """
     cid       = models.IntegerField(primary_key=True, db_column='cid')
     frozen    = models.BooleanField(
@@ -226,12 +232,39 @@ class CompetitionConfig(models.Model):
         verbose_name='à effacer',
         help_text="Marquer comme supprimée (masquée de la liste publique)",
     )
+    api_key = models.CharField(
+        max_length=64,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name='clé API MeOS',
+        help_text="« Password » MeOS unique à cette compétition (NULL = mot de passe global)",
+    )
+    manage_token = models.CharField(
+        max_length=64,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name='jeton de gestion',
+        help_text="Secret du lien privé de gestion de la course",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        null=True,
+        blank=True,
+        verbose_name='créée le',
+    )
 
     class Meta:
         managed         = True
         db_table        = 'results_competitionconfig'
         verbose_name        = 'configuration compétition'
         verbose_name_plural = 'configurations compétitions'
+
+    @property
+    def has_api_key(self):
+        """True si une clé API unique a été générée pour cette course."""
+        return bool(self.api_key)
 
     def __str__(self):
         flags = []

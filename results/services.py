@@ -7,18 +7,22 @@ Les accès DB restent ici pour pouvoir les mocker facilement dans les tests.
 
 from .models import (
     Moporganization, Mopcontrol, Mopclasscontrol, Mopradio, Mopclass,
-    Mopcompetitor, Mopteam, Mopteammember,
+    Mopcompetitor, Mopteam, Mopteammember, Mopcompetition, CompetitionConfig,
     STAT_OK, STATUS_LABELS, format_time,
     STAT_NT, STAT_MP, STAT_DNF, STAT_DQ, STAT_OT,
     STAT_DNS, STAT_CANCEL, STAT_NP,
 )
 
+import logging
 import re
+import secrets
 from collections import Counter
 from datetime import date, datetime
 from functools import cmp_to_key
 from markdown.extensions.toc import slugify_unicode
-from django.db import connection
+from django.db import connection, IntegrityError, transaction
+
+logger = logging.getLogger(__name__)
 
 _PREFIX_RE = re.compile(r'^\d+(\.\d+)*\.?\s+')
 
@@ -43,6 +47,100 @@ def competition_visible(cid):
 def slugify_no_prefix(value, separator='-'):
     """Slugify after removing numbered prefix (e.g., '1.2. Title' → 'title')."""
     return slugify_unicode(_PREFIX_RE.sub('', value), separator)
+
+
+# ─── Courses — création / clés API ─────────────────────────────────────────────
+
+def generate_race_secret():
+    """Génère un secret aléatoire indevinable (clé API ou jeton de gestion)."""
+    return secrets.token_urlsafe(32)
+
+
+def next_cid():
+    """Prochain CID libre = max(mopCompetition, results_competitionconfig) + 1.
+
+    Les deux tables sont vérifiées : une course « en attente » créée depuis
+    le site n'existe que dans results_competitionconfig avant le premier
+    import MeOS, et inversement.
+    """
+    with connection.cursor() as cur:
+        cur.execute("SELECT COALESCE(MAX(cid), 0) FROM mopCompetition")
+        max_mop = cur.fetchone()[0] or 0
+        cur.execute("SELECT COALESCE(MAX(cid), 0) FROM results_competitionconfig")
+        max_cfg = cur.fetchone()[0] or 0
+    return max(max_mop, max_cfg) + 1
+
+
+def create_race(*, name, date, organizer, homepage=''):
+    """Crée une course : CompetitionConfig (clé API + jeton) + mopCompetition.
+
+    La ligne mopCompetition est pré-remplie (id=1) pour que la course
+    apparaisse immédiatement sur le site ; le premier MOPComplete de MeOS
+    la remplace (clear_competition + réinsertion).
+
+    Retourne la CompetitionConfig fraîchement créée.
+    Lève IntegrityError si l'allocation de CID est perdue face à une
+    création concurrente (après 3 tentatives).
+    """
+    last_error = None
+    for _ in range(3):
+        cid = next_cid()
+        try:
+            with transaction.atomic():
+                config = CompetitionConfig.objects.create(
+                    cid=cid,
+                    api_key=generate_race_secret(),
+                    manage_token=generate_race_secret(),
+                    visible=True,
+                    frozen=False,
+                    deleted=False,
+                )
+                Mopcompetition.objects.create(
+                    cid=cid,
+                    id=1,
+                    name=name,
+                    date=date,
+                    organizer=organizer,
+                    homepage=homepage or '',
+                )
+            logger.info("create_race: course cid=%s créée (%s)", cid, name)
+            return config
+        except IntegrityError as exc:
+            last_error = exc
+    raise last_error
+
+
+def regenerate_api_key(config):
+    """Remplace la clé API d'une course (l'ancienne devient invalide)."""
+    config.api_key = generate_race_secret()
+    config.save(update_fields=['api_key'])
+    logger.info("regenerate_api_key: nouvelle clé générée pour cid=%s", config.cid)
+    return config.api_key
+
+
+def regenerate_manage_token(config):
+    """Remplace le jeton du lien privé de gestion (l'ancien lien devient invalide)."""
+    config.manage_token = generate_race_secret()
+    config.save(update_fields=['manage_token'])
+    logger.info(
+        "regenerate_manage_token: nouveau lien de gestion pour cid=%s", config.cid
+    )
+    return config.manage_token
+
+
+def find_race_by_key(key):
+    """Retourne la CompetitionConfig correspondant à une clé API, ou None.
+
+    La clé est un jeton aléatoire de 43 caractères : une recherche exacte
+    indexée suffit (pas de comparaison timing-possible exploitable).
+    """
+    if not key:
+        return None
+    try:
+        return CompetitionConfig.objects.filter(api_key=key).first()
+    except Exception:
+        logger.exception("find_race_by_key: échec de recherche de clé API")
+        return None
 
 
 # ─── Organisations ─────────────────────────────────────────────────────────────

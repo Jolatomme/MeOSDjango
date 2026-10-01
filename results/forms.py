@@ -32,3 +32,41 @@ class MeosFileForm(forms.Form):
 
 class VerifieMoiFileForm(forms.Form):
     meosfile = forms.FileField(label="Fichier MeOS (.xml)")
+
+
+class RaceBaseForm(forms.Form):
+    """Champs communs création/édition d'une course (cf. race_views)."""
+
+    name = forms.CharField(label="Nom de la course", max_length=64)
+    date = forms.DateField(
+        label="Date",
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+    organizer = forms.CharField(label="Organisateur / club", max_length=64)
+    homepage = forms.URLField(
+        label="Site web de l'organisateur",
+        max_length=128,
+        required=False,
+        assume_scheme='https',
+    )
+
+
+class RaceCreateForm(RaceBaseForm):
+    """Formulaire public de création de course (sans compte).
+
+    Protections anti-spam :
+    - ``website`` : honeypot, invisible pour un humain (cf. template) ;
+    - ``token``   : jeton signé horodaté, imposant un remplissage d'au
+      moins MIN_FILL_SECONDS (vérifié dans race_views).
+    """
+
+    website = forms.CharField(
+        label="Site web (champ piège)",
+        required=False,
+        widget=forms.TextInput(attrs={'autocomplete': 'off', 'tabindex': '-1'}),
+    )
+    token = forms.CharField(required=False, widget=forms.HiddenInput)
+
+
+class RaceEditForm(RaceBaseForm):
+    """Formulaire d'édition d'une course via son lien privé de gestion."""

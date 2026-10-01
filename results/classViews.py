@@ -120,8 +120,22 @@ class HomeView(RenderShortcutMixin, ListView):
         else:
             rqs = rqs[:self.default_limit]
 
+        # Courses sans aucun coureur/relais = créées mais pas encore importées
+        if rqs:
+            cids = [c.cid for c in rqs]
+            imported_cids = set(
+                Mopcompetitor.objects.filter(cid__in=cids)
+                .values_list('cid', flat=True).distinct()
+            ) | set(
+                Mopteam.objects.filter(cid__in=cids)
+                .values_list('cid', flat=True).distinct()
+            )
+        else:
+            imported_cids = set()
+
         for comp in rqs:
             comp.has_individual_competitors = has_individual_competitors(comp.cid)
+            comp.pending = comp.cid not in imported_cids
 
         groups = defaultdict(list)
         for comp in rqs:

@@ -51,7 +51,7 @@ npx jest test_site_js.test.js
 
 - `MeOSDjango/settings.py` imports `MeOSDjango/dev_settings.py` (try/except) — local dev config, DB credentials included
 - Production: do NOT commit `dev_settings.py` with credentials; override settings via environment variables instead
-- Configurable via env vars: `MOP_PASSWORD`, `SITE_NAME`, `SITE_SUBTITLE`, `SITE_LOGO_URL`, `CLUB_NAME`, `CLUB_COLOR_PRIMARY`, `CLUB_COLOR_ACCENT`, `OCHECKLIST_HEADER_KEY`, `OCHECKLIST_HEADER_VALUE`
+- Configurable via env vars: `MOP_PASSWORD`, `SITE_NAME`, `SITE_SUBTITLE`, `SITE_LOGO_URL`, `CLUB_NAME`, `CLUB_COLOR_PRIMARY`, `CLUB_COLOR_ACCENT`, `PUBLIC_SITE_URL`, `OCHECKLIST_HEADER_KEY`, `OCHECKLIST_HEADER_VALUE`
 - Required: `MOP_PASSWORD` must match MeOS Online config
 - Optional: `OCHECKLIST_HEADER_KEY` / `OCHECKLIST_HEADER_VALUE` for O'checklist endpoint auth
 

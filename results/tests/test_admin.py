@@ -79,7 +79,11 @@ class TestCompetitionConfigAdmin:
             ]
             inst.get_queryset(None)
             MockConfig.objects.create.assert_not_called()
-            MockConfig.objects.filter.assert_called_once_with(cid__in={3})
+            # La purge ne touche que les configs sans clé API
+            # (une course créée depuis le site garde son secret)
+            MockConfig.objects.filter.assert_called_once_with(
+                cid__in={3}, api_key__isnull=True,
+            )
             MockConfig.objects.filter.return_value.delete.assert_called_once_with()
 
     def test_get_queryset_pas_de_purge_si_aucune_orpheline(self):
@@ -114,9 +118,35 @@ class TestCompetitionConfigAdmin:
             mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
             assert inst._date(MagicMock(cid=3)) == '—'
 
-    def test_get_actions_vide(self):
-        inst = _make_admin()
-        assert inst.get_actions(None) == {}
+    def test_get_actions_uniquement_revoquer_liens(self):
+        """L'action custom est proposée ; delete_selected est masqué."""
+        from django.contrib.admin import site as admin_site
+        from results.admin import CompetitionConfigAdmin
+        from results.models import CompetitionConfig
+        inst = CompetitionConfigAdmin(CompetitionConfig, admin_site)
+        request = RequestFactory().get('/admin/results/competitionconfig/')
+        actions = inst.get_actions(request)
+        assert 'revoke_manage_links' in actions
+        # has_delete_permission → False : l'action de suppression est retirée
+        assert 'delete_selected' not in actions
+
+    def test_revoke_manage_links_action(self):
+        """L'action révoque le jeton (manage_token → NULL), clé API intacte."""
+        from results.admin import CompetitionConfigAdmin
+        from results.models import CompetitionConfig
+        inst = CompetitionConfigAdmin(CompetitionConfig, None)
+        request = RequestFactory().post(
+            '/admin/results/competitionconfig/',
+            {'action': 'revoke_manage_links', '_selected_action': ['1']},
+        )
+        queryset = MagicMock()
+        with patch.object(CompetitionConfigAdmin, 'message_user') as mock_msg:
+            inst.revoke_manage_links(request, queryset)
+        queryset.filter.assert_called_once_with(manage_token__isnull=False)
+        queryset.filter.return_value.update.assert_called_once_with(
+            manage_token=None,
+        )
+        mock_msg.assert_called_once()
 
     def test_has_delete_permission_false(self):
         inst = _make_admin()

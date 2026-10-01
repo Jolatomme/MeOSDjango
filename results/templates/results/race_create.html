@@ -1,0 +1,143 @@
+{% extends "results/base.html" %}
+{% block title %}Créer une course — {{ SITE_NAME }}{% endblock %}
+
+{% block page_header %}
+<div class="co-page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="co-breadcrumb">
+      <ol class="breadcrumb mb-2 small">
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
+        <li class="breadcrumb-item active">Créer une course</li>
+      </ol>
+    </nav>
+    <div>
+      <h1><i class="bi bi-plus-circle me-2 opacity-75"></i>Créer une course</h1>
+      <p class="opacity-75 small mt-1 mb-0">
+        Créez votre course sans compte : une clé API MeOS unique et un lien
+        privé de gestion sont générés automatiquement.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+
+    <div class="co-card mb-4">
+      <div class="co-card-header">
+        <i class="bi bi-trophy me-2"></i>Informations de la course
+      </div>
+      <div class="p-4">
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+          </div>
+        {% endif %}
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {{ form.token }}
+
+          {# Honeypot — masqué visuellement, à ne pas remplir #}
+          <div class="d-none" aria-hidden="true">
+            <label for="{{ form.website.id_for_label }}">{{ form.website.label }}</label>
+            {{ form.website }}
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label for="{{ form.name.id_for_label }}" class="form-label fw-bold small text-muted">
+                Nom de la course *
+              </label>
+              <input type="text" class="form-control{% if form.name.errors %} is-invalid{% endif %}"
+                     id="{{ form.name.id_for_label }}" name="{{ form.name.html_name }}"
+                     value="{{ form.name.value|default:'' }}" maxlength="64" required>
+              {% for error in form.name.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="{{ form.date.id_for_label }}" class="form-label fw-bold small text-muted">
+                Date *
+              </label>
+              <input type="date" class="form-control{% if form.date.errors %} is-invalid{% endif %}"
+                     id="{{ form.date.id_for_label }}" name="{{ form.date.html_name }}"
+                     value="{{ form.date.value|default:'' }}" required>
+              {% for error in form.date.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="{{ form.organizer.id_for_label }}" class="form-label fw-bold small text-muted">
+                Organisateur / club *
+              </label>
+              <input type="text" class="form-control{% if form.organizer.errors %} is-invalid{% endif %}"
+                     id="{{ form.organizer.id_for_label }}" name="{{ form.organizer.html_name }}"
+                     value="{{ form.organizer.value|default:'' }}" maxlength="64" required>
+              {% for error in form.organizer.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="col-12">
+              <label for="{{ form.homepage.id_for_label }}" class="form-label fw-bold small text-muted">
+                Site web de l'organisateur
+              </label>
+              <input type="url" class="form-control{% if form.homepage.errors %} is-invalid{% endif %}"
+                     id="{{ form.homepage.id_for_label }}" name="{{ form.homepage.html_name }}"
+                     value="{{ form.homepage.value|default:'' }}" maxlength="128"
+                     placeholder="https://…">
+              {% for error in form.homepage.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 mt-4">
+            <button type="submit" class="btn btn-success fw-bold">
+              <i class="bi bi-magic me-2"></i>Créer la course
+            </button>
+            <a href="{% url 'results:home' %}" class="btn btn-outline-secondary">Annuler</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="co-card mb-4">
+      <div class="co-card-header">
+        <i class="bi bi-key me-2"></i>Comment ça marche ?
+      </div>
+      <div class="p-4 small">
+        <ol class="mb-3">
+          <li>Renseignez le nom, la date et le club organisateur.</li>
+          <li>
+            Après création, une <strong>clé API MeOS unique</strong> et un
+            <strong>lien privé de gestion</strong> sont affichés.
+          </li>
+          <li>
+            Dans MeOS (<em>Outils &rarr; Serveur Online</em>) : URL = celle du site,
+            <strong>Password = la clé API</strong>, numéro de compétition
+            <strong>laissé vide</strong>, compression ZIP désactivée,
+            format <em>MeOS Online Protocol XML 2.0</em>.
+          </li>
+          <li>
+            Conservez le lien privé : il permet de retrouver la clé,
+            de la régénérer et d'éditer les informations.
+          </li>
+        </ol>
+        <div class="form-text mb-0">
+          <i class="bi bi-shield-lock me-1"></i>
+          La course apparaît immédiatement sur le site, en attente du premier
+          import MeOS.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

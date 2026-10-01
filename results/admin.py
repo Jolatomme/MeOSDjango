@@ -42,9 +42,14 @@ class CompetitionConfigAdmin(admin.ModelAdmin):
         for cid in all_cids:
             if cid not in existing:
                 CompetitionConfig.objects.create(cid=cid)
+        # Ne jamais supprimer une course dotée d'une clé API (course créée
+        # depuis le site) : sa configuration porte un secret qui doit survivre
+        # à la désynchronisation des tables.
         stale = existing - set(all_cids)
         if stale:
-            CompetitionConfig.objects.filter(cid__in=stale).delete()
+            CompetitionConfig.objects.filter(
+                cid__in=stale, api_key__isnull=True,
+            ).delete()
         return CompetitionConfig.objects.all()
 
     def _name(self, obj):
@@ -59,10 +64,25 @@ class CompetitionConfigAdmin(admin.ModelAdmin):
     _date.short_description = 'Date'
     _date.admin_order_field = 'cid'
 
-    actions = []
+    actions = ['revoke_manage_links']
 
-    def get_actions(self, request):
-        return {}
+    def revoke_manage_links(self, request, queryset):
+        """Révoque les liens de gestion privés (jeton supprimé).
+
+        La clé API MeOS (api_key) reste intacte : les envois MeOS continuent.
+        Le lien privé /gestion-course/<jeton>/ devient invalide (404).
+        """
+        updated = queryset.filter(
+            manage_token__isnull=False,
+        ).update(manage_token=None)
+        self.message_user(
+            request,
+            f"{updated} lien(s) de gestion révoqué(s) — les clés API MeOS "
+            "restent actives.",
+            level=messages.WARNING,
+        )
+
+    revoke_manage_links.short_description = "Révoquer les liens de gestion privés"
 
     def has_delete_permission(self, request, obj=None):
         return False
