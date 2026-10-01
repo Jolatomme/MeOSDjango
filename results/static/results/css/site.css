@@ -630,12 +630,13 @@ tr.neg-row:hover > td { background: rgba(220, 53, 69, .1); }
   background: var(--co-surface);
   border-bottom: 1px solid var(--co-border);
   box-shadow: 0 2px 6px rgba(0,0,0,.06);
+  padding: .4rem 0;
 }
 .analysis-tabs {
   display: flex;
   align-items: stretch;
   flex-wrap: wrap;
-  gap: 0;
+  gap: .4rem;
 }
 .analysis-tab {
   display: flex;
@@ -649,25 +650,148 @@ tr.neg-row:hover > td { background: rgba(220, 53, 69, .1); }
   letter-spacing: .03em;
   color: var(--co-text-muted);
   text-decoration: none;
-  border-bottom: 3px solid transparent;
+  border: 1px solid var(--co-border);
+  border-radius: var(--co-radius-md);
+  background: linear-gradient(180deg, var(--co-surface-2), var(--co-surface));
+  box-shadow: 0 1px 2px rgba(0,0,0,.08);
   white-space: nowrap;
-  transition: color .15s, border-color .15s, background .15s;
+  transition: color .15s, border-color .15s, background .15s,
+              box-shadow .15s, transform .15s;
   cursor: pointer;
 }
 .analysis-tab:hover:not(.disabled):not(.active) {
   color: var(--co-text-accent);
   background: var(--co-surface-3);
-  border-bottom-color: color-mix(in srgb, var(--co-green) 35%, transparent);
+  border-color: color-mix(in srgb, var(--co-green) 35%, var(--co-border));
+  box-shadow: 0 3px 8px rgba(0,0,0,.12);
+  transform: translateY(-1px);
+}
+@media (hover: none) {
+  .analysis-tab:hover:not(.disabled):not(.active) {
+    transform: none;
+    box-shadow: 0 1px 2px rgba(0,0,0,.08);
+  }
 }
 .analysis-tab.active {
   color: var(--co-text-accent);
-  border-bottom-color: var(--co-gold);
+  border-color: var(--co-gold);
   background: var(--co-highlight-bg);
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
   font-weight: 700;
+}
+.analysis-tab:focus-visible {
+  outline: 2px solid var(--co-gold);
+  outline-offset: 2px;
 }
 .analysis-tab.active .bi { color: var(--co-gold); }
 .analysis-tab.disabled { color: var(--co-text-muted); opacity: .5; cursor: not-allowed; pointer-events: none; }
 .analysis-tab .bi { font-size: .95rem; }
+
+/* ─── Navigation catégories (bas de page + modale) ──────────────────────────── */
+
+.cat-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  padding: .45rem .95rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: .85rem;
+  letter-spacing: .02em;
+  color: var(--co-text);
+  text-decoration: none;
+  border: 1px solid var(--co-border);
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--co-surface-2), var(--co-surface));
+  box-shadow: 0 1px 2px rgba(0,0,0,.08);
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s,
+              box-shadow .15s, transform .15s;
+}
+.cat-nav-btn:hover:not(:disabled):not(.is-disabled) {
+  color: var(--co-text-accent);
+  border-color: color-mix(in srgb, var(--co-green) 35%, var(--co-border));
+  box-shadow: 0 3px 8px rgba(0,0,0,.12);
+  transform: translateY(-1px);
+}
+@media (hover: none) {
+  .cat-nav-btn:hover:not(:disabled):not(.is-disabled) {
+    transform: none;
+    box-shadow: 0 1px 2px rgba(0,0,0,.08);
+  }
+}
+.cat-nav-btn:focus-visible {
+  outline: 2px solid var(--co-gold);
+  outline-offset: 2px;
+}
+.cat-nav-btn.is-disabled,
+.cat-nav-btn:disabled {
+  opacity: .5;
+  pointer-events: none;
+}
+.cat-nav-btn-main {
+  color: var(--co-text-accent);
+  border-color: color-mix(in srgb, var(--co-green) 45%, var(--co-border));
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--co-green) 10%, var(--co-surface)),
+    color-mix(in srgb, var(--co-green) 4%, var(--co-surface)));
+  font-weight: 700;
+}
+.cat-nav-btn-main:hover:not(:disabled) {
+  border-color: var(--co-green);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--co-green) 16%, var(--co-surface)),
+    color-mix(in srgb, var(--co-green) 8%, var(--co-surface)));
+}
+
+/* Modale « Choisir une catégorie » */
+.category-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: .5rem;
+}
+.category-picker-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: .55rem .75rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: .88rem;
+  color: var(--co-text);
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid var(--co-border);
+  border-radius: var(--co-radius-md);
+  background: linear-gradient(180deg, var(--co-surface-2), var(--co-surface));
+  box-shadow: 0 1px 2px rgba(0,0,0,.08);
+  transition: color .15s, border-color .15s, background .15s,
+              box-shadow .15s, transform .15s;
+}
+.category-picker-btn:hover {
+  color: var(--co-text-accent);
+  border-color: color-mix(in srgb, var(--co-green) 35%, var(--co-border));
+  box-shadow: 0 3px 8px rgba(0,0,0,.12);
+  transform: translateY(-1px);
+}
+@media (hover: none) {
+  .category-picker-btn:hover {
+    transform: none;
+    box-shadow: 0 1px 2px rgba(0,0,0,.08);
+  }
+}
+.category-picker-btn:focus-visible {
+  outline: 2px solid var(--co-gold);
+  outline-offset: 2px;
+}
+.category-picker-btn.active {
+  color: var(--co-text-accent);
+  border-color: var(--co-gold);
+  background: var(--co-highlight-bg);
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
+  font-weight: 700;
+}
 
 /* ─── Légende graphique (analysis_base) ─────────────────────────────────────── */
 
@@ -732,6 +856,8 @@ tr.neg-row:hover > td { background: rgba(220, 53, 69, .1); }
   transform: translateY(0);
   pointer-events: auto;
 }
+/* Masqué pendant l'ouverture d'une modale (z-index 1060 > 1055) */
+body.modal-open #backToTop { display: none; }
 #backToTop:hover {
   background: var(--co-green-dark);
   box-shadow: 0 4px 16px rgba(0, 0, 0, .25);
@@ -760,7 +886,7 @@ tr.neg-row:hover > td { background: rgba(220, 53, 69, .1); }
   .analysis-tabs {
     flex-wrap: wrap;
     overflow-x: visible;
-    row-gap: 0;
+    row-gap: .4rem;
   }
   .analysis-tab {
     flex: 0 0 auto;
@@ -768,7 +894,6 @@ tr.neg-row:hover > td { background: rgba(220, 53, 69, .1); }
     line-height: 1.2;
   }
   .analysis-tab .bi { line-height: 1; }
-  .analysis-tab.active { border-bottom: 3px solid var(--co-gold); box-shadow: none; }
 }
 
 @media (max-width: 768px) {

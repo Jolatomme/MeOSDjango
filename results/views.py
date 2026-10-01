@@ -110,18 +110,19 @@ def _load_class_context(cid, class_id):
 
 
 def _get_adjacent_classes(cid, class_id):
-    """Return the previous and next class in ordering for navigation links.
+    """Return the previous/next class in ordering plus the full ordered list.
 
-    Returns (prev_cls, next_cls), where either can be None at boundaries
-    or when ``class_id`` is not found.
+    Returns (prev_cls, next_cls, all_classes), where prev/next can be None at
+    boundaries or when ``class_id`` is not found. ``all_classes`` is the full
+    ordered list (used by the category picker modal).
     """
     all_classes = list(Mopclass.objects.filter(cid=cid).order_by('ord', 'name'))
     current_idx = next((i for i, c in enumerate(all_classes) if c.id == class_id), None)
     if current_idx is None:
-        return None, None
+        return None, None, all_classes
     prev_cls = all_classes[current_idx - 1] if current_idx > 0 else None
     next_cls = all_classes[current_idx + 1] if current_idx < len(all_classes) - 1 else None
-    return prev_cls, next_cls
+    return prev_cls, next_cls, all_classes
 
 
 def _sort_non_finishers(non_finishers):
@@ -162,9 +163,9 @@ def class_results(request, cid, class_id):
         return redirect('results:relay_results', cid=cid, class_id=class_id)
 
     # Navigation catégorie adjacente (non pertinent pour un circuit)
-    prev_cls, next_cls = (None, None)
+    prev_cls, next_cls, all_classes = (None, None, [])
     if course is None:
-        prev_cls, next_cls = _get_adjacent_classes(cid, cls.id)
+        prev_cls, next_cls, all_classes = _get_adjacent_classes(cid, cls.id)
 
     org_map = get_org_map(cid, as_objects=True)
     for c in competitors:
@@ -252,6 +253,7 @@ def class_results(request, cid, class_id):
         'leg_error_data_json': json.dumps(leg_error_data),
         'prev_cls':            prev_cls,
         'next_cls':            next_cls,
+        'all_classes':         all_classes,
         'course_hash':         course['hash'] if course else compute_course_hash(controls_seq),
         'neg_time_warning':    get_negative_time_stats(cid),
     })
@@ -447,9 +449,9 @@ def live_results(request, cid, class_id):
         return redirect('results:relay_results', cid=cid, class_id=class_id)
 
     # Navigation catégorie adjacente (non pertinent pour un circuit)
-    prev_cls, next_cls = (None, None)
+    prev_cls, next_cls, all_classes = (None, None, [])
     if course is None:
-        prev_cls, next_cls = _get_adjacent_classes(cid, cls.id)
+        prev_cls, next_cls, all_classes = _get_adjacent_classes(cid, cls.id)
 
     org_map = get_org_map(cid, as_objects=True)
     for c in competitors:
@@ -503,6 +505,7 @@ def live_results(request, cid, class_id):
         'neg_time_warning':  _live_neg_time_warning(cid),
         'prev_cls':          prev_cls,
         'next_cls':          next_cls,
+        'all_classes':       all_classes,
     })
 
 
@@ -1067,9 +1070,9 @@ def _load_recapitulatif_data(cid, class_id, context=None):
     else:
         competition, cls, competitors, course = _load_class_context(cid, class_id)
 
-    prev_cls, next_cls = (None, None)
+    prev_cls, next_cls, all_classes = (None, None, [])
     if course is None:
-        prev_cls, next_cls = _get_adjacent_classes(cid, cls.id)
+        prev_cls, next_cls, all_classes = _get_adjacent_classes(cid, cls.id)
 
     org_map = get_org_map(cid, as_objects=True)
     for c in competitors:
@@ -1137,7 +1140,7 @@ def _load_recapitulatif_data(cid, class_id, context=None):
             c.neg_time = False
         leg_error_data = []
 
-    return competition, cls, course, results, controls_seq, prev_cls, next_cls, leader_time, leg_error_data
+    return competition, cls, course, results, controls_seq, prev_cls, next_cls, leader_time, leg_error_data, all_classes
 
 
 def _is_relay(cid, cls, course):
@@ -1158,7 +1161,7 @@ def recapitulatif_analysis(request, cid, class_id):
 
     partial, n_ok, n_total = _partial_analysis_info(competitors)
 
-    _, _, _, results, controls_seq, prev_cls, next_cls, leader_time, leg_error_data = \
+    _, _, _, results, controls_seq, prev_cls, next_cls, leader_time, leg_error_data, all_classes = \
         _load_recapitulatif_data(cid, class_id, context=context)
     can_show = has_completed(competitors)
 
@@ -1174,6 +1177,7 @@ def recapitulatif_analysis(request, cid, class_id):
         'current_analysis':    'recapitulatif',
         'prev_cls':            prev_cls,
         'next_cls':            next_cls,
+        'all_classes':         all_classes,
         'neg_time_warning':    get_negative_time_stats(cid),
         'leg_error_data_json': json.dumps(leg_error_data),
         'partial_analysis':    partial, 'n_ok': n_ok, 'n_total': n_total,
@@ -1193,7 +1197,7 @@ def recapitulatif_csv(request, cid, class_id):
     if _is_relay(cid, cls, course):
         return redirect('results:relay_results', cid=cid, class_id=class_id)
 
-    _comp, _cls, _course, results, controls_seq, _prev, _next, _leader, _leg_error = \
+    _comp, _cls, _course, results, controls_seq, _prev, _next, _leader, _leg_error, _all = \
         _load_recapitulatif_data(cid, class_id, context=context)
 
     response = HttpResponse(content_type='text/csv; charset=utf-8')

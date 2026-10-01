@@ -22,6 +22,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 import json
 from datetime import date, timedelta
+from types import SimpleNamespace
 from django.test import RequestFactory
 from django.http import Http404
 
@@ -209,32 +210,43 @@ class TestGetAdjacentClasses:
             return _get_adjacent_classes(cid, class_id)
 
     def test_unique_aucun_voisin(self):
-        p, n = self._call([self._mk(10, 'H21')], 1, 10)
+        p, n, _all = self._call([self._mk(10, 'H21')], 1, 10)
         assert p is None and n is None
 
     def test_premiere_pas_de_precedent(self):
         cls = [self._mk(10,'H21'), self._mk(20,'D21'), self._mk(30,'H35')]
-        p, n = self._call(cls, 1, 10)
+        p, n, _all = self._call(cls, 1, 10)
         assert p is None; assert n.id == 20
 
     def test_derniere_pas_de_suivant(self):
         cls = [self._mk(10,'H21'), self._mk(20,'D21'), self._mk(30,'H35')]
-        p, n = self._call(cls, 1, 30)
+        p, n, _all = self._call(cls, 1, 30)
         assert p.id == 20; assert n is None
 
     def test_milieu(self):
         cls = [self._mk(10,'H21'), self._mk(20,'D21'), self._mk(30,'H35')]
-        p, n = self._call(cls, 1, 20)
+        p, n, _all = self._call(cls, 1, 20)
         assert p.id == 10; assert n.id == 30
 
     def test_inexistant_double_none(self):
-        p, n = self._call([self._mk(10,'H21')], 1, 999)
+        p, n, _all = self._call([self._mk(10,'H21')], 1, 999)
         assert p is None and n is None
 
     def test_noms_corrects(self):
         cls = [self._mk(10,'H21'), self._mk(20,'D21'), self._mk(30,'H35')]
-        p, n = self._call(cls, 1, 20)
+        p, n, _all = self._call(cls, 1, 20)
         assert p.name == 'H21'; assert n.name == 'H35'
+
+    def test_troisieme_element_est_la_liste_complete(self):
+        cls = [self._mk(10,'H21'), self._mk(20,'D21'), self._mk(30,'H35')]
+        _, _, all_classes = self._call(cls, 1, 20)
+        assert [c.name for c in all_classes] == ['H21', 'D21', 'H35']
+
+    def test_liste_complete_meme_si_courante_inconnue(self):
+        cls = [self._mk(10,'H21'), self._mk(20,'D21')]
+        p, n, all_classes = self._call(cls, 1, 999)
+        assert p is None and n is None
+        assert [c.name for c in all_classes] == ['H21', 'D21']
 
     def test_filtre_par_cid(self):
         from results.views import _get_adjacent_classes
@@ -608,12 +620,13 @@ class TestCompetitionDetailView:
 class TestClassResultsView:
     """Branches de class_results en mode catégorie."""
 
-    def _run(self, competitors, controls_seq=None):
+    def _run(self, competitors, controls_seq=None, adjacent=None):
         comp = make_competition(); cls = make_cls()
         with patch('results.views.Mopteam') as MockTeam, \
              patch('results.views.Mopcompetitor') as MockComp, \
              patch('results.views.get_object_or_404', side_effect=[comp, cls]), \
-             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views._get_adjacent_classes',
+                   return_value=adjacent or (None, None, [])), \
              patch('results.views.get_org_map', return_value={}), \
              patch('results.views.get_class_controls', return_value=(controls_seq or [], {})), \
              patch('results.views.get_radio_map', return_value={}), \
@@ -664,6 +677,12 @@ class TestClassResultsView:
         _, ctx = self._run([make_competitor()])
         assert 'prev_cls' in ctx and 'next_cls' in ctx
 
+    def test_all_classes_dans_contexte(self):
+        cats = [SimpleNamespace(id=10, name='H21'), SimpleNamespace(id=20, name='D21')]
+        _, ctx = self._run([make_competitor()],
+                           adjacent=(None, None, cats))
+        assert ctx['all_classes'] is cats
+
     def test_redirect_si_relais(self):
         with patch('results.views.Mopteam') as MockTeam, \
              patch('results.views.Mopcompetitor') as MockComp, \
@@ -693,7 +712,7 @@ class TestClassResultsView:
         with patch('results.views.Mopteam') as MockTeam, \
              patch('results.views.Mopcompetitor') as MockComp, \
              patch('results.views.get_object_or_404', side_effect=[comp, cls]), \
-             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views._get_adjacent_classes', return_value=(None, None, [])), \
              patch('results.views.get_org_map', return_value={}), \
              patch('results.views.get_class_controls', return_value=([], {})), \
              patch('results.views.get_radio_map', return_value={}), \
@@ -723,7 +742,7 @@ class TestClassResultsNegTime:
         with patch('results.views.Mopteam') as MockTeam, \
              patch('results.views.Mopcompetitor') as MockComp, \
              patch('results.views.get_object_or_404', side_effect=[comp, cls]), \
-             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views._get_adjacent_classes', return_value=(None, None, [])), \
              patch('results.views.get_org_map', return_value={}), \
              patch('results.views.get_class_controls', return_value=([{'ctrl_id': 31, 'ctrl_name': 'P31'}], {})), \
              patch('results.views.get_radio_map', return_value={}), \
@@ -769,7 +788,7 @@ class TestClassResultsErrorMap:
         with patch('results.views.Mopteam') as MockTeam, \
              patch('results.views.Mopcompetitor') as MockComp, \
              patch('results.views.get_object_or_404', side_effect=[comp, cls]), \
-             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views._get_adjacent_classes', return_value=(None, None, [])), \
              patch('results.views.get_org_map', return_value={}), \
              patch('results.views.get_class_controls', return_value=(controls_seq, {})), \
              patch('results.views.get_radio_map', return_value=radio_map), \
@@ -822,7 +841,7 @@ class TestClassResultsNonFinisherOrdering:
         with patch('results.views.Mopteam') as MockTeam, \
              patch('results.views.Mopcompetitor') as MockComp, \
              patch('results.views.get_object_or_404', side_effect=[comp, cls]), \
-             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views._get_adjacent_classes', return_value=(None, None, [])), \
              patch('results.views.get_org_map', return_value={}), \
              patch('results.views.get_class_controls', return_value=([], {})), \
              patch('results.views.get_radio_map', return_value={}), \
@@ -1555,7 +1574,7 @@ class TestRecapitulatifAnalysis:
 
     # ── Tests ───────────────────────────────────────────────────────────────
 
-    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views._get_adjacent_classes', return_value=(None, None, []))
     @patch('results.views.mark_best_splits')
     @patch('results.views.rank_splits')
     @patch('results.views.get_class_controls', return_value=([], {}))
@@ -1589,7 +1608,7 @@ class TestRecapitulatifAnalysis:
         recapitulatif_analysis(rf_get(), cid=1, class_id=10)
         mock_redirect.assert_called_once()
 
-    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views._get_adjacent_classes', return_value=(None, None, []))
     @patch('results.views.mark_best_splits')
     @patch('results.views.rank_splits')
     @patch('results.views.get_org_map', return_value={})
@@ -1611,7 +1630,7 @@ class TestRecapitulatifAnalysis:
             assert hasattr(c, 'splits')
             assert len(c.splits) == 2  # 1 control + Arrivée
 
-    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views._get_adjacent_classes', return_value=(None, None, []))
     @patch('results.views.get_org_map', return_value={})
     @patch('results.views.get_class_controls', return_value=([], {}))
     @patch('results.views.get_radio_map', return_value={})
@@ -1630,7 +1649,7 @@ class TestRecapitulatifAnalysis:
         _, _, ctx = mock_render.call_args[0]
         assert ctx['has_splits'] is False
 
-    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views._get_adjacent_classes', return_value=(None, None, []))
     @patch('results.views.get_org_map', return_value={})
     @patch('results.views.get_class_controls', return_value=([{'ctrl_id': 31, 'ctrl_name': 'P31'}], {}))
     @patch('results.views.get_radio_map', return_value={})
@@ -1649,7 +1668,7 @@ class TestRecapitulatifAnalysis:
         _, _, ctx = mock_render.call_args[0]
         assert ctx['has_splits'] is True
 
-    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views._get_adjacent_classes', return_value=(None, None, []))
     @patch('results.views.get_org_map', return_value={})
     @patch('results.views.get_class_controls', return_value=([], {}))
     @patch('results.views.get_radio_map', return_value={})
@@ -1677,7 +1696,7 @@ class TestRecapitulatifAnalysis:
         assert 'next_cls' in ctx
         assert 'leader_time' in ctx
 
-    @patch('results.views._get_adjacent_classes', return_value=(MagicMock(), None))
+    @patch('results.views._get_adjacent_classes', return_value=(MagicMock(), None, []))
     @patch('results.views.get_org_map', return_value={})
     @patch('results.views.get_class_controls', return_value=([], {}))
     @patch('results.views.get_radio_map', return_value={})
@@ -1720,7 +1739,7 @@ class TestRecapitulatifAnalysis:
         assert ctx['course'] is not None
         assert ctx['course']['hash'] == 'abcd1234'
 
-    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views._get_adjacent_classes', return_value=(None, None, []))
     @patch('results.views.get_org_map', return_value={})
     @patch('results.views.get_class_controls', return_value=([], {}))
     @patch('results.views.get_radio_map', return_value={})
@@ -1741,7 +1760,7 @@ class TestRecapitulatifAnalysis:
         _, _, ctx = mock_render.call_args[0]
         assert ctx['leader_time'] == '-'
 
-    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views._get_adjacent_classes', return_value=(None, None, []))
     @patch('results.views.rank_splits')
     @patch('results.views.mark_best_splits')
     @patch('results.views.get_org_map', return_value={})
@@ -1775,7 +1794,7 @@ class TestLoadRecapitulatifDataDirect:
     @patch('results.views.get_radio_map', return_value={})
     @patch('results.views.get_class_controls', return_value=([], {}))
     @patch('results.views.get_org_map', return_value={})
-    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views._get_adjacent_classes', return_value=(None, None, []))
     @patch('results.views._load_class_context')
     @patch('results.views.Mopteam')
     def test_sans_contexte_appelle_load_class_context(self, MockTeam, mock_load_ctx, *_):
@@ -1783,11 +1802,12 @@ class TestLoadRecapitulatifDataDirect:
         competition = make_competition(); cls_ = make_cls()
         mock_load_ctx.return_value = (competition, cls_, [], None)
         from results.views import _load_recapitulatif_data
-        comp, c_, course, results, controls, prev, nxt, leader, errs = \
+        comp, c_, course, results, controls, prev, nxt, leader, errs, all_cls = \
             _load_recapitulatif_data(cid=1, class_id=10)
         mock_load_ctx.assert_called_once_with(1, 10)
         assert comp is competition and c_ is cls_ and course is None
         assert results == [] and controls == []
+        assert all_cls == []   # 10e element = liste complete des categories
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1822,7 +1842,7 @@ class TestRecapitulatifCsv:
              patch('results.views.redirect') as mock_redirect:
             mock_ctx.return_value = (competition, cls_, competitors_ctx, course)
             mock_data.return_value = (competition, cls_, course, [runner],
-                                      controls or [], None, None, None, [])
+                                      controls or [], None, None, None, [], [])
             from results.views import recapitulatif_csv
             response = recapitulatif_csv(rf_get(), cid=1, class_id=10)
             return response, mock_redirect
@@ -2105,7 +2125,7 @@ class TestStatisticsView:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestClassResultsRankSplits:
-    @patch('results.views._get_adjacent_classes', return_value=(None, None))
+    @patch('results.views._get_adjacent_classes', return_value=(None, None, []))
     @patch('results.views.rank_splits')
     @patch('results.views.mark_best_splits')
     @patch('results.views.get_org_map', return_value={})

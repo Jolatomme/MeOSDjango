@@ -144,7 +144,7 @@ class _ViewRunner:
             self.mocks['get_negative_time_stats'].return_value = {}
         if '_load_recapitulatif_data' in self.mocks:
             self.mocks['_load_recapitulatif_data'].return_value = \
-                ([], [], [], [], [], None, None, None, [])
+                ([], [], [], [], [], None, None, None, [], [])
         return self
 
     def __exit__(self, *exc):
@@ -274,16 +274,28 @@ class TestExclusionNonOk:
              patch('results.views.get_radio_map', return_value={}), \
              patch('results.views.rank_finishers',
                    return_value=([ok], [dnf, en_course], 5000)), \
-             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views._get_adjacent_classes', return_value=(None, None, [])), \
              patch('results.views.compute_splits', return_value=[]), \
              patch('results.views.mark_best_splits'), \
              patch('results.views.rank_splits'), \
              patch('results.views.compute_error_estimates', return_value={}):
             competition, cls, course, results, controls_seq, prev_cls, next_cls, \
-                leader_time, leg_error_data = views._load_recapitulatif_data(1, 10)
+                leader_time, leg_error_data, all_classes = views._load_recapitulatif_data(1, 10)
         assert [c.id for c in results] == [2]
         assert [c.id for c in leg_error_data] == []  # pas d'erreurs sans peloton
         assert leader_time == 5000
+
+
+# ─── Contexte : liste des catégories (modale de sélection) ───────────────────
+
+class TestAllClassesContexte:
+
+    def test_recapitulatif_transmet_all_classes(self):
+        """recapitulatif_analysis expose la liste complete des categories."""
+        runner = _ViewRunner(views.recapitulatif_analysis)
+        _, ctx = runner.run([])
+        assert 'all_classes' in ctx
+        assert ctx['all_classes'] == []   # mocké via _load_recapitulatif_data
 
 
 # ─── Rendu des templates : bandeau partiel ───────────────────────────────────
@@ -355,7 +367,7 @@ class TestRecapitulatifCsv:
              patch('results.views.get_radio_map', return_value={}), \
              patch('results.views.rank_finishers',
                    return_value=([ok], [en_course], 5000)), \
-             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views._get_adjacent_classes', return_value=(None, None, [])), \
              patch('results.views.compute_splits', return_value=[]), \
              patch('results.views.mark_best_splits'), \
              patch('results.views.rank_splits'), \
@@ -382,7 +394,7 @@ class TestRecapitulatifCsv:
              patch('results.views.get_radio_map', return_value={}), \
              patch('results.views.rank_finishers',
                    return_value=([ok1, ok2], [], 5000)), \
-             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views._get_adjacent_classes', return_value=(None, None, [])), \
              patch('results.views.compute_splits', return_value=[]), \
              patch('results.views.mark_best_splits'), \
              patch('results.views.rank_splits'), \

@@ -1,0 +1,33 @@
+{# Modale « Choisir une catégorie » — incluse par class_results / live / recapitulatif (mode catégorie) ; relais redirigés par la vue. #}
+{% if all_classes %}
+<div class="modal fade" id="categoryPickerModal" tabindex="-1"
+     aria-labelledby="categoryPickerLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="categoryPickerLabel">
+          <i class="bi bi-grid-3x3-gap-fill me-2"></i>Choisir une catégorie
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <div class="category-picker-grid">
+          {% for c in all_classes %}
+          <a class="category-picker-btn{% if c.id == cls.id %} active{% endif %}"
+             href="{% url 'results:class_results' competition.cid c.name %}"
+             {% if c.id == cls.id %}aria-current="page"{% endif %}>
+            {{ c.name }}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a href="{% url 'results:competition_detail' competition.cid %}" class="cat-nav-btn">
+          <i class="bi bi-arrow-left me-1"></i>Page compétition
+        </a>
+        <button type="button" class="cat-nav-btn" data-bs-dismiss="modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}

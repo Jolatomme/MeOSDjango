@@ -842,14 +842,15 @@ class TestCollectNegativeCtrls:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestLiveResultsView:
-    def _run(self, competitors=None, course=None, race_start=None):
+    def _run(self, competitors=None, course=None, race_start=None, adjacent=None):
         competitors = competitors or []
         cls = SimpleNamespace(id=10, name='H21')
         with patch('results.views._load_class_context',
                    return_value=(MagicMock(cid=1, name='Test'), cls,
                                  competitors, course)), \
              patch('results.views.Mopteam') as MockTeam, \
-             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views._get_adjacent_classes',
+                   return_value=adjacent or (None, None, [])), \
              patch('results.views.get_org_map', return_value={}), \
              patch('results.views.get_radio_map', return_value={}), \
              patch('results.views._controls_for', return_value=[]), \
@@ -888,7 +889,7 @@ class TestLiveResultsView:
                    return_value=(MagicMock(cid=1, name='Test'),
                                  SimpleNamespace(id=10, name='H21'), [], None)), \
              patch('results.views.Mopteam') as MockTeam, \
-             patch('results.views._get_adjacent_classes', return_value=(prev, next_)), \
+             patch('results.views._get_adjacent_classes', return_value=(prev, next_, [])), \
              patch('results.views.get_org_map', return_value={}), \
              patch('results.views.get_radio_map', return_value={}), \
              patch('results.views._controls_for', return_value=[]), \
@@ -909,6 +910,17 @@ class TestLiveResultsView:
         assert ctx['prev_cls'] is None
         assert ctx['next_cls'] is None
 
+    def test_all_classes_dans_contexte(self):
+        cats = [SimpleNamespace(id=10, name='H21'), SimpleNamespace(id=20, name='D21')]
+        _, ctx = self._run(adjacent=(None, None, cats))
+        assert ctx['all_classes'] is cats
+
+    def test_all_classes_vide_en_mode_circuit(self):
+        course = {'hash': 'abc12345', 'display_name': 'Circuit', 'class_ids': [10],
+                  'controls_seq': [], 'classes': []}
+        _, ctx = self._run(course=course)
+        assert ctx['all_classes'] == []
+
     def test_race_state_finished_sans_coureurs(self):
         _, ctx = self._run()
         assert ctx['race_state'] == 'finished'
@@ -927,7 +939,7 @@ class TestLiveResultsView:
                                  SimpleNamespace(id=10, name='H21'),
                                  [runner], None)), \
              patch('results.views.Mopteam') as MockTeam, \
-             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views._get_adjacent_classes', return_value=(None, None, [])), \
              patch('results.views.get_org_map', return_value={}), \
              patch('results.views.get_radio_map', return_value={}), \
              patch('results.views._controls_for', return_value=[]), \
@@ -967,7 +979,7 @@ class TestLiveResultsView:
                                  SimpleNamespace(id=10, name='H21'),
                                  [runner], None)), \
              patch('results.views.Mopteam') as MockTeam, \
-             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views._get_adjacent_classes', return_value=(None, None, [])), \
              patch('results.views.get_org_map', return_value={3: org}), \
              patch('results.views.get_radio_map', return_value={}), \
              patch('results.views._controls_for', return_value=[]), \
@@ -992,7 +1004,7 @@ class TestLiveResultsView:
                    return_value=(MagicMock(cid=1, name='Test'),
                                  MagicMock(id=10, name='H21'), [c], None)), \
              patch('results.views.Mopteam') as MockTeam, \
-             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views._get_adjacent_classes', return_value=(None, None, [])), \
              patch('results.views.get_org_map', return_value={}), \
              patch('results.views.get_radio_map', return_value=radio_map), \
              patch('results.views._controls_for', return_value=controls), \
@@ -1018,7 +1030,7 @@ class TestLiveResultsView:
                    return_value=(MagicMock(cid=1, name='Test'),
                                  MagicMock(id=10, name='H21'), [c], None)), \
              patch('results.views.Mopteam') as MockTeam, \
-             patch('results.views._get_adjacent_classes', return_value=(None, None)), \
+             patch('results.views._get_adjacent_classes', return_value=(None, None, [])), \
              patch('results.views.get_org_map', return_value={}), \
              patch('results.views.get_radio_map', return_value=radio_map), \
              patch('results.views._controls_for', return_value=controls), \

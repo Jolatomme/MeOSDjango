@@ -143,6 +143,9 @@ html[data-theme="dark"] .btn-check:checked + .btn-outline-success {
   border-color: var(--co-green) !important;
   color: #fff !important;
 }
+html[data-theme="dark"] .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
 
 /* ─── Barres de défilement ──────────────────────────────────────────────────── */
 
