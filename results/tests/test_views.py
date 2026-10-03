@@ -23,7 +23,7 @@ import pytest
 import json
 from datetime import date, timedelta
 from types import SimpleNamespace
-from django.test import RequestFactory
+from django.test import RequestFactory, Client, override_settings
 from django.http import Http404
 
 from results.models import (
@@ -420,7 +420,7 @@ class TestHomeView:
 
 
 class TestHomeOrgLogoBadge:
-    """Logo d'organisation sur le badge de course de la page d'accueil."""
+    """Logo d'organisation (fichier uploadé, mopCompetition.logo) sur la carte."""
 
     @staticmethod
     def _render(comps):
@@ -434,13 +434,13 @@ class TestHomeOrgLogoBadge:
         })
 
     @staticmethod
-    def _comp(organizer, cid=1):
+    def _comp(logo, cid=1):
         """SimpleNamespace (et non MagicMock) : comp.cid doit rester un entier
         pour {% url %} — un MagicMock serait résolu via __getitem__()."""
         from types import SimpleNamespace
         return SimpleNamespace(
             cid=cid, name='Trail des Cimes', date=date(2026, 6, 1),
-            organizer=organizer, homepage=None,
+            organizer='COCS 7309AURA', homepage=None, logo=logo,
             has_individual_competitors=True,
         )
 
@@ -450,24 +450,142 @@ class TestHomeOrgLogoBadge:
         start = html.index('co-card-header')
         return html[start:start + 600]
 
-    def test_logo_cocs_affiche_dans_le_badge(self):
-        html = self._render([self._comp('COCS 7309AURA')])
+    def test_logo_affiche_dans_le_badge(self):
+        html = self._render([self._comp('logo-abc123def456.png')])
         badge = self._badge(html)
         assert 'class="org-logo"' in badge
-        assert '/static/results/img/logo-cocs.svg' in badge
+        assert '/org_logo/logo-abc123def456.png' in badge
         assert 'bi-compass' not in badge
 
-    def test_organisation_inconnue_retombe_sur_l_icone(self):
-        html = self._render([self._comp('Autre club inconnu')])
+    def test_logo_svg_affiche_dans_le_badge(self):
+        html = self._render([self._comp('logo-abc123def456.svg')])
         badge = self._badge(html)
-        assert 'org-logo' not in badge
-        assert 'bi-compass' in badge
+        assert '/org_logo/logo-abc123def456.svg' in badge
 
-    def test_sans_organisation_retombe_sur_l_icone(self):
+    def test_sans_logo_retombe_sur_l_icone(self):
         html = self._render([self._comp('')])
         badge = self._badge(html)
         assert 'org-logo' not in badge
         assert 'bi-compass' in badge
+
+    def test_logo_nul_retombe_sur_l_icone(self):
+        html = self._render([self._comp(None)])
+        badge = self._badge(html)
+        assert 'org-logo' not in badge
+        assert 'bi-compass' in badge
+
+
+class TestHomeOrganizerSiteLink:
+    """Site de l'organisateur : le nom devient un lien (nouvel onglet) et
+    le badge « Site web » disparaît de la page d'accueil."""
+
+    @staticmethod
+    def _render(comps):
+        from django.template.loader import render_to_string
+        first = comps[0]
+        years = [(first.date.year if first.date else None, comps)]
+        return render_to_string('results/home.html', {
+            'competitions': comps,
+            'years': years,
+            'available_years': [first.date.year] if first.date else [],
+        })
+
+    @staticmethod
+    def _comp(organizer, homepage, cid=1):
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            cid=cid, name='Trail des Cimes', date=date(2026, 6, 1),
+            organizer=organizer, homepage=homepage,
+            has_individual_competitors=True,
+        )
+
+    @staticmethod
+    def _organizer_block(html):
+        """Ligne organisateur (bi-building) de la première carte."""
+        return next(l for l in html.splitlines() if 'bi-building' in l)
+
+    def test_nom_de_lorganisateur_est_un_lien_vers_le_site(self):
+        html = self._render([self._comp('COCS', 'https://cocs.example')])
+        block = self._organizer_block(html)
+        assert '<a href="https://cocs.example"' in block
+        assert 'target="_blank"' in block
+        assert 'rel="noopener"' in block
+        assert 'org-site-link' in block
+        assert 'COCS' in block
+
+    def test_nom_de_lorganisateur_sans_site_na_pas_de_lien(self):
+        html = self._render([self._comp('COCS', '')])
+        block = self._organizer_block(html)
+        assert '<a href=' not in block
+        assert 'org-site-link' not in block
+        assert 'COCS' in block
+
+    def test_nom_de_lorganisateur_sans_site_nul_na_pas_de_lien(self):
+        html = self._render([self._comp('COCS', None)])
+        assert 'org-site-link' not in html
+
+    def test_badge_site_web_supprime(self):
+        html = self._render([self._comp('COCS', 'https://cocs.example')])
+        assert 'Site web' not in html
+
+    def test_carte_entiere_renvoie_aux_resultats(self):
+        html = self._render([self._comp('COCS', 'https://cocs.example')])
+        assert 'class="badge bg-success rounded-pill text-decoration-none stretched-link"' in html
+        assert 'href="/competition/1/"' in html
+
+    def test_classe_co_card_linked_presente(self):
+        html = self._render([self._comp('COCS', 'https://cocs.example')])
+        assert 'co-card h-100 co-card-linked' in html
+
+
+class TestHomeLiveloxBadge:
+    """Badge « Livelox » sur les cartes de la page d'accueil (après « Horaire »)."""
+
+    @staticmethod
+    def _render(comps):
+        from django.template.loader import render_to_string
+        first = comps[0]
+        years = [(first.date.year if first.date else None, comps)]
+        return render_to_string('results/home.html', {
+            'competitions': comps,
+            'years': years,
+            'available_years': [first.date.year] if first.date else [],
+        })
+
+    @staticmethod
+    def _comp(livelox, cid=1, has_individual=True):
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            cid=cid, name='Trail des Cimes', date=date(2026, 6, 1),
+            organizer='COCS', homepage='https://cocs.example',
+            livelox=livelox,
+            has_individual_competitors=has_individual,
+        )
+
+    def test_badge_affiche_et_ouvre_un_nouvel_onglet(self):
+        html = self._render([self._comp('https://livelox.example/42')])
+        assert 'https://livelox.example/42' in html
+        assert 'target="_blank"' in html
+        assert 'rel="noopener"' in html
+        assert '<i class="bi bi-globe me-1"></i>Livelox' in html
+
+    def test_badge_apres_le_badge_horaire(self):
+        html = self._render([self._comp('https://livelox.example/42')])
+        assert html.index('Horaire') < html.index('Livelox')
+
+    def test_badge_sans_horaire_toujours_affiche(self):
+        html = self._render([self._comp('https://livelox.example/42',
+                                        has_individual=False)])
+        assert '<i class="bi bi-globe me-1"></i>Livelox' in html
+
+    def test_badge_absent_si_champ_vide(self):
+        html = self._render([self._comp('')])
+        assert 'Livelox' not in html
+        assert 'https://livelox.example' not in html
+
+    def test_badge_absent_si_champ_nul(self):
+        html = self._render([self._comp(None)])
+        assert 'Livelox' not in html
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2478,3 +2596,104 @@ class TestStaticPages:
         assert args[1] == 'results/markdown_content.html'
         assert 'markdown_content' in args[2]
         mock_md.convert.assert_called_once_with(tuto.text)
+
+
+class TestOrgLogoFileRoute:
+    """Route /org_logo/<fichier> : sert settings.ORG_LOGO_DIR (dev **et** prod,
+    contrairement à static() qui dépend de DEBUG)."""
+
+    @staticmethod
+    def _client():
+        return Client()
+
+    def test_sert_le_fichier_avec_en_tetes_de_securite(self, tmp_path):
+        (tmp_path / 'logo-abc123def456.svg').write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg"/>',
+        )
+        with override_settings(ORG_LOGO_DIR=tmp_path):
+            response = self._client().get('/org_logo/logo-abc123def456.svg')
+        assert response.status_code == 200
+        assert response['X-Content-Type-Options'] == 'nosniff'
+        assert 'sandbox' in response['Content-Security-Policy']
+        assert b''.join(response.streaming_content).startswith(b'<svg')
+
+    def test_fichier_absent_404(self, tmp_path):
+        with override_settings(ORG_LOGO_DIR=tmp_path):
+            response = self._client().get('/org_logo/logo-absent.svg')
+        assert response.status_code == 404
+
+    def test_traversal_refuse(self, tmp_path):
+        """Les chemins hors d'ORG_LOGO_DIR lèvent SuspiciousFileOperation → 404."""
+        with override_settings(ORG_LOGO_DIR=tmp_path):
+            assert self._client().get('/org_logo/..').status_code == 404
+            assert self._client().get('/org_logo/%2e%2e').status_code == 404
+            assert (
+                self._client().get('/org_logo/..%2Flogo-x.svg').status_code == 404
+            )
+
+    def test_sous_dossier_non_resolu(self, tmp_path):
+        with override_settings(ORG_LOGO_DIR=tmp_path):
+            response = self._client().get('/org_logo/a/b.svg')
+        assert response.status_code == 404
+
+
+class TestCompetitionDetailBanner:
+    """Bannière de la page catégories/circuits : logo déposé à la création
+    (mopCompetition.logo) à la place de l'icône générique, repli si absent."""
+
+    @staticmethod
+    def _render(logo, homepage=''):
+        from django.template.loader import render_to_string
+        competition = SimpleNamespace(
+            cid=1, name='Trail des Cimes', date=date(2026, 6, 1),
+            organizer='COCS 7309AURA', homepage=homepage, logo=logo,
+        )
+        return render_to_string('results/competition_detail.html', {
+            'competition': competition,
+            'class_stats': [],
+            'courses_map': {},
+            'has_individual_competitors': False,
+        })
+
+    @staticmethod
+    def _header(html):
+        """Bloc d'en-tête (base.html contient aussi un bi-compass en pied de page)."""
+        start = html.index('co-page-header')
+        return html[start:start + 900]
+
+    def test_logo_affiche_dans_la_banniere(self):
+        header = self._header(self._render('logo-abc123def456.png'))
+        assert '<h1' in header
+        assert 'class="org-logo"' in header
+        assert '/org_logo/logo-abc123def456.png' in header
+        assert 'bi-compass' not in header
+
+    def test_sans_logo_repli_icone(self):
+        header = self._header(self._render(''))
+        assert 'org-logo' not in header
+        assert 'bi-compass' in header
+
+    def test_logo_nul_repli_icone(self):
+        header = self._header(self._render(None))
+        assert 'org-logo' not in header
+        assert 'bi-compass' in header
+
+    def test_organisateur_lien_vers_site_si_homepage(self):
+        header = self._header(
+            self._render('', homepage='https://club.example.org'),
+        )
+        assert (
+            '<a href="https://club.example.org" target="_blank" '
+            'rel="noopener" class="org-site-link">COCS 7309AURA</a>'
+        ) in header
+
+    def test_organisateur_sans_homepage_pas_de_lien(self):
+        header = self._header(self._render('', homepage=''))
+        assert 'COCS 7309AURA' in header
+        assert 'org-site-link' not in header
+        assert '<a href="https' not in header.split('bi-building')[1][:200]
+
+    def test_organisateur_homepage_nul_pas_de_lien(self):
+        header = self._header(self._render('', homepage=None))
+        assert 'COCS 7309AURA' in header
+        assert 'org-site-link' not in header

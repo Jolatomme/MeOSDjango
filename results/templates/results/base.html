@@ -1,4 +1,4 @@
-{% load static %}<!DOCTYPE html>
+{% load static meos_tags %}<!DOCTYPE html>
 <html lang="fr" data-theme="light">
 <head>
   <meta charset="UTF-8">
@@ -36,7 +36,8 @@
   <nav class="navbar navbar-expand-lg co-navbar">
     <div class="container">
       <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'results:home' %}">
-        <img src="{% static 'results/img/logo-cocs.svg' %}" alt="{{ CLUB_NAME }}" height="32">
+        {% site_logo as club_logo %}
+        {% if club_logo %}<img src="{{ club_logo }}" alt="{{ CLUB_NAME }}" height="32">{% endif %}
         <span>{{ SITE_NAME }}<span class="brand-accent">.</span></span>
       </a>
       <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse"
@@ -50,15 +51,31 @@
               <i class="bi bi-moon-stars-fill" id="darkModeIcon"></i>
             </button>
           </li>
-          <li class="nav-item">
-            <a class="nav-link {% block nav_home %}{% endblock %}" href="{% url 'results:home' %}">
-              <i class="bi bi-house me-1"></i> Accueil
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button"
+               data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-gear me-1"></i> Gestion
             </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'results:race_create' %}">
-              <i class="bi bi-plus-circle me-1"></i> Créer une course
-            </a>
+            <ul class="dropdown-menu dropdown-menu-end co-dropdown">
+              <li>
+                <a class="dropdown-item {% block nav_competitions %}{% endblock %}" href="{% url 'results:competition_list' %}">
+                  <i class="bi bi-calendar2-week me-2"></i>Liste des compétitions
+                </a>
+              </li>
+              {% if ENABLE_RACE_CREATION %}
+              <li>
+                <a class="dropdown-item {% block nav_race_create %}{% endblock %}" href="{% url 'results:race_create' %}">
+                  <i class="bi bi-plus-circle me-2"></i>Créer une course
+                </a>
+              </li>
+              {% endif %}
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item" href="{% url 'admin:index' %}">
+                  <i class="bi bi-shield-lock me-2"></i>Admin
+                </a>
+              </li>
+            </ul>
           </li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button"
@@ -90,11 +107,6 @@
               <li>
                 <a class="dropdown-item {% block nav_ochecklist %}{% endblock %}" href="{% url 'ochecklist_report_list' %}">
                   <i class="bi bi-flag me-2"></i>Atelier Départ
-                </a>
-              </li>
-              <li>
-                <a class="dropdown-item" href="{% url 'results:competition_list' %}">
-                  <i class="bi bi-calendar2-week me-2"></i>Liste des compétitions
                 </a>
               </li>
               <li><hr class="dropdown-divider"></li>

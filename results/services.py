@@ -19,7 +19,9 @@ import secrets
 from collections import Counter
 from datetime import date, datetime
 from functools import cmp_to_key
+from pathlib import Path
 from markdown.extensions.toc import slugify_unicode
+from django.conf import settings
 from django.db import connection, IntegrityError, transaction
 
 logger = logging.getLogger(__name__)
@@ -56,6 +58,39 @@ def generate_race_secret():
     return secrets.token_urlsafe(32)
 
 
+# ─── Logos d'organisateur (fichiers dans settings.ORG_LOGO_DIR) ───────────────
+
+def save_org_logo(uploaded) -> str:
+    """Écrit le logo dans ``ORG_LOGO_DIR`` et retourne le nom stocké en base.
+
+    Nommage ``logo-<hex aléatoire><ext>`` : aucun nom fourni par l'utilisateur
+    n'atteint le système de fichiers (collision et chemins hostiles évités),
+    l'extension est conservée (type MIME deviné à la lecture).
+
+    La validation (format, taille, contenu) est faite en amont par
+    ``forms.validate_org_logo``.
+    """
+    ext = Path(getattr(uploaded, 'name', '') or '').suffix.lower()
+    filename = f'logo-{secrets.token_hex(6)}{ext}'
+    target_dir = Path(settings.ORG_LOGO_DIR)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    with open(target_dir / filename, 'wb') as fh:
+        for chunk in uploaded.chunks():
+            fh.write(chunk)
+    logger.info("save_org_logo: logo enregistré (%s)", filename)
+    return filename
+
+
+def delete_org_logo(filename):
+    """Supprime un logo déjà écrit (ex. création de course ayant échoué)."""
+    if not filename or '/' in filename or '\\' in filename or '..' in filename:
+        return
+    try:
+        Path(settings.ORG_LOGO_DIR, filename).unlink(missing_ok=True)
+    except OSError:
+        logger.warning("delete_org_logo: suppression impossible (%s)", filename)
+
+
 def next_cid():
     """Prochain CID libre = max(mopCompetition, results_competitionconfig) + 1.
 
@@ -71,7 +106,7 @@ def next_cid():
     return max(max_mop, max_cfg) + 1
 
 
-def create_race(*, name, date, organizer, homepage=''):
+def create_race(*, name, date, organizer, homepage='', livelox='', logo=''):
     """Crée une course : CompetitionConfig (clé API + jeton) + mopCompetition.
 
     La ligne mopCompetition est pré-remplie (id=1) pour que la course
@@ -102,6 +137,8 @@ def create_race(*, name, date, organizer, homepage=''):
                     date=date,
                     organizer=organizer,
                     homepage=homepage or '',
+                    livelox=livelox or '',
+                    logo=logo or '',
                 )
             logger.info("create_race: course cid=%s créée (%s)", cid, name)
             return config

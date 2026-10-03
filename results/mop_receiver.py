@@ -91,6 +91,53 @@ def clear_competition(cid: int):
     logger.info("clear_competition: cid=%s effacé", cid)
 
 
+# Champs de mopCompetition renseignés côté site (formulaire) et absents du
+# protocole MOP : MeOS les efface à chaque MOPComplete, on les préserve.
+PRESERVED_COMPETITION_FIELDS = ('livelox', 'logo')
+
+
+def _get_preserved_competition_fields(cid: int) -> dict:
+    """Lit les champs à préserver avant clear_competition (MOPComplete)."""
+    cols = ", ".join(f"`{c}`" for c in PRESERVED_COMPETITION_FIELDS)
+    try:
+        with connection.cursor() as cur:
+            cur.execute(
+                f"SELECT {cols} FROM `mopCompetition` WHERE cid=%s AND id=1",
+                [cid],
+            )
+            row = cur.fetchone()
+        if not row:
+            return {}
+        return {
+            col: value
+            for col, value in zip(PRESERVED_COMPETITION_FIELDS, row)
+            if value
+        }
+    except Exception as exc:
+        logger.warning(
+            "mop_receiver: lecture des champs préservés impossible "
+            "(colonne absente ? lancez `python manage.py setup_db`) — %s", exc,
+        )
+        return {}
+
+
+def _restore_preserved_competition_fields(cid: int, fields: dict):
+    """Réécrit les champs préservés après réinsertion (MOPComplete)."""
+    if not fields:
+        return
+    set_clause = ", ".join(f"`{k}`=%s" for k in fields)
+    try:
+        with connection.cursor() as cur:
+            cur.execute(
+                f"UPDATE `mopCompetition` SET {set_clause} WHERE cid=%s AND id=1",
+                list(fields.values()) + [cid],
+            )
+    except Exception as exc:
+        logger.warning(
+            "mop_receiver: restauration des champs préservés impossible — %s", exc,
+        )
+
+
 # ─── Helpers bas niveau ───────────────────────────────────────────────────────
 
 def _upsert(table: str, cid: int, id_: int, fields: dict):
@@ -432,8 +479,10 @@ def process_mop_xml(cid: int, xml_data: bytes) -> str:
         return 'BADXML'
 
     count = 0
+    preserved = {}
     with transaction.atomic():
         if root_name == 'MOPComplete':
+            preserved = _get_preserved_competition_fields(cid)
             clear_competition(cid)
 
         for child in root:
@@ -446,11 +495,14 @@ def process_mop_xml(cid: int, xml_data: bytes) -> str:
                 except Exception as exc:
                     logger.exception(
                         "process_mop_xml: erreur sur <%s> id=%s — %s",
-                        tag, child.get('id', '?'), exc
+                        tag, child.get('id', '?'), exc,
                     )
                     # On continue : une erreur sur un élément ne bloque pas les autres
             else:
                 logger.debug("process_mop_xml: tag ignoré <%s>", tag)
+
+        if root_name == 'MOPComplete':
+            _restore_preserved_competition_fields(cid, preserved)
 
     logger.info("process_mop_xml: cid=%s %s traité (%d éléments)",
                 cid, root_name, count)

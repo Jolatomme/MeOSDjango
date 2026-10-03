@@ -732,6 +732,141 @@ class TestProcessCompetition:
         assert fields['homepage'] == 'http://x'
 
 
+# ─── Préservation de mopCompetition.livelox / .logo sur MOPComplete ────────────
+
+class TestPreserveLivelox:
+    """livelox/logo sont renseignés côté site (formulaire), absents du protocole
+    MOP : MeOS efface mopCompetition à chaque MOPComplete — les valeurs doivent
+    survivre (PRESERVED_COMPETITION_FIELDS)."""
+
+    def _run(self, root, get_returns=None, calls=None):
+        """Exécute process_mop_xml avec clear + champs préservés mockés."""
+        calls = calls if calls is not None else []
+        with patch('results.mop_receiver.transaction') as mock_tx, \
+             patch('results.mop_receiver.clear_competition') as mock_clear, \
+             patch('results.mop_receiver._get_preserved_competition_fields') as mock_get, \
+             patch('results.mop_receiver._restore_preserved_competition_fields') as mock_restore:
+            mock_tx.atomic.return_value.__enter__ = lambda s: s
+            mock_tx.atomic.return_value.__exit__ = MagicMock(return_value=False)
+            mock_get.side_effect = (
+                lambda cid: calls.append(('get', cid)) or (get_returns or {})
+            )
+            mock_clear.side_effect = lambda cid: calls.append(('clear', cid))
+            mock_restore.side_effect = (
+                lambda cid, fields: calls.append(('restore', cid, fields))
+            )
+            status = process_mop_xml(1, root)
+        return status, calls
+
+    def test_mop_complete_lit_avant_clear_puis_restaure(self):
+        xml = f'<MOPComplete xmlns="{MOP_NS}"></MOPComplete>'.encode()
+        status, calls = self._run(
+            xml, get_returns={
+                'livelox': 'https://livelox.example/42',
+                'logo': 'logo-abc123def456.png',
+            },
+        )
+        assert status == 'OK'
+        assert calls == [
+            ('get', 1),
+            ('clear', 1),
+            ('restore', 1, {
+                'livelox': 'https://livelox.example/42',
+                'logo': 'logo-abc123def456.png',
+            }),
+        ]
+
+    def test_mop_complete_sans_livelox_restaure_vide(self):
+        xml = f'<MOPComplete xmlns="{MOP_NS}"></MOPComplete>'.encode()
+        status, calls = self._run(xml, get_returns={})
+        assert status == 'OK'
+        assert ('restore', 1, {}) in calls
+
+    def test_mop_diff_ne_touche_pas_au_livelox(self):
+        xml = f'<MOPDiff xmlns="{MOP_NS}"></MOPDiff>'.encode()
+        status, calls = self._run(xml, get_returns={'livelox': 'x'})
+        assert status == 'OK'
+        assert calls == []      # ni lecture ni restauration
+
+
+class TestPreservedFieldsHelpers:
+
+    @staticmethod
+    def _conn(mock_conn, fetchone_return=None):
+        cur = MagicMock()
+        cur.fetchone.return_value = fetchone_return
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        return cur
+
+    @patch('results.mop_receiver.connection')
+    def test_get_lit_les_deux_valeurs(self, mock_conn):
+        from results.mop_receiver import _get_preserved_competition_fields
+        cur = self._conn(
+            mock_conn, ('https://livelox.example/42', 'logo-abc123def456.png'),
+        )
+
+        assert _get_preserved_competition_fields(3) == {
+            'livelox': 'https://livelox.example/42',
+            'logo': 'logo-abc123def456.png',
+        }
+        sql = cur.execute.call_args[0][0]
+        assert 'SELECT' in sql and 'livelox' in sql and 'logo' in sql
+        assert cur.execute.call_args[0][1] == [3]
+
+    @patch('results.mop_receiver.connection')
+    def test_get_champs_partiellement_renseignes(self, mock_conn):
+        """logo vide → seul livelox est restauré (dict final filtré)."""
+        from results.mop_receiver import _get_preserved_competition_fields
+        self._conn(mock_conn, ('https://livelox.example/42', ''))
+        assert _get_preserved_competition_fields(3) == {
+            'livelox': 'https://livelox.example/42',
+        }
+
+    @patch('results.mop_receiver.connection')
+    def test_get_sans_ligne_renvoie_vide(self, mock_conn):
+        from results.mop_receiver import _get_preserved_competition_fields
+        self._conn(mock_conn, None)
+        assert _get_preserved_competition_fields(3) == {}
+
+    @patch('results.mop_receiver.connection')
+    def test_get_ligne_vide_renvoie_vide(self, mock_conn):
+        from results.mop_receiver import _get_preserved_competition_fields
+        self._conn(mock_conn, ('', ''))
+        assert _get_preserved_competition_fields(3) == {}
+
+    @patch('results.mop_receiver.connection')
+    def test_get_erreur_db_renvoie_vide_sans_propager(self, mock_conn):
+        """Colonne absente (setup_db non lancé) : n'interrompt pas l'import."""
+        from results.mop_receiver import _get_preserved_competition_fields
+        mock_conn.cursor.side_effect = RuntimeError("Unknown column 'livelox'")
+        assert _get_preserved_competition_fields(3) == {}
+
+    @patch('results.mop_receiver.connection')
+    def test_restore_execute_update(self, mock_conn):
+        from results.mop_receiver import _restore_preserved_competition_fields
+        cur = self._conn(mock_conn)
+
+        _restore_preserved_competition_fields(3, {'livelox': 'https://x'})
+
+        sql, params = cur.execute.call_args[0]
+        assert 'UPDATE' in sql and '`livelox`' in sql
+        assert params == ['https://x', 3]
+
+    @patch('results.mop_receiver.connection')
+    def test_restore_vide_ne_fait_rien(self, mock_conn):
+        from results.mop_receiver import _restore_preserved_competition_fields
+        _restore_preserved_competition_fields(3, {})
+        mock_conn.cursor.assert_not_called()
+
+    @patch('results.mop_receiver.connection')
+    def test_restore_erreur_db_ne_propage_pas(self, mock_conn):
+        """La restauration ne doit jamais casser l'import MOP en cours."""
+        from results.mop_receiver import _restore_preserved_competition_fields
+        mock_conn.cursor.side_effect = RuntimeError('db down')
+        _restore_preserved_competition_fields(3, {'logo': 'logo-abc.svg'})
+
+
 class TestProcessControl:
 
     @patch('results.mop_receiver._upsert')

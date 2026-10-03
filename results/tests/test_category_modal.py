@@ -132,3 +132,38 @@ class TestPagesOuvrentLaModale:
             html, re.S)
         assert trigger, 'bouton déclencheur absent'
         assert 'Toutes les catégories' in trigger.group(0)
+
+
+# ─── Barre flottante en bas d'écran (.cat-nav-bar, position: sticky) ──────────
+
+COURSE_CTX = dict(PAGE_CTX, course={
+    'hash':          'abc12345',
+    'display_name':  'Circuit A',
+    'n_controls':    10,
+    'classes':       [],
+    'controls_seq':  [],
+})
+
+
+class TestBarreFlottante:
+
+    @pytest.mark.parametrize('template', PAGES)
+    def test_mode_categorie_utilise_la_barre_flottante(self, template):
+        html = render_to_string(template, PAGE_CTX)
+        assert 'class="cat-nav-bar"' in html
+        # L'ancien conteneur inline (mt-3 d-flex…) n'existe plus
+        assert 'mt-3 d-flex gap-2' not in html
+
+    @pytest.mark.parametrize('template', PAGES)
+    def test_mode_circuit_utilise_la_barre_flottante(self, template):
+        html = render_to_string(template, COURSE_CTX)
+        assert 'class="cat-nav-bar"' in html
+        # Le bouton retour « Toutes les catégories » flotte aussi
+        assert re.search(
+            r'class="cat-nav-bar">\s*<a href="/competition/1/"', html)
+
+    @pytest.mark.parametrize('template', PAGES)
+    def test_un_seul_bouton_haut_de_page(self, template):
+        """Pas de doublon : une seule barre par page."""
+        html = render_to_string(template, PAGE_CTX)
+        assert html.count('cat-nav-bar') == 1

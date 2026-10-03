@@ -1,5 +1,6 @@
 {% extends "results/base.html" %}
 {% block title %}Créer une course — {{ SITE_NAME }}{% endblock %}
+{% block nav_race_create %}active{% endblock %}
 
 {% block page_header %}
 <div class="co-page-header">
@@ -37,7 +38,7 @@
           </div>
         {% endif %}
 
-        <form method="post" novalidate>
+        <form method="post" enctype="multipart/form-data" novalidate>
           {% csrf_token %}
           {{ form.token }}
 
@@ -94,6 +95,32 @@
                      placeholder="https://…">
               {% for error in form.homepage.errors %}
                 <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="col-12">
+              <label for="{{ form.livelox.id_for_label }}" class="form-label fw-bold small text-muted">
+                Livelox
+              </label>
+              <input type="url" class="form-control{% if form.livelox.errors %} is-invalid{% endif %}"
+                     id="{{ form.livelox.id_for_label }}" name="{{ form.livelox.html_name }}"
+                     value="{{ form.livelox.value|default:'' }}" maxlength="128"
+                     placeholder="https://…">
+              {% for error in form.livelox.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="col-12">
+              <label for="{{ form.logo.id_for_label }}" class="form-label fw-bold small text-muted">
+                Logo de l'organisateur
+              </label>
+              <input type="file" class="form-control{% if form.logo.errors %} is-invalid{% endif %}"
+                     id="{{ form.logo.id_for_label }}" name="{{ form.logo.html_name }}"
+                     accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg">
+              <div class="form-text">SVG, PNG ou JPEG — 2 Mo maximum.</div>
+              {% for error in form.logo.errors %}
+                <div class="invalid-feedback d-block">{{ error }}</div>
               {% endfor %}
             </div>
           </div>

@@ -25,7 +25,10 @@ from django.views import View
 
 from .forms import RaceCreateForm, RaceEditForm
 from .models import CompetitionConfig, Mopcompetition
-from .services import create_race, regenerate_api_key, regenerate_manage_token
+from .services import (
+    create_race, regenerate_api_key, regenerate_manage_token,
+    save_org_logo, delete_org_logo,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -100,12 +103,17 @@ class RaceCreateView(View):
 
     template_name = 'results/race_create.html'
 
+    def dispatch(self, request, *args, **kwargs):
+        if not getattr(settings, 'ENABLE_RACE_CREATION', True):
+            raise Http404
+        return super().dispatch(request, *args, **kwargs)
+
     def get(self, request):
         form = RaceCreateForm(initial={'token': new_creation_token()})
         return render(request, self.template_name, {'form': form})
 
     def post(self, request):
-        form = RaceCreateForm(request.POST)
+        form = RaceCreateForm(request.POST, request.FILES)
         if form.is_valid():
             cleaned = form.cleaned_data
             honeypot = bool(cleaned.get('website'))
@@ -120,15 +128,20 @@ class RaceCreateView(View):
                     "Formulaire invalide. Vérifiez les champs saisis.",
                 )
             else:
+                logo_file = cleaned.get('logo')
+                logo = save_org_logo(logo_file) if logo_file else ''
                 try:
                     config = create_race(
                         name=cleaned['name'],
                         date=cleaned['date'],
                         organizer=cleaned['organizer'],
                         homepage=cleaned.get('homepage') or '',
+                        livelox=cleaned.get('livelox') or '',
+                        logo=logo,
                     )
                 except IntegrityError:
                     logger.warning("race_create: conflit de CID, nouvelle tentative requise")
+                    delete_org_logo(logo)
                     form.add_error(
                         None,
                         "Conflit à la création. Réessayez une nouvelle fois.",
@@ -153,6 +166,7 @@ class RaceManageView(View):
             'date': competition.date if competition else None,
             'organizer': competition.organizer if competition else '',
             'homepage': competition.homepage if competition else '',
+            'livelox': competition.livelox if competition else '',
         })
         return render(
             request, self.template_name,
@@ -184,6 +198,7 @@ class RaceManageView(View):
                     date=cleaned['date'],
                     organizer=cleaned['organizer'],
                     homepage=cleaned.get('homepage') or '',
+                    livelox=cleaned.get('livelox') or '',
                 )
                 logger.info("race_manage: course cid=%s mise à jour", config.cid)
                 return redirect(f"{request.path}?ok=info")

@@ -1,6 +1,6 @@
 {% extends "results/base.html" %}
 {% load static %}
-{% block title %}Horaire de départ — {{ competition.name }} — {{ SITE_NAME }}{% endblock %}
+{% block title %}Horaires de départ — {{ competition.name }} — {{ SITE_NAME }}{% endblock %}
 
 {% block page_header %}
 <div class="co-page-header">
@@ -9,10 +9,10 @@
       <ol class="breadcrumb mb-2 small">
         <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
         <li class="breadcrumb-item"><a href="{% url 'results:competition_detail' competition.cid %}">{{ competition.name }}</a></li>
-        <li class="breadcrumb-item active">Horaire de départ</li>
+        <li class="breadcrumb-item active">Horaires de départ</li>
       </ol>
     </nav>
-    <h1><i class="bi bi-clock me-2 opacity-75"></i>Horaire de départ</h1>
+    <h1><i class="bi bi-clock me-2 opacity-75"></i>Horaires de départ</h1>
     {% if competition.date %}
       <div class="mt-1 opacity-75 small">
         <i class="bi bi-calendar me-1"></i>{{ competition.date|date:"l d F Y" }}

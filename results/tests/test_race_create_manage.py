@@ -5,6 +5,7 @@ Couvre :
   - RaceCreateView : rendu, création, anti-spam (honeypot + jeton horodaté)
   - RaceManageView : rendu du lien privé, régénération de clé, édition
   - jetons horodatés (new_creation_token / _token_too_fast)
+  - ENABLE_RACE_CREATION : création activée (défaut) ou désactivée (404)
 """
 
 from datetime import date
@@ -12,9 +13,19 @@ from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
 
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
 from django.http import Http404
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
+
+PNG_MAGIC = b'\x89PNG\r\n\x1a\n'
+
+
+def _png_file(name='logo-club.png', content=None):
+    """SimpleUploadedFile PNG valide (signature + données factices)."""
+    return SimpleUploadedFile(
+        name, PNG_MAGIC + (content or b'\x00' * 64), content_type='image/png',
+    )
 
 
 def rf():
@@ -29,6 +40,7 @@ def _valid_post(age=10.0, **extra):
         'date': '2026-05-17',
         'organizer': 'COCS 73',
         'homepage': 'https://example.org',
+        'livelox': 'https://livelox.example/42',
         'token': new_creation_token(age=age),
         'website': '',
     }
@@ -48,6 +60,7 @@ def _competition():
         date=date(2026, 5, 17),
         organizer='COCS 73',
         homepage='https://example.org',
+        livelox='https://livelox.example/42',
     )
 
 
@@ -67,20 +80,114 @@ class TestRaceCreateView:
         assert 'name="date"' in content
         assert 'name="organizer"' in content
         assert "Site web de l'organisateur" in content
+        assert 'name="livelox"' in content
+        assert 'Livelox' in content
+        assert 'name="logo"' in content
+        assert 'Logo de l\'organisateur' in content
+        assert 'enctype="multipart/form-data"' in content
 
+    @patch('results.race_views.save_org_logo')
     @patch('results.race_views.create_race')
-    def test_post_valide_redirige_vers_gestion(self, mock_create):
+    def test_post_valide_redirige_vers_gestion(self, mock_create, mock_save):
         mock_create.return_value = _config(token='tok-secret')
         from results.race_views import RaceCreateView
         response = RaceCreateView.as_view()(rf().post('/creer-course/', _valid_post()))
         assert response.status_code == 302
         assert response['Location'].endswith('/gestion-course/tok-secret/')
+        mock_save.assert_not_called()               # aucun fichier → aucun écrit disque
         mock_create.assert_called_once_with(
             name='Trail de Test',
             date=date(2026, 5, 17),
             organizer='COCS 73',
             homepage='https://example.org',
+            livelox='https://livelox.example/42',
+            logo='',
         )
+
+    @patch('results.race_views.save_org_logo', return_value='logo-deadbeef0001.png')
+    @patch('results.race_views.create_race')
+    def test_post_avec_logo_le_transmet_a_create_race(self, mock_create, mock_save):
+        mock_create.return_value = _config(token='tok-secret')
+        from results.race_views import RaceCreateView
+        data = _valid_post()
+        response = RaceCreateView.as_view()(
+            rf().post('/creer-course/', {**data, 'logo': _png_file()}),
+        )
+        assert response.status_code == 302
+        mock_save.assert_called_once()
+        assert mock_save.call_args.args[0].name == 'logo-club.png'
+        assert mock_create.call_args.kwargs['logo'] == 'logo-deadbeef0001.png'
+
+    @patch('results.race_views.save_org_logo')
+    @patch('results.race_views.create_race')
+    def test_post_logo_format_invalide_rejette(self, mock_create, mock_save):
+        from results.race_views import RaceCreateView
+        data = _valid_post()
+        bad = SimpleUploadedFile('evil.exe', b'MZ\x90\x00', content_type='application/x-msdownload')
+        response = RaceCreateView.as_view()(
+            rf().post('/creer-course/', {**data, 'logo': bad}),
+        )
+        assert response.status_code == 200
+        assert 'Format accepté : SVG, PNG ou JPEG.' in response.content.decode()
+        mock_create.assert_not_called()
+        mock_save.assert_not_called()
+
+    @patch('results.race_views.save_org_logo')
+    @patch('results.race_views.create_race')
+    def test_post_logo_contenu_invalide_rejette(self, mock_create, mock_save):
+        """Extension .png mais contenu sans signature PNG."""
+        from results.race_views import RaceCreateView
+        data = _valid_post()
+        fake = SimpleUploadedFile('fake.png', b'ce n est pas un png', content_type='image/png')
+        response = RaceCreateView.as_view()(
+            rf().post('/creer-course/', {**data, 'logo': fake}),
+        )
+        assert response.status_code == 200
+        assert 'Fichier illisible' in response.content.decode()
+        mock_create.assert_not_called()
+        mock_save.assert_not_called()
+
+    @patch('results.race_views.save_org_logo')
+    @patch('results.race_views.create_race')
+    def test_post_logo_trop_gros_rejette(self, mock_create, mock_save):
+        from results.race_views import RaceCreateView
+        data = _valid_post()
+        huge = SimpleUploadedFile(
+            'huge.png', PNG_MAGIC + b'\x00' * (2 * 1024 * 1024),
+            content_type='image/png',
+        )
+        response = RaceCreateView.as_view()(
+            rf().post('/creer-course/', {**data, 'logo': huge}),
+        )
+        assert response.status_code == 200
+        assert '2 Mo maximum' in response.content.decode()
+        mock_create.assert_not_called()
+        mock_save.assert_not_called()
+
+    @patch('results.race_views.delete_org_logo')
+    @patch('results.race_views.save_org_logo', return_value='logo-deadbeef0001.png')
+    @patch('results.race_views.create_race')
+    def test_post_conflit_cid_supprime_le_logo_ecrit(self, mock_create, mock_save, mock_del):
+        mock_create.side_effect = IntegrityError('duplicate')
+        from results.race_views import RaceCreateView
+        data = _valid_post()
+        response = RaceCreateView.as_view()(
+            rf().post('/creer-course/', {**data, 'logo': _png_file()}),
+        )
+        assert response.status_code == 200
+        assert b'Conflit' in response.content
+        mock_del.assert_called_once_with('logo-deadbeef0001.png')
+
+    @patch('results.race_views.create_race')
+    def test_post_sans_livelox_passe_chaine_vide(self, mock_create):
+        """Champ livelox absent du POST → chaîne vide transmise à create_race."""
+        mock_create.return_value = _config(token='tok-secret')
+        from results.race_views import RaceCreateView
+        data = _valid_post()
+        del data['livelox']
+        response = RaceCreateView.as_view()(rf().post('/creer-course/', data))
+        assert response.status_code == 302
+        assert mock_create.call_args.kwargs['livelox'] == ''
 
     @patch('results.race_views.create_race')
     def test_post_honeypot_rempli_rejette(self, mock_create):
@@ -137,6 +244,32 @@ class TestRaceCreateView:
         assert b'Conflit' in response.content
 
 
+# ─── ENABLE_RACE_CREATION (activation / désactivation de la création) ──────────
+
+class TestEnableRaceCreationFlag:
+    """ENABLE_RACE_CREATION=False : /creer-course/ renvoie 404, sinon 200."""
+
+    @override_settings(ENABLE_RACE_CREATION=False)
+    def test_get_desactive_rend_404(self):
+        from results.race_views import RaceCreateView
+        with pytest.raises(Http404):
+            RaceCreateView.as_view()(rf().get('/creer-course/'))
+
+    @patch('results.race_views.create_race')
+    @override_settings(ENABLE_RACE_CREATION=False)
+    def test_post_desactive_rend_404_sans_creation(self, mock_create):
+        from results.race_views import RaceCreateView
+        with pytest.raises(Http404):
+            RaceCreateView.as_view()(rf().post('/creer-course/', _valid_post()))
+        mock_create.assert_not_called()
+
+    @override_settings(ENABLE_RACE_CREATION=True)
+    def test_get_active_rend_200(self):
+        from results.race_views import RaceCreateView
+        response = RaceCreateView.as_view()(rf().get('/creer-course/'))
+        assert response.status_code == 200
+
+
 # ─── RaceManageView ────────────────────────────────────────────────────────────
 
 class TestRaceManageView:
@@ -162,6 +295,8 @@ class TestRaceManageView:
         # Bouton de révocation/regénération du lien privé
         assert 'name="action" value="regenerate_link"' in content
         assert "Site web de l'organisateur" in content
+        assert 'name="livelox"' in content
+        assert 'https://livelox.example/42' in content   # valeur enregistrée
         MockConfig.objects.filter.assert_called_once_with(
             manage_token='jeton-prive-abc'
         )
@@ -229,6 +364,7 @@ class TestRaceManageView:
             'date': '2026-06-01',
             'organizer': 'OK Autre',
             'homepage': 'https://autre.example',
+            'livelox': 'https://livelox.example/99',
         }
         request = rf().post('/gestion-course/jeton-prive-abc/', data)
         response = RaceManageView.as_view()(request, token='jeton-prive-abc')
@@ -241,6 +377,7 @@ class TestRaceManageView:
             date=date(2026, 6, 1),
             organizer='OK Autre',
             homepage='https://autre.example',
+            livelox='https://livelox.example/99',
         )
 
     @patch('results.race_views.Mopcompetition')
@@ -310,6 +447,69 @@ class TestPublicSiteUrl:
         content = response.content.decode()
         assert 'http://testserver/mop/update/' in content
         assert 'http://testserver/gestion-course/jeton-prive-abc/' in content
+
+
+# ─── validate_org_logo ────────────────────────────────────────────────────────
+
+class TestValidateOrgLogo:
+    """Extension, taille et signature du contenu (anti « exécutable déguisé »)."""
+
+    @staticmethod
+    def _validate(uploaded):
+        from results.forms import validate_org_logo
+        validate_org_logo(uploaded)        # ne lève pas si valide
+
+    @pytest.mark.parametrize('name', ['a.svg', 'a.png', 'a.jpg', 'a.jpeg',
+                                      'A.JPG', 'logo.PNG'])
+    def test_extensions_acceptees(self, name):
+        from results.forms import validate_org_logo
+        from django.core.exceptions import ValidationError
+        content = (
+            b'\xff\xd8\xff\xe0rest' if name.lower().endswith(('.jpg', '.jpeg'))
+            else PNG_MAGIC + b'\x00' * 8 if name.lower().endswith('.png')
+            else b'<svg xmlns="http://www.w3.org/2000/svg"/>'
+        )
+        try:
+            validate_org_logo(SimpleUploadedFile(name, content))
+        except ValidationError:
+            pytest.fail(f'extension {name} rejetée à tort')
+
+    def test_svg_avec_bom_et_espaces_accepte(self):
+        bom = b'\xef\xbb\xbf'          # UTF-8 BOM
+        self._validate(SimpleUploadedFile(
+            'a.svg', bom + b' \n\r<svg xmlns="x"/>',
+        ))
+
+    def test_jpeg_valide(self):
+        self._validate(SimpleUploadedFile('a.jpg', b'\xff\xd8\xff\xe0data'))
+
+    @pytest.mark.parametrize('name,content', [
+        ('a.svg', b'ce n est pas du svg'),
+        ('a.png', b'\xff\xd8\xff\xe0'),      # JPEG déguisé en PNG
+        ('a.jpg', b'<svg/>'),                # SVG déguisé en JPEG
+    ])
+    def test_contenu_invalide(self, name, content):
+        from results.forms import validate_org_logo
+        from django.core.exceptions import ValidationError
+        with pytest.raises(ValidationError) as exc:
+            validate_org_logo(SimpleUploadedFile(name, content))
+        assert 'Fichier illisible' in str(exc.value)
+
+    def test_extension_refusee(self):
+        from results.forms import validate_org_logo
+        from django.core.exceptions import ValidationError
+        with pytest.raises(ValidationError):
+            validate_org_logo(SimpleUploadedFile('a.gif', b'GIF89a'))
+
+    def test_taille_max(self):
+        from results.forms import validate_org_logo, LOGO_MAX_BYTES
+        from django.core.exceptions import ValidationError
+        huge = SimpleUploadedFile(
+            'a.png', PNG_MAGIC + b'\x00' * LOGO_MAX_BYTES,
+        )
+        with pytest.raises(ValidationError) as exc:
+            validate_org_logo(huge)
+        assert '2 Mo' in str(exc.value)
 
 
 # ─── Jetons horodatés ──────────────────────────────────────────────────────────

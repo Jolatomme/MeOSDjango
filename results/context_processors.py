@@ -8,4 +8,5 @@ def site_settings(request):
         'CLUB_NAME':          getattr(settings, 'CLUB_NAME',          'COCS'),
         'CLUB_COLOR_PRIMARY': getattr(settings, 'CLUB_COLOR_PRIMARY', '#1a6b3c'),
         'CLUB_COLOR_ACCENT':  getattr(settings, 'CLUB_COLOR_ACCENT',  '#f0a500'),
+        'ENABLE_RACE_CREATION': getattr(settings, 'ENABLE_RACE_CREATION', True),
     }

@@ -265,6 +265,7 @@ table { font-variant-numeric: tabular-nums; }
   font-weight: 800; margin: 0;
   font-size: clamp(1.35rem, 1rem + 1.4vw, 1.75rem);
 }
+.co-page-header .org-logo { height: 1.7rem; }
 .co-breadcrumb .breadcrumb-item a { color: rgba(255,255,255,.7); }
 .co-breadcrumb .breadcrumb-item a:hover { color: var(--co-gold); }
 .co-breadcrumb .breadcrumb-item.active { color: rgba(255,255,255,.95); }
@@ -298,6 +299,13 @@ table { font-variant-numeric: tabular-nums; }
   border-radius: var(--co-radius-sm); padding: .1rem .3rem;
 }
 html[data-theme="dark"] .org-logo { border-color: rgba(0, 0, 0, .25); }
+
+/* Carte de course cliquable (accueil) : lien tendu sur toute la carte,
+   les liens internes (site de l'organisateur, horaire) passent au-dessus */
+.co-card-linked { position: relative; }
+.co-card-linked a:not(.stretched-link) { position: relative; z-index: 2; }
+.org-site-link { color: inherit; text-decoration: none; }
+.org-site-link:hover { text-decoration: underline; }
 
 /* ─── Results table ─────────────────────────────────────────────────────────── */
 
@@ -745,6 +753,30 @@ tr.neg-row:hover > td { background: rgba(220, 53, 69, .1); }
     color-mix(in srgb, var(--co-green) 8%, var(--co-surface)));
 }
 
+/* Barre de navigation catégories : flottante en bas d'écran pendant le
+   défilement (sticky), puis se repose au-dessus du footer en fin de page. */
+.cat-nav-bar {
+  position: sticky;
+  bottom: calc(.75rem + env(safe-area-inset-bottom, 0px));
+  z-index: 20; /* > en-têtes de tableaux collants (10), < modale (1050) */
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: calc(100% - 1rem);
+  margin: 1.5rem auto .5rem;
+  padding: .55rem .7rem;
+  border: 1px solid var(--co-border);
+  border-radius: var(--co-radius-lg);
+  background: color-mix(in srgb, var(--co-surface) 92%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.1);
+}
+/* Le bouton « retour en haut » ne doit pas chevaucher la barre flottante */
+body:has(.cat-nav-bar) #backToTop { bottom: 4.5rem; }
+
 /* Modale « Choisir une catégorie » */
 .category-picker-grid {
   display: grid;
@@ -912,6 +944,7 @@ body.modal-open #backToTop { display: none; }
 
   /* Sur mobile : un peu plus petit et moins près du bord */
   #backToTop { width: 2.5rem; height: 2.5rem; font-size: 1.25rem; bottom: 1.25rem; right: 1.25rem; }
+  body:has(.cat-nav-bar) #backToTop { bottom: 4rem; }
 
   /* Récapitulatif : cacher club + catégorie, colonnes plus étroites */
   .col-club,
@@ -924,6 +957,10 @@ body.modal-open #backToTop { display: none; }
   #recapTable .split-rank { font-size: .55rem; }
 }
 @media (max-width: 576px) {
+  /* Barre de navigation catégories : pleine largeur, boutons compacts */
+  .cat-nav-bar { width: calc(100% - 1rem); margin-bottom: .75rem; }
+  .cat-nav-bar .cat-nav-btn { padding: .5rem .8rem; font-size: .82rem; }
+
   /* Récapitulatif : encore plus compact */
   #recapTable [data-sticky="0"] { width: 1.6rem !important; min-width: 1.6rem !important; }
   #recapTable [data-sticky="1"] { width: 4rem !important; min-width: 4rem !important; left: 1.6rem !important; }

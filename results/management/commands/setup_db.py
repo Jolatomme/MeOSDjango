@@ -10,7 +10,9 @@ CREATE_TABLES = {
         `name` VARCHAR(64) NOT NULL DEFAULT '',
         `date` DATE NOT NULL DEFAULT '2013-11-04',
         `organizer` VARCHAR(64) NOT NULL DEFAULT '',
-        `homepage` VARCHAR(128) NOT NULL DEFAULT ''
+        `homepage` VARCHAR(128) NOT NULL DEFAULT '',
+        `livelox` VARCHAR(128) NOT NULL DEFAULT '',
+        `logo` VARCHAR(128) NOT NULL DEFAULT ''
     ) ENGINE = InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""",
 
     "mopControl": """CREATE TABLE IF NOT EXISTS `mopControl` (
@@ -115,6 +117,12 @@ TABLE_ORDER = [
 
 # Colonnes ajoutées après la création d'origine des tables (bases existantes).
 MISSING_COLUMN_ALTERS = {
+    "mopCompetition": {
+        "livelox": "ALTER TABLE `mopCompetition` "
+                   "ADD COLUMN `livelox` VARCHAR(128) NOT NULL DEFAULT ''",
+        "logo": "ALTER TABLE `mopCompetition` "
+                "ADD COLUMN `logo` VARCHAR(128) NOT NULL DEFAULT ''",
+    },
     "mopCompetitor": {
         "card": "ALTER TABLE `mopCompetitor` "
                 "ADD COLUMN `card` VARCHAR(32) NOT NULL DEFAULT ''",

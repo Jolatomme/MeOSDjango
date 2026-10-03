@@ -39,6 +39,8 @@ class Mopcompetition(models.Model):
     date      = models.DateField()
     organizer = models.CharField(max_length=64)
     homepage  = models.CharField(max_length=128)
+    livelox   = models.CharField(max_length=128, blank=True)
+    logo      = models.CharField(max_length=128, blank=True)
 
     class Meta:
         managed         = False

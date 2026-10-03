@@ -181,7 +181,7 @@
 
 {# ── Navigation catégories (seulement pour les vraies catégories) ───────────── #}
 {% if not course %}
-<div class="mt-3 d-flex gap-2 align-items-center flex-wrap justify-content-center">
+<div class="cat-nav-bar">
   {% if prev_cls %}
     <a href="{% url 'results:class_results' competition.cid prev_cls.name %}"
        class="cat-nav-btn" title="{{ prev_cls.name }}">
@@ -205,7 +205,7 @@
 </div>
 {% include "results/_category_modal.html" %}
 {% else %}
-<div class="mt-3">
+<div class="cat-nav-bar">
   <a href="{% url 'results:competition_detail' competition.cid %}" class="btn btn-outline-success">
     <i class="bi bi-arrow-left me-2"></i>Toutes les catégories
   </a>

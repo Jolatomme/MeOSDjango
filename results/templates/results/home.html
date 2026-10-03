@@ -1,14 +1,14 @@
 {% extends "results/base.html" %}
-{% load static meos_tags %}
+{% load meos_tags %}
 {% block title %}{{ SITE_NAME }} — Accueil{% endblock %}
-{% block nav_home %}active{% endblock %}
 
 {% block page_header %}
 <div class="co-hero">
   <div class="container position-relative">
     <span class="hero-badge mb-2 d-inline-block">{{ CLUB_NAME }}</span>
     <h1 class="hero-title mt-1 d-flex align-items-center gap-3">
-      <img src="{% static 'results/img/logo-cocs.svg' %}" alt="{{ CLUB_NAME }}" height="48">
+      {% site_logo as club_logo %}
+      {% if club_logo %}<img src="{{ club_logo }}" alt="{{ CLUB_NAME }}" height="48">{% endif %}
       {{ SITE_NAME }}
     </h1>
     <p class="hero-sub mb-0">{{ SITE_SUBTITLE }}</p>
@@ -66,57 +66,52 @@
     <div class="row g-3">
       {% for comp in comps %}
       <div class="col-12 col-md-6 col-lg-4">
-        <a href="{% url 'results:competition_detail' comp.cid %}" class="text-decoration-none">
-          <div class="co-card h-100">
-            <div class="co-card-header d-flex justify-content-between align-items-center gap-2">
-              <span class="d-flex align-items-center gap-2 text-truncate">
-                {% with logo=comp.organizer|org_logo %}
-                  {% if logo %}
-                    <img src="{% static logo %}" alt="" aria-hidden="true" class="org-logo">
-                  {% else %}
-                    <i class="bi bi-compass"></i>
-                  {% endif %}
-                {% endwith %}
-                <span class="text-truncate" title="{{ comp.name }}">{{ comp.name }}</span>
+        <div class="co-card h-100 co-card-linked">
+          <div class="co-card-header d-flex justify-content-between align-items-center gap-2">
+            <span class="d-flex align-items-center gap-2 text-truncate">
+              {% if comp.logo %}
+                <img src="{% url 'results:org_logo' comp.logo %}" alt="" aria-hidden="true" class="org-logo">
+              {% else %}
+                <i class="bi bi-compass"></i>
+              {% endif %}
+              <span class="text-truncate" title="{{ comp.name }}">{{ comp.name }}</span>
+            </span>
+            {% if comp.pending %}
+              <span class="badge bg-transparent text-warning border border-warning flex-shrink-0"
+                    title="Course en attente du premier import MeOS">
+                <i class="bi bi-hourglass-split me-1"></i>En attente
               </span>
-              {% if comp.pending %}
-                <span class="badge bg-transparent text-warning border border-warning flex-shrink-0"
-                      title="Course en attente du premier import MeOS">
-                  <i class="bi bi-hourglass-split me-1"></i>En attente
-                </span>
-              {% endif %}
-              {% if comp.date %}
-                <span class="badge bg-warning text-dark flex-shrink-0">{{ comp.date|date:"d/m/Y" }}</span>
-              {% endif %}
-            </div>
-            <div class="p-3">
-              {% if comp.organizer %}
-                <div class="mb-1 text-muted small">
-                  <i class="bi bi-building me-1"></i>{{ comp.organizer }}
-                </div>
-              {% endif %}
-              <div class="d-flex gap-2 flex-wrap mt-2">
-                <span class="badge bg-success rounded-pill">
-                  <i class="bi bi-arrow-right me-1"></i>Voir les résultats
-                </span>
-                {% if comp.homepage %}
-                  <a href="{{ comp.homepage }}" target="_blank"
-                     class="badge bg-secondary rounded-pill text-decoration-none"
-                     onclick="event.stopPropagation()">
-                    <i class="bi bi-globe me-1"></i>Site web
-                  </a>
-                {% endif %}
-                {% if comp.has_individual_competitors %}
-                  <a href="{% url 'results:start_list' comp.cid %}"
-                     class="badge bg-info rounded-pill text-decoration-none"
-                     onclick="event.stopPropagation()">
-                    <i class="bi bi-clock me-1"></i>Horaire
-                  </a>
-                {% endif %}
+            {% endif %}
+            {% if comp.date %}
+              <span class="badge bg-warning text-dark flex-shrink-0">{{ comp.date|date:"d/m/Y" }}</span>
+            {% endif %}
+          </div>
+          <div class="p-3">
+            {% if comp.organizer %}
+              <div class="mb-1 text-muted small">
+                <i class="bi bi-building me-1"></i>{% if comp.homepage %}<a href="{{ comp.homepage }}" target="_blank" rel="noopener" class="org-site-link">{{ comp.organizer }}</a>{% else %}{{ comp.organizer }}{% endif %}
               </div>
+            {% endif %}
+            <div class="d-flex gap-2 flex-wrap mt-2">
+              <a href="{% url 'results:competition_detail' comp.cid %}"
+                 class="badge bg-success rounded-pill text-decoration-none stretched-link">
+                <i class="bi bi-arrow-right me-1"></i>Voir les résultats
+              </a>
+              {% if comp.has_individual_competitors %}
+                <a href="{% url 'results:start_list' comp.cid %}"
+                   class="badge bg-info rounded-pill text-decoration-none">
+                  <i class="bi bi-clock me-1"></i>Horaires
+                </a>
+              {% endif %}
+              {% if comp.livelox %}
+                <a href="{{ comp.livelox }}" target="_blank" rel="noopener"
+                   class="badge bg-secondary rounded-pill text-decoration-none">
+                  <i class="bi bi-globe me-1"></i>Livelox
+                </a>
+              {% endif %}
             </div>
           </div>
-        </a>
+        </div>
       </div>
       {% endfor %}
     </div>

@@ -1,22 +1,18 @@
-import re
-import unicodedata
+from pathlib import Path
 
 from django import template
-from django.contrib.staticfiles import finders
+from django.conf import settings
+from django.urls import reverse
 from django.utils.safestring import mark_safe
 from results.models import format_time, STATUS_LABELS
 
 register = template.Library()
 
-# ─── Logos d'organisation ────────────────────────────────────────────────────
-# 1) Alias : sous-chaîne du nom slugifié → fichier statique connu.
-# 2) Convention : tout fichier results/img/org/<slug>.(svg|png|webp) est utilisé
-#    tel quel — il suffit de déposer le fichier pour qu'il apparaisse.
-ORG_LOGO_ALIASES = {
-    'cocs': 'results/img/logo-cocs.svg',
-}
-ORG_LOGO_DIR = 'results/img/org/'
-ORG_LOGO_EXTS = ('.svg', '.png', '.webp')
+# ─── Logo du site (fichier org_logo/site.* à la racine du projet) ─────────────
+# Convention zéro configuration : déposer le logo du club sous
+# org_logo/site.svg (ou .png / .jpg / .jpeg) — il apparaît dans la barre de
+# navigation et le bandeau d'accueil ; absent → aucune image.
+SITE_LOGO_EXTENSIONS = ('.svg', '.png', '.jpg', '.jpeg')
 
 
 @register.filter
@@ -71,30 +67,15 @@ def time_behind(runner_time, leader_time):
     return f'+{format_time(diff)}'
 
 
-def _slugify(value):
-    """Slug ASCII : 'COCS 7309AURA' → 'cocs-7309aura'."""
-    text = unicodedata.normalize('NFD', str(value))
-    text = ''.join(c for c in text if unicodedata.category(c) != 'Mn')
-    return re.sub(r'[^a-z0-9]+', '-', text.lower()).strip('-')
+@register.simple_tag
+def site_logo():
+    """URL du logo du club (``org_logo/site.*``) ou '' si le fichier est absent.
 
-
-@register.filter
-def org_logo(organizer):
-    """Chemin statique du logo de l'organisation, ou '' si inconnu.
-
-    Accepte le nom libre de l'organisation (mopCompetition.organizer).
+    Le premier format trouvé est utilisé, dans l'ordre SVG, PNG, JPG, JPEG.
     """
-    if not organizer:
-        return ''
-    slug = _slugify(organizer)
-    if not slug:
-        return ''
-    parts = slug.split('-')
-    for needle, path in ORG_LOGO_ALIASES.items():
-        if needle in parts or slug.startswith(f'{needle}-'):
-            return path
-    for ext in ORG_LOGO_EXTS:
-        candidate = f'{ORG_LOGO_DIR}{slug}{ext}'
-        if finders.find(candidate):
-            return candidate
+    root = Path(settings.ORG_LOGO_DIR)
+    for ext in SITE_LOGO_EXTENSIONS:
+        name = f'site{ext}'
+        if (root / name).is_file():
+            return reverse('results:org_logo', args=[name])
     return ''

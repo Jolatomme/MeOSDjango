@@ -22,11 +22,12 @@ class TestSiteSettings:
     def _call(self, request=None, **overrides):
         """Appelle site_settings avec les settings patchés."""
         defaults = {
-            'SITE_NAME':          'Résultats CO',
-            'SITE_SUBTITLE':      "Course d'Orientation",
-            'CLUB_NAME':          'COCS',
-            'CLUB_COLOR_PRIMARY': '#1a6b3c',
-            'CLUB_COLOR_ACCENT':  '#f0a500',
+            'SITE_NAME':            'Résultats CO',
+            'SITE_SUBTITLE':        "Course d'Orientation",
+            'CLUB_NAME':            'COCS',
+            'CLUB_COLOR_PRIMARY':   '#1a6b3c',
+            'CLUB_COLOR_ACCENT':    '#f0a500',
+            'ENABLE_RACE_CREATION': True,
         }
         defaults.update(overrides)
         with patch('results.context_processors.settings') as mock_settings:
@@ -63,6 +64,11 @@ class TestSiteSettings:
         result = self._call()
         assert 'CLUB_COLOR_ACCENT' in result
 
+    def test_contient_enable_race_creation(self):
+        result = self._call()
+        assert 'ENABLE_RACE_CREATION' in result
+        assert result['ENABLE_RACE_CREATION'] is True
+
     def test_valeurs_par_defaut_si_settings_absent(self):
         """Si les settings ne définissent pas les clés, les défauts sont utilisés."""
         from django.conf import settings as real_settings
@@ -72,6 +78,7 @@ class TestSiteSettings:
         attrs_to_remove = [
             'SITE_NAME', 'SITE_SUBTITLE', 'CLUB_NAME',
             'CLUB_COLOR_PRIMARY', 'CLUB_COLOR_ACCENT',
+            'ENABLE_RACE_CREATION',
         ]
         saved = {}
         for attr in attrs_to_remove:
@@ -90,21 +97,27 @@ class TestSiteSettings:
             assert result['CLUB_NAME']          == 'COCS'
             assert result['CLUB_COLOR_PRIMARY'] == '#1a6b3c'
             assert result['CLUB_COLOR_ACCENT']  == '#f0a500'
+            assert result['ENABLE_RACE_CREATION'] is True
         finally:
             # Restaurer les settings
             for attr, val in saved.items():
                 setattr(real_settings, attr, val)
 
-    def test_cinq_cles_retournees(self):
-        """Le dictionnaire doit contenir exactement 5 clés."""
+    def test_six_cles_retournees(self):
+        """Le dictionnaire doit contenir exactement 6 clés."""
         result = self._call()
-        assert len(result) == 5
+        assert len(result) == 6
 
     def test_valeurs_sont_des_chaines(self):
-        """Toutes les valeurs doivent être des chaînes de caractères."""
+        """Les valeurs de config sont des chaînes ; le flag est un booléen."""
         result = self._call()
         for key, val in result.items():
-            assert isinstance(val, str), f"La valeur de {key} doit être str, obtenu {type(val)}"
+            if key == 'ENABLE_RACE_CREATION':
+                assert isinstance(val, bool), \
+                    f"La valeur de {key} doit être bool, obtenu {type(val)}"
+            else:
+                assert isinstance(val, str), \
+                    f"La valeur de {key} doit être str, obtenu {type(val)}"
 
     def test_independant_de_la_requete(self):
         """Le résultat ne doit pas dépendre du contenu de la requête."""

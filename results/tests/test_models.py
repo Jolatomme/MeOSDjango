@@ -306,3 +306,19 @@ class TestCompetitionConfigStr:
 
     def test_autres_cid(self):
         assert str(self._make(cid=42)) == '42'
+
+
+# ─── Champs facultatifs de mopCompetition ─────────────────────────────────────
+
+class TestMopcompetitionOptionalFields:
+    """livelox / logo sont facultatifs : sans ``blank=True``, le formulaire
+    admin Django de modification d'une compétition exigerait leur remplissage."""
+
+    @pytest.mark.parametrize('field_name', ['livelox', 'logo'])
+    def test_champ_facultatif_en_admin(self, field_name):
+        assert Mopcompetition._meta.get_field(field_name).blank is True
+
+    @pytest.mark.parametrize('field_name', ['livelox', 'logo'])
+    def test_valeur_par_defaut_vide(self, field_name):
+        field = Mopcompetition._meta.get_field(field_name)
+        assert field.get_default() == ''

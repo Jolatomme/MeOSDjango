@@ -18,7 +18,7 @@ python manage.py migrate
 # Serve static files (prod)
 python manage.py collectstatic
 
-# Create mop* tables / add missing columns (e.g. mopCompetitor.card)
+# Create mop* tables / add missing columns (e.g. mopCompetitor.card, mopCompetition.livelox/logo)
 python manage.py setup_db
 #   --dry-run       show SQL without executing
 #   --force         drop existing tables first (DANGEROUS, incompatible with --dry-run)
@@ -51,15 +51,20 @@ npx jest test_site_js.test.js
 
 - `MeOSDjango/settings.py` imports `MeOSDjango/dev_settings.py` (try/except) — local dev config, DB credentials included
 - Production: do NOT commit `dev_settings.py` with credentials; override settings via environment variables instead
-- Configurable via env vars: `MOP_PASSWORD`, `SITE_NAME`, `SITE_SUBTITLE`, `SITE_LOGO_URL`, `CLUB_NAME`, `CLUB_COLOR_PRIMARY`, `CLUB_COLOR_ACCENT`, `PUBLIC_SITE_URL`, `OCHECKLIST_HEADER_KEY`, `OCHECKLIST_HEADER_VALUE`
+- Configurable via env vars: `MOP_PASSWORD`, `SITE_NAME`, `SITE_SUBTITLE`, `SITE_LOGO_URL`, `CLUB_NAME`, `CLUB_COLOR_PRIMARY`, `CLUB_COLOR_ACCENT`, `PUBLIC_SITE_URL`, `ENABLE_RACE_CREATION`, `OCHECKLIST_HEADER_KEY`, `OCHECKLIST_HEADER_VALUE`
 - Required: `MOP_PASSWORD` must match MeOS Online config
 - Optional: `OCHECKLIST_HEADER_KEY` / `OCHECKLIST_HEADER_VALUE` for O'checklist endpoint auth
+- Optional: `ENABLE_RACE_CREATION` (default enabled; `0`/`false` → `/creer-course/` returns 404 and the nav link is hidden; `/gestion-course/<token>/` keeps working)
 
 ## Project Structure
 
 ```
 MeOSDjango/
 ├── manage.py                          # Django CLI
+│
+├── org_logo/                          # Logos d'organisateur (créé à la volée, ignoré par git)
+│   │                                  #   logo-<hex>.svg|png|jpg = badges page d'accueil (colonne mopCompetition.logo)
+│   │                                  #   site.svg|png|jpg|jpeg  = logo barre de nav / héros (tag {% site_logo %})
 │
 ├── MeOSDjango/                        # Configuration Django
 │   ├── __init__.py

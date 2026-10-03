@@ -17,7 +17,9 @@
     <nav aria-label="breadcrumb" class="co-breadcrumb">
       <ol class="breadcrumb mb-2 small">
         <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
+        {% if ENABLE_RACE_CREATION %}
         <li class="breadcrumb-item"><a href="{% url 'results:race_create' %}">Créer une course</a></li>
+        {% endif %}
         <li class="breadcrumb-item active">Gestion de course</li>
       </ol>
     </nav>
@@ -203,14 +205,28 @@
             <div class="invalid-feedback">{{ error }}</div>
           {% endfor %}
         </div>
+        <div class="col-12">
+          <label for="{{ form.livelox.id_for_label }}" class="form-label fw-bold small text-muted">
+            Livelox
+          </label>
+          <input type="url" class="form-control{% if form.livelox.errors %} is-invalid{% endif %}"
+                 id="{{ form.livelox.id_for_label }}" name="{{ form.livelox.html_name }}"
+                 value="{{ form.livelox.value|default:'' }}" maxlength="128"
+                 placeholder="https://…">
+          {% for error in form.livelox.errors %}
+            <div class="invalid-feedback">{{ error }}</div>
+          {% endfor %}
+        </div>
       </div>
       <div class="d-flex flex-wrap gap-2 mt-3">
         <button type="submit" class="btn btn-success fw-bold">
           <i class="bi bi-check-lg me-1"></i>Enregistrer les modifications
         </button>
+        {% if ENABLE_RACE_CREATION %}
         <a href="{% url 'results:race_create' %}" class="btn btn-outline-secondary">
           <i class="bi bi-plus-circle me-1"></i>Créer une autre course
         </a>
+        {% endif %}
       </div>
     </form>
   </div>

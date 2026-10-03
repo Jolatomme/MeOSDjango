@@ -4,9 +4,12 @@ import re
 from collections import Counter
 from types import SimpleNamespace
 from datetime import date, datetime
+from django.conf import settings
 from django.core.cache import cache
+from django.core.exceptions import SuspiciousFileOperation
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import Http404, HttpResponse, JsonResponse
+from django.views.static import serve as static_serve
 
 
 from .models import (
@@ -45,6 +48,33 @@ _NON_FINISHER_ORDER = {
 
 # Hash de circuit : exactement 8 caractères hexadécimaux minuscules
 _COURSE_HASH_RE = re.compile(r'^[0-9a-f]{8}$')
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Logos d'organisateur (fichiers uploadés dans ORG_LOGO_DIR, racine du projet)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def org_logo_file(request, filename):
+    """Sert un fichier de ``settings.ORG_LOGO_DIR`` (dev **et** production).
+
+    La route est déclarée explicitement dans urls.py : contrairement à
+    ``django.conf.urls.static.static()``, elle ne dépend pas de DEBUG.
+
+    Les uploads étant publics (création de course ouverte), un SVG ouvert
+    directement ne doit pas pouvoir exécuter de script (même origine) :
+    nosniff + CSP sandbox sur la réponse.
+    """
+    try:
+        response = static_serve(
+            request, filename, document_root=settings.ORG_LOGO_DIR,
+        )
+    except SuspiciousFileOperation:
+        raise Http404
+    response['X-Content-Type-Options'] = 'nosniff'
+    response['Content-Security-Policy'] = (
+        "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+    )
+    return response
 
 
 # ══════════════════════════════════════════════════════════════════════════════

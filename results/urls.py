@@ -18,6 +18,9 @@ urlpatterns = [
     path('creer-course/',            RaceCreateView.as_view(), name='race_create'),
     path('gestion-course/<str:token>/', RaceManageView.as_view(), name='race_manage'),
 
+    # ── Logos d'organisateur (fichiers uploadés, org_logo/ à la racine) ────
+    path('org_logo/<str:filename>', views.org_logo_file, name='org_logo'),
+
     # ── Compétition ────────────────────────────────────────────────────────
     path('competition/<int:cid>/', CompetitionDetailView.as_view(), name='competition_detail'),
     path('competition/<int:cid>/start-list/', StartListView.as_view(), name='start_list'),
