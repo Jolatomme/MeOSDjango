@@ -1,57 +1,63 @@
 <!-- Barre de navigation entre les analyses ──────────────────────────────────
-   Fonctionne pour les catégories ET les circuits.
-   cls.name = nom réel (ex: 'H21') OU hash de circuit (ex: 'abc12345').
-   Dans les deux cas, les URLs <str:class_id> acceptent les deux formes.
+   Partial UNIQUE pour les catégories ET les circuits.
+   - course vide (None) → namespace results:*        (routes /class/<id>/…)
+   - course (dict)      → namespace results:course_* (routes /course/<id>/…)
+   - cls.name = nom réel (ex: 'H21') OU hash de circuit (ex: 'abc12345'),
+     les deux formes sont acceptées par les routes <str:class_id>.
+   Attendu : competition, cls, course, current_analysis.
 -->
+{% with ns=course|yesno:"results:course_,results:" %}
 <div class="analysis-tabs-bar">
   <div class="container">
     <nav class="analysis-tabs" aria-label="Navigation analyses">
 
-      <a href="{% url 'results:live' competition.cid cls.name %}"
+      <a href="{% url ns|add:'live' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'live' %}active{% endif %}">
         <i class="bi bi-broadcast"></i><span>Live</span>
       </a>
 
-      <a href="{% url 'results:class_results' competition.cid cls.name %}"
+      {# Résultats : seul onglet dont le suffixe diffère (class_results / course_results) #}
+      <a href="{% if course %}{% url 'results:course_results' competition.cid cls.name %}{% else %}{% url 'results:class_results' competition.cid cls.name %}{% endif %}"
          class="analysis-tab {% if current_analysis == 'results' %}active{% endif %}">
         <i class="bi bi-list-ol"></i><span>Résultats</span>
       </a>
 
-      <a href="{% url 'results:superman' competition.cid cls.name %}"
+      <a href="{% url ns|add:'superman' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'superman' %}active{% endif %}">
         <i class="bi bi-lightning-charge-fill"></i><span>Superman</span>
       </a>
 
-      <a href="{% url 'results:performance' competition.cid cls.name %}"
+      <a href="{% url ns|add:'performance' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'performance' %}active{% endif %}">
         <i class="bi bi-speedometer2"></i><span>Indice perf.</span>
       </a>
 
-      <a href="{% url 'results:regularity' competition.cid cls.name %}"
+      <a href="{% url ns|add:'regularity' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'regularity' %}active{% endif %}">
         <i class="bi bi-activity"></i><span>Régularité</span>
       </a>
 
-      <a href="{% url 'results:grouping' competition.cid cls.name %}"
+      <a href="{% url ns|add:'grouping' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'grouping' %}active{% endif %}">
         <i class="bi bi-diagram-3"></i><span>Regroupement</span>
       </a>
 
-      <a href="{% url 'results:grouping_index' competition.cid cls.name %}"
+      <a href="{% url ns|add:'grouping_index' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'grouping_index' %}active{% endif %}">
         <i class="bi bi-collection"></i><span>Lièvre / Suiveur</span>
       </a>
 
-      <a href="{% url 'results:recapitulatif' competition.cid cls.name %}"
-         class="analysis-tab {% if current_analysis == 'recapitulatif' %}active{% endif %}">
-        <i class="bi bi-table"></i><span>Récapitulatif</span>
-      </a>
-
-      <a href="{% url 'results:duel' competition.cid cls.name %}"
+      <a href="{% url ns|add:'duel' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'duel' %}active{% endif %}">
         <i class="bi bi-people"></i><span>Duel coureurs</span>
+      </a>
+
+      <a href="{% url ns|add:'recapitulatif' competition.cid cls.name %}"
+         class="analysis-tab {% if current_analysis == 'recapitulatif' %}active{% endif %}">
+        <i class="bi bi-table"></i><span>Récapitulatif</span>
       </a>
 
     </nav>
   </div>
 </div>
+{% endwith %}

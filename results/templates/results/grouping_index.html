@@ -11,7 +11,7 @@
       <ol class="breadcrumb mb-2 small">
         {% include 'results/_breadcrumb_home_comp.html' %}
         <li class="breadcrumb-item">
-          <a href="{% url 'results:class_results' competition.cid cls.name %}">{% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}</a>
+          <a href="{% if course %}{% url 'results:course_results' competition.cid course.hash %}{% else %}{% url 'results:class_results' competition.cid cls.name %}{% endif %}">{% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}</a>
         </li>
         <li class="breadcrumb-item active">Lièvre / Suiveur</li>
       </ol>

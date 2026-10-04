@@ -167,3 +167,35 @@ class TestBarreFlottante:
         """Pas de doublon : une seule barre par page."""
         html = render_to_string(template, PAGE_CTX)
         assert html.count('cat-nav-bar') == 1
+
+
+# ─── Bouton « Toutes les catégories » flottant sur les AUTRES pages ──────────
+# relay_results (vue catégorie), course_results (vue circuit) et org_results
+# utilisaient encore un conteneur inline <div class="mt-3"> non flottant.
+
+BACK_BTN_PAGES = [
+    pytest.param('results/relay_results.html',
+                 dict(PAGE_CTX, n_legs=3, teams_data=[]), id='relay'),
+    pytest.param('results/course_results.html', COURSE_CTX, id='course'),
+    pytest.param('results/org_results.html',
+                 dict(PAGE_CTX,
+                      organization=SimpleNamespace(name='Club X'),
+                      competitors=[]), id='org'),
+]
+
+
+class TestBoutonRetourFlottant:
+
+    @pytest.mark.parametrize('template,ctx', BACK_BTN_PAGES)
+    def test_utilise_la_barre_flottante(self, template, ctx):
+        html = render_to_string(template, ctx)
+        assert 'class="cat-nav-bar"' in html
+        assert re.search(
+            r'class="cat-nav-bar">\s*<a href="/competition/1/"', html)
+        # L'ancien conteneur inline n'existe plus
+        assert '<div class="mt-3">' not in html
+
+    @pytest.mark.parametrize('template,ctx', BACK_BTN_PAGES)
+    def test_un_seule_barre(self, template, ctx):
+        html = render_to_string(template, ctx)
+        assert html.count('cat-nav-bar') == 1

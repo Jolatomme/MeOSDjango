@@ -54,12 +54,8 @@
   </div>
 </div>
 
-{# ← Onglets de navigation : circuit ou catégorie #}
-{% if course %}
-  {% include "results/course_analysis_tabs.html" %}
-{% else %}
-  {% include "results/analysis_tabs.html" %}
-{% endif %}
+{# ← Onglets de navigation : s'adaptent seuls au circuit ou à la catégorie #}
+{% include "results/analysis_tabs.html" %}
 
 {% endblock %}
 
