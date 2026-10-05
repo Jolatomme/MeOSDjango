@@ -1670,6 +1670,51 @@ class TestDuelAnalysis:
         assert ctx['current_analysis'] == 'duel'
 
 
+class TestDuelChart:
+    """Graphique Chart.js de la page duel (carte au-dessus du tableau)."""
+
+    @staticmethod
+    def _render_duel(no_data=False):
+        from django.template.loader import render_to_string
+        from types import SimpleNamespace
+        return render_to_string('results/duel.html', {
+            'competition': SimpleNamespace(cid=1, name='Test', date=None),
+            'cls':         SimpleNamespace(id='H21', name='H21', cid=1),
+            'course':      None,
+            'current_analysis': 'duel',
+            'no_data':     no_data,
+            'n_runners':   3,
+            'runners_json': '[]',
+            'partial_analysis': False,
+        })
+
+    def test_chart_js_charge(self):
+        html = self._render_duel()
+        assert 'chart.umd.min.js' in html
+
+    def test_carte_graphique_avant_le_tableau(self):
+        html = self._render_duel()
+        assert 'id="duelChartWrap"' in html
+        assert 'id="duelChart"' in html
+        assert html.index('id="duelChartWrap"') < html.index('id="duelTableWrap"')
+
+    def test_quatre_types_de_graphique(self):
+        html = self._render_duel()
+        assert 'name="chartType"' in html
+        for value in ('gap', 'gapcum', 'delta', 'bars'):
+            assert f'value="{value}"' in html, value
+
+    def test_synchronise_avec_le_mode_temps(self):
+        html = self._render_duel()
+        assert 'renderChart' in html
+        assert 'input[name="timeMode"]' in html
+
+    def test_pas_de_graphique_sans_donnees(self):
+        html = self._render_duel(no_data=True)
+        assert 'chart.umd.min.js' not in html
+        assert 'id="duelChartWrap"' not in html
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # recapitulatif_analysis
 # ══════════════════════════════════════════════════════════════════════════════

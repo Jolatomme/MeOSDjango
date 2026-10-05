@@ -24,7 +24,7 @@ Interface web de résultats en temps réel pour les compétitions de **course d'
 | **Indice de performance** | Distribution KDE de l'indice de performance par coureur |
 | **Regroupement** | Graphique des temps de passage absolus |
 | **Indice lièvre/suiveur** | Détection des effets d'aspiration |
-| **Duel** | Comparaison tronçon par tronçon de deux coureurs |
+| **Duel** | Comparaison tronçon par tronçon de deux coureurs, avec graphiques (évolution, écart cumulé, écarts, côte à côte) |
 | **Régularité** | Analyse de la régularité des coureurs |
 | **Vérification MeOS** | Détection d'erreurs dans les données MeOS |
 | **Statistiques** | Vue d'ensemble de la compétition |

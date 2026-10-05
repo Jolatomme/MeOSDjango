@@ -128,6 +128,26 @@
   </div>
 </div>
 
+{# ── Graphique du duel ───────────────────────────────────────────────────────── #}
+<div id="duelChartWrap" class="co-card d-none mb-4">
+  <div class="co-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <span><i class="bi bi-graph-up me-2"></i>Visualisation du duel</span>
+    <div class="btn-group btn-group-sm" role="group" aria-label="Type de graphique">
+      <input type="radio" class="btn-check" name="chartType" id="ctGap" value="gap" checked>
+      <label class="btn btn-sm btn-outline-light" for="ctGap">Évolution</label>
+      <input type="radio" class="btn-check" name="chartType" id="ctGapCum" value="gapcum">
+      <label class="btn btn-sm btn-outline-light" for="ctGapCum">Écart cumulé</label>
+      <input type="radio" class="btn-check" name="chartType" id="ctDelta" value="delta">
+      <label class="btn btn-sm btn-outline-light" for="ctDelta">Écarts par tronçon</label>
+      <input type="radio" class="btn-check" name="chartType" id="ctBars" value="bars">
+      <label class="btn btn-sm btn-outline-light" for="ctBars">Côte à côte</label>
+    </div>
+  </div>
+  <div class="p-3">
+    <div class="duel-chart-canvas"><canvas id="duelChart"></canvas></div>
+  </div>
+</div>
+
 {# ── Tableau de duel ─────────────────────────────────────────────────────────── #}
 <div id="duelTableWrap" class="co-card d-none">
   <div class="co-card-header d-flex justify-content-between align-items-center">
@@ -177,8 +197,18 @@
 
 {% block extra_js %}
 {% if not no_data %}
+<script src="{% static 'results/js/chart.umd.min.js' %}"></script>
 <script>
 const RUNNERS = {{ runners_json|safe }};
+
+// ── Constantes graphique ────────────────────────────────────────────────────
+const COLOR_A   = '#4363d8';   // coureur A (bleu)
+const COLOR_B   = '#e07840';   // coureur B (orange)
+const COLOR_TIE = '#b0b0b0';   // ex-æquo
+const TIE_TENTHS = 3;          // seuil ex-æquo (3 dixièmes, comme le tableau)
+
+let duelChart  = null;
+let duelState  = { rA: null, rB: null };
 
 // ── Helpers de formatage ─────────────────────────────────────────────────────
 function fmtTenths(v) {
@@ -236,8 +266,15 @@ function onSelectionChange() {
   document.getElementById('duelSummary').classList.toggle(
     'd-none', !(idA && idB)
   );
+  document.getElementById('duelChartWrap').classList.toggle(
+    'd-none', !(idA && idB)
+  );
 
-  if (!idA || !idB) return;
+  if (!idA || !idB) {
+    if (duelChart) { duelChart.destroy(); duelChart = null; }
+    duelState = { rA: null, rB: null };
+    return;
+  }
 
   const rA = RUNNERS.find(r => r.id === idA);
   const rB = RUNNERS.find(r => r.id === idB);
@@ -368,11 +405,328 @@ function buildDuel(rA, rB) {
       </td>
     </tr>
   `;
+
+  duelState = { rA, rB };
+  renderChart();
+}
+
+// ── Graphique du duel (Chart.js) ─────────────────────────────────────────────
+function chartCssVar(name, fallback) {
+  const v = getComputedStyle(document.body).getPropertyValue(name);
+  return (v && v.trim()) || fallback;
+}
+
+function isTime(v) { return v !== null && v !== undefined && v > 0; }
+
+function modeValue(sp, mode) {
+  if (!sp) return null;
+  const v = mode === 'abs' ? sp.abs_raw : sp.leg_raw;
+  return isTime(v) ? v : null;
+}
+
+function modeFmt(sp, mode) {
+  if (!sp) return '—';
+  return (mode === 'abs' ? sp.abs_fmt : sp.leg_fmt) || '—';
+}
+
+function deltaText(d) {
+  if (d === null || d === undefined) return '—';
+  const absd = Math.abs(d);
+  if (absd < TIE_TENTHS) return `= ${fmtDelta(absd)}`;
+  return d < 0 ? `◀ ${fmtDelta(absd)}` : `${fmtDelta(absd)} ▶`;
+}
+
+function fmtAxisTime(v) {
+  if (v === null || v === undefined) return '—';
+  if (v === 0) return '0:00';
+  return v < 0 ? '-' + fmtTenths(-v) : fmtTenths(v);
+}
+
+function renderChart() {
+  const { rA, rB } = duelState;
+  const canvas = document.getElementById('duelChart');
+  if (!canvas || !rA || !rB || typeof Chart === 'undefined') return;
+
+  const type = document.querySelector('input[name="chartType"]:checked')?.value ?? 'gap';
+  const mode = document.querySelector('input[name="timeMode"]:checked')?.value ?? 'leg';
+
+  const n = Math.max(rA.splits.length, rB.splits.length);
+  const labels = [];
+  for (let j = 0; j < n; j++) {
+    labels.push(rA.splits[j]?.ctrl_name ?? rB.splits[j]?.ctrl_name ?? `P${j + 1}`);
+  }
+
+  const gridColor  = chartCssVar('--co-border-soft', '#e8e8e8');
+  const labelColor = chartCssVar('--co-text-muted', '#6c757d');
+  const tickFont   = { family: "'Barlow Condensed', sans-serif", size: 11 };
+  const titleFont  = { family: "'Barlow', sans-serif", size: 12 };
+  const modeLabel  = mode === 'abs' ? 'cumulé' : 'tronçon';
+
+  const xCategory = {
+    ticks: { font: tickFont, color: labelColor, maxRotation: 55, minRotation: 0 },
+    grid:  { display: false },
+  };
+  const legendOpts = {
+    display: true,
+    labels: {
+      usePointStyle: true, color: labelColor,
+      font: { family: "'Barlow', sans-serif", size: 12 },
+    },
+  };
+  const titleCb = items => (items.length ? labels[items[0].dataIndex] : '');
+  const deltaFooter = getter => items => {
+    if (!items.length) return '';
+    const j = items[0].dataIndex;
+    const d = getter(j);
+    return d === null ? '' : deltaText(d);
+  };
+  const diffAt = (valsA, valsB, j) =>
+    (valsA[j] !== null && valsB[j] !== null) ? valsA[j] - valsB[j] : null;
+
+  let config = null;
+
+  if (type === 'delta') {
+    // ── Écarts par tronçon : barres divergentes verticales ─────────────────
+    const valsA = labels.map((_, j) => modeValue(rA.splits[j], mode));
+    const valsB = labels.map((_, j) => modeValue(rB.splits[j], mode));
+    const deltas = labels.map((_, j) => diffAt(valsA, valsB, j));
+    const barColors = deltas.map(d =>
+      d === null                  ? 'rgba(128,128,128,.15)'
+      : Math.abs(d) < TIE_TENTHS  ? COLOR_TIE
+      : d < 0                     ? COLOR_A
+      :                             COLOR_B);
+
+    config = {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: mode === 'abs' ? 'Écart cumulé' : 'Écart sur le tronçon',
+          data: deltas,
+          backgroundColor: barColors,
+          borderColor: barColors,
+          borderWidth: 1,
+          borderRadius: 3,
+          maxBarThickness: 34,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: titleCb,
+              label: ctx => {
+                const j = ctx.dataIndex;
+                return [
+                  `${rA.name} : ${modeFmt(rA.splits[j], mode)}`,
+                  `${rB.name} : ${modeFmt(rB.splits[j], mode)}`,
+                ];
+              },
+              footer: deltaFooter(j => deltas[j]),
+            },
+          },
+        },
+        scales: {
+          x: xCategory,
+          y: {
+            ticks: {
+              font: tickFont, color: labelColor,
+              callback: v => `${v < 0 ? '-' : v > 0 ? '+' : ''}${fmtDelta(v)}`,
+            },
+            grid: {
+              color: ctx => (ctx.tick.value === 0 ? labelColor : gridColor),
+            },
+            title: {
+              display: true,
+              text: `Écart ${modeLabel} (A − B : sous 0 = A plus rapide)`,
+              font: titleFont, color: labelColor,
+            },
+          },
+        },
+      },
+    };
+
+  } else if (type === 'bars') {
+    // ── Côte à côte : barres verticales groupées ───────────────────────────
+    const valsA = labels.map((_, j) => modeValue(rA.splits[j], mode));
+    const valsB = labels.map((_, j) => modeValue(rB.splits[j], mode));
+
+    config = {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: rA.name, data: valsA, backgroundColor: COLOR_A, borderColor: COLOR_A,
+            borderWidth: 1, borderRadius: 3, maxBarThickness: 26 },
+          { label: rB.name, data: valsB, backgroundColor: COLOR_B, borderColor: COLOR_B,
+            borderWidth: 1, borderRadius: 3, maxBarThickness: 26 },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: legendOpts,
+          tooltip: {
+            callbacks: {
+              title: titleCb,
+              label: ctx => `${ctx.dataset.label} : ${fmtAxisTime(ctx.parsed.y)}`,
+              footer: deltaFooter(j => diffAt(valsA, valsB, j)),
+            },
+          },
+        },
+        scales: {
+          x: xCategory,
+          y: {
+            beginAtZero: true,
+            ticks: { font: tickFont, color: labelColor, callback: v => fmtAxisTime(v) },
+            grid:  { color: gridColor },
+            title: { display: true, text: `Temps (${modeLabel})`, font: titleFont, color: labelColor },
+          },
+        },
+      },
+    };
+
+  } else if (type === 'gapcum') {
+    // ── Analyse cumulée : ligne d'écart courant A − B autour de 0 ────────
+    // Toujours en cumulé (indépendant du sélecteur Tronçon / Cumulé).
+    const valsA = labels.map((_, j) => modeValue(rA.splits[j], 'abs'));
+    const valsB = labels.map((_, j) => modeValue(rB.splits[j], 'abs'));
+    const gaps  = labels.map((_, j) => diffAt(valsA, valsB, j));
+    const gapColor = v =>
+      v === null ? 'transparent'
+      : Math.abs(v) < TIE_TENTHS ? COLOR_TIE
+      : v < 0 ? COLOR_A
+      : COLOR_B;
+
+    config = {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Écart cumulé (A − B)',
+          data: gaps,
+          borderColor: COLOR_TIE,   // trait visible par défaut
+          segment: {                // couleur par segment : côté du vainqueur
+            borderColor: ctx =>
+              gapColor(ctx?.p1?.parsed?.y ?? ctx?.p0?.parsed?.y ?? null),
+          },
+          pointBackgroundColor: ctx => gapColor(ctx.raw ?? null),
+          pointBorderColor:     ctx => gapColor(ctx.raw ?? null),
+          backgroundColor: 'rgba(128,128,128,.15)',
+          borderWidth: 2.5,
+          tension: 0,
+          spanGaps: false,
+          pointRadius: 3.5,
+          pointHoverRadius: 6,
+          fill: 'origin',
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: titleCb,
+              label: ctx => {
+                const j = ctx.dataIndex;
+                return [
+                  `${rA.name} : ${modeFmt(rA.splits[j], 'abs')}`,
+                  `${rB.name} : ${modeFmt(rB.splits[j], 'abs')}`,
+                ];
+              },
+              footer: deltaFooter(j => gaps[j]),
+            },
+          },
+        },
+        scales: {
+          x: xCategory,
+          y: {
+            ticks: {
+              font: tickFont, color: labelColor,
+              callback: v => `${v < 0 ? '-' : v > 0 ? '+' : ''}${fmtDelta(v)}`,
+            },
+            grid: {
+              color: ctx => (ctx.tick.value === 0 ? labelColor : gridColor),
+            },
+            title: {
+              display: true,
+              text: 'Écart cumulé (A − B : sous 0 = A en tête)',
+              font: titleFont, color: labelColor,
+            },
+          },
+        },
+      },
+    };
+
+  } else {
+    // ── Évolution : courbes cumulées/tronçon avec zone d'écart ─────────────
+    const valsA = labels.map((_, j) => modeValue(rA.splits[j], mode));
+    const valsB = labels.map((_, j) => modeValue(rB.splits[j], mode));
+
+    config = {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: rA.name, data: valsA,
+            borderColor: COLOR_A, backgroundColor: 'rgba(67,99,216,.10)',
+            borderWidth: 2, tension: .25, spanGaps: false,
+            pointRadius: 3, pointHoverRadius: 5, fill: false,
+          },
+          {
+            label: rB.name, data: valsB,
+            borderColor: COLOR_B, backgroundColor: 'rgba(224,120,64,.15)',
+            borderWidth: 2, tension: .25, spanGaps: false,
+            pointRadius: 3, pointHoverRadius: 5, fill: '-1',
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: legendOpts,
+          tooltip: {
+            callbacks: {
+              title: titleCb,
+              label: ctx => `${ctx.dataset.label} : ${fmtAxisTime(ctx.parsed.y)}`,
+              footer: deltaFooter(j => diffAt(valsA, valsB, j)),
+            },
+          },
+        },
+        scales: {
+          x: xCategory,
+          y: {
+            ticks: { font: tickFont, color: labelColor, callback: v => fmtAxisTime(v) },
+            grid:  { color: gridColor },
+            title: { display: true, text: `Temps (${modeLabel})`, font: titleFont, color: labelColor },
+          },
+        },
+      },
+    };
+  }
+
+  if (duelChart) { duelChart.destroy(); duelChart = null; }
+  duelChart = new Chart(canvas.getContext('2d'), config);
 }
 
 // ── Reload quand on change le mode leg/abs ───────────────────────────────────
 document.querySelectorAll('input[name="timeMode"]').forEach(r =>
   r.addEventListener('change', onSelectionChange)
+);
+
+// ── Reload du graphique quand on change le type de graphique ────────────────
+document.querySelectorAll('input[name="chartType"]').forEach(r =>
+  r.addEventListener('change', renderChart)
 );
 
 // ── Init ─────────────────────────────────────────────────────────────────────

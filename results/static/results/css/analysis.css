@@ -100,11 +100,15 @@
   .duel-total-time.tie  { color: rgba(255,255,255,.8); }
   .duel-total-delta { font-size: .85rem; color: rgba(255,255,255,.75); }
 
+  /* ── Zone graphique (Chart.js) ──────────────────────────────────────── */
+  .duel-chart-canvas { position: relative; height: 380px; }
+
   @media (max-width: 576px) {
     .duel-abs-time { display: none; }
     .duel-table tbody td { padding: .45rem .5rem; }
     .duel-th-ctrl { display: none; }
     .duel-cell-ctrl { display: none; }
+    .duel-chart-canvas { height: 280px; }
   }
 
 /* ══ Regroupement / heatmap ═══════════════════════════════════════════════ */
