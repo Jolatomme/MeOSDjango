@@ -42,7 +42,12 @@
          {% endif %}
       </div>
       {% if not no_data %}
-      <span class="badge bg-light text-dark fs-6">{{ n_runners }} participant{{ n_runners|pluralize }}</span>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="badge bg-light text-dark fs-6">{{ n_runners }} coureur{{ n_runners|pluralize }}</span>
+        {% if n_controls %}
+        <span class="badge bg-light text-dark fs-6">{{ n_controls }} poste{{ n_controls|pluralize }}</span>
+        {% endif %}
+      </div>
       {% endif %}
     </div>
   </div>

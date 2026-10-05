@@ -9,9 +9,11 @@
 
 {% block analysis_header_right %}
 {% if not no_data %}
-<div class="d-flex align-items-center gap-2">
-  <span class="badge bg-light text-dark fs-6">{{ n_finishers }} classé{{ n_finishers|pluralize }}</span>
-  <span class="badge bg-light text-dark fs-6">{{ n_legs }} tronçon{{ n_legs|pluralize }}</span>
+<div class="d-flex align-items-center gap-2 flex-wrap">
+  <span class="badge bg-light text-dark fs-6">{{ n_finishers }} coureur{{ n_finishers|pluralize }}</span>
+  {% if n_controls %}
+  <span class="badge bg-light text-dark fs-6">{{ n_controls }} poste{{ n_controls|pluralize }}</span>
+  {% endif %}
 </div>
 {% endif %}
 {% endblock %}

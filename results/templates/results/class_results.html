@@ -2,7 +2,7 @@
 {% load meos_tags %}
 {% load static %}
 {% block title %}
-  {% if course %}Circuit {{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
+  Résultats — {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
   — {{ competition.name }}
 {% endblock %}
 
@@ -15,27 +15,36 @@
         <li class="breadcrumb-item active">
           {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
         </li>
+        <li class="breadcrumb-item active" aria-current="page">Résultats</li>
       </ol>
     </nav>
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
         <h1>
           <i class="{% if course %}bi bi-signpost-2{% else %}bi bi-list-ol{% endif %} me-2 opacity-75"></i>
-          {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
+          Résultats
         </h1>
+        {# Sous-titre : nom du circuit ou de la catégorie — comme les analyses #}
         {% if course %}
           <div class="opacity-75 small mt-1">
-            {% if can_show_splits %}Circuit · {{ course.n_controls }} poste{{ course.n_controls|pluralize }} &bull; {% endif %}{{ course.classes|length }} catégorie{{ course.classes|length|pluralize }}
+            {{ course.display_name }} — {{ competition.name }}
+            <span class="ms-2 badge bg-secondary">{{ course.classes|length }} catégorie{{ course.classes|length|pluralize }}</span>
           </div>
+          {% include "results/_course_classes_badges_include.html" %}
+        {% else %}
+          <div class="opacity-75 small mt-1">{{ cls.name }} — {{ competition.name }}</div>
         {% endif %}
       </div>
-      <div class="d-flex gap-2 align-items-center flex-wrap">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
         {% if leader_time != '-' %}
           <span class="badge bg-warning text-dark fs-6 fw-bold">
             <i class="bi bi-stopwatch me-1"></i>Leader : {{ leader_time }}
           </span>
         {% endif %}
-        <span class="badge bg-light text-dark fs-6">{{ results|length }} partant{{ results|length|pluralize }}</span>
+        <span class="badge bg-light text-dark fs-6">{{ results|length }} coureur{{ results|length|pluralize }}</span>
+        {% if has_splits and can_show_splits %}
+          <span class="badge bg-light text-dark fs-6">{{ controls_seq|length }} poste{{ controls_seq|pluralize }}</span>
+        {% endif %}
       </div>
     </div>
   </div>

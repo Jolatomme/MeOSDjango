@@ -39,9 +39,11 @@
          {% endif %}
       </div>
       {% if not no_data %}
-      <div class="d-flex align-items-center gap-2">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
         <span class="badge bg-light text-dark fs-6">{{ n_runners }} coureur{{ n_runners|pluralize }}</span>
-        <span class="badge bg-light text-dark fs-6">{{ n_legs }} tronçon{{ n_legs|pluralize }}</span>
+        {% if n_controls %}
+        <span class="badge bg-light text-dark fs-6">{{ n_controls }} poste{{ n_controls|pluralize }}</span>
+        {% endif %}
       </div>
       {% endif %}
     </div>

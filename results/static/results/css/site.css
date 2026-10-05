@@ -265,6 +265,8 @@ table { font-variant-numeric: tabular-nums; }
   font-weight: 800; margin: 0;
   font-size: clamp(1.35rem, 1rem + 1.4vw, 1.75rem);
 }
+/* Pictogramme du titre : doré comme l'accent de l'en-tête (sinon hérite du #fff) */
+.co-page-header h1 > i { color: var(--co-gold); }
 .co-page-header .org-logo { height: 1.7rem; }
 .co-breadcrumb .breadcrumb-item a { color: rgba(255,255,255,.7); }
 .co-breadcrumb .breadcrumb-item a:hover { color: var(--co-gold); }

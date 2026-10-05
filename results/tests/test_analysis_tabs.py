@@ -266,3 +266,50 @@ class TestLibellesDuel:
         html = render_to_string(template, _page_ctx(course=_course(),
                                                      cls_name=HASH))
         assert 'Duel de coureurs' not in html, template
+
+
+# ─── Badges d'en-tête unifiés : « coureur(s) » et « poste(s) » ──────────────
+
+# Gabarits des onglets portant un compteur dans la ligne de badges d'en-tête
+HEADER_BADGE_TEMPLATES = [
+    'results/superman.html',
+    'results/performance.html',
+    'results/regularity.html',
+    'results/grouping.html',
+    'results/grouping_index.html',
+    'results/duel.html',
+    'results/recapitulatif.html',
+    'results/class_results.html',
+    'results/course_results.html',
+    'results/live_results.html',
+]
+
+# … dont ceux qui affichent aussi un badge « N coureur(s) »
+# (Live : horloges/statut à la place, pas de badge coureurs)
+RUNNER_BADGE_TEMPLATES = [t for t in HEADER_BADGE_TEMPLATES
+                          if t != 'results/live_results.html']
+
+
+@pytest.mark.parametrize('name', HEADER_BADGE_TEMPLATES)
+class TestBadgesEnTeteUnifies:
+
+    def test_compteur_en_postes(self, name):
+        """Le compteur d'en-tête dit « poste(s) » — jamais tronçon/contrôle/partant."""
+        text = (TEMPLATES_DIR / name).read_text(encoding='utf-8')
+        assert 'poste{{' in text, name
+        assert 'tronçon{{' not in text, name
+        assert 'contrôle{{' not in text, name
+        assert 'partant{{' not in text, name
+        assert 'participant{{' not in text, name
+
+
+@pytest.mark.parametrize('name', RUNNER_BADGE_TEMPLATES)
+class TestBadgeCoureursUnifie:
+
+    def test_badge_coureurs_uniforme(self, name):
+        """Libellé unique « coureur(s) » (plus « classé(s)/partant/participant »)."""
+        text = (TEMPLATES_DIR / name).read_text(encoding='utf-8')
+        assert 'coureur{{' in text, name
+        assert 'classé{{' not in text, name
+        assert 'partant{{' not in text, name
+        assert 'participant{{' not in text, name

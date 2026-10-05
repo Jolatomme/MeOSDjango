@@ -39,8 +39,10 @@
           <i class="bi bi-activity me-1"></i>σ catégorie : {{ category_regularity }}
         </span>
         {% endif %}
-        <span class="badge bg-light text-dark fs-6">{{ n_finishers }} classé{{ n_finishers|pluralize }}</span>
-        <span class="badge bg-light text-dark fs-6">{{ n_legs }} tronçon{{ n_legs|pluralize }}</span>
+        <span class="badge bg-light text-dark fs-6">{{ n_finishers }} coureur{{ n_finishers|pluralize }}</span>
+        {% if n_controls %}
+        <span class="badge bg-light text-dark fs-6">{{ n_controls }} poste{{ n_controls|pluralize }}</span>
+        {% endif %}
       </div>
       {% endif %}
     </div>

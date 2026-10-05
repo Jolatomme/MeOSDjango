@@ -818,6 +818,7 @@ def superman_analysis(request, cid, class_id):
         'superman_total': format_time(superman_total),
         'superman_leg_data': superman_leg_data,
         'controls_labels': controls_labels,
+        'n_controls': len(controls_seq),
         'no_data': False, 'n_finishers': len(finishers),
         'current_analysis': 'superman',
         'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
@@ -879,7 +880,8 @@ def performance_analysis(request, cid, class_id):
     return render(request, 'results/performance.html', {
         'competition': competition, 'cls': cls, 'course': course,
         'series_json': json.dumps(series), 'leg_info_json': json.dumps(leg_info),
-        'n_legs': n_legs, 'n_finishers': len(finishers),
+        'n_legs': n_legs, 'n_controls': len(controls_seq),
+        'n_finishers': len(finishers),
         'no_data': False, 'current_analysis': 'performance',
         'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
     })
@@ -929,7 +931,8 @@ def regularity_analysis(request, cid, class_id):
         'competition': competition, 'cls': cls, 'course': course,
         'series_json': json.dumps(series), 'leg_info_json': json.dumps(leg_info),
         'category_regularity': round(cat_reg, 4) if cat_reg is not None else None,
-        'n_legs': reg_data['n_legs'], 'n_finishers': len(finishers),
+        'n_legs': reg_data['n_legs'], 'n_controls': len(controls_seq),
+        'n_finishers': len(finishers),
         'no_data': False, 'current_analysis': 'regularity',
         'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
     })
@@ -1031,6 +1034,7 @@ def grouping_index_analysis(request, cid, class_id):
         'competition': competition, 'cls': cls, 'course': course,
         'results_json': json.dumps(raw), 'leg_labels_json': json.dumps(leg_labels),
         'n_runners': len(raw), 'n_legs': len(leg_labels),
+        'n_controls': len(controls_seq),
         't1': t1, 't2': t2, 'no_data': False, 'current_analysis': 'grouping_index',
         'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
     })
@@ -1080,6 +1084,7 @@ def duel_analysis(request, cid, class_id):
         'no_data': False, 'current_analysis': 'duel',
         'neg_time_warning': get_negative_time_stats(cid),
         'runners_json': json.dumps(runners_data), 'n_runners': len(runners_data),
+        'n_controls': len(controls_seq),
         'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
     })
 
