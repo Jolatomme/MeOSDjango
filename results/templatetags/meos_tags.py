@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from pathlib import Path
 
 from django import template
@@ -53,6 +54,22 @@ def display_name(name):
     if len(parts) == 2:
         return mark_safe(f"{parts[1]},<br>{parts[0]}")
     return name
+
+
+@register.filter(is_safe=True)
+def iso_date(value):
+    """Date au format ISO ``YYYY-MM-DD`` attendu par ``<input type="date">``.
+
+    Un objet ``date`` rendu brut dans un template est localisé (« 17 mai 2026 »
+    en français) : le navigateur ignore alors la valeur et affiche le champ
+    vide. Les chaînes (valeur déjà saisie, formulaire lié) passent telles
+    quelles ; ``None``/vide → ``''``.
+    """
+    if isinstance(value, datetime):        # datetime est une sous-classe de date
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    return value or ''
 
 
 @register.simple_tag

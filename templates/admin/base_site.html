@@ -1,0 +1,84 @@
+{% extends "admin/base.html" %}
+{% load i18n static meos_tags %}
+
+{# Titre du navigateur : identité du site (et non « Django site admin »). #}
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ SITE_NAME }}{% endblock %}
+
+{# admin/js/theme.js est retiré : le thème est piloté par la clé « co-theme »
+   partagée avec le site (voir results/js/admin-theme.js). dark_mode.css reste,
+   il fournit les variables propres à l'admin sous html[data-theme=…]. #}
+{% block dark-mode-vars %}
+  <link rel="stylesheet" href="{% static "admin/css/dark_mode.css" %}">
+{% endblock %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static "results/css/bootstrap-icons.min.css" %}">
+  <link rel="stylesheet" href="{% static "results/css/site.css" %}">
+  <link rel="stylesheet" href="{% static "results/css/admin.css" %}">
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <style>
+    /* Couleurs du club (settings/env) — consommées par les tokens site.css */
+    :root {
+      --co-green:      {{ CLUB_COLOR_PRIMARY }};
+      --co-green-dark: color-mix(in srgb, {{ CLUB_COLOR_PRIMARY }} 75%, black);
+      --co-gold:       {{ CLUB_COLOR_ACCENT }};
+    }
+  </style>
+  <script>
+    /* Thème partagé avec le site : appliqué avant le premier rendu. */
+    (function () {
+      try {
+        var t = localStorage.getItem('co-theme');
+        if (!t) {
+          t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <script src="{% static "results/js/admin-theme.js" %}" defer></script>
+{% endblock %}
+
+{% block branding %}
+  {% site_logo as club_logo %}
+  <div id="site-name">
+    <a href="{% url 'admin:index' %}" class="admin-brand">
+      {% if club_logo %}<img src="{{ club_logo }}" alt="" height="28">{% endif %}
+      <span>{{ SITE_NAME }}</span><span class="brand-accent">.</span>
+    </a>
+    <a class="admin-back-site" href="{% url 'results:home' %}">
+      <i class="bi bi-arrow-left-circle"></i>{% translate "Retour au site" %}
+    </a>
+  </div>
+  <button id="darkModeToggle" type="button"
+          aria-label="{% translate 'Toggle dark mode' %}"
+          title="{% translate 'Mode sombre / clair' %}">
+    <i class="bi bi-moon-stars-fill" id="darkModeIcon"></i>
+  </button>
+{% endblock %}
+
+{% block usertools %}
+  {% if has_permission %}
+  <div id="user-tools">
+    {% block welcome-msg %}
+      {% translate "Welcome," %} <strong>{% firstof user.get_short_name user.get_username %}</strong>.
+    {% endblock %}
+    {% block userlinks %}
+      <a href="{% url 'results:home' %}">{% translate "View site" %}</a>
+      {% if user.has_usable_password %}
+        / <a href="{% url 'admin:password_change' %}">{% translate "Change password" %}</a>
+      {% endif %}
+      <form id="logout-form" method="post" action="{% url 'admin:logout' %}">
+        {% csrf_token %}
+        <button type="submit">{% translate "Log out" %}</button>
+      </form>
+    {% endblock %}
+  </div>
+  {% endif %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

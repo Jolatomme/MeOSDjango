@@ -236,6 +236,16 @@ class TestRaceCreateView:
         mock_create.assert_not_called()
 
     @patch('results.race_views.create_race')
+    def test_post_invalide_conserve_date_saisie(self, mock_create):
+        """Formulaire lié : la date saisie reste dans le champ (iso_date)."""
+        from results.race_views import RaceCreateView
+        data = _valid_post(organizer='')
+        response = RaceCreateView.as_view()(rf().post('/creer-course/', data))
+        assert response.status_code == 200
+        assert 'value="2026-05-17"' in response.content.decode()
+        mock_create.assert_not_called()
+
+    @patch('results.race_views.create_race')
     def test_post_conflit_cid_rend_erreur(self, mock_create):
         mock_create.side_effect = IntegrityError('duplicate')
         from results.race_views import RaceCreateView
@@ -297,6 +307,10 @@ class TestRaceManageView:
         assert "Site web de l'organisateur" in content
         assert 'name="livelox"' in content
         assert 'https://livelox.example/42' in content   # valeur enregistrée
+        # Date ISO dans <input type="date"> (et non localisée : « 17 mai 2026 »,
+        # que le navigateur rejetterait → champ affiché vide)
+        assert 'value="2026-05-17"' in content
+        assert '17 mai 2026' not in content
         MockConfig.objects.filter.assert_called_once_with(
             manage_token='jeton-prive-abc'
         )

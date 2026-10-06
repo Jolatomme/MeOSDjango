@@ -7,7 +7,10 @@ les temps et statuts des concurrents.
 
 import pytest
 from django import template
+from django.conf import settings
 from django.test import override_settings
+
+from datetime import date, datetime
 
 from results.templatetags.meos_tags import (
     meos_time,
@@ -15,6 +18,7 @@ from results.templatetags.meos_tags import (
     status_label,
     time_behind,
     display_name,
+    iso_date,
     site_logo,
 )
 
@@ -271,6 +275,39 @@ class TestDisplayNameFilter:
 
     def test_espaces_superflus(self):
         assert display_name('  Luc Martin  ') == 'Martin,<br>Luc'
+
+
+class TestIsoDateFilter:
+    """Filter iso_date : valeur attendue par <input type="date"> (YYYY-MM-DD).
+
+    Un objet date rendu brut dans un template est localisé (« 17 mai 2026 »)
+    et le navigateur vide alors le champ.
+    """
+
+    def test_date_objet_vers_iso(self):
+        assert iso_date(date(2026, 5, 17)) == '2026-05-17'
+
+    def test_datetime_reduite_ala_date(self):
+        assert iso_date(datetime(2026, 5, 17, 14, 30)) == '2026-05-17'
+
+    def test_chaine_deja_iso_inchangee(self):
+        """Formulaire lié (valeur saisie) : la chaîne passe telle quelle."""
+        assert iso_date('2026-05-17') == '2026-05-17'
+
+    def test_none_et_vide_renvoient_vide(self):
+        assert iso_date(None) == ''
+        assert iso_date('') == ''
+
+    def test_rendu_template_non_localise(self):
+        """Rendu réel : la valeur reste ISO malgré LANGUAGE_CODE fr."""
+        tpl = template.Template('{% load meos_tags %}{{ d|iso_date }}')
+        out = tpl.render(template.Context({'d': date(2026, 5, 17)}))
+        assert out == '2026-05-17'
+        brut = template.Template('{{ d }}').render(
+            template.Context({'d': date(2026, 5, 17)})
+        )
+        if settings.USE_I18N:
+            assert brut != '2026-05-17'    # localisé sans le filter (bug d'origine)
 
 
 class TestSiteLogoTag:

@@ -1,0 +1,599 @@
+/* ─── Admin Django — habillage « look & feel du site » ────────────────────────
+   Chargé en dernier par templates/admin/base_site.html, après
+   admin/css/base.css + admin/css/dark_mode.css et après results/css/site.css
+   (polices Barlow, tokens --co-* et leurs variantes sombres).
+
+   1. Pont de variables : les variables internes de l'admin (en-tête, boutons,
+      messages, tableaux…) sont rebranchées sur les tokens du site. Le mode
+      sombre en découle automatiquement — site.css bascule les tokens sous
+      html[data-theme="dark"].
+   2. Mise en forme : bandeau, marque, cartes, tableaux, formulaires, boutons,
+      barre latérale, page de connexion.
+
+   Aucun Bootstrap ici : l'admin conserve sa structure, sa mise en page et ses
+   gabarits — seules les couleurs, polices et formes changent. */
+
+/* ══ 1. Pont de variables ═══════════════════════════════════════════════════
+   :root couvre le rendu initial, html[data-theme] (même spécificité que
+   dark_mode.css, mais chargé après) l'emporte sur la palette Django. */
+
+:root,
+html[data-theme] {
+  /* Marque */
+  --primary:             var(--co-green);
+  --secondary:           var(--co-forest);
+  --accent:              var(--co-gold);
+  --primary-fg:          #fff;
+
+  /* Textes et fonds */
+  --body-fg:             var(--co-text);
+  --body-bg:             var(--co-bg);
+  --body-quiet-color:    var(--co-text-muted);
+  --body-medium-color:   var(--co-text);
+  --body-loud-color:     var(--co-text);
+
+  /* Bandeau */
+  --header-color:        rgba(255, 255, 255, .9);
+  --header-branding-color: var(--co-gold);
+  --header-bg:           var(--co-forest);
+  --header-link-color:   #fff;
+
+  /* Fil d'Ariane (bandeau vert profond, texte clair dans les deux thèmes) */
+  --breadcrumbs-fg:      rgba(255, 255, 255, .85);
+  --breadcrumbs-link-fg: #fff;
+  --breadcrumbs-bg:      var(--co-forest);
+
+  /* Liens */
+  --link-fg:             var(--co-text-accent);
+  --link-hover-color:    var(--co-green);
+  --link-selected-fg:    var(--co-text-accent);
+
+  /* Traits */
+  --hairline-color:      var(--co-border);
+  --border-color:        var(--co-border);
+
+  /* États */
+  --error-fg:            var(--co-warn);
+  --message-success-bg:  var(--co-ok-bg);
+  --message-warning-bg:  var(--co-highlight-bg);
+  --message-error-bg:    var(--co-danger-soft);
+  --darkened-bg:         var(--co-surface-2);
+  --selected-bg:         var(--co-surface-2);
+  --selected-row:        var(--co-highlight-bg);
+
+  /* Boutons et objets associés */
+  --button-fg:           #fff;
+  --button-bg:           var(--co-green);
+  --button-hover-bg:     var(--co-green-dark);
+  --default-button-bg:   var(--co-green);
+  --default-button-hover-bg: var(--co-green-dark);
+  --close-button-bg:     var(--co-grey);
+  --close-button-hover-bg: #495057;
+  --delete-button-bg:    var(--co-warn);
+  --delete-button-hover-bg: #a71d2a;
+  --object-tools-fg:     #fff;
+  --object-tools-bg:     var(--co-grey);
+  --object-tools-hover-bg: var(--co-forest);
+
+  /* Polices */
+  --font-family-primary: var(--font-body);
+  --font-family-monospace: ui-monospace, "DejaVu Sans Mono", Menlo, monospace;
+}
+
+/* ══ 2. Typographie ═════════════════════════════════════════════════════════ */
+
+body {
+  font-family: var(--font-body);
+  font-size: .9rem;
+}
+
+#content h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: .01em;
+  color: var(--co-text-deep);
+}
+
+#content h2, #content h3 {
+  font-family: var(--font-display);
+}
+
+/* ══ 3. Bandeau, marque, utilisateur ════════════════════════════════════════ */
+
+#header {
+  background: var(--co-forest);
+  border-bottom: 3px solid var(--co-gold);
+  padding: .55rem 1.25rem;
+}
+
+#branding {
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+#site-name {
+  margin-inline-end: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.4rem;
+  letter-spacing: .03em;
+  line-height: 1.2;
+}
+
+#site-name a:link, #site-name a:visited {
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+#site-name a:focus, #site-name a:hover {
+  color: var(--co-gold);
+  text-decoration: none;
+}
+
+#site-name .brand-accent {
+  color: var(--co-gold);
+}
+
+#site-name img {
+  height: 28px;
+  width: auto;
+  background: #fff;
+  padding: .12rem .3rem;
+  border-radius: var(--co-radius-sm);
+}
+
+.admin-back-site:link, .admin-back-site:visited {
+  font-family: var(--font-body);
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, .65);
+}
+
+.admin-back-site:focus, .admin-back-site:hover {
+  color: var(--co-gold);
+  text-decoration: none;
+}
+
+.admin-back-site .bi {
+  margin-inline-end: .3rem;
+}
+
+#user-tools, #logout-form button {
+  color: rgba(255, 255, 255, .85);
+}
+
+#user-tools a, #logout-form button {
+  color: #fff;
+}
+
+#user-tools a:focus, #user-tools a:hover,
+#logout-form button:focus, #logout-form button:hover {
+  color: var(--co-gold);
+}
+
+/* ══ 4. Fil d'Ariane ════════════════════════════════════════════════════════ */
+
+.breadcrumbs {
+  background: var(--co-forest);
+  color: rgba(255, 255, 255, .85);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: .85rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: .5rem 1.25rem;
+  border-bottom: 1px solid rgba(0, 0, 0, .2);
+}
+
+.breadcrumbs a:link, .breadcrumbs a:visited {
+  color: #fff;
+}
+
+.breadcrumbs a:focus, .breadcrumbs a:hover {
+  color: var(--co-gold);
+}
+
+/* ══ 5. Messages et erreurs ═════════════════════════════════════════════════ */
+
+ul.messagelist li {
+  border-radius: var(--co-radius-sm);
+  font-weight: 500;
+  font-size: .875rem;
+  padding: .7rem 1rem .7rem 3.5rem;
+  margin-bottom: .75rem;
+  box-shadow: var(--co-shadow);
+}
+
+.errornote {
+  border-radius: var(--co-radius-sm);
+  border-left-width: 4px;
+  background-color: var(--co-surface);
+  font-size: .85rem;
+}
+
+/* ══ 6. Contenu et cartes ═══════════════════════════════════════════════════ */
+
+#content {
+  padding: 1.5rem 1.75rem;
+}
+
+/* Carte façon .co-card du site (mêmes tokens, mêmes rayons, même ombre). */
+.module {
+  background: var(--co-surface);
+  border: 1px solid var(--co-border);
+  border-radius: var(--co-radius-lg);
+  box-shadow: var(--co-shadow);
+  margin-bottom: 1.25rem;
+  padding: 0 0 .75rem;
+  overflow: hidden;
+}
+
+/* Le change-form : champs à même la carte, en-tête de fieldset à ras. */
+#content-main fieldset.module {
+  padding-bottom: .5rem;
+}
+
+/* Tableau des résultats : la carte englobe la barre d'outils et les filtres. */
+#changelist.module {
+  padding: 0 .75rem .75rem;
+}
+
+/* La barre latérale n'est pas une carte (fond du panneau déjà distinct). */
+#nav-sidebar .module {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin-bottom: .5rem;
+  padding: 0;
+}
+
+/* ══ 7. En-têtes de modules (façon .co-card-header) ═════════════════════════ */
+
+.module h2,
+.module caption,
+.inline-group h2 {
+  background: var(--co-green);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: .85rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: .7rem 1.25rem;
+  text-align: left;
+}
+
+#nav-sidebar .module caption,
+#nav-sidebar .module h2 {
+  background: transparent;
+  color: var(--co-text-muted);
+  font-size: .72rem;
+  padding: .5rem 1rem;
+}
+
+a.section:link, a.section:visited {
+  color: inherit;
+}
+
+/* ══ 8. Tableaux (mêmes règles que .results-table du site) ══════════════════ */
+
+#result_list thead th {
+  background: var(--co-forest);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: .78rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: .6rem .85rem;
+  border: none;
+}
+
+#result_list thead th a:link, #result_list thead th a:visited {
+  color: #fff;
+}
+
+#result_list thead th a:focus, #result_list thead th a:hover {
+  background: rgba(255, 255, 255, .08);
+  color: var(--co-gold);
+}
+
+#result_list thead th.sorted {
+  background: var(--co-green);
+}
+
+#result_list thead th .sortoptions a {
+  filter: brightness(0) invert(1);
+  opacity: .75;
+}
+
+#result_list thead th .sortoptions a:focus,
+#result_list thead th .sortoptions a:hover {
+  opacity: 1;
+}
+
+#result_list tbody tr {
+  border-bottom: 1px solid var(--co-border-soft);
+}
+
+#result_list tbody tr:hover td,
+#result_list tbody tr:hover th {
+  background: color-mix(in srgb, var(--co-green) 8%, var(--co-surface));
+}
+
+#result_list tbody td, #result_list tbody th {
+  padding: .5rem .85rem;
+  vertical-align: middle;
+}
+
+/* ══ 9. Barre d'outils, filtres, pagination, objets associés ════════════════ */
+
+#toolbar {
+  background: var(--co-surface-2);
+  border-color: var(--co-border);
+  border-radius: var(--co-radius-sm) var(--co-radius-sm) 0 0;
+}
+
+#changelist-filter {
+  background: var(--co-surface-2);
+  border-radius: var(--co-radius-sm);
+  padding-bottom: .75rem;
+}
+
+#changelist-filter h2 {
+  background: transparent;
+  color: var(--co-text-deep);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: .05em;
+}
+
+#changelist-filter details summary {
+  color: var(--co-text-deep);
+  font-weight: 600;
+}
+
+.object-tools a:link, .object-tools a:visited {
+  border-radius: var(--co-radius-sm);
+}
+
+.object-tools a:focus, .object-tools a:hover {
+  background: var(--co-green);
+}
+
+.paginator {
+  border-top: 1px solid var(--co-border);
+}
+
+.paginator a:link, .paginator a:visited {
+  border: 1px solid var(--co-border);
+  border-radius: var(--co-radius-sm);
+  padding: .15rem .5rem;
+}
+
+.paginator a:focus, .paginator a:hover {
+  background: var(--co-green);
+  border-color: var(--co-green);
+  color: #fff;
+}
+
+/* ══ 10. Formulaires ════════════════════════════════════════════════════════ */
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="hidden"]),
+textarea,
+select {
+  border: 1px solid var(--co-border);
+  border-radius: var(--co-radius-sm);
+  background: var(--co-surface);
+  color: var(--co-text);
+  box-shadow: none;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="hidden"]):focus,
+textarea:focus,
+select:focus {
+  border-color: var(--co-green);
+  box-shadow: 0 0 0 .22rem color-mix(in srgb, var(--co-green) 25%, transparent);
+  outline: none;
+}
+
+label {
+  color: var(--co-text-muted);
+}
+
+.required label, label.required {
+  color: var(--co-text);
+}
+
+.form-row {
+  border-bottom-color: var(--co-border-soft);
+}
+
+.help, p.help, div.help {
+  color: var(--co-text-muted);
+}
+
+.readonly {
+  background: var(--co-surface-2);
+  border-radius: var(--co-radius-sm);
+  padding: .35rem .6rem;
+}
+
+fieldset .fieldset-heading,
+fieldset .inline-heading {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  font-size: .8rem;
+}
+
+/* ══ 11. Boutons ════════════════════════════════════════════════════════════ */
+
+.button, input[type="submit"], input[type="button"], .submit-row input, a.button {
+  border-radius: var(--co-radius-sm);
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+
+.submit-row {
+  background: var(--co-surface-3);
+  border-color: var(--co-border);
+  border-radius: var(--co-radius-md);
+  padding: .8rem 1rem;
+}
+
+.submit-row input, .submit-row a {
+  transition: background .15s;
+}
+
+.submit-row input:hover, .submit-row a:hover {
+  filter: brightness(1.08);
+}
+
+.deletelink, .submit-row input[type="submit"].deletelink {
+  background: var(--co-warn);
+}
+
+/* Bouton « Supprimer les données MOP » (change_form CompetitionConfig). */
+.submit-row .co-danger-btn {
+  background: var(--co-warn);
+  color: #fff;
+}
+
+.submit-row .co-danger-btn:hover {
+  background: #a71d2a;
+}
+
+/* ══ 12. Barre latérale de navigation ═══════════════════════════════════════ */
+
+.toggle-nav-sidebar {
+  background-color: var(--co-surface);
+  border-right-color: var(--co-border);
+  color: var(--co-text-accent);
+}
+
+.toggle-nav-sidebar:hover,
+.toggle-nav-sidebar:focus {
+  background-color: var(--co-surface-2);
+  color: var(--co-green);
+}
+
+#nav-sidebar {
+  background-color: var(--co-surface);
+  border-right-color: var(--co-border);
+}
+
+#nav-sidebar .current-model {
+  background: var(--co-highlight-bg);
+}
+
+/* --header-color sert le bandeau (texte clair sur fond vert profond) : hors
+   bandeau, la course active doit rester lisible sur le panneau clair. */
+#nav-sidebar .current-app .section:link,
+#nav-sidebar .current-app .section:visited {
+  color: var(--co-text-deep);
+}
+
+#nav-filter {
+  background-color: var(--co-surface-2);
+  border-color: var(--co-border);
+  color: var(--co-text);
+  border-radius: var(--co-radius-sm);
+}
+
+#nav-filter:focus {
+  border-color: var(--co-green);
+}
+
+/* ══ 13. Page de connexion ══════════════════════════════════════════════════ */
+
+body.login {
+  background: var(--co-bg);
+}
+
+.login #header {
+  background: var(--co-forest);
+  border-bottom: 3px solid var(--co-gold);
+  padding: .75rem 1.25rem;
+}
+
+.login #container {
+  background: var(--co-surface);
+  border: 1px solid var(--co-border);
+  border-radius: var(--co-radius-lg);
+  box-shadow: var(--co-shadow);
+  margin: 4rem auto;
+}
+
+.login #content {
+  padding: 1.75rem;
+}
+
+.login .submit-row {
+  background: transparent;
+  border: none;
+  padding-top: 1.25rem;
+}
+
+.login .submit-row input {
+  background: var(--co-green);
+  color: #fff;
+  font-weight: 600;
+  padding: .6rem 1.6rem;
+  width: 100%;
+}
+
+.login .submit-row input:hover {
+  background: var(--co-green-dark);
+}
+
+/* ══ 14. Pied de page et divers ═════════════════════════════════════════════ */
+
+/* site.css habille le <footer> du site : l'admin n'en a pas (à vide, masqué). */
+footer {
+  background: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+footer:empty {
+  display: none;
+}
+
+body.popup #content {
+  padding: 1rem;
+}
+
+/* ══ 15. Mode sombre ════════════════════════════════════════════════════════
+   La palette suit les tokens --co-* (site.css). Ne restent que les couleurs
+   figées par l'admin lui-même. */
+
+html[data-theme="dark"] #site-name img {
+  background: var(--co-surface);
+}
+
+html[data-theme="dark"] #result_list tbody tr:hover td,
+html[data-theme="dark"] #result_list tbody tr:hover th {
+  background: color-mix(in srgb, var(--co-green) 22%, var(--co-surface));
+}
+
+html[data-theme="dark"] .button,
+html[data-theme="dark"] input[type="submit"],
+html[data-theme="dark"] .submit-row input {
+  color: #fff;
+}
+
+html[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="hidden"]),
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select {
+  color-scheme: dark;
+}

@@ -1,4 +1,5 @@
 {% extends "results/base.html" %}
+{% load meos_tags %}
 {% block title %}Gestion — {{ competition.name|default:'course' }} — {{ SITE_NAME }}{% endblock %}
 
 {% block extra_head %}
@@ -177,7 +178,7 @@
           </label>
           <input type="date" class="form-control{% if form.date.errors %} is-invalid{% endif %}"
                  id="{{ form.date.id_for_label }}" name="{{ form.date.html_name }}"
-                 value="{{ form.date.value|default:'' }}" required>
+                 value="{{ form.date.value|iso_date|default:'' }}" required>
           {% for error in form.date.errors %}
             <div class="invalid-feedback">{{ error }}</div>
           {% endfor %}

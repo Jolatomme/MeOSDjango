@@ -40,6 +40,11 @@ npx jest test_site_js.test.js
   - Supports `Content-Encoding: gzip` decompression
   - Verifies `Content-Digest` header (SHA-256/512, MD5)
   - Optional auth via custom header (`OCHECKLIST_HEADER_KEY` / `OCHECKLIST_HEADER_VALUE`)
+- **Django admin** — habillé de la charte du site (« skin », structure admin conservée) :
+  - `templates/admin/base_site.html` (dossier `TEMPLATES['DIRS']`, seul endroit prioritaire sur `django.contrib.admin`, 1er dans `INSTALLED_APPS`) : marque (logo club + `SITE_NAME`), lien « Retour au site », chargement de `site.css` + `admin.css` + `admin-theme.js`, retrait de `admin/js/theme.js`
+  - `results/static/results/css/admin.css` : pont des variables de l'admin (`--primary`, `--header-bg`, `--button-bg`, messages, tableaux…) vers les tokens `--co-*` de `site.css` — polices, couleurs, cartes et mode sombre suivent automatiquement
+  - `results/static/results/js/admin-theme.js` : thème sombre **partagé avec le site** (clé `co-theme` de `localStorage`) ; le bouton natif `.theme-toggle` conservé sur les pages de mot de passe est branché sur la même clé
+  - Tests : `results/tests/test_admin_skin.py` (rendu de `/admin/login/` sans DB)
 
 ## Testing
 
@@ -65,6 +70,13 @@ MeOSDjango/
 ├── org_logo/                          # Logos d'organisateur (créé à la volée, ignoré par git)
 │   │                                  #   logo-<hex>.svg|png|jpg = badges page d'accueil (colonne mopCompetition.logo)
 │   │                                  #   site.svg|png|jpg|jpeg  = logo barre de nav / héros (tag {% site_logo %})
+│
+├── templates/                         # Templates du projet — TEMPLATES['DIRS'] (prioritaires sur
+│   │                                  #   django.contrib.admin, 1er dans INSTALLED_APPS : une
+│   │                                  #   surcharge posée dans results/templates/ serait ignorée)
+│   └── admin/
+│       └── base_site.html             # Admin habillé de la charte du site (site.css + admin.css,
+│                                      #   thème sombre partagé via la clé « co-theme »)
 │
 ├── MeOSDjango/                        # Configuration Django
 │   ├── __init__.py
@@ -94,8 +106,10 @@ MeOSDjango/
 │   ├── templatetags/
 │   │   ├── __init__.py
 │   │   └── meos_tags.py               # Custom template filters/tags
-│   ├── static/results/                # CSS, JS (site.js, results-splits.js…), images, fonts
+│   ├── static/results/                # CSS (site.css, dark.css, admin.css…), JS (site.js,
+│   │                                  # admin-theme.js, results-splits.js…), images, fonts
 │   ├── templates/results/             # Django templates
+│   ├── templates/admin/results/       # Surcharge change_form CompetitionConfig (bouton MOP)
 │   ├── migrations/                    # 0001–0006 (mop* historiques + modèles Django-managed)
 │   └── tests/                         # Suite pytest (DB mockée) + test_site_js.test.js (jest)
 │       ├── conftest.py
