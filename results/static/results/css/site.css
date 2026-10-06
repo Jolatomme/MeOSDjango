@@ -306,8 +306,25 @@ html[data-theme="dark"] .org-logo { border-color: rgba(0, 0, 0, .25); }
    les liens internes (site de l'organisateur, horaire) passent au-dessus */
 .co-card-linked { position: relative; }
 .co-card-linked a:not(.stretched-link) { position: relative; z-index: 2; }
-.org-site-link { color: inherit; text-decoration: none; }
-.org-site-link:hover { text-decoration: underline; }
+
+/* Lien « site de l'organisateur » : souligné en permanence + icône ↗
+   (nouvel onglet) pour qu'il ne passe pas pour du texte brut */
+.org-site-link {
+  color: var(--co-text-accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+.org-site-link:hover { text-decoration-thickness: 2px; }
+.org-site-link:focus-visible { outline: 2px solid var(--co-gold); outline-offset: 2px; }
+.org-site-link .bi-box-arrow-up-right { font-size: .85em; opacity: .75; }
+.org-site-link:hover .bi-box-arrow-up-right { opacity: 1; }
+
+/* Sur le bandeau vert (page compétition) le texte est blanc :
+   survol doré, comme les fil d'Ariane */
+.co-page-header .org-site-link { color: #fff; text-decoration-color: rgba(255, 255, 255, .6); }
+.co-page-header .org-site-link:hover { color: var(--co-gold); text-decoration-color: var(--co-gold); }
 
 /* ─── Results table ─────────────────────────────────────────────────────────── */
 

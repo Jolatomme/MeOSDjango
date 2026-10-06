@@ -89,7 +89,7 @@
           <div class="p-3">
             {% if comp.organizer %}
               <div class="mb-1 text-muted small">
-                <i class="bi bi-building me-1"></i>{% if comp.homepage %}<a href="{{ comp.homepage }}" target="_blank" rel="noopener" class="org-site-link">{{ comp.organizer }}</a>{% else %}{{ comp.organizer }}{% endif %}
+                <i class="bi bi-building me-1"></i>{% if comp.homepage %}<a href="{{ comp.homepage }}" target="_blank" rel="noopener" class="org-site-link" title="Site de l'organisateur — nouvel onglet">{{ comp.organizer }}<i class="bi bi-box-arrow-up-right ms-1" aria-hidden="true"></i></a>{% else %}{{ comp.organizer }}{% endif %}
               </div>
             {% endif %}
             <div class="d-flex gap-2 flex-wrap mt-2">

@@ -512,6 +512,13 @@ class TestHomeOrganizerSiteLink:
         assert 'rel="noopener"' in block
         assert 'org-site-link' in block
         assert 'COCS' in block
+        # signal visuel : souligné (CSS) + icône ↗ de lien externe + infobulle
+        assert 'title="Site de l\'organisateur — nouvel onglet"' in block
+        assert 'bi-box-arrow-up-right' in block
+
+    def test_icone_lien_externe_absente_sans_site(self):
+        html = self._render([self._comp('COCS', '')])
+        assert 'bi-box-arrow-up-right' not in html
 
     def test_nom_de_lorganisateur_sans_site_na_pas_de_lien(self):
         html = self._render([self._comp('COCS', '')])
@@ -2704,7 +2711,7 @@ class TestCompetitionDetailBanner:
     def _header(html):
         """Bloc d'en-tête (base.html contient aussi un bi-compass en pied de page)."""
         start = html.index('co-page-header')
-        return html[start:start + 900]
+        return html[start:start + 1400]
 
     def test_logo_affiche_dans_la_banniere(self):
         header = self._header(self._render('logo-abc123def456.png'))
@@ -2729,7 +2736,10 @@ class TestCompetitionDetailBanner:
         )
         assert (
             '<a href="https://club.example.org" target="_blank" '
-            'rel="noopener" class="org-site-link">COCS 7309AURA</a>'
+            'rel="noopener" class="org-site-link" '
+            'title="Site de l\'organisateur — nouvel onglet">'
+            'COCS 7309AURA'
+            '<i class="bi bi-box-arrow-up-right ms-1" aria-hidden="true"></i></a>'
         ) in header
 
     def test_organisateur_sans_homepage_pas_de_lien(self):

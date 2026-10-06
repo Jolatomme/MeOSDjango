@@ -23,7 +23,7 @@
         {% if competition.date %}
           <div class="mt-1 opacity-75 small">
             <i class="bi bi-calendar me-1"></i>{{ competition.date|date:"l d F Y" }}
-            {% if competition.organizer %} &bull; <i class="bi bi-building me-1"></i>{% if competition.homepage %}<a href="{{ competition.homepage }}" target="_blank" rel="noopener" class="org-site-link">{{ competition.organizer }}</a>{% else %}{{ competition.organizer }}{% endif %}{% endif %}
+            {% if competition.organizer %} &bull; <i class="bi bi-building me-1"></i>{% if competition.homepage %}<a href="{{ competition.homepage }}" target="_blank" rel="noopener" class="org-site-link" title="Site de l'organisateur — nouvel onglet">{{ competition.organizer }}<i class="bi bi-box-arrow-up-right ms-1" aria-hidden="true"></i></a>{% else %}{{ competition.organizer }}{% endif %}{% endif %}
           </div>
         {% endif %}
       </div>
