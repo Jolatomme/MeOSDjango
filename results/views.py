@@ -24,7 +24,7 @@ from .models import (
 from .services import (
     get_org_map, get_class_controls, get_controls_by_leg,
     get_radio_map, compute_splits, build_finish_split,
-    get_negative_time_stats,
+    get_negative_time_stats, _neg_banner, _suspect_box_controls,
     attested_ctrls, detect_prestart_ctrls,
     mark_best_splits, rank_splits,
     rank_finishers, build_rank_map,
@@ -423,10 +423,11 @@ def api_class_results(request, cid, class_id):
 def _live_neg_time_warning(cid):
     """Bandeau « Temps négatif » pour l'affichage live.
 
-    Identique à ``get_negative_time_stats`` mais expurge les coureurs en
+    Appelle ``get_negative_time_stats`` puis purges les coureurs en
     validation GEC (``prel=True`` : puce pas encore lue) — leurs poinçons
     sont incomplets, la détection y est sans objet en live. Helper
     strictement live : n'altère pas le diagnostic des pages d'analyse.
+    Le message vient du helper partagé ``_neg_banner`` (msgid i18n unique).
     """
     warning = get_negative_time_stats(cid)
     if not warning:
@@ -437,45 +438,10 @@ def _live_neg_time_warning(cid):
     runners = [r for r in warning['runners'] if r['id'] not in valid_gec_ids]
     if not runners:
         return None
-    ctrl_counts = Counter(c for r in runners for c in r['controls'])
-    box_controls = {
-        name: n
-        for name, n in sorted(ctrl_counts.items(), key=lambda kv: (-kv[1], kv[0]))
-        if n >= 2
-    }
+    box_controls = _suspect_box_controls(
+        Counter(c for r in runners for c in r['controls']))
     count = len(runners)
-    if box_controls:
-        kind = 'multiple'
-        box_names = ', '.join(box_controls)
-        postes = (gettext("au poste %(ctrls)s") % {"ctrls": box_names}
-                  if len(box_controls) == 1
-                  else gettext("aux postes %(ctrls)s") % {"ctrls": box_names})
-        message = ngettext(
-            "%(n)s coureur a des temps négatifs %(postes)s : "
-            "probable boîtier mal synchronisé.",
-            "%(n)s coureurs ont des temps négatifs %(postes)s : "
-            "probable boîtier mal synchronisé.",
-            count,
-        ) % {"n": count, "postes": postes}
-        tooltip = gettext("Temps négatif : boîtier probablement mal synchronisé")
-    elif count == 1:
-        kind = 'single'
-        message = gettext(
-            "1 coureur a un temps négatif : probable carte SI non effacée "
-            "(problème d'effacement de doigts)."
-        )
-        tooltip = gettext("Temps négatif : carte SI probablement non effacée")
-    else:
-        kind = 'single'
-        message = ngettext(
-            "%(n)s coureur a des temps négatifs sur des postes différents : "
-            "probables cartes SI non effacées (effacement de doigts).",
-            "%(n)s coureurs ont des temps négatifs sur des postes différents : "
-            "probables cartes SI non effacées (effacement de doigts).",
-            count,
-        ) % {"n": count}
-        tooltip = gettext("Temps négatifs sur des postes différents : "
-                          "cartes SI probablement non effacées")
+    kind, message, tooltip = _neg_banner(count, box_controls)
     return {
         'count': count, 'kind': kind, 'message': message, 'tooltip': tooltip,
         'box_controls': box_controls, 'runners': runners,

@@ -513,6 +513,65 @@ def build_finish_split(rt, last_abs, *, leg_full_race_if_missing=True):
     }
 
 
+def _suspect_box_controls(ctrl_counts):
+    """Postes suspects du bandeau « temps négatif ».
+
+    ``{poste: nb coureurs}`` pour les postes où ≥ 2 coureurs ont un temps
+    négatif, triés par nombre décroissant puis alphabétiquement.
+    """
+    return {
+        name: n
+        for name, n in sorted(ctrl_counts.items(), key=lambda kv: (-kv[1], kv[0]))
+        if n >= 2
+    }
+
+
+def _neg_banner(count, box_controls):
+    """Message / tooltip / kind du bandeau « temps négatif ».
+
+    Source unique des msgids i18n partagés par ``get_negative_time_stats``
+    (pages d'analyse) et par le bandeau live — ne pas dupliquer ailleurs.
+
+    Returns: ``(kind, message, tooltip)`` — ``kind`` vaut ``'multiple'``
+    (boîtier mal synchronisé, ≥ 2 coureurs au même poste) ou ``'single'``
+    (carte SI non effacée).
+    """
+    if box_controls:
+        kind      = 'multiple'
+        box_names = ', '.join(box_controls)
+        if len(box_controls) == 1:
+            postes = gettext("au poste %(ctrls)s") % {"ctrls": box_names}
+        else:
+            postes = gettext("aux postes %(ctrls)s") % {"ctrls": box_names}
+        message = ngettext(
+            "%(n)s coureur a des temps négatifs %(postes)s : "
+            "probable boîtier mal synchronisé.",
+            "%(n)s coureurs ont des temps négatifs %(postes)s : "
+            "probable boîtier mal synchronisé.",
+            count,
+        ) % {"n": count, "postes": postes}
+        tooltip = gettext("Temps négatif : boîtier probablement mal synchronisé")
+    elif count == 1:
+        kind = 'single'
+        message = gettext(
+            "1 coureur a un temps négatif : probable carte SI non effacée "
+            "(problème d'effacement de doigts)."
+        )
+        tooltip = gettext("Temps négatif : carte SI probablement non effacée")
+    else:
+        kind = 'single'
+        message = ngettext(
+            "%(n)s coureur a des temps négatifs sur des postes différents : "
+            "probables cartes SI non effacées (effacement de doigts).",
+            "%(n)s coureurs ont des temps négatifs sur des postes différents : "
+            "probables cartes SI non effacées (effacement de doigts).",
+            count,
+        ) % {"n": count}
+        tooltip = gettext("Temps négatifs sur des postes différents : "
+                          "cartes SI probablement non effacées")
+    return kind, message, tooltip
+
+
 def get_negative_time_stats(cid):
     """Compte les coureurs de la compétition ayant au moins un temps négatif.
 
@@ -584,45 +643,8 @@ def get_negative_time_stats(cid):
     count = len(affected)
 
     # Boîtiers suspectés : postes où plusieurs coureurs ont un temps négatif
-    box_controls = {
-        name: n
-        for name, n in sorted(ctrl_counts.items(), key=lambda kv: (-kv[1], kv[0]))
-        if n >= 2
-    }
-
-    if box_controls:
-        kind     = 'multiple'
-        box_names = ', '.join(box_controls)
-        if len(box_controls) == 1:
-            postes = gettext("au poste %(ctrls)s") % {"ctrls": box_names}
-        else:
-            postes = gettext("aux postes %(ctrls)s") % {"ctrls": box_names}
-        message = ngettext(
-            "%(n)s coureur a des temps négatifs %(postes)s : "
-            "probable boîtier mal synchronisé.",
-            "%(n)s coureurs ont des temps négatifs %(postes)s : "
-            "probable boîtier mal synchronisé.",
-            count,
-        ) % {"n": count, "postes": postes}
-        tooltip = gettext("Temps négatif : boîtier probablement mal synchronisé")
-    elif count == 1:
-        kind = 'single'
-        message = gettext(
-            "1 coureur a un temps négatif : probable carte SI non effacée "
-            "(problème d'effacement de doigts)."
-        )
-        tooltip = gettext("Temps négatif : carte SI probablement non effacée")
-    else:
-        kind = 'single'
-        message = ngettext(
-            "%(n)s coureur a des temps négatifs sur des postes différents : "
-            "probables cartes SI non effacées (effacement de doigts).",
-            "%(n)s coureurs ont des temps négatifs sur des postes différents : "
-            "probables cartes SI non effacées (effacement de doigts).",
-            count,
-        ) % {"n": count}
-        tooltip = gettext("Temps négatifs sur des postes différents : "
-                    "cartes SI probablement non effacées")
+    box_controls = _suspect_box_controls(ctrl_counts)
+    kind, message, tooltip = _neg_banner(count, box_controls)
 
     runners = sorted(
         ({'id': cid_, **info} for cid_, info in affected.items()),
