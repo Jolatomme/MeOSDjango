@@ -14,9 +14,11 @@ from .models import (
 )
 
 import logging
+import hashlib
+import math
 import re
 import secrets
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import date, datetime
 from functools import cmp_to_key
 from pathlib import Path
@@ -751,7 +753,6 @@ def build_leg_matrix(finishers, controls_seq, radio_map):
 
 
 def compute_leg_refs(leg_matrix, n_legs, top_fraction=0.25):
-    import math
     leg_refs = []
     for j in range(n_legs):
         times = sorted(
@@ -923,7 +924,6 @@ def compute_grouping_index(runners, controls_seq, radio_map, t1_sec=7, t2_sec=20
 # ─── Régularité ───────────────────────────────────────────────────────────────
 
 def compute_regularity_analysis(finishers, controls_seq, radio_map, top_fraction=0.25):
-    import math
     if not finishers:
         return {'runner_regularity': [], 'leg_stds': [], 'leg_refs': [],
                 'category_regularity': None, 'n_legs': 0}
@@ -978,7 +978,6 @@ def compute_course_hash(controls_seq):
 
     Retourne '00000000' pour une séquence vide.
     """
-    import hashlib
     if not controls_seq:
         return '00000000'
     key = ','.join(str(c['ctrl_id']) for c in controls_seq)
@@ -1005,8 +1004,6 @@ def get_courses_map(cid, relay_class_ids=None, class_totals=None):
     -------
     dict { hash_8chars: course_dict }
     """
-    from collections import defaultdict
-
     if relay_class_ids is None:
         relay_class_ids = set()
     if class_totals is None:

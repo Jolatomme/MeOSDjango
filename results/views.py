@@ -1,3 +1,4 @@
+import csv
 import hashlib
 import json
 import re
@@ -706,10 +707,9 @@ def api_live_results(request, cid, class_id):
     comp_date = None
     try:
         # payload contient déjà competition_date
-        from datetime import date as _date
         cd_str = payload.get('competition_date')
         if cd_str:
-            comp_date = _date.fromisoformat(cd_str)
+            comp_date = date.fromisoformat(cd_str)
     except Exception:
         comp_date = None
     data = dict(payload)
@@ -1235,8 +1235,6 @@ def recapitulatif_csv(request, cid, class_id):
     Two-row format per competitor: leg times on the first row,
     cumulative times on the second. Redirects to relay_results for relays.
     """
-    import csv
-
     context = _load_class_context(cid, class_id)
     competition, cls, _competitors, course = context
     if _is_relay(cid, cls, course):
