@@ -276,6 +276,23 @@ class TestDisplayNameFilter:
     def test_espaces_superflus(self):
         assert display_name('  Luc Martin  ') == 'Martin,<br>Luc'
 
+    def test_chaine_html_deux_parties_echappee(self):
+        """Le HTML d'un nom importé (XML MeOS) ne doit jamais passer tel quel."""
+        from django.utils.safestring import SafeString
+        result = display_name('<script>alert(1)</script> Martin')
+        assert result == 'Martin,<br>&lt;script&gt;alert(1)&lt;/script&gt;'
+        assert isinstance(result, SafeString)
+
+    def test_chaine_html_nom_seul_echappee(self):
+        """Branche monogramme aussi échappée (is_safe → Django n'échappe pas)."""
+        result = display_name('<script>alert(1)</script>')
+        assert result == '&lt;script&gt;alert(1)&lt;/script&gt;'
+
+    def test_seul_le_br_du_filtre_est_du_html(self):
+        """Le <br> inséré par le filtre reste interprété, le reste est échappé."""
+        result = display_name('Luc <b>Martin</b>')
+        assert result == '&lt;b&gt;Martin&lt;/b&gt;,<br>Luc'
+
 
 class TestIsoDateFilter:
     """Filter iso_date : valeur attendue par <input type="date"> (YYYY-MM-DD).

@@ -4,6 +4,7 @@ from pathlib import Path
 from django import template
 from django.conf import settings
 from django.urls import reverse
+from django.utils.html import escape
 from django.utils.safestring import mark_safe
 from django.utils.translation import pgettext
 from results.models import format_time, STATUS_LABELS
@@ -50,11 +51,17 @@ def status_label(stat_code):
 
 @register.filter(is_safe=True)
 def display_name(name):
-    """Format 'Firstname Lastname' as 'Lastname,<br>Firstname'."""
+    """Format 'Firstname Lastname' as 'Lastname,<br>Firstname'.
+
+    Les noms proviennent d'un import MeOS (XML) : chaque partie est
+    échappée avant le ``<br>`` — le filtre est ``is_safe`` (Django
+    n'échappe pas sa sortie) et ``mark_safe`` ne doit porter que du HTML
+    lui-même construit ici.
+    """
     parts = name.strip().split(None, 1)
     if len(parts) == 2:
-        return mark_safe(f"{parts[1]},<br>{parts[0]}")
-    return name
+        return mark_safe(f"{escape(parts[1])},<br>{escape(parts[0])}")
+    return mark_safe(escape(name))
 
 
 @register.filter(is_safe=True)
