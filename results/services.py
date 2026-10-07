@@ -648,10 +648,16 @@ def mark_best_splits(finishers, all_results):
 
 
 def build_rank_map(sorted_times):
+    """Rangs olympiques : ex-æquo → même rang, suivant = rang + nb d'ex æquo.
+
+    ``sorted_times`` est une liste ``(temps, id)`` triée croissante ; le rang
+    d'un temps est l'index de sa première occurrence (+1). Un seul passage
+    (l'ancienne implémentation ressuyait la liste à chaque entrée, O(n²)).
+    """
+    first_index = {}
     rank_map = {}
     for i, (t, cid) in enumerate(sorted_times):
-        rank = next(j + 1 for j, (tt, _) in enumerate(sorted_times) if tt == t)
-        rank_map[cid] = rank
+        rank_map[cid] = first_index.setdefault(t, i + 1)
     return rank_map
 
 
