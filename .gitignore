@@ -1,8 +1,11 @@
 # Do not manage Database credentials
 # Sensitive logging information not to be disclosed.
+#   dev_settings.py        → valeurs RÉELLES (local + serveur), jamais versionné
+#                            (template versionné : dev_settings.example.py)
+#   .env                   → différences local/prod (DEBUG, ALLOWED_HOSTS…)
 MeOSDjango/dev_settings.py
 dev_settings.py
-MeOSDjango/settings.py
+.env
 
 # Byte-compiled / optimized / DLL files
 **/__pycache__/

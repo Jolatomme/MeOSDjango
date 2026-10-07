@@ -60,9 +60,12 @@ python manage.py compilemessages                  # *.mo ignored by git — requ
 
 ## Config
 
-- `MeOSDjango/settings.py` imports `MeOSDjango/dev_settings.py` (try/except) — local dev config, DB credentials included
-- Production: do NOT commit `dev_settings.py` with credentials; override settings via environment variables instead
-- Configurable via env vars: `MOP_PASSWORD`, `SITE_NAME`, `SITE_SUBTITLE`, `SITE_LOGO_URL`, `CLUB_NAME`, `CLUB_COLOR_PRIMARY`, `CLUB_COLOR_ACCENT`, `PUBLIC_SITE_URL`, `ENABLE_RACE_CREATION`, `OCHECKLIST_HEADER_KEY`, `OCHECKLIST_HEADER_VALUE`
+- `MeOSDjango/settings.py` (**tracked**) imports `MeOSDjango/dev_settings.py` (try/except) — real local/server values (DB credentials, keys)
+- `dev_settings.py` is **untracked/gitignored**: copy `MeOSDjango/dev_settings.example.py` (generic template) and fill in real values
+- `settings.py` reads `.env` at the project root when present (gitignored, built-in `KEY=value` parser, no dependency); a variable actually set in the process environment always wins over `.env`
+- Production differences live in the server-side `.env` (never deployed by git — create it manually **before** restarting): `DEBUG=0`, `ALLOWED_HOSTS=domain.tld`, `PUBLIC_SITE_URL=…` — local: no `.env` → `DEBUG=True`, `ALLOWED_HOSTS=['*']`
+- `DEBUG`/`ALLOWED_HOSTS` are env-driven → the `if not DEBUG` HTTPS/HSTS block activates only in production
+- Configurable via env vars: `DEBUG`, `ALLOWED_HOSTS`, `MOP_PASSWORD`, `SITE_NAME`, `SITE_SUBTITLE`, `SITE_LOGO_URL`, `CLUB_NAME`, `CLUB_COLOR_PRIMARY`, `CLUB_COLOR_ACCENT`, `PUBLIC_SITE_URL`, `ENABLE_RACE_CREATION`, `OCHECKLIST_HEADER_KEY`, `OCHECKLIST_HEADER_VALUE`
 - Required: `MOP_PASSWORD` must match MeOS Online config
 - Optional: `OCHECKLIST_HEADER_KEY` / `OCHECKLIST_HEADER_VALUE` for O'checklist endpoint auth
 - Optional: `ENABLE_RACE_CREATION` (default enabled; `0`/`false` → `/creer-course/` returns 404 and the nav link is hidden; `/gestion-course/<token>/` keeps working)
@@ -72,6 +75,9 @@ python manage.py compilemessages                  # *.mo ignored by git — requ
 ```
 MeOSDjango/
 ├── manage.py                          # Django CLI
+│
+├── .env                               # Différences local/prod (DEBUG, ALLOWED_HOSTS…) —
+│                                      #   gitignoré, jamais déployé : à créer à la main sur le serveur
 │
 ├── org_logo/                          # Logos d'organisateur (créé à la volée, ignoré par git)
 │   │                                  #   logo-<hex>.svg|png|jpg = badges page d'accueil (colonne mopCompetition.logo)
@@ -86,8 +92,9 @@ MeOSDjango/
 │
 ├── MeOSDjango/                        # Configuration Django
 │   ├── __init__.py
-│   ├── settings.py                    # Paramètres principaux
-│   ├── dev_settings.py                # Config locale (DB, clés) — importée par settings.py
+│   ├── settings.py                    # Paramètres principaux (versionnés, DEBUG/ALLOWED_HOSTS via env)
+│   ├── dev_settings.py                # Valeurs réelles (DB, clés) — gitignoré, importé par settings.py
+│   ├── dev_settings.example.py        # Gabarit versionné à copier-remplir
 │   ├── urls.py                        # Routage principal (inclut results/ + ochecklist/)
 │   ├── asgi.py
 │   └── wsgi.py

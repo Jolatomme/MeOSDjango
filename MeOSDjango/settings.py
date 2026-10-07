@@ -22,6 +22,35 @@ except ImportError:
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+# Variables d'environnement locales (file gitignoré — absent en dev, présent
+# en prod) : DEBUG, ALLOWED_HOSTS, PUBLIC_SITE_URL… Format KEY=value, une
+# ligne par variable, # pour les commentaires. Une variable déjà présente dans
+# l'environnement réel (interface AlwaysData, systemd…) reste prioritaire.
+def _load_env_file(path):
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding='utf-8').splitlines():
+        line = line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        key, _, value = line.partition('=')
+        key = key.strip().removeprefix('export ').strip()
+        value = value.strip().strip('"').strip("'")
+        if key:
+            os.environ.setdefault(key, value)
+
+
+_load_env_file(BASE_DIR / '.env')
+
+
+def _env_flag(name, default=False):
+    """Interprète une variable d'environnement booléenne (1/true/yes/on)."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ('1', 'true', 'yes', 'on')
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
@@ -29,9 +58,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = DJANGO_SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True # Set to False in production
+# Local : True (pas de .env) · Prod : .env avec DEBUG=0 → active le bloc
+# HTTPS/HSTS plus bas (if not DEBUG).
+DEBUG = _env_flag('DEBUG', True)
 
-ALLOWED_HOSTS = ['*'] # A remplacer par l'adresse du site en production
+ALLOWED_HOSTS = [
+    h.strip() for h in os.environ.get('ALLOWED_HOSTS', '*').split(',') if h.strip()
+]  # Prod : .env avec ALLOWED_HOSTS=domaine.tld (défaut local : '*')
 
 APPEND_SLASH = False
 
@@ -66,7 +99,10 @@ ROOT_URLCONF = 'MeOSDjango.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [], # Les templates sont dans results/templates/ via APP_DIRS
+        # Dossier du projet, prioritaire sur APP_DIRS : indispensable pour
+        # surcharger les templates de django.contrib.admin (1er dans
+        # INSTALLED_APPS, son dossier templates/ l'emporterait sinon).
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -75,6 +111,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'results.context_processors.site_settings',
+                'django.template.context_processors.i18n',
             ],
         },
     },
@@ -126,11 +163,37 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'fr'
 
+# Langues du site. « fr » est la langue source : les chaînes dans le code sont
+# en français, seules les traductions (locale/<lang>/LC_MESSAGES/django*.po)
+# sont écrites pour les autres langues.
+# Le choix de langue est persisté en cookie (LocaleMiddleware) — les URL ne
+# changent jamais : les liens MeOS, /gestion-course/<token>/, les /api/ et
+# le CSV récapitulatif restent identiques dans toutes les langues.
+LANGUAGES = [
+    ('fr', 'Français'),
+    ('en', 'English'),
+    ('sv', 'Svenska'),
+    ('de', 'Deutsch'),
+]
+
+# Catalogues de traduction du site (au niveau du projet).
+LOCALE_PATHS = [BASE_DIR / 'locale']
+
+# Nom du cookie posé par la vue set_language et lu par LocaleMiddleware.
+LANGUAGE_COOKIE_NAME = 'co_lang'
+# 1 an : le choix de langue survit à la fermeture du navigateur.
+LANGUAGE_COOKIE_AGE = 60 * 60 * 24 * 365
+LANGUAGE_COOKIE_SAMESITE = 'Lax'
+
 TIME_ZONE = 'Europe/Paris'
 
 USE_I18N = True
 
 USE_TZ = True
+
+# Formats de date localisés (utilisés par les filtres |date:"DATE_FORMAT"…).
+# Les valeurs par défaut de Django conviennent :
+#   fr → 17/05/2026 · en → May 17, 2026 · sv → 17 maj 2026 · de → 17.05.2026
 
 # HTTPS Settings
 # These settings are for production use. For development with runserver_plus,
@@ -157,6 +220,9 @@ STATICFILES_DIRS = []
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Logos d'organisateur (upload depuis le formulaire de création de course)
+ORG_LOGO_DIR = BASE_DIR / 'org_logo'
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ─── MeOS MOP (réception des données en temps réel) ───────────────────────────
@@ -172,6 +238,22 @@ SITE_LOGO_URL = os.environ.get('SITE_LOGO_URL', '')
 CLUB_NAME = os.environ.get('CLUB_NAME', 'COCS 73')
 CLUB_COLOR_PRIMARY = os.environ.get('CLUB_COLOR_PRIMARY', '#1a6b3c')   # forest green
 CLUB_COLOR_ACCENT = os.environ.get('CLUB_COLOR_ACCENT', '#f0a500')     # gold
+
+# URL publique canonique (ex: https://jolatomme.alwaysdata.net) affichée aux
+# organisateurs (« URL d'envoi » MeOS, lien de gestion). Vide = déduite de la
+# requête courante. À définir en production pour ne jamais afficher un Host
+# interne (127.0.0.1, proxy…).
+PUBLIC_SITE_URL = os.environ.get('PUBLIC_SITE_URL', '')
+
+# ─── Création de course publique (/creer-course/) ───────────────────────────
+# False (ENABLE_RACE_CREATION=0) : /creer-course/ renvoie 404 et le lien
+# « Créer une course » est masqué. La gestion /gestion-course/ reste active.
+# (helper _env_flag défini en tête de fichier)
+ENABLE_RACE_CREATION=True
+
+ENABLE_RACE_CREATION = _env_flag(
+    'ENABLE_RACE_CREATION', globals().get('ENABLE_RACE_CREATION', True)
+)
 
 # ─── O'checklist Configuration ───────────────────────────────────────────────
 # Optional security header authentication for O'checklist endpoint
