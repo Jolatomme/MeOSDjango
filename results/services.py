@@ -8,7 +8,7 @@ Les accès DB restent ici pour pouvoir les mocker facilement dans les tests.
 from .models import (
     Moporganization, Mopcontrol, Mopclasscontrol, Mopradio, Mopclass,
     Mopcompetitor, Mopteam, Mopteammember, Mopcompetition, CompetitionConfig,
-    STAT_OK, STATUS_LABELS, format_time,
+    STAT_OK, format_time,
     STAT_NT, STAT_MP, STAT_DNF, STAT_DQ, STAT_OT,
     STAT_DNS, STAT_CANCEL, STAT_NP,
 )
@@ -283,13 +283,6 @@ def _circuit_negatives(controls_seq, radios, prestart=frozenset()):
             names.append(ctrl['ctrl_name'])
         prev = abs_t
     return names
-
-
-def negative_leg_names(runner_id, controls_seq, radio_map):
-    """Noms des postes dont le tronçon depuis le poinçon connu précédent
-    est strictement négatif (boîtier mal synchronisé, carte SI non
-    effacée — poinçon antérieur au départ)."""
-    return _circuit_negatives(controls_seq, radio_map.get(runner_id, {}))
 
 
 def is_definitive_ok(c):
@@ -805,19 +798,9 @@ def _weighted_median(values_weights):
 
 
 def compute_error_estimates(finishers, controls_seq, radio_map, top_fraction=0.25):
-    import math
     leg_matrix  = build_leg_matrix(finishers, controls_seq, radio_map)
     n_legs_full = len(controls_seq) + 1
-    leg_refs = []
-    for j in range(n_legs_full):
-        times = sorted(
-            t for row in leg_matrix
-            if j < len(row) and (t := row[j]) is not None and t > 0
-        )
-        if not times:
-            leg_refs.append(None); continue
-        k = max(1, math.ceil(len(times) * top_fraction))
-        leg_refs.append(sum(times[:k]) / k)
+    leg_refs = compute_leg_refs(leg_matrix, n_legs_full, top_fraction)
     result = {}
     for i, c in enumerate(finishers):
         legs = leg_matrix[i]

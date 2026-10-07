@@ -176,6 +176,11 @@ def _controls_for(cid, cls, course):
     return seq
 
 
+def _is_relay(cid, cls, course):
+    """True si la catégorie a des équipes (relais), hors mode circuit."""
+    return course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists()
+
+
 # Résultats — catégorie ET circuit
 # (class_id peut être un nom/identifiant de catégorie OU un hash de circuit)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -190,7 +195,7 @@ def class_results(request, cid, class_id):
     competition, cls, competitors, course = _load_class_context(cid, class_id)
 
     # Redirect vers relais seulement pour les vraies catégories
-    if course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists():
+    if _is_relay(cid, cls, course):
         return redirect('results:relay_results', cid=cid, class_id=class_id)
 
     # Navigation catégorie adjacente (non pertinent pour un circuit)
@@ -485,7 +490,7 @@ def live_results(request, cid, class_id):
     competition, cls, competitors, course = _load_class_context(cid, class_id)
 
     # Redirection relais (live non géré pour les équipes pour l'instant)
-    if course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists():
+    if _is_relay(cid, cls, course):
         return redirect('results:relay_results', cid=cid, class_id=class_id)
 
     # Navigation catégorie adjacente (non pertinent pour un circuit)
@@ -687,7 +692,7 @@ def api_live_results(request, cid, class_id):
     else:
         competition, cls, competitors, course = _load_class_context(cid, class_id)
 
-        if course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists():
+        if _is_relay(cid, cls, course):
             return JsonResponse({'success': False, 'error': 'relay'}, status=422)
 
         payload, etag = _build_live_payload(cid, cls, competitors, course, competition=competition)
@@ -1060,7 +1065,7 @@ def duel_analysis(request, cid, class_id):
     competition, cls, competitors, course = _load_class_context(cid, class_id)
 
     # Redirect vers relais seulement pour les vraies catégories
-    if course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists():
+    if _is_relay(cid, cls, course):
         return redirect('results:relay_results', cid=cid, class_id=class_id)
 
     partial, n_ok, n_total = _partial_analysis_info(competitors)
@@ -1186,11 +1191,6 @@ def _load_recapitulatif_data(cid, class_id, context=None):
         leg_error_data = []
 
     return competition, cls, course, results, controls_seq, prev_cls, next_cls, leader_time, leg_error_data, all_classes
-
-
-def _is_relay(cid, cls, course):
-    """Return True if the class has teams (relay), excluding course (circuit) mode."""
-    return course is None and Mopteam.objects.filter(cid=cid, cls=cls.id).exists()
 
 
 def recapitulatif_analysis(request, cid, class_id):

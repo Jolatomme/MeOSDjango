@@ -248,9 +248,8 @@ PUBLIC_SITE_URL = os.environ.get('PUBLIC_SITE_URL', '')
 # ─── Création de course publique (/creer-course/) ───────────────────────────
 # False (ENABLE_RACE_CREATION=0) : /creer-course/ renvoie 404 et le lien
 # « Créer une course » est masqué. La gestion /gestion-course/ reste active.
-# (helper _env_flag défini en tête de fichier)
-ENABLE_RACE_CREATION=True
-
+# (helper _env_flag défini en tête de fichier ; la valeur peut aussi venir
+#  de dev_settings.py via globals().get ci-dessous)
 ENABLE_RACE_CREATION = _env_flag(
     'ENABLE_RACE_CREATION', globals().get('ENABLE_RACE_CREATION', True)
 )
