@@ -1,5 +1,5 @@
 {% extends "results/analysis_base.html" %}
-{% load meos_tags %}
+{% load meos_tags i18n %}
   {% load static %}
 
 {% block title %}Superman — {{ cls.name }} — {{ competition.name }}{% endblock %}
@@ -11,61 +11,61 @@
 {% if not no_data %}
 <div class="d-flex align-items-center gap-2 flex-wrap">
   <span class="badge bg-warning text-dark fs-6">
-    <i class="bi bi-lightning me-1"></i>Superman : {{ superman_total }}
+    <i class="bi bi-lightning me-1"></i>{% blocktranslate %}Superman : {{ superman_total }}{% endblocktranslate %}
   </span>
-  <span class="badge bg-light text-dark fs-6">{{ n_finishers }} coureur{{ n_finishers|pluralize }}</span>
+  <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=n_finishers %}{{ n }} coureur{% plural %}{{ n }} coureurs{% endblocktranslate %}</span>
   {% if n_controls %}
-  <span class="badge bg-light text-dark fs-6">{{ n_controls }} poste{{ n_controls|pluralize }}</span>
+  <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=n_controls %}{{ n }} poste{% plural %}{{ n }} postes{% endblocktranslate %}</span>
   {% endif %}
 </div>
 {% endif %}
 {% endblock %}
 
-{% block no_data_message %}Pas assez de données pour calculer l'analyse Superman.{% endblock %}
+{% block no_data_message %}{% translate "Pas assez de données pour calculer l'analyse Superman." %}{% endblock %}
 
 {% block analysis_explanation %}
 <div class="alert alert-warning border-0 mb-4"
      style="background:var(--co-highlight-bg);border-left:4px solid var(--co-gold) !important;">
   <i class="bi bi-info-circle me-2"></i>
-  Le <strong>Superman</strong> est un coureur fictif qui réalise le
+  {% blocktranslate %}Le <strong>Superman</strong> est un coureur fictif qui réalise le
   <strong>meilleur tronçon de chaque contrôle</strong>.
   Le graphique montre le retard cumulé de chaque coureur par rapport au Superman.
   Une courbe <em>plate</em> signifie que le coureur court à la vitesse du meilleur sur ce tronçon ;
-  une courbe <em>qui descend</em> signifie qu'il perd du temps.
+  une courbe <em>qui descend</em> signifie qu'il perd du temps.{% endblocktranslate %}
 </div>
 {% endblock %}
 
 {% block extra_filters %}
 <div class="ms-auto">
-  <label class="form-label mb-1 small fw-bold text-muted d-block">Axe Y</label>
-  <div class="btn-group" role="group" aria-label="Format axe Y">
+  <label class="form-label mb-1 small fw-bold text-muted d-block">{% translate "Axe Y" %}</label>
+  <div class="btn-group" role="group" aria-label="{% translate 'Format axe Y' %}">
     <input type="radio" class="btn-check" name="yAxisMode" id="radioMmss"
            value="mmss" checked autocomplete="off">
     <label class="btn btn-sm btn-outline-success" for="radioMmss">MM:SS</label>
     <input type="radio" class="btn-check" name="yAxisMode" id="radioSeconds"
            value="seconds" autocomplete="off">
-    <label class="btn btn-sm btn-outline-secondary" for="radioSeconds">Secondes</label>
+    <label class="btn btn-sm btn-outline-secondary" for="radioSeconds">{% translate "Secondes" %}</label>
   </div>
 </div>
 {% endblock %}
 
 {% block chart_icon %}bi bi-graph-up{% endblock %}
-{% block chart_title %}Retard cumulé vs Superman{% endblock %}
+{% block chart_title %}{% translate "Retard cumulé vs Superman" %}{% endblock %}
 {% block canvas_id %}supermanChart{% endblock %}
 
 {% block between_chart_and_table %}
 <div class="co-card mb-4">
   <div class="co-card-header">
-    <i class="bi bi-lightning-fill me-2"></i>Meilleurs tronçons Superman
-    <span class="ms-2 badge bg-warning text-dark">Total : {{ superman_total }}</span>
+    <i class="bi bi-lightning-fill me-2"></i>{% translate "Meilleurs tronçons Superman" %}
+    <span class="ms-2 badge bg-warning text-dark">{% blocktranslate %}Total : {{ superman_total }}{% endblocktranslate %}</span>
   </div>
   <div class="p-0 table-responsive">
     <table class="table table-sm table-hover mb-0">
       <thead class="table-light">
         <tr>
-          <th style="width:6rem">Tronçon</th>
-          <th style="width:5rem" class="text-end">Temps</th>
-          <th>Coureur(s)</th>
+          <th style="width:6rem">{% translate "Tronçon" %}</th>
+          <th style="width:5rem" class="text-end">{% translate "Temps" %}</th>
+          <th>{% translate "Coureur(s)" %}</th>
         </tr>
       </thead>
       <tbody>
@@ -88,9 +88,9 @@
 
 {% block table_headers %}
 <th style="width:3rem">#</th>
-<th>Concurrent</th>
-<th>Club</th>
-<th class="text-end">Temps</th>
+<th>{% translate "Concurrent" %}</th>
+<th>{% translate "Club" %}</th>
+<th class="text-end">{% translate "Temps" %}</th>
 {% endblock %}
 {% block tbody_id %}supermanTableBody{% endblock %}
 
@@ -178,7 +178,7 @@ function initChart() {
         },
         y: {
           reverse: true,
-          title: { display: true, text: 'Retard vs Superman',
+          title: { display: true, text: "{% translate 'Retard vs Superman' %}",
                    font: { family: "'Barlow', sans-serif", size: 12 }, color: '#6c757d' },
           ticks: {
             callback: v => yMode === 'mmss' ? fmtSeconds(v) : `+${(v / 10).toFixed(1)}s`,

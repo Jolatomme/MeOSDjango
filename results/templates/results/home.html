@@ -1,6 +1,6 @@
 {% extends "results/base.html" %}
-{% load meos_tags %}
-{% block title %}{{ SITE_NAME }} — Accueil{% endblock %}
+{% load meos_tags i18n %}
+{% block title %}{{ SITE_NAME }} — {% translate "Accueil" %}{% endblock %}
 
 {% block page_header %}
 <div class="co-hero">
@@ -18,23 +18,23 @@
 
 {% block content %}
 <h2 class="mb-3" style="font-family:var(--font-display);font-weight:800;">
-  <i class="bi bi-calendar-event me-2 text-success"></i>Compétitions
+  <i class="bi bi-calendar-event me-2 text-success"></i>{% translate "Compétitions" %}
 </h2>
 
 <div class="co-card p-3 mb-4">
   <div class="d-flex flex-wrap align-items-end gap-3">
     <div>
-      <label for="id-year" class="small fw-semibold text-muted mb-1 d-block">Année</label>
+      <label for="id-year" class="small fw-semibold text-muted mb-1 d-block">{% translate "Année" %}</label>
       <select id="id-year" name="year"
               class="form-select form-select-sm"
               onchange="if (this.value) window.location.href = this.value;">
         <option value="{% url 'results:home' %}"
                 {% if not selected_year and not months and not show_all %}selected{% endif %}>
-          3 plus récentes
+          {% translate "3 plus récentes" %}
         </option>
         <option value="{% url 'results:home' %}?all=1"
                 {% if show_all %}selected{% endif %}>
-          Toutes
+          {% translate "Toutes" %}
         </option>
         {% for y in available_years %}
           <option value="{% url 'results:home' %}?year={{ y }}"
@@ -46,11 +46,11 @@
     </div>
     <form method="get" action="{% url 'results:home' %}" class="d-flex align-items-end gap-2 mb-0">
       <div>
-        <label for="id-months" class="small fw-semibold text-muted mb-1 d-block">X derniers mois</label>
+        <label for="id-months" class="small fw-semibold text-muted mb-1 d-block">{% translate "X derniers mois" %}</label>
         <input type="number" id="id-months" name="months" min="1" value="{{ months|default:'' }}"
                class="form-control form-control-sm" style="width:100px" placeholder="12">
       </div>
-      <button type="submit" class="btn btn-sm btn-success">Filtrer</button>
+      <button type="submit" class="btn btn-sm btn-success">{% translate "Filtrer" %}</button>
     </form>
   </div>
 </div>
@@ -60,7 +60,7 @@
   <section class="mb-4">
     <h3 class="h5 fw-bold mb-2 d-flex align-items-center" style="font-family:var(--font-display);">
       <i class="bi bi-calendar-week me-2 text-success"></i>
-      {% if year %}{{ year }}{% else %}Sans date{% endif %}
+      {% if year %}{{ year }}{% else %}{% translate "Sans date" %}{% endif %}
       <span class="badge bg-success-subtle text-success ms-2">{{ comps|length }}</span>
     </h3>
     <div class="row g-3">
@@ -78,8 +78,8 @@
             </span>
             {% if comp.pending %}
               <span class="badge bg-transparent text-warning border border-warning flex-shrink-0"
-                    title="Course en attente du premier import MeOS">
-                <i class="bi bi-hourglass-split me-1"></i>En attente
+                    title="{% translate "Course en attente du premier import MeOS" %}">
+                <i class="bi bi-hourglass-split me-1"></i>{% translate "En attente" %}
               </span>
             {% endif %}
             {% if comp.date %}
@@ -89,18 +89,18 @@
           <div class="p-3">
             {% if comp.organizer %}
               <div class="mb-1 text-muted small">
-                <i class="bi bi-building me-1"></i>{% if comp.homepage %}<a href="{{ comp.homepage }}" target="_blank" rel="noopener" class="org-site-link" title="Site de l'organisateur — nouvel onglet">{{ comp.organizer }}<i class="bi bi-box-arrow-up-right ms-1" aria-hidden="true"></i></a>{% else %}{{ comp.organizer }}{% endif %}
+                <i class="bi bi-building me-1"></i>{% if comp.homepage %}<a href="{{ comp.homepage }}" target="_blank" rel="noopener" class="org-site-link" title="{% translate "Site de l'organisateur — nouvel onglet" %}">{{ comp.organizer }}<i class="bi bi-box-arrow-up-right ms-1" aria-hidden="true"></i></a>{% else %}{{ comp.organizer }}{% endif %}
               </div>
             {% endif %}
             <div class="d-flex gap-2 flex-wrap mt-2">
               <a href="{% url 'results:competition_detail' comp.cid %}"
                  class="badge bg-success rounded-pill text-decoration-none stretched-link">
-                <i class="bi bi-arrow-right me-1"></i>Voir les résultats
+                <i class="bi bi-arrow-right me-1"></i>{% translate "Voir les résultats" %}
               </a>
               {% if comp.has_individual_competitors %}
                 <a href="{% url 'results:start_list' comp.cid %}"
                    class="badge bg-info rounded-pill text-decoration-none">
-                  <i class="bi bi-clock me-1"></i>Horaires
+                  <i class="bi bi-clock me-1"></i>{% translate "Horaires" %}
                 </a>
               {% endif %}
               {% if comp.livelox %}
@@ -121,11 +121,11 @@
   <div class="co-card text-center p-5 text-muted">
     <i class="bi bi-search fs-1 d-block mb-3 opacity-25"></i>
     {% if active_filter %}
-      <p class="mb-0">Aucune compétition ne correspond aux filtres sélectionnés.</p>
-      <p class="small mt-1">Essayez une autre année ou un nombre de mois plus grand.</p>
+      <p class="mb-0">{% translate "Aucune compétition ne correspond aux filtres sélectionnés." %}</p>
+      <p class="small mt-1">{% translate "Essayez une autre année ou un nombre de mois plus grand." %}</p>
     {% else %}
-      <p class="mb-0">Aucune compétition trouvée dans la base de données MeOS.</p>
-      <p class="small mt-1">Vérifiez la connexion et que la table <code>mopCompetition</code> contient des données.</p>
+      <p class="mb-0">{% translate "Aucune compétition trouvée dans la base de données MeOS." %}</p>
+      <p class="small mt-1">{% blocktranslate %}Vérifiez la connexion et que la table <code>mopCompetition</code> contient des données.{% endblocktranslate %}</p>
     {% endif %}
   </div>
 {% endif %}

@@ -2,6 +2,7 @@ from django.contrib import admin, messages
 from django.db import connection
 from django.http import HttpResponseRedirect
 from django.urls import reverse
+from django.utils.translation import gettext, gettext_lazy
 
 from .models import (
     Mopclass, Mopclasscontrol, Mopcompetition, Mopcompetitor,
@@ -54,14 +55,14 @@ class CompetitionConfigAdmin(admin.ModelAdmin):
 
     def _name(self, obj):
         return _competition_name(obj.cid)
-    _name.short_description = 'Compétition'
+    _name.short_description = gettext_lazy("Compétition")
 
     def _date(self, obj):
         with connection.cursor() as cur:
             cur.execute("SELECT date FROM mopCompetition WHERE cid=%s", [obj.cid])
             row = cur.fetchone()
         return row[0] if row else '—'
-    _date.short_description = 'Date'
+    _date.short_description = gettext_lazy("Date")
     _date.admin_order_field = 'cid'
 
     actions = ['revoke_manage_links']
@@ -77,12 +78,17 @@ class CompetitionConfigAdmin(admin.ModelAdmin):
         ).update(manage_token=None)
         self.message_user(
             request,
-            f"{updated} lien(s) de gestion révoqué(s) — les clés API MeOS "
-            "restent actives.",
+            gettext(
+                "%(n)s lien(s) de gestion révoqué(s) — les clés API MeOS "
+                "restent actives."
+            )
+            % {"n": updated},
             level=messages.WARNING,
         )
 
-    revoke_manage_links.short_description = "Révoquer les liens de gestion privés"
+    revoke_manage_links.short_description = gettext_lazy(
+        "Révoquer les liens de gestion privés"
+    )
 
     def has_delete_permission(self, request, obj=None):
         return False
@@ -98,7 +104,8 @@ class CompetitionConfigAdmin(admin.ModelAdmin):
             CompetitionConfig.objects.filter(cid=cid).delete()
             self.message_user(
                 request,
-                f"Données MOP supprimées pour cid={cid} ({name}).",
+                gettext("Données MOP supprimées pour cid=%(cid)s (%(name)s).")
+                % {"cid": cid, "name": name},
                 level=messages.WARNING,
             )
             return HttpResponseRedirect(

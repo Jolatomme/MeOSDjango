@@ -2,6 +2,7 @@
 # managed = False : Django ne touche pas au schéma, MeOS en reste propriétaire.
 
 from django.db import models
+from django.utils.translation import gettext, gettext_lazy, pgettext, pgettext_lazy
 
 
 # ─── Codes statut MeOS ─────────────────────────────────────────────
@@ -17,6 +18,10 @@ STAT_DNS     = 20
 STAT_CANCEL  = 21
 STAT_NP      = 99
 
+# Libellés de statut : valeurs FR source, traduites à l'accès via
+# pgettext(contexte « mopstatus ») — le contexte évite la collision avec le
+# catalogue Django core (ex. msgid « PM » → « Après-midi » dans django/fr).
+# La traduction est lazy-free : les valeurs restent de vrais str (JSON sûr).
 STATUS_LABELS = {
     STAT_UNKNOWN: ('Inconnu',         'info'),
     STAT_OK:      ('OK',              'success'),
@@ -31,14 +36,32 @@ STATUS_LABELS = {
     STAT_NP:      ('Non participant', 'secondary'),
 }
 
+# Marqueurs d'extraction i18n — JAMAIS évalués (lazy) : xgettext exige des
+# appels littéraux pour générer les .po, impossible depuis les valeurs de
+# STATUS_LABELS (variables). Tout ajout/renommage dans STATUS_LABELS doit être
+# répercuté ici (mêmes msgids + contexte « mopstatus »).
+_STATUS_LABEL_MSGIDS = (
+    pgettext_lazy('mopstatus', 'Inconnu'),
+    pgettext_lazy('mopstatus', 'OK'),
+    pgettext_lazy('mopstatus', 'No Timing'),
+    pgettext_lazy('mopstatus', 'PM'),
+    pgettext_lazy('mopstatus', 'Abandon'),
+    pgettext_lazy('mopstatus', 'DSQ'),
+    pgettext_lazy('mopstatus', 'H.T.'),
+    pgettext_lazy('mopstatus', 'Hors compét.'),
+    pgettext_lazy('mopstatus', 'Non partant'),
+    pgettext_lazy('mopstatus', 'Cancel'),
+    pgettext_lazy('mopstatus', 'Non participant'),
+)
+
 
 class Mopcompetition(models.Model):
     cid       = models.IntegerField(primary_key=True)
     id        = models.IntegerField()
-    name      = models.CharField(verbose_name='competition', max_length=64)
-    date      = models.DateField()
-    organizer = models.CharField(max_length=64)
-    homepage  = models.CharField(max_length=128)
+    name      = models.CharField(verbose_name=gettext_lazy("compétition"), max_length=64)
+    date      = models.DateField(verbose_name=gettext_lazy("Date"))
+    organizer = models.CharField(verbose_name=gettext_lazy("organisateur"), max_length=64)
+    homepage  = models.CharField(verbose_name=gettext_lazy("page d'accueil"), max_length=128)
     livelox   = models.CharField(max_length=128, blank=True)
     logo      = models.CharField(max_length=128, blank=True)
 
@@ -46,8 +69,8 @@ class Mopcompetition(models.Model):
         managed         = False
         db_table        = 'mopCompetition'
         unique_together = (('cid', 'id'),)
-        verbose_name        = 'compétition'
-        verbose_name_plural = 'compétitions'
+        verbose_name        = gettext_lazy("compétition")
+        verbose_name_plural = gettext_lazy("compétitions")
         ordering = ['-date']
 
     def __str__(self):
@@ -124,7 +147,9 @@ class Mopcompetitor(models.Model):
 
     @property
     def status_label(self):
-        return STATUS_LABELS.get(self.stat, ('?', 'secondary'))[0]
+        # Traduction à la demande (request-time) : renvoie un str réel,
+        # sérialisable tel quel dans les payloads JSON des API /live/.
+        return pgettext('mopstatus', STATUS_LABELS.get(self.stat, ('?', 'secondary'))[0])
 
     @property
     def status_badge(self):
@@ -221,47 +246,47 @@ class CompetitionConfig(models.Model):
     cid       = models.IntegerField(primary_key=True, db_column='cid')
     frozen    = models.BooleanField(
         default=False,
-        verbose_name='gelée',
-        help_text="Bloque l'écrasement des données MOP (MOPComplete/UPDATE refusés)",
+        verbose_name=gettext_lazy("gelée"),
+        help_text=gettext_lazy("Bloque l'écrasement des données MOP (MOPComplete/UPDATE refusés)"),
     )
     visible   = models.BooleanField(
         default=True,
-        verbose_name='visible',
-        help_text="Afficher cette compétition dans la liste publique",
+        verbose_name=gettext_lazy("visible"),
+        help_text=gettext_lazy("Afficher cette compétition dans la liste publique"),
     )
     deleted   = models.BooleanField(
         default=False,
-        verbose_name='à effacer',
-        help_text="Marquer comme supprimée (masquée de la liste publique)",
+        verbose_name=gettext_lazy("à effacer"),
+        help_text=gettext_lazy("Marquer comme supprimée (masquée de la liste publique)"),
     )
     api_key = models.CharField(
         max_length=64,
         unique=True,
         null=True,
         blank=True,
-        verbose_name='clé API MeOS',
-        help_text="« Password » MeOS unique à cette compétition (NULL = mot de passe global)",
+        verbose_name=gettext_lazy("clé API MeOS"),
+        help_text=gettext_lazy("« Password » MeOS unique à cette compétition (NULL = mot de passe global)"),
     )
     manage_token = models.CharField(
         max_length=64,
         unique=True,
         null=True,
         blank=True,
-        verbose_name='jeton de gestion',
-        help_text="Secret du lien privé de gestion de la course",
+        verbose_name=gettext_lazy("jeton de gestion"),
+        help_text=gettext_lazy("Secret du lien privé de gestion de la course"),
     )
     created_at = models.DateTimeField(
         auto_now_add=True,
         null=True,
         blank=True,
-        verbose_name='créée le',
+        verbose_name=gettext_lazy("créée le"),
     )
 
     class Meta:
         managed         = True
         db_table        = 'results_competitionconfig'
-        verbose_name        = 'configuration compétition'
-        verbose_name_plural = 'configurations compétitions'
+        verbose_name        = gettext_lazy("configuration compétition")
+        verbose_name_plural = gettext_lazy("configurations compétitions")
 
     @property
     def has_api_key(self):
@@ -271,11 +296,11 @@ class CompetitionConfig(models.Model):
     def __str__(self):
         flags = []
         if self.frozen:
-            flags.append('gelée')
+            flags.append(gettext("gelée"))
         if self.deleted:
-            flags.append('supprimée')
+            flags.append(gettext("supprimée"))
         elif not self.visible:
-            flags.append('masquée')
+            flags.append(gettext("masquée"))
         suffix = f" [{', '.join(flags)}]" if flags else ''
         return f"{self.cid}{suffix}"
 

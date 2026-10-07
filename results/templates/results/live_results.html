@@ -1,5 +1,5 @@
 {% extends "results/base.html" %}
-{% load meos_tags %}
+{% load meos_tags i18n %}
 {% load static %}
 {% block title %}
   Live — {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %} — {{ competition.name }}
@@ -24,23 +24,23 @@
           {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
         </h1>
         <div class="opacity-75 small mt-1">
-          Suivi en temps réel de la progression sur le parcours
-          {% if controls_seq %}&bull; {{ controls_seq|length }} poste{{ controls_seq|length|pluralize }}{% endif %}
+          {% translate "Suivi en temps réel de la progression sur le parcours" %}
+          {% if controls_seq %}&bull; {% blocktranslate count n=controls_seq|length %}{{ n }} poste{% plural %}{{ n }} postes{% endblocktranslate %}{% endif %}
         </div>
       </div>
       <div class="d-flex align-items-center gap-2 flex-wrap">
-        <span class="badge bg-dark text-white fs-6" title="Temps de course depuis le premier départ">
+        <span class="badge bg-dark text-white fs-6" title="{% translate "Temps de course depuis le premier départ" %}">
           <i class="bi bi-clock-history me-1"></i><span id="liveRaceClockValue" class="live-clock">--:--:--</span>
         </span>
-        <span class="badge bg-dark text-white fs-6" title="Heure actuelle">
+        <span class="badge bg-dark text-white fs-6" title="{% translate "Heure actuelle" %}">
           <i class="bi bi-clock me-1"></i><span id="liveWallClockValue" class="live-clock">--:--:--</span>
         </span>
         {% if race_state == 'finished' %}
-        <span class="badge bg-secondary fs-6" id="liveStatusBadge">Course terminée</span>
+        <span class="badge bg-secondary fs-6" id="liveStatusBadge">{% translate "Course terminée" %}</span>
         {% elif race_state == 'upcoming' %}
-        <span class="badge bg-info fs-6" id="liveStatusBadge">Course à venir</span>
+        <span class="badge bg-info fs-6" id="liveStatusBadge">{% translate "Course à venir" %}</span>
         {% else %}
-        <span class="badge bg-success fs-6" id="liveStatusBadge"><span class="live-dot"></span>En direct</span>
+        <span class="badge bg-success fs-6" id="liveStatusBadge"><span class="live-dot"></span>{% translate "En direct" %}</span>
         {% endif %}
         <span class="badge bg-light text-dark fs-6">{{ competition.date|date:"d/m/Y" }}</span>
       </div>
@@ -56,41 +56,41 @@
 
 <div class="alert alert-info small d-flex align-items-center gap-2">
   <i class="bi bi-info-circle"></i>
-  <span>Seuls les postes équipés d'un émetteur radio remontent leur poinçon en direct. La barre place le coureur sur le parcours en
+  <span>{% blocktranslate %}Seuls les postes équipés d'un émetteur radio remontent leur poinçon en direct. La barre place le coureur sur le parcours en
 	  fonction du dernier poinçon reçu (l'arrivée compte pour un poste). Un coureur ayant pointé le dernier poste radio apparaît
 	  « En attente validation GEC » : son parcours est terminé mais sa carte n'a pas encore été lue à la GEC — le statut définitif n'est officiel
-	  qu'une fois sa puce lue.
+	  qu'une fois sa puce lue.{% endblocktranslate %}
   </span>
 </div>
 
 <div class="row g-2 mb-3">
   <div class="col-6 col-md-2">
     <div class="stat-card p-3 text-center">
-      <div class="stat-label small">En course</div>
+      <div class="stat-label small">{% translate "En course" %}</div>
       <div class="fs-3 fw-bold" id="liveCountEnCourse">…</div>
     </div>
   </div>
   <div class="col-6 col-md-2">
     <div class="stat-card p-3 text-center">
-      <div class="stat-label small">Validation GEC</div>
+      <div class="stat-label small">{% translate "Validation GEC" %}</div>
       <div class="fs-3 fw-bold" id="liveCountValidGec">…</div>
     </div>
   </div>
   <div class="col-6 col-md-2">
     <div class="stat-card p-3 text-center">
-      <div class="stat-label small">Arrivés</div>
+      <div class="stat-label small">{% translate "Arrivés" %}</div>
       <div class="fs-3 fw-bold" id="liveCountArrives">…</div>
     </div>
   </div>
   <div class="col-6 col-md-2">
     <div class="stat-card p-3 text-center">
-      <div class="stat-label small">En attente</div>
+      <div class="stat-label small">{% translate "En attente" %}</div>
       <div class="fs-3 fw-bold" id="liveCountWaiting">…</div>
     </div>
   </div>
   <div class="col-6 col-md-2">
     <div class="stat-card p-3 text-center">
-      <div class="stat-label small">Terminé</div>
+      <div class="stat-label small">{% translate "Terminé" %}</div>
       <div class="fs-3 fw-bold" id="liveCountDone">…</div>
     </div>
   </div>
@@ -98,14 +98,14 @@
 
 <div class="co-card">
   <div class="co-card-header d-flex justify-content-between">
-    <span><i class="bi bi-broadcast me-2"></i>Classement live</span>
-    <span class="badge bg-secondary" id="liveLastUpdate" title="Dernière mise à jour">—</span>
+    <span><i class="bi bi-broadcast me-2"></i>{% translate "Classement live" %}</span>
+    <span class="badge bg-secondary" id="liveLastUpdate" title="{% translate "Dernière mise à jour" %}">—</span>
   </div>
   <div class="table-responsive">
     <table class="results-table" id="liveTable">
       <tbody id="liveBody">
         <tr><td class="text-center text-muted p-4">
-          <span class="spinner-border spinner-border-sm me-2" role="status"></span>Chargement…
+          <span class="spinner-border spinner-border-sm me-2" role="status"></span>{% translate "Chargement…" %}
         </td></tr>
       </tbody>
     </table>
@@ -121,11 +121,11 @@
       <i class="bi bi-chevron-left me-1"></i>{{ prev_cls.name }}
     </a>
   {% else %}
-    <button class="cat-nav-btn is-disabled" disabled><i class="bi bi-chevron-left me-1"></i>Début</button>
+    <button class="cat-nav-btn is-disabled" disabled><i class="bi bi-chevron-left me-1"></i>{% translate "Début" %}</button>
   {% endif %}
   <button type="button" class="cat-nav-btn cat-nav-btn-main"
           data-bs-toggle="modal" data-bs-target="#categoryPickerModal">
-    <i class="bi bi-grid-3x3-gap-fill me-1"></i>Toutes les catégories
+    <i class="bi bi-grid-3x3-gap-fill me-1"></i>{% translate "Toutes les catégories" %}
   </button>
   {% if next_cls %}
     <a href="{% url 'results:live' competition.cid next_cls.name %}"
@@ -133,14 +133,14 @@
       {{ next_cls.name }}<i class="bi bi-chevron-right ms-1"></i>
     </a>
   {% else %}
-    <button class="cat-nav-btn is-disabled" disabled>Fin<i class="bi bi-chevron-right ms-1"></i></button>
+    <button class="cat-nav-btn is-disabled" disabled>{% translate "Fin" %}<i class="bi bi-chevron-right ms-1"></i></button>
   {% endif %}
 </div>
 {% include "results/_category_modal.html" %}
 {% else %}
 <div class="cat-nav-bar">
   <a href="{% url 'results:competition_detail' competition.cid %}" class="btn btn-outline-success">
-    <i class="bi bi-arrow-left me-2"></i>Toutes les catégories
+    <i class="bi bi-arrow-left me-2"></i>{% translate "Toutes les catégories" %}
   </a>
 </div>
 {% endif %}
@@ -162,6 +162,47 @@
     initialRaceEndClock: {{ race_end_clock|default:"null" }},
     initialRaceEndAbs: {{ race_end_abs|default:"null" }},
     competitionDate: "{{ competition_date }}",
+    // Chaînes i18n (msgids extraits dans locale/*/LC_MESSAGES/django.po) ;
+    // clés identiques à DEFAULT_STRINGS de live.js.
+    strings: {
+      groupLabels: {
+        en_course: "{% translate 'En course' %}",
+        valid_gec: "{% translate 'En attente validation GEC' %}",
+        arrives: "{% translate 'Arrivés' %}",
+        en_attente: "{% translate 'En attente' %}",
+        termine: "{% translate 'Terminé' %}",
+      },
+      groupEmpty: {
+        en_course: "{% translate 'Aucun coureur parti pour le moment.' %}",
+        valid_gec: "{% translate 'Aucun coureur en attente de validation GEC.' %}",
+        arrives: "{% translate 'Aucun arrivé pour le moment.' %}",
+        en_attente: "{% translate 'Aucun coureur en attente.' %}",
+        termine: "{% translate 'Aucun.' %}",
+      },
+      inRace: "{% translate 'En course' %}",
+      negPosteSingular: "{% translate 'Temps négatif au poste %s' %}",
+      negPostePlural: "{% translate 'Temps négatif aux postes %s' %}",
+      negTitleFallback: "{% translate 'Temps négatif : boîtier mal synchronisé ou carte SI non effacée' %}",
+      negBadge: "{% translate 'Temps négatif' %}",
+      allCtrls: "{% translate 'Tous les postes du parcours' %}",
+      preStartPunch: "{% translate '%s — poinçon avant le départ' %}",
+      provisionalTime: "{% translate 'Temps final provisoire — validation GEC en attente' %}",
+      raceTimeTitle: "{% translate 'Temps de course depuis le départ' %}",
+      startHourTitle: "{% translate 'Heure de départ' %}",
+      departPrefix: "{% translate 'Départ %s' %}",
+      emptyRunners: "{% translate "Aucun coureur — le flux MOP n'a peut-être pas encore été reçu." %}",
+      updatedPrefix: "{% translate 'Mis à jour %s' %}",
+      agoPrefix: "{% translate 'il y a %s' %}",
+      inPrefix: "{% translate 'dans %s' %}",
+      raceFinished: "{% translate 'Course terminée' %}",
+      raceUpcoming: "{% translate 'Course à venir' %}",
+      liveNow: "{% translate 'En direct' %}",
+      offline: "{% translate 'Hors ligne' %}",
+      fmtDayHourMinSec: "{% translate '%s j %s h %s min %s s' %}",
+      fmtHourMinSec: "{% translate '%s h %s min %s s' %}",
+      fmtMinSec: "{% translate '%s min %s s' %}",
+      fmtSec: "{% translate '%s s' %}",
+    },
   });
 </script>
 {% endblock %}

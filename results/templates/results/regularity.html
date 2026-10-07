@@ -1,8 +1,8 @@
 {% extends "results/analysis_base.html" %}
-{% load static %}
-{% block analysis_breadcrumb %}Régularité{% endblock %}
+{% load static i18n %}
+{% block analysis_breadcrumb %}{% translate "Régularité" %}{% endblock %}
 {% block analysis_icon %}bi bi-activity{% endblock %}
-{% block analysis_title %}Régularité{% endblock %}
+{% block analysis_title %}{% translate "Régularité" %}{% endblock %}
 
 {% block page_header %}
 <div class="co-page-header">
@@ -13,19 +13,19 @@
         <li class="breadcrumb-item">
           <a href="{% if course %}{% url 'results:course_results' competition.cid course.hash %}{% else %}{% url 'results:class_results' competition.cid cls.name %}{% endif %}">{% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}</a>
         </li>
-        <li class="breadcrumb-item active">Régularité</li>
+        <li class="breadcrumb-item active">{% translate "Régularité" %}</li>
       </ol>
     </nav>
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
         <h1>
           <i class="bi bi-activity me-2 opacity-75" style="color:var(--co-gold)"></i>
-          Régularité
+          {% translate "Régularité" %}
         </h1>
          {% if course %}
          <div class="opacity-75 small mt-1">
            {{ course.display_name }} — {{ competition.name }}
-           <span class="ms-2 badge bg-secondary">{{ course.classes|length }} catégorie{{ course.classes|length|pluralize }}</span>
+           <span class="ms-2 badge bg-secondary">{% blocktranslate count n=course.classes|length %}{{ n }} catégorie{% plural %}{{ n }} catégories{% endblocktranslate %}</span>
          </div>
          {% include "results/_course_classes_badges_include.html" %}
          {% else %}
@@ -36,12 +36,12 @@
       <div class="d-flex align-items-center gap-2 flex-wrap">
         {% if category_regularity is not None %}
         <span class="badge bg-warning text-dark fs-6 fw-bold">
-          <i class="bi bi-activity me-1"></i>σ catégorie : {{ category_regularity }}
+          <i class="bi bi-activity me-1"></i>{% blocktranslate %}σ catégorie : {{ category_regularity }}{% endblocktranslate %}
         </span>
         {% endif %}
-        <span class="badge bg-light text-dark fs-6">{{ n_finishers }} coureur{{ n_finishers|pluralize }}</span>
+        <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=n_finishers %}{{ n }} coureur{% plural %}{{ n }} coureurs{% endblocktranslate %}</span>
         {% if n_controls %}
-        <span class="badge bg-light text-dark fs-6">{{ n_controls }} poste{{ n_controls|pluralize }}</span>
+        <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=n_controls %}{{ n }} poste{% plural %}{{ n }} postes{% endblocktranslate %}</span>
         {% endif %}
       </div>
       {% endif %}
@@ -59,8 +59,8 @@
 {% if no_data %}
 <div class="co-card text-center p-5 text-muted">
   <i class="bi bi-activity fs-1 d-block mb-3 opacity-25"></i>
-  Pas assez de coureurs classés pour calculer la régularité
-  (minimum 2 requis).
+  {% blocktranslate %}Pas assez de coureurs classés pour calculer la régularité
+  (minimum 2 requis).{% endblocktranslate %}
 </div>
 
 {% else %}
@@ -69,24 +69,24 @@
 <div class="alert alert-warning border-0 mb-4"
      style="background:var(--co-highlight-bg);border-left:4px solid var(--co-gold) !important;">
   <i class="bi bi-info-circle me-2"></i>
-  La <strong>régularité</strong> est mesurée par la déviation standard (σ) des
+  {% blocktranslate %}La <strong>régularité</strong> est mesurée par la déviation standard (σ) des
   <strong>indices de performance</strong> — une valeur plus faible indique une
-  meilleure régularité.
+  meilleure régularité.{% endblocktranslate %}
   <ul class="mb-0 mt-2 small">
-    <li><strong>Coureur</strong> : σ pondéré de ses IP sur l'ensemble des tronçons
-        (pondéré par la longueur estimée du tronçon).</li>
-    <li><strong>Tronçon</strong> : σ des IP de <em>tous</em> les coureurs sur ce tronçon
+    <li>{% blocktranslate %}<strong>Coureur</strong> : σ pondéré de ses IP sur l'ensemble des tronçons
+        (pondéré par la longueur estimée du tronçon).{% endblocktranslate %}</li>
+    <li>{% blocktranslate %}<strong>Tronçon</strong> : σ des IP de <em>tous</em> les coureurs sur ce tronçon
         — un σ élevé signale un tronçon à forte dispersion (erreurs nombreuses ou
-        dénivelé/orientation difficile).</li>
-    <li><strong>Catégorie</strong> : moyenne des σ pondérés de tous les coureurs.</li>
+        dénivelé/orientation difficile).{% endblocktranslate %}</li>
+    <li>{% blocktranslate %}<strong>Catégorie</strong> : moyenne des σ pondérés de tous les coureurs.{% endblocktranslate %}</li>
   </ul>
 </div>
 
 {# ── Graphique 1 : régularité par coureur ────────────────────────────────── #}
 <div class="co-card mb-4">
   <div class="co-card-header">
-    <i class="bi bi-bar-chart-steps me-2"></i>Régularité par coureur (σ pondéré) —
-    <span class="fw-normal opacity-75 small">trié du plus régulier au moins régulier</span>
+    <i class="bi bi-bar-chart-steps me-2"></i>{% translate "Régularité par coureur (σ pondéré) —" %}
+    <span class="fw-normal opacity-75 small">{% translate "trié du plus régulier au moins régulier" %}</span>
   </div>
   <div class="p-3">
     <div id="runnerChartWrap" style="position:relative;min-height:300px;">
@@ -98,7 +98,7 @@
 {# ── Graphique 2 : dispersion par tronçon ────────────────────────────────── #}
 <div class="co-card mb-4">
   <div class="co-card-header">
-    <i class="bi bi-bar-chart me-2"></i>Dispersion par tronçon (σ des IP)
+    <i class="bi bi-bar-chart me-2"></i>{% translate "Dispersion par tronçon (σ des IP)" %}
   </div>
   <div class="p-3">
     <div style="position:relative;height:220px;">
@@ -106,8 +106,8 @@
     </div>
     <p class="small text-muted mt-2 mb-0">
       <i class="bi bi-info-circle me-1"></i>
-      Un tronçon avec un σ élevé présente une grande disparité de niveau entre
-      les coureurs — terrain sélectif, erreurs fréquentes ou poste difficile à trouver.
+      {% blocktranslate %}Un tronçon avec un σ élevé présente une grande disparité de niveau entre
+      les coureurs — terrain sélectif, erreurs fréquentes ou poste difficile à trouver.{% endblocktranslate %}
     </p>
   </div>
 </div>
@@ -115,31 +115,31 @@
 {# ── Tableau récapitulatif ────────────────────────────────────────────────── #}
 <div class="co-card mb-4">
   <div class="co-card-header">
-    <i class="bi bi-table me-2"></i>Récapitulatif par coureur
+    <i class="bi bi-table me-2"></i>{% translate "Récapitulatif par coureur" %}
     <span class="ms-2 small fw-normal opacity-75">
-      trié par régularité croissante (σ pondéré)
+      {% translate "trié par régularité croissante (σ pondéré)" %}
     </span>
   </div>
   <div class="table-responsive">
     <table class="results-table analysis-table">
       <thead>
         <tr>
-          <th style="width:3rem" title="Rang régularité">#<span class="d-none d-md-inline">&nbsp;reg.</span></th>
-          <th>Coureur</th>
-          <th>Club</th>
-          <th class="text-center d-none d-md-table-cell" title="Rang course">Rang course</th>
-          <th class="text-center d-md-none" title="Rang course">Rg</th>
-          <th class="text-end d-none d-md-table-cell">Temps</th>
-          <th class="text-end d-none d-md-table-cell" title="Indice de performance moyen pondéré">IP moyen</th>
-          <th class="text-end d-none d-md-table-cell" title="Déviation standard pondérée">σ (régularité)</th>
-          <th class="d-none d-md-table-cell" style="width:9rem">Profil σ</th>
-          <th class="text-end d-md-none" title="Temps / IP moyen">
-            <span class="d-block">Temps</span>
-            <span class="d-block">IP moyen</span>
+          <th style="width:3rem" title="{% translate 'Rang régularité' %}">#<span class="d-none d-md-inline">&nbsp;{% translate "reg." %}</span></th>
+          <th>{% translate "Coureur" %}</th>
+          <th>{% translate "Club" %}</th>
+          <th class="text-center d-none d-md-table-cell" title="{% translate 'Rang course' %}">{% translate "Rang course" %}</th>
+          <th class="text-center d-md-none" title="{% translate 'Rang course' %}">{% translate "Rg" %}</th>
+          <th class="text-end d-none d-md-table-cell">{% translate "Temps" %}</th>
+          <th class="text-end d-none d-md-table-cell" title="{% translate 'Indice de performance moyen pondéré' %}">{% translate "IP moyen" %}</th>
+          <th class="text-end d-none d-md-table-cell" title="{% translate 'Déviation standard pondérée' %}">{% translate "σ (régularité)" %}</th>
+          <th class="d-none d-md-table-cell" style="width:9rem">{% translate "Profil σ" %}</th>
+          <th class="text-end d-md-none" title="{% translate 'Temps / IP moyen' %}">
+            <span class="d-block">{% translate "Temps" %}</span>
+            <span class="d-block">{% translate "IP moyen" %}</span>
           </th>
-          <th class="text-end d-md-none" title="Déviation standard pondérée / profil">
+          <th class="text-end d-md-none" title="{% translate 'Déviation standard pondérée / profil' %}">
             <span class="d-block">σ</span>
-            <span class="d-block">Profil σ</span>
+            <span class="d-block">{% translate "Profil σ" %}</span>
           </th>
         </tr>
       </thead>
@@ -214,7 +214,7 @@ function initRunnerChart() {
     data: {
       labels: sorted.map(s => `${s.rank}. ${s.name}`),
       datasets: [{
-        label: 'σ pondéré',
+        label: "{% translate 'σ pondéré' %}",
         data:  sorted.map(s => s.weighted_std),
         backgroundColor: sorted.map(s => stdColor(s.weighted_std, maxRunnerStd) + 'cc'),
         borderColor:     sorted.map(s => stdColor(s.weighted_std, maxRunnerStd)),
@@ -235,9 +235,9 @@ function initRunnerChart() {
               if (v === null || v === undefined) return '—';
               const s = sorted[ctx.dataIndex];
               return [
-                `σ = ${v.toFixed(4)}`,
-                `IP moyen = ${s.mean_pi !== null ? s.mean_pi.toFixed(4) : '—'}`,
-                `Temps : ${s.time}`,
+                `{% translate "σ = " %}${v.toFixed(4)}`,
+                `{% translate "IP moyen = " %}${s.mean_pi !== null ? s.mean_pi.toFixed(4) : '—'}`,
+                `{% translate "Temps : " %}${s.time}`,
               ];
             },
           },
@@ -247,7 +247,7 @@ function initRunnerChart() {
         x: {
           min: 0,
           title: {
-            display: true, text: 'Déviation standard pondérée (σ)',
+            display: true, text: "{% translate 'Déviation standard pondérée (σ)' %}",
             font: { family: "'Barlow', sans-serif", size: 12 }, color: '#6c757d',
           },
           ticks: { font: { family: "'Barlow Condensed', sans-serif", size: 11 } },
@@ -270,7 +270,7 @@ function initLegChart() {
     data: {
       labels: LEG_INFO.map(l => l.label),
       datasets: [{
-        label: 'σ des IP',
+        label: "{% translate 'σ des IP' %}",
         data:  legStds,
         backgroundColor: legStds.map(v => stdColor(v, maxLegStd) + 'cc'),
         borderColor:     legStds.map(v => stdColor(v, maxLegStd)),
@@ -289,7 +289,7 @@ function initLegChart() {
               const v = ctx.parsed.y;
               if (v === null || v === undefined) return '—';
               const info = LEG_INFO[ctx.dataIndex];
-              return [`σ = ${v.toFixed(4)}`, `Référence : ${info.ref}`];
+              return [`{% translate "σ = " %}${v.toFixed(4)}`, `{% translate "Référence : " %}${info.ref}`];
             },
           },
         },
@@ -302,7 +302,7 @@ function initLegChart() {
         y: {
           min: 0,
           title: {
-            display: true, text: 'σ des IP (dispersion entre coureurs)',
+            display: true, text: "{% translate 'σ des IP (dispersion entre coureurs)' %}",
             font: { family: "'Barlow', sans-serif", size: 12 }, color: '#6c757d',
           },
           ticks: { font: { family: "'Barlow Condensed', sans-serif", size: 11 } },

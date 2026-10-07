@@ -1,5 +1,5 @@
 {% extends "results/base.html" %}
-{% load meos_tags %}
+{% load meos_tags i18n %}
 {% load static %}
 {% block title %}{{ organization.name }} — {{ competition.name }}{% endblock %}
 
@@ -15,7 +15,7 @@
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
       <h1><i class="bi bi-building me-2 opacity-75"></i>{{ organization.name }}</h1>
       <span class="badge bg-light text-dark fs-6">
-        {{ competitors|length }} concurrent{{ competitors|length|pluralize }}
+        {% blocktranslate count n=competitors|length %}{{ n }} concurrent{% plural %}{{ n }} concurrents{% endblocktranslate %}
       </span>
     </div>
   </div>
@@ -25,16 +25,16 @@
 {% block content %}
 <div class="co-card">
   <div class="co-card-header">
-    <i class="bi bi-people me-2"></i>Concurrents — {{ organization.name }}
+    <i class="bi bi-people me-2"></i>{% blocktranslate with name=organization.name %}Concurrents — {{ name }}{% endblocktranslate %}
   </div>
   <div class="table-responsive">
     <table class="results-table">
       <thead>
         <tr>
           <th style="width:3rem">#</th>
-          <th>Concurrent</th>
-          <th>Catégorie</th>
-          <th class="text-end">Temps&nbsp;/&nbsp;Statut</th>
+          <th>{% translate "Concurrent" %}</th>
+          <th>{% translate "Catégorie" %}</th>
+          <th class="text-end">{% translate "Temps&nbsp;/&nbsp;Statut" %}</th>
         </tr>
       </thead>
       <tbody>
@@ -43,11 +43,11 @@
           {# ── Colonne rang dans la catégorie ── #}
           <td>
             {% if comp.cat_rank == 1 %}
-              <img src="{% static 'results/img/medal-gold.svg' %}" width="22" height="22" alt="1er">
+              <img src="{% static 'results/img/medal-gold.svg' %}" width="22" height="22" alt="{% translate "1er" %}">
             {% elif comp.cat_rank == 2 %}
-              <img src="{% static 'results/img/medal-silver.svg' %}" width="22" height="22" alt="2e">
+              <img src="{% static 'results/img/medal-silver.svg' %}" width="22" height="22" alt="{% translate "2e" %}">
             {% elif comp.cat_rank == 3 %}
-              <img src="{% static 'results/img/medal-bronze.svg' %}" width="22" height="22" alt="3e">
+              <img src="{% static 'results/img/medal-bronze.svg' %}" width="22" height="22" alt="{% translate "3e" %}">
             {% elif comp.cat_rank %}
               <span class="rank-n">{{ comp.cat_rank }}</span>
             {% else %}
@@ -84,7 +84,7 @@
         {% empty %}
         <tr>
           <td colspan="4" class="text-center text-muted p-4">
-            <i class="bi bi-inbox me-2"></i>Aucun concurrent pour ce club.
+            <i class="bi bi-inbox me-2"></i>{% translate "Aucun concurrent pour ce club." %}
           </td>
         </tr>
         {% endfor %}
@@ -96,7 +96,7 @@
 <div class="cat-nav-bar">
   <a href="{% url 'results:competition_detail' competition.cid %}"
      class="btn btn-outline-success">
-    <i class="bi bi-arrow-left me-2"></i>Toutes les catégories
+    <i class="bi bi-arrow-left me-2"></i>{% translate "Toutes les catégories" %}
   </a>
 </div>
 {% endblock %}

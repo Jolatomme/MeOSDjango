@@ -1,7 +1,7 @@
 {% extends "results/base.html" %}
-{% load meos_tags %}
+{% load meos_tags i18n %}
 {% load static %}
-{% block title %}Résultats — {{ course.display_name }} — {{ competition.name }}{% endblock %}
+{% block title %}{% translate "Résultats" %} — {{ course.display_name }} — {{ competition.name }}{% endblock %}
 
 {% block page_header %}
 <div class="co-page-header">
@@ -10,28 +10,28 @@
       <ol class="breadcrumb mb-2 small">
         {% include 'results/_breadcrumb_home_comp.html' %}
         <li class="breadcrumb-item active">{{ course.display_name }}</li>
-        <li class="breadcrumb-item active" aria-current="page">Résultats</li>
+        <li class="breadcrumb-item active" aria-current="page">{% translate "Résultats" %}</li>
       </ol>
     </nav>
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
-        <h1><i class="bi bi-map me-2 opacity-75"></i>Résultats</h1>
+        <h1><i class="bi bi-map me-2 opacity-75"></i>{% translate "Résultats" %}</h1>
         {# Sous-titre : circuit — course, puis pastilles catégories (comme les analyses) #}
         <div class="opacity-75 small mt-1">
           {{ course.display_name }} — {{ competition.name }}
-          <span class="ms-2 badge bg-secondary">{{ course.classes|length }} catégorie{{ course.classes|length|pluralize }}</span>
+          <span class="ms-2 badge bg-secondary">{% blocktranslate count n=course.classes|length %}{{ n }} catégorie{% plural %}{{ n }} catégories{% endblocktranslate %}</span>
         </div>
         {% include "results/_course_classes_badges_include.html" %}
       </div>
       <div class="d-flex align-items-center gap-2 flex-wrap">
         {% if leader_time != '-' %}
           <span class="badge bg-warning text-dark fs-6 fw-bold">
-            <i class="bi bi-stopwatch me-1"></i>Leader : {{ leader_time }}
+            <i class="bi bi-stopwatch me-1"></i>{% blocktranslate %}Leader : {{ leader_time }}{% endblocktranslate %}
           </span>
         {% endif %}
-        <span class="badge bg-light text-dark fs-6">{{ results|length }} coureur{{ results|length|pluralize }}</span>
+        <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=results|length %}{{ n }} coureur{% plural %}{{ n }} coureurs{% endblocktranslate %}</span>
         {% if has_splits and can_show_splits %}
-          <span class="badge bg-light text-dark fs-6">{{ controls_seq|length }} poste{{ controls_seq|pluralize }}</span>
+          <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=controls_seq|length %}{{ n }} poste{% plural %}{{ n }} postes{% endblocktranslate %}</span>
         {% endif %}
       </div>
     </div>
@@ -44,12 +44,13 @@
 
 {% include 'results/_neg_time_warning.html' %}
 
-{% include 'results/_result_filters_bar.html' with search_placeholder="Nom ou club…" %}
+{% translate "Nom ou club…" as searchPlaceholder %}
+{% include 'results/_result_filters_bar.html' with search_placeholder=searchPlaceholder %}
 {% include 'results/_error_chart_card.html' %}
 
 <div class="co-card">
   <div class="co-card-header d-flex justify-content-between">
-    <span><i class="bi bi-trophy me-2"></i>Classement circuit — {{ course.display_name }}</span>
+    <span><i class="bi bi-trophy me-2"></i>{% blocktranslate with name=course.display_name %}Classement circuit — {{ name }}{% endblocktranslate %}</span>
     <span class="badge bg-warning text-dark">{{ competition.date|date:"d/m/Y" }}</span>
   </div>
   <div class="table-responsive">
@@ -57,11 +58,11 @@
       <thead>
         <tr>
           <th style="width:3rem">#</th>
-          <th>Concurrent</th>
-          <th class="d-none d-md-table-cell">Catégorie</th>
-          <th>Club</th>
-          <th class="text-end">Temps</th>
-          <th class="text-end d-none d-md-table-cell">Écart</th>
+          <th>{% translate "Concurrent" %}</th>
+          <th class="d-none d-md-table-cell">{% translate "Catégorie" %}</th>
+          <th>{% translate "Club" %}</th>
+          <th class="text-end">{% translate "Temps" %}</th>
+          <th class="text-end d-none d-md-table-cell">{% translate "Écart" %}</th>
         </tr>
       </thead>
       <tbody>
@@ -71,17 +72,17 @@
             data-name="{{ comp.name|lower }}{% if comp.class_obj %} {{ comp.class_obj.name|lower }}{% endif %} {% if comp.org_obj %}{{ comp.org_obj.name|lower }}{% endif %}"
             data-org="{% if comp.org_obj %}{{ comp.org_obj.name|lower }}{% endif %}">
           <td>
-            {% if comp.rank == 1 %}<img src="{% static 'results/img/medal-gold.svg' %}" width="22" height="22" alt="1er">
-            {% elif comp.rank == 2 %}<img src="{% static 'results/img/medal-silver.svg' %}" width="22" height="22" alt="2e">
-            {% elif comp.rank == 3 %}<img src="{% static 'results/img/medal-bronze.svg' %}" width="22" height="22" alt="3e">
+            {% if comp.rank == 1 %}<img src="{% static 'results/img/medal-gold.svg' %}" width="22" height="22" alt="{% translate "1er" %}">
+            {% elif comp.rank == 2 %}<img src="{% static 'results/img/medal-silver.svg' %}" width="22" height="22" alt="{% translate "2e" %}">
+            {% elif comp.rank == 3 %}<img src="{% static 'results/img/medal-bronze.svg' %}" width="22" height="22" alt="{% translate "3e" %}">
             {% elif comp.rank %}<span class="rank-n">{{ comp.rank }}</span>
             {% else %}<span class="text-muted">—</span>
             {% endif %}
           </td>
           <td class="runner-name">
             <a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name }}</a>
-            {% if comp.cat_rank %}<span class="text-muted small"> ({{ comp.cat_rank }}<sup>e</sup> cat.)</span>{% endif %}
-            {% if comp.neg_time %}<span class="badge neg-badge ms-1" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>{% endif %}
+            {% if comp.cat_rank %}<span class="text-muted small"> {% blocktranslate with rank=comp.cat_rank %}({{ rank }}<sup>e</sup> cat.){% endblocktranslate %}</span>{% endif %}
+            {% if comp.neg_time %}<span class="badge neg-badge ms-1" title="{% translate "Temps négatif : boîtier mal synchronisé ou carte SI non effacée" %}">{% translate "Temps négatif" %}</span>{% endif %}
           </td>
           <td class="d-none d-md-table-cell">
             {% if comp.class_obj %}
@@ -98,7 +99,7 @@
           {% if has_splits and can_show_splits and comp.splits %}
           <td class="text-end time-col time-col-splits"
               onclick="toggleSplits('{{ comp.id }}', this.querySelector('.split-toggle'))"
-              title="Afficher les intermédiaires">
+              title="{% translate "Afficher les intermédiaires" %}">
             {% if comp.is_ok %}
               <span class="time-with-toggle">
                 {{ comp.rt|meos_time }}
@@ -128,7 +129,7 @@
         {% include 'results/_split_detail_row.html' %}
         {% empty %}
         <tr><td colspan="{{ colspan }}" class="text-center text-muted p-4">
-          <i class="bi bi-inbox me-2"></i>Aucun résultat pour ce circuit.
+          <i class="bi bi-inbox me-2"></i>{% translate "Aucun résultat pour ce circuit." %}
         </td></tr>
         {% endfor %}
         {% endwith %}
@@ -139,7 +140,7 @@
 
 <div class="cat-nav-bar">
   <a href="{% url 'results:competition_detail' competition.cid %}" class="btn btn-outline-success">
-    <i class="bi bi-arrow-left me-2"></i>Toutes les catégories
+    <i class="bi bi-arrow-left me-2"></i>{% translate "Toutes les catégories" %}
   </a>
 </div>
 {% endblock %}
@@ -151,7 +152,11 @@
 <script src="{% static 'results/js/results-splits.js' %}"></script>
 <script>
   {% if has_splits and can_show_splits %}
-  COResultsSplits.init({{ leg_error_data_json|default:"[]"|safe }});
+  COResultsSplits.init({{ leg_error_data_json|default:"[]"|safe }}, {
+      rateLabel: "{% translate 'Coureurs en erreur (%)' %}",
+      avgLabel: "{% translate 'Erreur moyenne (s)' %}",
+      avgAxis: "{% translate 'Erreur moy. (s)' %}",
+    });
   {% endif %}
   const _toggleNF = COUtils.makeNonFinisherToggle('toggleLabel');
   function toggleNonFinishers() { _toggleNF(); }
@@ -161,8 +166,8 @@
   const _allSplitsToggle = COUtils.makeAllToggle({
     rowSelector: '.splits-row', btnSelector: '.split-toggle',
     labelId: 'allSplitsLabel',
-    openText: 'Réduire tous les intermédiaires',
-    closeText: 'Développer tous les intermédiaires',
+    openText: "{% translate 'Réduire tous les intermédiaires' %}",
+    closeText: "{% translate 'Développer tous les intermédiaires' %}",
     onOpen: () => COResultsSplits.applyErrorThresholds(),
   });
   function toggleAllSplits() { _allSplitsToggle(); }

@@ -1,16 +1,17 @@
 {% extends "results/base.html" %}
-{% block title %}Tutoriels MeOS — {{ SITE_NAME }}{% endblock %}
+{% load i18n %}
+{% block title %}{% blocktranslate %}Tutoriels MeOS — {{ SITE_NAME }}{% endblocktranslate %}{% endblock %}
 
 {% block page_header %}
 <div class="co-page-header">
   <div class="container">
     <nav aria-label="breadcrumb" class="co-breadcrumb">
       <ol class="breadcrumb mb-2 small">
-        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
-        <li class="breadcrumb-item active">Tutoriels</li>
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">{% translate "Accueil" %}</a></li>
+        <li class="breadcrumb-item active">{% translate "Tutoriels" %}</li>
       </ol>
     </nav>
-    <h1><i class="bi bi-book me-2 opacity-75"></i>Tutoriels MeOS</h1>
+    <h1><i class="bi bi-book me-2 opacity-75"></i>{% translate "Tutoriels MeOS" %}</h1>
   </div>
 </div>
 {% endblock %}
@@ -37,7 +38,7 @@
 {% else %}
 <div class="co-card text-center p-5 text-muted">
   <i class="bi bi-book fs-1 d-block mb-3 opacity-25"></i>
-  <p class="mb-0">Aucun tutoriel disponible pour le moment.</p>
+  <p class="mb-0">{% translate "Aucun tutoriel disponible pour le moment." %}</p>
 </div>
 {% endif %}
 {% endblock %}

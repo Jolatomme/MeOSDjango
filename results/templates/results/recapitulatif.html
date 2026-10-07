@@ -1,8 +1,8 @@
 {% extends "results/base.html" %}
-{% load meos_tags %}
+{% load meos_tags i18n %}
 {% load static %}
 {% block title %}
-  Récapitulatif — {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
+  {% translate "Récapitulatif" %} — {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
   — {{ competition.name }}
 {% endblock %}
 
@@ -17,16 +17,16 @@
             {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
           </a>
         </li>
-        <li class="breadcrumb-item active">Récapitulatif</li>
+        <li class="breadcrumb-item active">{% translate "Récapitulatif" %}</li>
       </ol>
     </nav>
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
-        <h1><i class="bi bi-table me-2 opacity-75" style="color:var(--co-gold)"></i>Récapitulatif</h1>
+        <h1><i class="bi bi-table me-2 opacity-75" style="color:var(--co-gold)"></i>{% translate "Récapitulatif" %}</h1>
         {% if course %}
         <div class="opacity-75 small mt-1">
           {{ course.display_name }} — {{ competition.name }}
-          <span class="ms-2 badge bg-secondary">{{ course.classes|length }} catégorie{{ course.classes|length|pluralize }}</span>
+          <span class="ms-2 badge bg-secondary">{% blocktranslate count n=course.classes|length %}{{ n }} catégorie{% plural %}{{ n }} catégories{% endblocktranslate %}</span>
         </div>
         {% else %}
         <div class="opacity-75 small mt-1">{{ cls.name }} — {{ competition.name }}</div>
@@ -35,12 +35,12 @@
       <div class="d-flex align-items-center gap-2 flex-wrap">
         {% if leader_time and leader_time != '-' %}
         <span class="badge bg-warning text-dark fs-6 fw-bold">
-          <i class="bi bi-stopwatch me-1"></i>Leader : {{ leader_time }}
+          <i class="bi bi-stopwatch me-1"></i>{% blocktranslate %}Leader : {{ leader_time }}{% endblocktranslate %}
         </span>
         {% endif %}
-        <span class="badge bg-light text-dark fs-6">{{ results|length }} coureur{{ results|length|pluralize }}</span>
+        <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=results|length %}{{ n }} coureur{% plural %}{{ n }} coureurs{% endblocktranslate %}</span>
         {% if has_splits and can_show_splits %}
-        <span class="badge bg-light text-dark fs-6">{{ controls_seq|length }} poste{{ controls_seq|length|pluralize }}</span>
+        <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=controls_seq|length %}{{ n }} poste{% plural %}{{ n }} postes{% endblocktranslate %}</span>
         {% endif %}
       </div>
     </div>
@@ -61,7 +61,7 @@
 
 {% if course %}
 <div class="co-card mb-3">
-  <div class="co-card-header"><i class="bi bi-tags me-2"></i>Catégories sur ce circuit</div>
+  <div class="co-card-header"><i class="bi bi-tags me-2"></i>{% translate "Catégories sur ce circuit" %}</div>
   <div class="p-3 d-flex flex-wrap gap-2">
     {% for cat in course.classes %}
     <a href="{% url 'results:class_results' competition.cid cat.name %}"
@@ -73,25 +73,25 @@
 
 <div class="co-card">
   <div class="co-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <span><i class="bi bi-table me-2"></i>Temps intermédiaires —
-      {% if course %}Circuit {{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
+    <span><i class="bi bi-table me-2"></i>{% translate "Temps intermédiaires" %} —
+      {% if course %}{% blocktranslate with name=course.display_name %}Circuit {{ name }}{% endblocktranslate %}{% else %}{{ cls.name }}{% endif %}
     </span>
       <span class="d-flex align-items-center gap-2 flex-wrap">
       {% if has_splits and can_show_splits %}
       <div class="d-flex align-items-center gap-2" id="errorThresholds">
-        <span class="small fw-bold" style="color:var(--co-gold)">Seuil erreur :</span>
+        <span class="small fw-bold" style="color:var(--co-gold)">{% translate "Seuil erreur :" %}</span>
         <div class="input-group input-group-sm" style="width:100px">
-          <input type="number" id="thresholdSec" class="form-control form-control-sm" value="30" min="0" step="5" title="Seuil en secondes">
+          <input type="number" id="thresholdSec" class="form-control form-control-sm" value="30" min="0" step="5" title="{% translate 'Seuil en secondes' %}">
           <span class="input-group-text">s</span>
         </div>
         <div class="input-group input-group-sm" style="width:80px">
-          <input type="number" id="thresholdPct" class="form-control form-control-sm" value="10" min="0" step="1" title="Seuil en pourcent">
+          <input type="number" id="thresholdPct" class="form-control form-control-sm" value="10" min="0" step="1" title="{% translate 'Seuil en pourcent' %}">
           <span class="input-group-text">%</span>
         </div>
       </div>
       {% endif %}
       <a href="{% if course %}{% url 'results:course_recapitulatif_csv' competition.cid course.hash %}{% else %}{% url 'results:recapitulatif_csv' competition.cid cls.name %}{% endif %}"
-         class="btn btn-outline-light btn-sm" title="Télécharger en CSV">
+         class="btn btn-outline-light btn-sm" title="{% translate 'Télécharger en CSV' %}">
         <i class="bi bi-download me-1"></i>CSV
       </a>
       <span class="badge bg-warning text-dark">{{ competition.date|date:"d/m/Y" }}</span>
@@ -102,14 +102,14 @@
       <thead>
         <tr>
           <th style="width:3rem;min-width:3rem" data-sticky="0">#</th>
-          <th style="width:8rem;min-width:8rem" data-sticky="1">Concurrent</th>
-          {% if course %}<th style="width:10rem;min-width:10rem" data-sticky="2" class="col-category">Catégorie</th>{% endif %}
-          <th style="width:9rem;min-width:9rem" data-sticky="{% if course %}3{% else %}2{% endif %}" class="col-club">Club</th>
+          <th style="width:8rem;min-width:8rem" data-sticky="1">{% translate "Concurrent" %}</th>
+          {% if course %}<th style="width:10rem;min-width:10rem" data-sticky="2" class="col-category">{% translate "Catégorie" %}</th>{% endif %}
+          <th style="width:9rem;min-width:9rem" data-sticky="{% if course %}3{% else %}2{% endif %}" class="col-club">{% translate "Club" %}</th>
           {% if has_splits and can_show_splits %}
             {% for ctrl in controls_seq %}
             <th class="text-end" title="{{ ctrl.ctrl_name }}">{{ ctrl.ctrl_name }}</th>
             {% endfor %}
-            <th class="text-end">Arr.</th>
+            <th class="text-end">{% translate "Arr." %}</th>
           {% endif %}
         </tr>
       </thead>
@@ -121,7 +121,7 @@
               <td class="rank-col" rowspan="2" data-sticky="0">{{ comp.rank }}</td>
               <td rowspan="2" class="runner-name" data-sticky="1">
                 <a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a>
-                {% if comp.neg_time %}<span class="badge neg-badge ms-1" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>{% endif %}
+                {% if comp.neg_time %}<span class="badge neg-badge ms-1" title="{% translate 'Temps négatif : boîtier mal synchronisé ou carte SI non effacée' %}">{% translate "Temps négatif" %}</span>{% endif %}
               </td>
               {% if course %}
               <td rowspan="2" data-sticky="2" class="col-category">
@@ -164,7 +164,7 @@
             {% else %}
             <tr class="runner-row non-finisher">
               <td class="rank-col" data-sticky="0">{% if comp.rank %}{{ comp.rank }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
-              <td class="runner-name" data-sticky="1"><a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a>{% if comp.neg_time %} <span class="badge neg-badge ms-1" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>{% endif %}</td>
+              <td class="runner-name" data-sticky="1"><a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a>{% if comp.neg_time %} <span class="badge neg-badge ms-1" title="{% translate 'Temps négatif : boîtier mal synchronisé ou carte SI non effacée' %}">{% translate "Temps négatif" %}</span>{% endif %}</td>
               {% if course %}<td data-sticky="2" class="col-category">{% if comp.class_obj %}{{ comp.class_obj.name }}{% else %}—{% endif %}</td>{% endif %}
               <td class="club-name col-club" data-sticky="{% if course %}3{% else %}2{% endif %}">{% if comp.org_obj %}{{ comp.org_obj.name }}{% else %}—{% endif %}</td>
               {% if has_splits and can_show_splits %}
@@ -182,7 +182,7 @@
         {% else %}
           <tr>
             <td colspan="{% if course %}6{% else %}4{% endif %}" class="text-center text-muted p-4">
-              <i class="bi bi-inbox me-2"></i>Aucun résultat.
+              <i class="bi bi-inbox me-2"></i>{% translate "Aucun résultat." %}
             </td>
           </tr>
         {% endif %}
@@ -199,11 +199,11 @@
       <i class="bi bi-chevron-left me-1"></i>{{ prev_cls.name }}
     </a>
   {% else %}
-    <button class="cat-nav-btn is-disabled" disabled><i class="bi bi-chevron-left me-1"></i>Début</button>
+    <button class="cat-nav-btn is-disabled" disabled><i class="bi bi-chevron-left me-1"></i>{% translate "Début" %}</button>
   {% endif %}
   <button type="button" class="cat-nav-btn cat-nav-btn-main"
           data-bs-toggle="modal" data-bs-target="#categoryPickerModal">
-    <i class="bi bi-grid-3x3-gap-fill me-1"></i>Toutes les catégories
+    <i class="bi bi-grid-3x3-gap-fill me-1"></i>{% translate "Toutes les catégories" %}
   </button>
   {% if next_cls %}
     <a href="{% url 'results:recapitulatif' competition.cid next_cls.name %}"
@@ -211,14 +211,14 @@
       {{ next_cls.name }}<i class="bi bi-chevron-right ms-1"></i>
     </a>
   {% else %}
-    <button class="cat-nav-btn is-disabled" disabled>Fin<i class="bi bi-chevron-right ms-1"></i></button>
+    <button class="cat-nav-btn is-disabled" disabled>{% translate "Fin" %}<i class="bi bi-chevron-right ms-1"></i></button>
   {% endif %}
 </div>
 {% include "results/_category_modal.html" %}
 {% else %}
 <div class="cat-nav-bar">
   <a href="{% url 'results:competition_detail' competition.cid %}" class="btn btn-outline-success">
-    <i class="bi bi-arrow-left me-2"></i>Toutes les catégories
+    <i class="bi bi-arrow-left me-2"></i>{% translate "Toutes les catégories" %}
   </a>
 </div>
 {% endif %}

@@ -1,5 +1,6 @@
 {% extends "results/base.html" %}
-{% block title %}Liste des compétitions — {{ SITE_NAME }}{% endblock %}
+{% load i18n %}
+{% block title %}{% translate "Liste des compétitions" %} — {{ SITE_NAME }}{% endblock %}
 {% block nav_competitions %}active{% endblock %}
 
 {% block page_header %}
@@ -7,14 +8,14 @@
   <div class="container">
     <nav aria-label="breadcrumb" class="co-breadcrumb">
       <ol class="breadcrumb mb-2 small">
-        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
-        <li class="breadcrumb-item active">Liste des compétitions</li>
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">{% translate "Accueil" %}</a></li>
+        <li class="breadcrumb-item active">{% translate "Liste des compétitions" %}</li>
       </ol>
     </nav>
     <div>
-      <h1><i class="bi bi-calendar2-week me-2 opacity-75"></i>Liste des compétitions</h1>
+      <h1><i class="bi bi-calendar2-week me-2 opacity-75"></i>{% translate "Liste des compétitions" %}</h1>
       <p class="opacity-75 small mt-1 mb-0">
-        Toutes les compétitions présentes dans la base, avec leur CID.
+        {% translate "Toutes les compétitions présentes dans la base, avec leur CID." %}
       </p>
     </div>
   </div>
@@ -24,12 +25,12 @@
 {% block content %}
 <div class="co-card mb-4">
   <div class="co-card-header">
-    <i class="bi bi-plus-circle me-2"></i>Prochaine compétition
+    <i class="bi bi-plus-circle me-2"></i>{% translate "Prochaine compétition" %}
   </div>
   <div class="p-3 d-flex align-items-center gap-3">
     <span class="fs-4" style="color:var(--co-gold)"><i class="bi bi-key"></i></span>
     <div>
-      <div class="small text-muted">CID à utiliser pour la prochaine course</div>
+      <div class="small text-muted">{% translate "CID à utiliser pour la prochaine course" %}</div>
       <div class="fw-bold fs-5">{{ next_cid }}</div>
     </div>
   </div>
@@ -37,7 +38,7 @@
 
 <div class="co-card">
   <div class="co-card-header">
-    <i class="bi bi-list-ul me-2"></i>Compétitions ({{ competitions|length }})
+    <i class="bi bi-list-ul me-2"></i>{% blocktranslate with n=competitions|length %}Compétitions ({{ n }}){% endblocktranslate %}
   </div>
   {% if competitions %}
   <div class="table-responsive">
@@ -45,13 +46,13 @@
       <thead>
         <tr>
           <th scope="col" data-sort-key="cid">
-            CID <i class="bi sort-chevron" style="cursor:pointer" aria-label="Trier par CID" role="button"></i>
+            {% translate "CID" %} <i class="bi sort-chevron" style="cursor:pointer" aria-label="{% translate "Trier par CID" %}" role="button"></i>
           </th>
-          <th scope="col">Nom</th>
+          <th scope="col">{% translate "Nom" %}</th>
           <th scope="col" data-sort-key="date">
-            Date <i class="bi sort-chevron" style="cursor:pointer" aria-label="Trier par date" role="button"></i>
+            {% translate "Date" %} <i class="bi sort-chevron" style="cursor:pointer" aria-label="{% translate "Trier par date" %}" role="button"></i>
           </th>
-          <th scope="col">Organisateur</th>
+          <th scope="col">{% translate "Organisateur" %}</th>
         </tr>
       </thead>
       <tbody>
@@ -73,7 +74,7 @@
   {% else %}
   <div class="text-center p-5 text-muted">
     <i class="bi bi-inbox fs-1 d-block mb-3 opacity-25"></i>
-    <p class="mb-0">Aucune compétition trouvée dans la table <code>mopCompetition</code>.</p>
+    <p class="mb-0">{% blocktranslate %}Aucune compétition trouvée dans la table <code>mopCompetition</code>.{% endblocktranslate %}</p>
   </div>
   {% endif %}
 </div>

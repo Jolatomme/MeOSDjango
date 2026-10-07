@@ -1,17 +1,18 @@
 {% extends "results/base.html" %}
-{% block title %}Statistiques — {{ competition.name }}{% endblock %}
+{% load i18n %}
+{% block title %}{% translate "Statistiques" %} — {{ competition.name }}{% endblock %}
 
 {% block page_header %}
 <div class="co-page-header">
   <div class="container">
     <nav aria-label="breadcrumb" class="co-breadcrumb">
       <ol class="breadcrumb mb-2 small">
-        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">{% translate "Accueil" %}</a></li>
         <li class="breadcrumb-item"><a href="{% url 'results:competition_detail' competition.cid %}">{{ competition.name }}</a></li>
-        <li class="breadcrumb-item active">Statistiques</li>
+        <li class="breadcrumb-item active">{% translate "Statistiques" %}</li>
       </ol>
     </nav>
-    <h1><i class="bi bi-bar-chart me-2 opacity-75"></i>Statistiques</h1>
+    <h1><i class="bi bi-bar-chart me-2 opacity-75"></i>{% translate "Statistiques" %}</h1>
   </div>
 </div>
 {% endblock %}
@@ -23,13 +24,13 @@
       <div class="col-6 col-md-3">
         <div class="stat-card">
           <div class="stat-value">{{ total }}</div>
-          <div class="stat-label"><i class="bi bi-people me-1"></i>Partants</div>
+          <div class="stat-label"><i class="bi bi-people me-1"></i>{% translate "Partants" %}</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="stat-card" style="border-left-color:var(--co-gold)">
           <div class="stat-value" style="color:var(--co-gold)">{{ finished }}</div>
-          <div class="stat-label"><i class="bi bi-check-circle me-1"></i>Classés</div>
+          <div class="stat-label"><i class="bi bi-check-circle me-1"></i>{% translate "Classés" %}</div>
         </div>
       </div>
       {% if total > 0 %}
@@ -38,7 +39,7 @@
           <div class="stat-value" style="color:#0d6efd;font-size:1.6rem">
             {% widthratio finished total 100 %}%
           </div>
-          <div class="stat-label"><i class="bi bi-percent me-1"></i>Taux classement</div>
+          <div class="stat-label"><i class="bi bi-percent me-1"></i>{% translate "Taux classement" %}</div>
         </div>
       </div>
       {% endif %}
@@ -48,7 +49,7 @@
   {% if top_orgs %}
   <div class="col-12 col-md-6">
     <div class="co-card">
-      <div class="co-card-header"><i class="bi bi-trophy me-2"></i>Top clubs (classés)</div>
+      <div class="co-card-header"><i class="bi bi-trophy me-2"></i>{% translate "Top clubs (classés)" %}</div>
       <div class="p-3">
         {% for org_name, cnt in top_orgs %}
         <div class="d-flex justify-content-between align-items-center mb-1">
@@ -67,7 +68,7 @@
 
   <div class="col-12 col-md-6">
     <div class="co-card">
-      <div class="co-card-header"><i class="bi bi-pie-chart me-2"></i>Taux de classement</div>
+      <div class="co-card-header"><i class="bi bi-pie-chart me-2"></i>{% translate "Taux de classement" %}</div>
       <div class="p-4 text-center">
         <svg width="160" height="160" viewBox="0 0 160 160">
           {% widthratio finished total 314 as arc %}
@@ -82,7 +83,7 @@
             {% if total > 0 %}{% widthratio finished total 100 %}%{% else %}0%{% endif %}
           </text>
         </svg>
-        <p class="mt-2 text-muted mb-0">{{ finished }} / {{ total }} concurrents classés</p>
+        <p class="mt-2 text-muted mb-0">{% blocktranslate %}{{ finished }} / {{ total }} concurrents classés{% endblocktranslate %}</p>
       </div>
     </div>
   </div>

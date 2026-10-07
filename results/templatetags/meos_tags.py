@@ -5,6 +5,7 @@ from django import template
 from django.conf import settings
 from django.urls import reverse
 from django.utils.safestring import mark_safe
+from django.utils.translation import pgettext
 from results.models import format_time, STATUS_LABELS
 
 register = template.Library()
@@ -40,9 +41,9 @@ def status_badge(stat_code):
 
 @register.filter
 def status_label(stat_code):
-    """Libellé lisible pour un code statut."""
+    """Libellé lisible pour un code statut (traduit selon la langue active)."""
     try:
-        return STATUS_LABELS.get(int(stat_code), ('?', 'secondary'))[0]
+        return pgettext('mopstatus', STATUS_LABELS.get(int(stat_code), ('?', 'secondary'))[0])
     except (TypeError, ValueError):
         return '?'
 
@@ -82,6 +83,15 @@ def time_behind(runner_time, leader_time):
     if diff <= 0:
         return ''
     return f'+{format_time(diff)}'
+
+
+@register.filter
+def lang_flag(lang_code):
+    """Code du drapeau SVG pour un code de langue (en → gb, sv → se).
+
+    Les fichiers vivent dans ``static/results/img/flags/<code>.svg``.
+    """
+    return {'en': 'gb', 'sv': 'se'}.get(lang_code, lang_code)
 
 
 @register.simple_tag

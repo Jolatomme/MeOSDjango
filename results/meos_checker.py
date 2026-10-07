@@ -25,6 +25,9 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import Optional
 
+from django.utils.translation import gettext as _
+from django.utils.translation import ngettext
+
 
 # ─── Modèles de données ────────────────────────────────────────────────────────
 
@@ -137,7 +140,7 @@ def parse_meosxml(xml_bytes: bytes) -> tuple[
     try:
         root = ET.fromstring(xml_bytes)
     except ET.ParseError as exc:
-        raise ValueError(f"XML invalide : {exc}") from exc
+        raise ValueError(_("XML invalide : %(exc)s") % {"exc": exc}) from exc
 
     comp_name     = root.findtext('Name', '')
     comp_date     = root.findtext('Date', '')
@@ -245,16 +248,16 @@ def _runners_by_course(
 
 def _club_name(club_id: Optional[str], clubs: dict[str, Club]) -> str:
     if not club_id:
-        return '(sans club)'
+        return _('(sans club)')
     c = clubs.get(club_id)
-    return c.name if c else f'Club #{club_id}'
+    return c.name if c else _('Club #%(id)s') % {'id': club_id}
 
 
 def _class_name(class_id: Optional[str], categories: dict[str, Category]) -> str:
     if not class_id:
         return '?'
     cat = categories.get(class_id)
-    return cat.name if cat else f'Cat #{class_id}'
+    return cat.name if cat else _('Cat #%(id)s') % {'id': class_id}
 
 
 # ─── Règle 1 ──────────────────────────────────────────────────────────────────
@@ -289,21 +292,27 @@ def check_club_consecutif(
                 c1   = _class_name(r1.class_id, categories)
                 c2   = _class_name(r2.class_id, categories)
                 violations.append(Violation(
-                    description=(
-                        f"Club {club} — Circuit {course_name} : "
-                        f"{r1.name or '?'} ({c1}) à {t1}, "
-                        f"{r2.name or '?'} ({c2}) à {t2}"
-                    ),
+                    description=_(
+                        "Club %(club)s — Circuit %(course)s : "
+                        "%(n1)s (%(c1)s) à %(t1)s, "
+                        "%(n2)s (%(c2)s) à %(t2)s"
+                    ) % {
+                        'club': club, 'course': course_name,
+                        'n1': r1.name or '?', 'c1': c1, 't1': t1,
+                        'n2': r2.name or '?', 'c2': c2, 't2': t2,
+                    },
                 ))
 
     status  = 'ok' if not violations else 'error'
     n = len(violations)
-    summary = ("Aucun club n'a deux coureurs consécutifs sur le même circuit."
+    summary = (_("Aucun club n'a deux coureurs consécutifs sur le même circuit.")
                if not violations
-               else f"{n} paire(s) de coureurs du même club consécutifs.")
+               else ngettext("%(n)s paire de coureurs du même club consécutifs.",
+                             "%(n)s paires de coureurs du même club consécutifs.",
+                             n) % {'n': n})
     return RuleResult(
         rule_id='club_consecutif',
-        title='Pas de club consécutif sur le même circuit',
+        title=_('Pas de club consécutif sur le même circuit'),
         status=status, summary=summary, violations=violations,
     )
 
@@ -353,10 +362,16 @@ def check_entrelacement(
                     first_r = cat_runners[0]
                     last_r  = cat_runners[-1]
                     border_lines.append(
-                        f">>> 1er {cname} : {first_r.name} à {_fmt_time(first_r.start, zero_time)}"
+                        _(">>> 1er %(cat)s : %(name)s à %(time)s") % {
+                            'cat': cname, 'name': first_r.name,
+                            'time': _fmt_time(first_r.start, zero_time),
+                        }
                     )
                     border_lines.append(
-                        f">>> Der {cname} : {last_r.name} à {_fmt_time(last_r.start, zero_time)}"
+                        _(">>> Der %(cat)s : %(name)s à %(time)s") % {
+                            'cat': cname, 'name': last_r.name,
+                            'time': _fmt_time(last_r.start, zero_time),
+                        }
                     )
             # Séquence des 12 premiers départs pour visualiser l'entrelacement
             seq = [
@@ -364,22 +379,33 @@ def check_entrelacement(
                 for r in sorted_runners[:12]
             ]
             violations.append(Violation(
-                description=(
-                    f"Circuit {course_name} — "
-                    f"{len(interleaved)} catégorie(s) entrelacée(s) : {cat_names} "
-                    f"(séquence des {min(12, len(sorted_runners))} 1ers départs ci-dessous)"
-                ),
+                description=ngettext(
+                    "Circuit %(course)s — "
+                    "%(n)s catégorie entrelacée : %(cats)s "
+                    "(séquence des %(k)s 1ers départs ci-dessous)",
+                    "Circuit %(course)s — "
+                    "%(n)s catégories entrelacées : %(cats)s "
+                    "(séquence des %(k)s 1ers départs ci-dessous)",
+                    len(interleaved),
+                ) % {
+                    'course': course_name,
+                    'n': len(interleaved),
+                    'cats': cat_names,
+                    'k': min(12, len(sorted_runners)),
+                },
                 runners=border_lines + seq,
             ))
 
     status  = 'ok' if not violations else 'error'
     n = len(violations)
-    summary = ("Chaque catégorie forme un bloc continu sur son circuit."
+    summary = (_("Chaque catégorie forme un bloc continu sur son circuit.")
                if not violations
-               else f"{n} circuit(s) avec des catégories entrelacées.")
+               else ngettext("%(n)s circuit avec des catégories entrelacées.",
+                             "%(n)s circuits avec des catégories entrelacées.",
+                             n) % {'n': n})
     return RuleResult(
         rule_id='entrelacement',
-        title="Pas d'entrelacement de catégories sur un même circuit",
+        title=_("Pas d'entrelacement de catégories sur un même circuit"),
         status=status, summary=summary, violations=violations,
     )
 
@@ -399,19 +425,23 @@ def check_premiers_postes(courses: dict[str, Course]) -> RuleResult:
         if len(course_list) >= 2:
             circuit_names = ', '.join(c.name for c in course_list)
             violations.append(Violation(
-                description=(
-                    f"Poste n°{ctrl_id} partagé comme 1er poste "
-                    f"par {len(course_list)} circuits : {circuit_names}"
-                ),
+                description=_(
+                    "Poste n°%(ctrl)s partagé comme 1er poste "
+                    "par %(n)s circuits : %(courses)s"
+                ) % {
+                    'ctrl': ctrl_id, 'n': len(course_list), 'courses': circuit_names,
+                },
             ))
 
     status  = 'ok' if not violations else 'error'
-    summary = ("Chaque circuit commence par un premier poste unique."
+    summary = (_("Chaque circuit commence par un premier poste unique.")
                if not violations
-               else f"{len(violations)} conflit(s) de premier poste détecté(s).")
+               else ngettext("%(n)s conflit de premier poste détecté.",
+                             "%(n)s conflits de premier poste détectés.",
+                             len(violations)) % {'n': len(violations)})
     return RuleResult(
         rule_id='premiers_postes',
-        title='Pas de premier poste commun entre circuits',
+        title=_('Pas de premier poste commun entre circuits'),
         status=status, summary=summary, violations=violations,
     )
 
@@ -453,7 +483,11 @@ def check_plages_continues(
                 for r in blist:
                     if r.start is not None and a_min < r.start < a_max:
                         intruders.append((
-                            f"{r.name} ({_class_name(r.class_id, categories)}) à {_fmt_time(r.start, zero_time)}",
+                            _("%(name)s (%(cls)s) à %(time)s") % {
+                                'name': r.name,
+                                'cls': _class_name(r.class_id, categories),
+                                'time': _fmt_time(r.start, zero_time),
+                            },
                             _class_name(r.class_id, categories),
                         ))
             if intruders:
@@ -464,15 +498,30 @@ def check_plages_continues(
                 first_r = cat_runners_sorted[0]
                 last_r  = cat_runners_sorted[-1]
                 border_lines = [
-                    f">>> 1er {cat_name} : {first_r.name} à {_fmt_time(first_r.start, zero_time)}",
-                    f">>> Der {cat_name} : {last_r.name} à {_fmt_time(last_r.start, zero_time)}",
+                    _(">>> 1er %(cat)s : %(name)s à %(time)s") % {
+                        'cat': cat_name, 'name': first_r.name,
+                        'time': _fmt_time(first_r.start, zero_time),
+                    },
+                    _(">>> Der %(cat)s : %(name)s à %(time)s") % {
+                        'cat': cat_name, 'name': last_r.name,
+                        'time': _fmt_time(last_r.start, zero_time),
+                    },
                 ]
                 violations.append(Violation(
-                    description=(
-                        f"Circuit {course_name} — {cat_name} "
-                        f"({_fmt_time(a_min, zero_time)}–{_fmt_time(a_max, zero_time)}) : "
-                        f"{len(intrusions)} départ(s) de {intruding_cats} intercalés"
-                    ),
+                    description=ngettext(
+                        "Circuit %(course)s — %(cat)s "
+                        "(%(tmin)s–%(tmax)s) : "
+                        "%(n)s départ de %(cats)s intercalé",
+                        "Circuit %(course)s — %(cat)s "
+                        "(%(tmin)s–%(tmax)s) : "
+                        "%(n)s départs de %(cats)s intercalés",
+                        len(intrusions),
+                    ) % {
+                        'course': course_name, 'cat': cat_name,
+                        'tmin': _fmt_time(a_min, zero_time),
+                        'tmax': _fmt_time(a_max, zero_time),
+                        'n': len(intrusions), 'cats': intruding_cats,
+                    },
                     runners=(
                         border_lines
                         + intrusions[:10]
@@ -481,12 +530,14 @@ def check_plages_continues(
                 ))
 
     status  = 'ok' if not violations else 'error'
-    summary = ("Toutes les catégories sont regroupées sur des plages de départ continues."
+    summary = (_("Toutes les catégories sont regroupées sur des plages de départ continues.")
                if not violations
-               else f"{len(violations)} plage(s) de catégorie non continue(s).")
+               else ngettext("%(n)s plage de catégorie non continue.",
+                             "%(n)s plages de catégorie non continues.",
+                             len(violations)) % {'n': len(violations)})
     return RuleResult(
         rule_id='plages_continues',
-        title='Regroupement des catégories sur des plages continues',
+        title=_('Regroupement des catégories sur des plages continues'),
         status=status, summary=summary, violations=violations,
     )
 
@@ -505,16 +556,22 @@ def check_coordonnees_postes(controls: dict[str, Control]) -> RuleResult:
             missing.append('ypos')
         if missing:
             violations.append(Violation(
-                description=f"Poste n°{ctrl.number} : {', '.join(missing)} manquant(s)",
+                description=ngettext(
+                    "Poste n°%(num)s : %(missing)s manquant",
+                    "Poste n°%(num)s : %(missing)s manquants",
+                    len(missing),
+                ) % {'num': ctrl.number, 'missing': ', '.join(missing)},
             ))
 
     status  = 'ok' if not violations else 'error'
-    summary = ("Tous les postes ont des coordonnées xpos et ypos."
+    summary = (_("Tous les postes ont des coordonnées xpos et ypos.")
                if not violations
-               else f"{len(violations)} poste(s) sans coordonnées complètes.")
+               else ngettext("%(n)s poste sans coordonnées complètes.",
+                             "%(n)s postes sans coordonnées complètes.",
+                             len(violations)) % {'n': len(violations)})
     return RuleResult(
         rule_id='coordonnees_postes',
-        title='Coordonnées des postes (xpos / ypos)',
+        title=_('Coordonnées des postes (xpos / ypos)'),
         status=status, summary=summary, violations=violations,
     )
 
@@ -524,18 +581,20 @@ def check_coordonnees_postes(controls: dict[str, Control]) -> RuleResult:
 def check_circuits_vides(courses: dict[str, Course]) -> RuleResult:
     """Chaque circuit doit comporter au moins un poste."""
     violations = [
-        Violation(description=f"Circuit « {c.name} » : aucun poste défini.")
+        Violation(description=_("Circuit « %(name)s » : aucun poste défini.") % {'name': c.name})
         for c in courses.values()
         if not c.controls
     ]
 
     status  = 'ok' if not violations else 'error'
-    summary = ("Aucun circuit vide."
+    summary = (_("Aucun circuit vide.")
                if not violations
-               else f"{len(violations)} circuit(s) vide(s) sans postes.")
+               else ngettext("%(n)s circuit vide sans postes.",
+                             "%(n)s circuits vides sans postes.",
+                             len(violations)) % {'n': len(violations)})
     return RuleResult(
         rule_id='circuits_vides',
-        title='Pas de circuits vides',
+        title=_('Pas de circuits vides'),
         status=status, summary=summary, violations=violations,
     )
 
@@ -550,18 +609,20 @@ def check_categories_vides(
     class_ids_with_runners = {r.class_id for r in runners if r.class_id}
 
     violations = [
-        Violation(description=f"Catégorie « {cat.name} » : aucun coureur inscrit.")
+        Violation(description=_("Catégorie « %(name)s » : aucun coureur inscrit.") % {'name': cat.name})
         for cat in categories.values()
         if cat.id not in class_ids_with_runners
     ]
 
     status  = 'ok' if not violations else 'warning'
-    summary = ("Toutes les catégories ont au moins un coureur."
+    summary = (_("Toutes les catégories ont au moins un coureur.")
                if not violations
-               else f"{len(violations)} catégorie(s) sans coureur.")
+               else ngettext("%(n)s catégorie sans coureur.",
+                             "%(n)s catégories sans coureur.",
+                             len(violations)) % {'n': len(violations)})
     return RuleResult(
         rule_id='categories_vides',
-        title='Pas de catégories vides',
+        title=_('Pas de catégories vides'),
         status=status, summary=summary, violations=violations,
     )
 
@@ -578,13 +639,15 @@ def check_completude_coureurs(
 
     # ── Doublons d'ID ─────────────────────────────────────────────────────────
     seen_ids: dict[str, str] = {}
+    n_dup = 0
     for r in runners:
         if r.id in seen_ids:
+            n_dup += 1
             violations.append(Violation(
-                description=(
-                    f"ID dupliqué (id={r.id}) : "
-                    f"« {seen_ids[r.id]} » et « {r.name} »"
-                ),
+                description=_(
+                    "ID dupliqué (id=%(id)s) : "
+                    "« %(old)s » et « %(new)s »"
+                ) % {'id': r.id, 'old': seen_ids[r.id], 'new': r.name},
             ))
         else:
             seen_ids[r.id] = r.name
@@ -595,47 +658,47 @@ def check_completude_coureurs(
 
         # Catégorie
         if not r.class_id or r.class_id not in categories:
-            missing.append('catégorie')
+            missing.append(_('catégorie'))
 
         # Circuit (via la catégorie)
         if r.class_id and r.class_id in categories:
             cat = categories[r.class_id]
             if not cat.course_id or cat.course_id not in courses:
-                missing.append('circuit')
+                missing.append(_('circuit'))
 
         # Numéro de puce
         if not r.card_no:
-            missing.append('numéro de puce (CardNo)')
+            missing.append(_('numéro de puce (CardNo)'))
 
         # Heure de départ
         if r.start is None:
-            missing.append('heure de départ')
+            missing.append(_('heure de départ'))
 
         if missing:
             violations.append(Violation(
-                description=(
-                    f"{r.name} (id={r.id}) : "
-                    f"{', '.join(missing)}"
-                ),
+                description=_("%(name)s (id=%(id)s) : %(missing)s") % {
+                    'name': r.name, 'id': r.id, 'missing': ', '.join(missing),
+                },
             ))
 
     if not violations:
         status  = 'ok'
-        summary = "Tous les coureurs ont leurs donnees obligatoires et des identifiants uniques."
+        summary = _("Tous les coureurs ont leurs données obligatoires et des identifiants uniques.")
     else:
-        n_dup     = sum(1 for v in violations if 'dupliqu' in v.description)
         n_missing = len(violations) - n_dup
         parts = []
         if n_dup:
-            parts.append(f"{n_dup} doublon(s) d'ID")
+            parts.append(ngettext("%(n)s doublon d'ID", "%(n)s doublons d'ID", n_dup) % {'n': n_dup})
         if n_missing:
-            parts.append(f"{n_missing} coureur(s) avec donnees manquantes")
+            parts.append(ngettext("%(n)s coureur avec données manquantes",
+                                  "%(n)s coureurs avec données manquantes",
+                                  n_missing) % {'n': n_missing})
         status  = 'error'
         summary = ' | '.join(parts) + '.'
 
     return RuleResult(
         rule_id='completude_coureurs',
-        title='Complétude des données coureurs (circuit, catégorie, puce, départ, ID unique)',
+        title=_('Complétude des données coureurs (circuit, catégorie, puce, départ, ID unique)'),
         status=status, summary=summary, violations=violations,
     )
 

@@ -1,3 +1,4 @@
+{% load i18n %}
 {% if neg_time_warning %}
 <div class="neg-time-warning mb-3" role="alert">
   <div class="neg-time-warning-header">
@@ -6,9 +7,9 @@
   </div>
   {% if neg_time_warning.box_controls %}
   <div class="neg-box-controls">
-    <span class="neg-box-controls-label">Poste{{ neg_time_warning.box_controls|length|pluralize }} suspecté{{ neg_time_warning.box_controls|length|pluralize }} :</span>
+    <span class="neg-box-controls-label">{% blocktranslate count n=neg_time_warning.box_controls|length %}Poste suspecté{% plural %}Postes suspects{% endblocktranslate %} :</span>
     {% for name, n in neg_time_warning.box_controls.items %}
-    <span class="neg-box-control">{{ name }} <span class="neg-box-count">({{ n }} coureur{{ n|pluralize }})</span></span>{% if not forloop.last %}<span class="neg-box-sep">, </span>{% endif %}
+    <span class="neg-box-control">{{ name }} <span class="neg-box-count">({% blocktranslate count n=n %}{{ n }} coureur{% plural %}{{ n }} coureurs{% endblocktranslate %})</span></span>{% if not forloop.last %}<span class="neg-box-sep">, </span>{% endif %}
     {% endfor %}
   </div>
   {% endif %}
@@ -18,9 +19,9 @@
     <thead>
       <tr>
         <th>#</th>
-        <th>Coureur</th>
-        <th>Catégorie</th>
-        <th>Postes au temps négatif</th>
+        <th>{% translate "Coureur" %}</th>
+        <th>{% translate "Catégorie" %}</th>
+        <th>{% translate "Postes au temps négatif" %}</th>
       </tr>
     </thead>
     <tbody>
@@ -30,7 +31,7 @@
         <td><a href="{% url 'results:competitor_detail' competition.cid r.id %}">{{ r.name }}</a></td>
         <td class="neg-table-cls">{{ r.cls_name }}</td>
         <td class="neg-table-ctrls">
-          {% for ctrl in r.controls %}{% if ctrl in neg_time_warning.box_controls %}<strong class="neg-ctrl-box" title="Plusieurs coureurs concernés sur ce poste">{{ ctrl }}</strong>{% else %}{{ ctrl }}{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}
+          {% for ctrl in r.controls %}{% if ctrl in neg_time_warning.box_controls %}<strong class="neg-ctrl-box" title="{% translate "Plusieurs coureurs concernés sur ce poste" %}">{{ ctrl }}</strong>{% else %}{{ ctrl }}{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}
         </td>
       </tr>
       {% endfor %}

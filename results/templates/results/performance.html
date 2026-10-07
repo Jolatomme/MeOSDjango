@@ -1,42 +1,42 @@
 {% extends "results/analysis_base.html" %}
-{% load meos_tags %}
+{% load meos_tags i18n %}
 {% load static %}
 
-{% block title %}Indice de performance — {{ cls.name }} — {{ competition.name }}{% endblock %}
-{% block analysis_breadcrumb %}Indice de performance{% endblock %}
+{% block title %}{% blocktranslate with c_name=cls.name comp_name=competition.name %}Indice de performance — {{ c_name }} — {{ comp_name }}{% endblocktranslate %}{% endblock %}
+{% block analysis_breadcrumb %}{% translate "Indice de performance" %}{% endblock %}
 {% block analysis_icon %}bi bi-speedometer2{% endblock %}
-{% block analysis_title %}Indice de performance{% endblock %}
+{% block analysis_title %}{% translate "Indice de performance" %}{% endblock %}
 
 {% block analysis_header_right %}
 {% if not no_data %}
 <div class="d-flex align-items-center gap-2 flex-wrap">
-  <span class="badge bg-light text-dark fs-6">{{ n_finishers }} coureur{{ n_finishers|pluralize }}</span>
+  <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=n_finishers %}{{ n }} coureur{% plural %}{{ n }} coureurs{% endblocktranslate %}</span>
   {% if n_controls %}
-  <span class="badge bg-light text-dark fs-6">{{ n_controls }} poste{{ n_controls|pluralize }}</span>
+  <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=n_controls %}{{ n }} poste{% plural %}{{ n }} postes{% endblocktranslate %}</span>
   {% endif %}
 </div>
 {% endif %}
 {% endblock %}
 
-{% block no_data_message %}Pas assez de données pour calculer l'indice de performance.{% endblock %}
+{% block no_data_message %}{% translate "Pas assez de données pour calculer l'indice de performance." %}{% endblock %}
 
 {% block analysis_explanation %}
 <div class="alert alert-warning border-0 mb-4"
      style="background:var(--co-highlight-bg);border-left:4px solid var(--co-gold) !important;">
   <i class="bi bi-info-circle me-2"></i>
-  L'<strong>indice de performance</strong> d'un coureur sur un tronçon est la
+  {% blocktranslate %}L'<strong>indice de performance</strong> d'un coureur sur un tronçon est la
   <strong>moyenne des 25% meilleurs temps</strong> divisée par son propre temps.
   Une valeur de <strong>1.0</strong> signifie qu'il court au niveau des meilleurs.
   Une <strong>courbe haute et étroite</strong> indique une course régulière ;
   une <strong>courbe étalée</strong> révèle des irrégularités entre les tronçons.
-  Chaque tronçon est <strong>pondéré par sa longueur</strong> (temps de référence).
+  Chaque tronçon est <strong>pondéré par sa longueur</strong> (temps de référence).{% endblocktranslate %}
 </div>
 {% endblock %}
 
 {% block extra_filters %}
 <div>
   <label class="form-label mb-1 small fw-bold text-muted" for="sigmaRange">
-    Lissage &sigma; = <span id="sigmaVal">0.050</span>
+    {% translate "Lissage &sigma; =" %} <span id="sigmaVal">0.050</span>
   </label>
   <input type="range" id="sigmaRange" class="form-range" style="width:160px"
          min="0.010" max="0.150" step="0.005" value="0.050"
@@ -45,23 +45,23 @@
 {% endblock %}
 
 {% block chart_icon %}bi bi-graph-up{% endblock %}
-{% block chart_title %}Distribution des indices de performance{% endblock %}
+{% block chart_title %}{% translate "Distribution des indices de performance" %}{% endblock %}
 {% block canvas_id %}perfChart{% endblock %}
 
 {% block summary_card_title %}
-  Récapitulatif par coureur
+  {% translate "Récapitulatif par coureur" %}
   <span class="ms-2 small fw-normal opacity-75">
-    IP moyen pondéré &middot; Régularité = écart-type (plus petit = plus régulier)
+    {% translate "IP moyen pondéré &middot; Régularité = écart-type (plus petit = plus régulier)" %}
   </span>
 {% endblock %}
 
 {% block table_headers %}
 <th style="width:3rem">#</th>
-<th>Coureur</th>
-<th>Club</th>
-<th class="text-end">Temps</th>
-<th class="text-end">IP moyen</th>
-<th class="text-end">Régularité (&sigma;)</th>
+<th>{% translate "Coureur" %}</th>
+<th>{% translate "Club" %}</th>
+<th class="text-end">{% translate "Temps" %}</th>
+<th class="text-end">{% translate "IP moyen" %}</th>
+<th class="text-end">{% translate "Régularité (&sigma;)" %}</th>
 {% endblock %}
 {% block tbody_id %}perfTableBody{% endblock %}
 
@@ -165,7 +165,7 @@ function initChart() {
           callbacks: {
             title(items) {
               const x = items[0]?.parsed.x;
-              return x != null ? `IP = ${x.toFixed(3)}` : '';
+              return x != null ? `{% translate "IP = " %}${x.toFixed(3)}` : '';
             },
             label(ctx) {
               const v = ctx.parsed.y;
@@ -177,14 +177,14 @@ function initChart() {
       scales: {
         x: {
           type: 'linear', min: 0.25, max: 1.10,
-          title: { display: true, text: 'Indice de performance',
+          title: { display: true, text: "{% translate 'Indice de performance' %}",
                    font: { family: "'Barlow', sans-serif", size: 12 }, color: '#6c757d' },
           ticks: { callback: v => v.toFixed(2),
                    font: { family: "'Barlow Condensed', sans-serif", size: 11 } },
           grid: { color: '#e8e8e8' },
         },
         y: {
-          title: { display: true, text: 'Densité (pondérée par longueur)',
+          title: { display: true, text: "{% translate 'Densité (pondérée par longueur)' %}",
                    font: { family: "'Barlow', sans-serif", size: 12 }, color: '#6c757d' },
           ticks: {
             font: { family: "'Barlow Condensed', sans-serif", size: 11 },
@@ -207,7 +207,7 @@ function initChart() {
         ctx2.stroke();
         ctx2.font = "11px 'Barlow Condensed', sans-serif";
         ctx2.fillStyle = '#dc3545'; ctx2.textAlign = 'center';
-        ctx2.fillText('IP = 1.00', x, yScale.top - 6);
+        ctx2.fillText("{% translate 'IP = 1.00' %}", x, yScale.top - 6);
         ctx2.restore();
       }
     }]

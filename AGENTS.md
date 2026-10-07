@@ -26,6 +26,10 @@ python manage.py setup_db
 
 # JavaScript unit tests (requires jest + jest-environment-jsdom)
 npx jest test_site_js.test.js
+
+# Translations (fr = source language → en/de/sv catalogs, gettext required)
+python manage.py makemessages -l en -l de -l sv   # after marking new strings
+python manage.py compilemessages                  # *.mo ignored by git — required at deploy
 ```
 
 ## Architecture
@@ -40,6 +44,7 @@ npx jest test_site_js.test.js
   - Supports `Content-Encoding: gzip` decompression
   - Verifies `Content-Digest` header (SHA-256/512, MD5)
   - Optional auth via custom header (`OCHECKLIST_HEADER_KEY` / `OCHECKLIST_HEADER_VALUE`)
+- **i18n**: French is the source language; catalogs for `en`/`de`/`sv` live in `locale/<lang>/LC_MESSAGES/django.po` (`LOCALE_PATHS`). **No `i18n_patterns`** — URLs are identical in every language (MeOS links, `/gestion-course/<token>/`, APIs, CSV). Language is carried by the `co_lang` cookie (`LocaleMiddleware` + built-in `set_language` view on `/i18n/setlang/`), chosen via the SVG flag selector in `base.html` (browser `Accept-Language` on first visit). Shared JS strings are injected from templates (`COUtils.setStrings`, `LiveResults.init({ strings })`); `pgettext('mopstatus', …)` avoids collisions with Django's core catalogs (e.g. `PM` → « Après-midi »). CSV headers, MOP protocol responses and DB content stay French on purpose.
 - **Django admin** — habillé de la charte du site (« skin », structure admin conservée) :
   - `templates/admin/base_site.html` (dossier `TEMPLATES['DIRS']`, seul endroit prioritaire sur `django.contrib.admin`, 1er dans `INSTALLED_APPS`) : marque (logo club + `SITE_NAME`), lien « Retour au site », chargement de `site.css` + `admin.css` + `admin-theme.js`, retrait de `admin/js/theme.js`
   - `results/static/results/css/admin.css` : pont des variables de l'admin (`--primary`, `--header-bg`, `--button-bg`, messages, tableaux…) vers les tokens `--co-*` de `site.css` — polices, couleurs, cartes et mode sombre suivent automatiquement
@@ -50,6 +55,7 @@ npx jest test_site_js.test.js
 
 - Python tests run **without a database** — DB is fully mocked via `unittest.mock` (see `results/tests/conftest.py`)
 - `pytest.ini` adds `--cov=results --cov=ochecklist` (coverage)
+- `results/tests/test_i18n.py` — language selector, `set_language` cookie, URL invariance; tests asserting *translated* content skip themselves when `compilemessages` has not been run (`locale/*/LC_MESSAGES/django.mo` is gitignored)
 - JavaScript unit tests for `site.js` (COUtils): `npx jest test_site_js.test.js` — run from `results/tests/`, requires `jest` + `jest-environment-jsdom` (see header of `results/tests/test_site_js.test.js`)
 
 ## Config

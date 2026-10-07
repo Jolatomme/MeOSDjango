@@ -1,5 +1,5 @@
-{% load static meos_tags %}<!DOCTYPE html>
-<html lang="fr" data-theme="light">
+{% load static meos_tags i18n %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -35,44 +35,74 @@
 
   <nav class="navbar navbar-expand-lg co-navbar">
     <div class="container">
-      <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'results:home' %}">
-        {% site_logo as club_logo %}
-        {% if club_logo %}<img src="{{ club_logo }}" alt="{{ CLUB_NAME }}" height="32">{% endif %}
-        <span>{{ SITE_NAME }}<span class="brand-accent">.</span></span>
-      </a>
+      <div class="navbar-brand-group d-flex align-items-center gap-2">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'results:home' %}">
+          {% site_logo as club_logo %}
+          {% if club_logo %}<img src="{{ club_logo }}" alt="{{ CLUB_NAME }}" height="32">{% endif %}
+          <span>{{ SITE_NAME }}<span class="brand-accent">.</span></span>
+        </a>
+        {# Sélecteur de langue : menu déroulant de drapeaux, à côté du titre #}
+        {% get_current_language as CURRENT_LANG %}
+        <form class="co-lang-switch dropdown" action="{% url 'set_language' %}" method="post"
+              aria-label="{% translate 'Langue' %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="button" class="co-lang-toggle dropdown-toggle" data-bs-toggle="dropdown"
+                  aria-expanded="false" title="{% translate 'Langue' %}">
+            {% with flag=CURRENT_LANG|slice:':2'|lang_flag %}
+            <img src="{% static 'results/img/flags/'|add:flag|add:'.svg' %}"
+                 alt="" width="24" height="16">
+            {% endwith %}
+          </button>
+          <div class="dropdown-menu co-dropdown co-lang-menu">
+            {% for code, name in LANGUAGES %}
+            {% with flag=code|lang_flag %}
+            <button type="submit" name="language" value="{{ code }}"
+                    class="dropdown-item co-lang{% if code == CURRENT_LANG|slice:':2' %} active{% endif %}"
+                    title="{{ name }}" lang="{{ code }}">
+              <img src="{% static 'results/img/flags/'|add:flag|add:'.svg' %}"
+                   alt="" width="24" height="16">
+              <span>{{ name }}</span>
+              {% if code == CURRENT_LANG|slice:':2' %}<i class="bi bi-check-lg ms-auto"></i>{% endif %}
+            </button>
+            {% endwith %}
+            {% endfor %}
+          </div>
+        </form>
+      </div>
       <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse"
-              data-bs-target="#mainNav" aria-label="Menu">
+              data-bs-target="#mainNav" aria-label="{% translate 'Menu' %}">
         <i class="bi bi-list text-white fs-4"></i>
       </button>
       <div class="collapse navbar-collapse" id="mainNav">
         <ul class="navbar-nav ms-auto align-items-center">
           <li class="nav-item me-1">
-            <button id="darkModeToggle" aria-label="Basculer mode sombre/clair" title="Mode sombre / clair">
+            <button id="darkModeToggle" aria-label="{% translate 'Basculer mode sombre/clair' %}" title="{% translate 'Mode sombre / clair' %}">
               <i class="bi bi-moon-stars-fill" id="darkModeIcon"></i>
             </button>
           </li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button"
                data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="bi bi-gear me-1"></i> Gestion
+              <i class="bi bi-gear me-1"></i> {% translate "Gestion" %}
             </a>
             <ul class="dropdown-menu dropdown-menu-end co-dropdown">
               <li>
                 <a class="dropdown-item {% block nav_competitions %}{% endblock %}" href="{% url 'results:competition_list' %}">
-                  <i class="bi bi-calendar2-week me-2"></i>Liste des compétitions
+                  <i class="bi bi-calendar2-week me-2"></i>{% translate "Liste des compétitions" %}
                 </a>
               </li>
               {% if ENABLE_RACE_CREATION %}
               <li>
                 <a class="dropdown-item {% block nav_race_create %}{% endblock %}" href="{% url 'results:race_create' %}">
-                  <i class="bi bi-plus-circle me-2"></i>Créer une course
+                  <i class="bi bi-plus-circle me-2"></i>{% translate "Créer une course" %}
                 </a>
               </li>
               {% endif %}
               <li><hr class="dropdown-divider"></li>
               <li>
                 <a class="dropdown-item" href="{% url 'admin:index' %}">
-                  <i class="bi bi-shield-lock me-2"></i>Admin
+                  <i class="bi bi-shield-lock me-2"></i>{% translate "Admin" %}
                 </a>
               </li>
             </ul>
@@ -80,39 +110,39 @@
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button"
                data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="bi bi-folder2-open me-1"></i> Ressources GEC
+              <i class="bi bi-folder2-open me-1"></i> {% translate "Ressources GEC" %}
             </a>
             <ul class="dropdown-menu dropdown-menu-end co-dropdown">
               <li>
                 <a class="dropdown-item" href="{% url 'results:etiquettes' %}">
-                  <i class="bi bi-tag me-2"></i>Etiquettes pour boitiers
+                  <i class="bi bi-tag me-2"></i>{% translate "Etiquettes pour boitiers" %}
                 </a>
               </li>
               <li>
                 <a class="dropdown-item" href="{% url 'results:drivers' %}">
-                  <i class="bi bi-usb-drive me-2"></i>Drivers
+                  <i class="bi bi-usb-drive me-2"></i>{% translate "Drivers" %}
                 </a>
               </li>
               <li><hr class="dropdown-divider"></li>
               <li>
                 <a class="dropdown-item" href="{% url 'results:meos_checker' %}">
-                  <i class="bi bi-shield-check me-2"></i>Verificateur de tirage
+                  <i class="bi bi-shield-check me-2"></i>{% translate "Verificateur de tirage" %}
                 </a>
               </li>
               <li>
                 <a class="dropdown-item" href="{% url 'results:verifie_moi' %}">
-                  <i class="bi bi-person-check me-2"></i>Vérifie moi (CSV)
+                  <i class="bi bi-person-check me-2"></i>{% translate "Vérifie moi (CSV)" %}
                 </a>
               </li>
               <li>
                 <a class="dropdown-item {% block nav_ochecklist %}{% endblock %}" href="{% url 'ochecklist_report_list' %}">
-                  <i class="bi bi-flag me-2"></i>Atelier Départ
+                  <i class="bi bi-flag me-2"></i>{% translate "Atelier Départ" %}
                 </a>
               </li>
               <li><hr class="dropdown-divider"></li>
               <li>
                 <a class="dropdown-item" href="{% url 'results:tuto' %}">
-                  <i class="bi bi-book me-2"></i>Tutoriels
+                  <i class="bi bi-book me-2"></i>{% translate "Tutoriels" %}
                 </a>
               </li>
             </ul>
@@ -141,9 +171,9 @@
     <div class="container d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div><i class="bi bi-compass me-1"></i>{{ SITE_NAME }} &mdash; {{ CLUB_NAME }}</div>
       <div class="d-flex align-items-center gap-3">
-        <span>Donnees MeOS &bull; <a href="https://www.melin.nu/meos/" target="_blank">meos</a></span>
+        <span>{% translate "Données MeOS" %} &bull; <a href="https://www.melin.nu/meos/" target="_blank">meos</a></span>
         <span class="d-flex align-items-center gap-2">
-          Heberge par
+          {% translate "Hébergé par" %}
           <a href="https://www.alwaysdata.com" target="_blank" rel="noopener" title="alwaysdata">
             <img src="{% static 'results/img/alwaysdata.svg' %}" alt="alwaysdata" height="16"
                  style="filter:brightness(0) invert(1);opacity:.85;vertical-align:middle;">
@@ -153,7 +183,7 @@
     </div>
   </footer>
 
-  <button id="backToTop" aria-label="Retour en haut de page" title="Retour en haut">
+  <button id="backToTop" aria-label="{% translate 'Retour en haut de page' %}" title="{% translate 'Retour en haut' %}">
     <i class="bi bi-arrow-up-short"></i>
   </button>
 
@@ -175,6 +205,14 @@
       });
     })();
     COUtils.initBackToTop('backToTop');
+    // Chaînes i18n partagées par site.js (msgids extraits dans les .po).
+    COUtils.setStrings({
+      alt1: "{% translate '1er' %}",
+      alt2: "{% translate '2e' %}",
+      alt3: "{% translate '3e' %}",
+      showAbandons: "{% translate 'Afficher abandons' %}",
+      hideAbandons: "{% translate 'Masquer abandons' %}",
+    });
   </script>
 
   {% block extra_js %}{% endblock %}

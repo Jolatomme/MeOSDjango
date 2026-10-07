@@ -17,13 +17,6 @@ const LiveResults = (() => {
   const DAY_TENTHS = 24 * 3600 * 10;
 
   const GROUP_ORDER = ['en_course', 'valid_gec', 'arrives', 'en_attente', 'termine'];
-  const GROUP_LABELS = {
-    en_course:  'En course',
-    valid_gec:  'En attente validation GEC',
-    arrives:    'Arrivés',
-    en_attente: 'En attente',
-    termine:    'Terminé',
-  };
   const GROUP_ICONS = {
     en_course:  'bi-person-walking',
     valid_gec:  'bi-clipboard-check',
@@ -31,12 +24,51 @@ const LiveResults = (() => {
     en_attente: 'bi-hourglass-split',
     termine:    'bi-x-circle',
   };
-  const GROUP_EMPTY = {
-    en_course:  'Aucun coureur parti pour le moment.',
-    valid_gec:  'Aucun coureur en attente de validation GEC.',
-    arrives:    'Aucun arrivé pour le moment.',
-    en_attente: 'Aucun coureur en attente.',
-    termine:    'Aucun.',
+
+  // ── Chaînes affichables (source FR) ──────────────────────────────────────
+  // live_results.html injecte les traductions via
+  // LiveResults.init({ strings: { … } }) — mêmes clés ; sans injection les
+  // valeurs FR par défaut s'appliquent. Les marqueurs %s sont remplis par
+  // fill() (les traductions ne doivent contenir ni " ni \ à cause du
+  // groupement JS côté template).
+  const DEFAULT_STRINGS = {
+    groupLabels: {
+      en_course:  'En course',
+      valid_gec:  'En attente validation GEC',
+      arrives:    'Arrivés',
+      en_attente: 'En attente',
+      termine:    'Terminé',
+    },
+    groupEmpty: {
+      en_course:  'Aucun coureur parti pour le moment.',
+      valid_gec:  'Aucun coureur en attente de validation GEC.',
+      arrives:    'Aucun arrivé pour le moment.',
+      en_attente: 'Aucun coureur en attente.',
+      termine:    'Aucun.',
+    },
+    inRace: 'En course',
+    negPosteSingular: 'Temps négatif au poste %s',
+    negPostePlural: 'Temps négatif aux postes %s',
+    negTitleFallback: 'Temps négatif : boîtier mal synchronisé ou carte SI non effacée',
+    negBadge: 'Temps négatif',
+    allCtrls: 'Tous les postes du parcours',
+    preStartPunch: '%s — poinçon avant le départ',
+    provisionalTime: 'Temps final provisoire — validation GEC en attente',
+    raceTimeTitle: 'Temps de course depuis le départ',
+    startHourTitle: 'Heure de départ',
+    departPrefix: 'Départ %s',
+    emptyRunners: "Aucun coureur — le flux MOP n'a peut-être pas encore été reçu.",
+    updatedPrefix: 'Mis à jour %s',
+    agoPrefix: 'il y a %s',
+    inPrefix: 'dans %s',
+    raceFinished: 'Course terminée',
+    raceUpcoming: 'Course à venir',
+    liveNow: 'En direct',
+    offline: 'Hors ligne',
+    fmtDayHourMinSec: '%s j %s h %s min %s s',
+    fmtHourMinSec: '%s h %s min %s s',
+    fmtMinSec: '%s min %s s',
+    fmtSec: '%s s',
   };
 
   /** Groupes encore sur le parcours : barre de progression, dernier poste,
@@ -44,6 +76,7 @@ const LiveResults = (() => {
   const RUNNING_GROUPS = ['en_course', 'valid_gec'];
 
   let cfg = null;
+  let T = DEFAULT_STRINGS;
   let pollTimer = null;
   let clockTimer = null;
   let lastData = null;
@@ -61,6 +94,12 @@ const LiveResults = (() => {
     return String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
     }[m]));
+  }
+
+  /** Remplit les marqueurs %s de gauche à droite (chaînes i18n). */
+  function fill(tpl, ...args) {
+    let i = 0;
+    return String(tpl).replace(/%s/g, () => String(args[i++]));
   }
 
   function setText(id, text) {
@@ -133,10 +172,10 @@ const LiveResults = (() => {
     const h = Math.floor(rem / 3600);
     const m = Math.floor((rem % 3600) / 60);
     const s = rem % 60;
-    if (d > 0) return `${d} j ${h} h ${m} min ${s} s`;
-    if (h > 0) return `${h} h ${m} min ${s} s`;
-    if (m > 0) return `${m} min ${s} s`;
-    return `${s} s`;
+    if (d > 0) return fill(T.fmtDayHourMinSec, d, h, m, s);
+    if (h > 0) return fill(T.fmtHourMinSec, h, m, s);
+    if (m > 0) return fill(T.fmtMinSec, m, s);
+    return fill(T.fmtSec, s);
   }
 
   // ── Cellules ───────────────────────────────────────────────────────────────
@@ -151,7 +190,7 @@ const LiveResults = (() => {
 
   function statusBadge(runner) {
     if (RUNNING_GROUPS.includes(runner.group)) {
-      return '<span class="badge bg-success">En course</span>';
+      return `<span class="badge bg-success">${esc(T.inRace)}</span>`;
     }
     return `<span class="badge bg-${esc(runner.stat_badge)}">${esc(runner.stat_label)}</span>`;
   }
@@ -161,9 +200,9 @@ const LiveResults = (() => {
   function negBadge(r, extraClass) {
     const ctrls = (r.neg_ctrls || []).filter(Boolean);
     const title = ctrls.length
-      ? `Temps négatif au poste ${ctrls.length > 1 ? 's' : ''} ${ctrls.join(', ')}`
-      : 'Temps négatif : boîtier mal synchronisé ou carte SI non effacée';
-    return `<span class="badge neg-badge${extraClass ? ' ' + extraClass : ''}" title="${esc(title)}">Temps négatif</span>`;
+      ? fill(ctrls.length > 1 ? T.negPostePlural : T.negPosteSingular, ctrls.join(', '))
+      : T.negTitleFallback;
+    return `<span class="badge neg-badge${extraClass ? ' ' + extraClass : ''}" title="${esc(title)}">${esc(T.negBadge)}</span>`;
   }
 
   /** Progression compacte pour la colonne de droite (compteur + mini-barre).
@@ -171,7 +210,7 @@ const LiveResults = (() => {
    *  plutôt que d'afficher un « — » inutile. */
   function progressCell(runner, data) {
     const total = data.n_controls || 0;
-    if (runner.group === 'arrives') return '<span class="live-progress-done text-success" title="Tous les postes du parcours">✓</span>';
+    if (runner.group === 'arrives') return `<span class="live-progress-done text-success" title="${esc(T.allCtrls)}">✓</span>`;
     // Un coureur « Terminé » (Abandon, PM…) peut avoir pointé des postes : on
     // conserve sa progression (sans quoi la barre disparaît alors qu'elle est connue).
     if (!RUNNING_GROUPS.includes(runner.group) && runner.group !== 'termine') return '';
@@ -202,7 +241,7 @@ const LiveResults = (() => {
       const name = esc(ctrlName(data, p.ctrl));
       const beforeStart = p.time <= 0;
       const timeTitle = beforeStart
-        ? `${name} — poinçon avant le départ`
+        ? fill(T.preStartPunch, name)
         : name;
       return `<span class="live-punch">` +
         `<span class="badge bg-light text-dark border" title="${name}">${name}</span>` +
@@ -228,15 +267,15 @@ const LiveResults = (() => {
       // Poinçon d'arrivée radio (ou résultat préliminaire) : temps final
       // provisoire affiché, en attendant la validation GEC.
       const t = runner.provisional_rt != null ? runner.provisional_rt : runner.last_time;
-      return `<span class="live-time-value fw-bold" title="Temps final provisoire — validation GEC en attente">${fmtRaceTime(t)}</span>`;
+      return `<span class="live-time-value fw-bold" title="${esc(T.provisionalTime)}">${fmtRaceTime(t)}</span>`;
     }
     if (RUNNING_GROUPS.includes(runner.group) && runner.st > 0) {
       const stAbs = runner.st_abs != null ? runner.st_abs : runner.st;
-      return `<span class="live-time live-time-value fw-bold" data-st="${stAbs}" title="Temps de course depuis le départ">—</span>`;
+      return `<span class="live-time live-time-value fw-bold" data-st="${stAbs}" title="${esc(T.raceTimeTitle)}">—</span>`;
     }
     if (runner.group === 'en_attente' && runner.st > 0) {
       const stAbs = runner.st_abs != null ? runner.st_abs : runner.st;
-      return `<span class="text-muted small" title="Heure de départ">Départ ${fmtClock(runner.st)}</span>
+      return `<span class="text-muted small" title="${esc(T.startHourTitle)}">${esc(fill(T.departPrefix, fmtClock(runner.st)))}</span>
               <span class="live-countdown small text-muted ms-1" data-st="${stAbs}"></span>`;
     }
     if (runner.group === 'termine') {
@@ -344,11 +383,11 @@ const LiveResults = (() => {
     for (const group of GROUP_ORDER) {
       const rows = data.runners.filter((r) => r.group === group);
       html.push(`<tr class="live-group-row"><td>
-          <i class="bi ${GROUP_ICONS[group]} me-2"></i>${GROUP_LABELS[group]}
+          <i class="bi ${GROUP_ICONS[group]} me-2"></i>${T.groupLabels[group]}
           <span class="badge bg-light text-dark ms-2">${rows.length}</span>
         </td></tr>`);
       if (!rows.length) {
-        html.push(`<tr><td class="text-muted small p-2 ps-4">${GROUP_EMPTY[group]}</td></tr>`);
+        html.push(`<tr><td class="text-muted small p-2 ps-4">${T.groupEmpty[group]}</td></tr>`);
         continue;
       }
       for (const r of rows) html.push(runnerRow(r, data));
@@ -356,7 +395,7 @@ const LiveResults = (() => {
 
     if (!data.runners.length) {
       html.push(`<tr><td class="text-center text-muted p-4">
-        <i class="bi bi-inbox me-2"></i>Aucun coureur — le flux MOP n'a peut-être pas encore été reçu.
+        <i class="bi bi-inbox me-2"></i>${esc(T.emptyRunners)}
       </td></tr>`);
     }
 
@@ -367,7 +406,7 @@ const LiveResults = (() => {
     setText('liveCountArrives', counts.arrives);
     setText('liveCountWaiting', counts.en_attente);
     setText('liveCountDone', counts.termine);
-    setText('liveLastUpdate', `Mis à jour ${fmtClock(data.server_now_clock)}`);
+    setText('liveLastUpdate', fill(T.updatedPrefix, fmtClock(data.server_now_clock)));
   }
 
   function raceElapsed(data) {
@@ -442,7 +481,7 @@ const LiveResults = (() => {
         if (delta < 0) delta += DAY_TENTHS;
       }
       if (delta < 0) delta = 0;
-      span.textContent = `· il y a ${fmtAgo(delta)}`;
+      span.textContent = `· ${fill(T.agoPrefix, fmtAgo(delta))}`;
     }
     for (const span of document.querySelectorAll('.live-time')) {
       const st = Number(span.dataset.st);
@@ -468,7 +507,7 @@ const LiveResults = (() => {
         delta = st - now;
         if (delta < 0) delta += DAY_TENTHS;
       }
-      span.textContent = delta > 0 ? `· dans ${fmtAgo(delta)}` : '';
+      span.textContent = delta > 0 ? `· ${fill(T.inPrefix, fmtAgo(delta))}` : '';
     }
   }
 
@@ -478,13 +517,13 @@ const LiveResults = (() => {
     if (!badge) return;
     if (state === 'finished') {
       badge.className = 'badge bg-secondary fs-6';
-      badge.innerHTML = 'Course terminée';
+      badge.innerHTML = T.raceFinished;
     } else if (state === 'upcoming') {
       badge.className = 'badge bg-info fs-6';
-      badge.innerHTML = 'Course à venir';
+      badge.innerHTML = T.raceUpcoming;
     } else {
       badge.className = 'badge bg-success fs-6';
-      badge.innerHTML = `<span class="live-dot"></span>En direct`;
+      badge.innerHTML = `<span class="live-dot"></span>${T.liveNow}`;
     }
   }
 
@@ -493,7 +532,7 @@ const LiveResults = (() => {
     const badge = document.getElementById('liveStatusBadge');
     if (!badge) return;
     badge.className = ok ? 'badge bg-success fs-6' : 'badge bg-danger fs-6';
-    badge.innerHTML = `<span class="live-dot"></span>${ok ? 'En direct' : 'Hors ligne'}`;
+    badge.innerHTML = `<span class="live-dot"></span>${ok ? T.liveNow : T.offline}`;
   }
 
   function schedulePoll(ms) {
@@ -533,6 +572,12 @@ const LiveResults = (() => {
 
   function init(config) {
     cfg = config;
+    T = {
+      ...DEFAULT_STRINGS,
+      ...(config.strings || {}),
+      groupLabels: { ...DEFAULT_STRINGS.groupLabels, ...((config.strings || {}).groupLabels || {}) },
+      groupEmpty: { ...DEFAULT_STRINGS.groupEmpty, ...((config.strings || {}).groupEmpty || {}) },
+    };
     lastFetchClientMs = Date.now();
     currentRaceState = cfg.initialRaceState || 'live';
     watchMeasureContext();

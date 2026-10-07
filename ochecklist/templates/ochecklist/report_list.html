@@ -1,11 +1,12 @@
 {% extends "ochecklist/base.html" %}
+{% load i18n %}
 {% block content %}
 
 {% if reports %}
 <div class="co-card">
   <div class="co-card-header d-flex justify-content-between align-items-center">
-    <span><i class="bi bi-list-check me-2"></i>Rapports reçus</span>
-    <span class="badge bg-light text-dark">{{ reports|length }} rapport{{ reports|length|pluralize }}</span>
+    <span><i class="bi bi-list-check me-2"></i>{% translate "Rapports reçus" %}</span>
+    <span class="badge bg-light text-dark">{% blocktranslate count n=reports|length %}{{ n }} rapport{% plural %}{{ n }} rapports{% endblocktranslate %}</span>
   </div>
   <div class="p-3">
     <form method="post" action="{% url 'ochecklist_clear_reports' %}" id="clear-form">
@@ -13,10 +14,10 @@
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="form-check">
           <input type="checkbox" class="form-check-input" id="select-all">
-          <label class="form-check-label" for="select-all">Tout sélectionner</label>
+          <label class="form-check-label" for="select-all">{% translate "Tout sélectionner" %}</label>
         </div>
         <button type="submit" class="btn btn-sm btn-outline-danger" id="clear-btn" disabled>
-          <i class="bi bi-trash me-1"></i>Supprimer la sélection
+          <i class="bi bi-trash me-1"></i>{% translate "Supprimer la sélection" %}
         </button>
       </div>
       <div class="table-responsive">
@@ -24,11 +25,11 @@
           <thead>
             <tr>
               <th style="width:2rem"></th>
-              <th>Événement</th>
-              <th>Créateur</th>
-              <th>Créé le</th>
-              <th>Reçu le</th>
-              <th class="text-end">Coureurs</th>
+              <th>{% translate "Événement" %}</th>
+              <th>{% translate "Créateur" %}</th>
+              <th>{% translate "Créé le" %}</th>
+              <th>{% translate "Reçu le" %}</th>
+              <th class="text-end">{% translate "Coureurs" %}</th>
               <th style="width:5rem"></th>
             </tr>
           </thead>
@@ -41,7 +42,7 @@
               <td>{{ report.created|date:"d/m/Y H:i" }}</td>
               <td>{{ report.received_at|date:"d/m/Y H:i" }}</td>
               <td class="text-end">{{ report.runners.count }}</td>
-              <td><a href="{% url 'ochecklist_report_detail' report.id %}" class="btn btn-sm btn-outline-primary">Détail</a></td>
+              <td><a href="{% url 'ochecklist_report_detail' report.id %}" class="btn btn-sm btn-outline-primary">{% translate "Détail" %}</a></td>
             </tr>
             {% endfor %}
           </tbody>
@@ -54,8 +55,8 @@
 <div class="co-card text-center p-5">
   <div class="py-4">
     <i class="bi bi-inbox fs-1 d-block mb-3 opacity-25"></i>
-    <p class="mb-0 text-muted">Aucun rapport O'checklist reçu.</p>
-    <p class="small mt-1 text-muted">Les rapports apparaîtront ici après réception de l'application O'checklist.</p>
+    <p class="mb-0 text-muted">{% translate "Aucun rapport O'checklist reçu." %}</p>
+    <p class="small mt-1 text-muted">{% translate "Les rapports apparaîtront ici après réception de l'application O'checklist." %}</p>
   </div>
 </div>
 {% endif %}

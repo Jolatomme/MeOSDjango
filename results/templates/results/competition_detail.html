@@ -1,4 +1,5 @@
 {% extends "results/base.html" %}
+{% load i18n %}
 {% block title %}{{ competition.name }} — {{ SITE_NAME }}{% endblock %}
 
 {% block page_header %}
@@ -6,7 +7,7 @@
   <div class="container">
     <nav aria-label="breadcrumb" class="co-breadcrumb">
       <ol class="breadcrumb mb-2 small">
-        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">{% translate "Accueil" %}</a></li>
         <li class="breadcrumb-item active">{{ competition.name }}</li>
       </ol>
     </nav>
@@ -23,16 +24,16 @@
         {% if competition.date %}
           <div class="mt-1 opacity-75 small">
             <i class="bi bi-calendar me-1"></i>{{ competition.date|date:"l d F Y" }}
-            {% if competition.organizer %} &bull; <i class="bi bi-building me-1"></i>{% if competition.homepage %}<a href="{{ competition.homepage }}" target="_blank" rel="noopener" class="org-site-link" title="Site de l'organisateur — nouvel onglet">{{ competition.organizer }}<i class="bi bi-box-arrow-up-right ms-1" aria-hidden="true"></i></a>{% else %}{{ competition.organizer }}{% endif %}{% endif %}
+            {% if competition.organizer %} &bull; <i class="bi bi-building me-1"></i>{% if competition.homepage %}<a href="{{ competition.homepage }}" target="_blank" rel="noopener" class="org-site-link" title="{% translate "Site de l'organisateur — nouvel onglet" %}">{{ competition.organizer }}<i class="bi bi-box-arrow-up-right ms-1" aria-hidden="true"></i></a>{% else %}{{ competition.organizer }}{% endif %}{% endif %}
           </div>
         {% endif %}
       </div>
       <a href="{% url 'results:statistics' competition.cid %}" class="btn btn-sm btn-warning fw-bold">
-        <i class="bi bi-bar-chart me-1"></i>Statistiques
+        <i class="bi bi-bar-chart me-1"></i>{% translate "Statistiques" %}
       </a>
       {% if has_individual_competitors %}
       <a href="{% url 'results:start_list' competition.cid %}" class="btn btn-sm btn-info fw-bold">
-        <i class="bi bi-clock me-1"></i>Horaires de départ
+        <i class="bi bi-clock me-1"></i>{% translate "Horaires de départ" %}
       </a>
       {% endif %}
     </div>
@@ -41,7 +42,7 @@
 {% endblock %}
 
 {% block content %}
-{% load static %}
+{% load static i18n %}
 
 {# ── Avertissement temps négatifs (toute la compétition) ───────────────────── #}
 {% if neg_time_warning %}
@@ -53,14 +54,14 @@
   <div class="col-6 col-md-3">
     <div class="stat-card">
       <div class="stat-value">{{ class_stats|length }}</div>
-      <div class="stat-label"><i class="bi bi-tag me-1"></i>Catégories</div>
+      <div class="stat-label"><i class="bi bi-tag me-1"></i>{% translate "Catégories" %}</div>
     </div>
   </div>
   {% if courses_map %}
   <div class="col-6 col-md-3">
     <div class="stat-card" style="border-left-color:var(--co-gold)">
       <div class="stat-value" style="color:var(--co-gold)">{{ courses_map|length }}</div>
-      <div class="stat-label"><i class="bi bi-signpost-2 me-1"></i>Circuits</div>
+      <div class="stat-label"><i class="bi bi-signpost-2 me-1"></i>{% translate "Circuits" %}</div>
     </div>
   </div>
   {% endif %}
@@ -71,12 +72,12 @@
   <div class="btn-group" role="group">
     <input type="radio" class="btn-check" name="viewMode" id="viewCats" value="cats" checked autocomplete="off">
     <label class="btn btn-sm btn-outline-success" for="viewCats">
-      <i class="bi bi-tags me-1"></i>Par catégorie
+      <i class="bi bi-tags me-1"></i>{% translate "Par catégorie" %}
     </label>
     {% if courses_map %}
     <input type="radio" class="btn-check" name="viewMode" id="viewCourses" value="courses" autocomplete="off">
     <label class="btn btn-sm btn-outline-warning" for="viewCourses">
-      <i class="bi bi-signpost-2 me-1"></i>Par circuit
+      <i class="bi bi-signpost-2 me-1"></i>{% translate "Par circuit" %}
     </label>
     {% endif %}
   </div>
@@ -84,7 +85,7 @@
     <span class="position-absolute top-50 translate-middle-y ms-2 ps-1 text-muted" style="pointer-events:none;">
       <img src="{% static 'results/img/search.svg' %}" width="16" height="16" alt="">
     </span>
-    <input type="text" id="classSearch" class="form-control ps-5 form-control-sm" placeholder="Filtrer…">
+    <input type="text" id="classSearch" class="form-control ps-5 form-control-sm" placeholder="{% translate "Filtrer…" %}">
   </div>
 </div>
 
@@ -97,13 +98,13 @@
       <a href="{% url 'results:relay_results' competition.cid cs.cls.name %}" class="class-card">
         <div class="d-flex justify-content-between align-items-start mb-1">
           <div class="class-name" style="font-size:1.1rem">
-            <i class="bi bi-people-fill me-1" style="color:var(--co-gold);font-size:.9rem" title="Relais"></i>
+            <i class="bi bi-people-fill me-1" style="color:var(--co-gold);font-size:.9rem" title="{% translate "Relais" %}"></i>
             {{ cs.cls.name }}
           </div>
-          <span class="badge bg-light text-dark border">{{ cs.total }} équipe{{ cs.total|pluralize }}</span>
+          <span class="badge bg-light text-dark border">{% blocktranslate count n=cs.total %}{{ n }} équipe{% plural %}{{ n }} équipes{% endblocktranslate %}</span>
           {% if cs.neg_count %}
-          <span class="badge neg-badge" title="Temps négatifs dans cette catégorie">
-            <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ cs.neg_count }} temps négatif{{ cs.neg_count|pluralize }}
+          <span class="badge neg-badge" title="{% translate "Temps négatifs dans cette catégorie" %}">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>{% blocktranslate count n=cs.neg_count %}{{ n }} temps négatif{% plural %}{{ n }} temps négatifs{% endblocktranslate %}
           </span>
           {% endif %}
         </div>
@@ -117,15 +118,15 @@
               {{ cs.cls.name }}
             </div>
           </a>
-          <span class="badge bg-light text-dark border">{{ cs.n_controls }} poste{{ cs.n_controls|pluralize }}</span>
+          <span class="badge bg-light text-dark border">{% blocktranslate count n=cs.n_controls %}{{ n }} poste{% plural %}{{ n }} postes{% endblocktranslate %}</span>
           {% if cs.neg_count %}
-          <span class="badge neg-badge" title="Temps négatifs dans cette catégorie">
-            <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ cs.neg_count }} temps négatif{{ cs.neg_count|pluralize }}
+          <span class="badge neg-badge" title="{% translate "Temps négatifs dans cette catégorie" %}">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>{% blocktranslate count n=cs.neg_count %}{{ n }} temps négatif{% plural %}{{ n }} temps négatifs{% endblocktranslate %}
           </span>
           {% endif %}
         </div>
         <div class="small text-muted mb-2">
-          {{ cs.finishers }} classé{{ cs.finishers|pluralize }} / {{ cs.total }} partant{{ cs.total|pluralize }}
+          {% blocktranslate count nf=cs.finishers %}{{ nf }} classé{% plural %}{{ nf }} classés{% endblocktranslate %} / {% blocktranslate count nt=cs.total %}{{ nt }} partant{% plural %}{{ nt }} partants{% endblocktranslate %}
         </div>
         <div class="d-flex flex-wrap gap-1 mt-2 pt-2" style="border-top:1px solid var(--co-border)">
           <a href="{% url 'results:live' competition.cid cs.cls.name %}"
@@ -134,7 +135,7 @@
           </a>
           <a href="{% url 'results:class_results' competition.cid cs.cls.name %}"
              class="btn btn-sm btn-outline-success py-0 px-2" style="font-size:.75rem">
-            <i class="bi bi-list-ol me-1"></i>Résultats
+            <i class="bi bi-list-ol me-1"></i>{% translate "Résultats" %}
           </a>
           <a href="{% url 'results:superman' competition.cid cs.cls.name %}"
              class="btn btn-sm btn-outline-warning py-0 px-2" style="font-size:.75rem">
@@ -142,11 +143,11 @@
           </a>
           <a href="{% url 'results:performance' competition.cid cs.cls.name %}"
              class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.75rem">
-            <i class="bi bi-speedometer2 me-1"></i>Perf.
+            <i class="bi bi-speedometer2 me-1"></i>{% translate "Perf." %}
           </a>
           <a href="{% url 'results:grouping' competition.cid cs.cls.name %}"
              class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:.75rem">
-            <i class="bi bi-diagram-3 me-1"></i>Regroupement
+            <i class="bi bi-diagram-3 me-1"></i>{% translate "Regroupement" %}
           </a>
         </div>
       </div>
@@ -156,7 +157,7 @@
     <div class="col-12">
       <div class="co-card text-center p-5 text-muted">
         <i class="bi bi-inbox fs-1 d-block mb-3 opacity-25"></i>
-        Aucune catégorie trouvée (cid={{ competition.cid }}).
+        {% blocktranslate with cid=competition.cid %}Aucune catégorie trouvée (cid={{ cid }}).{% endblocktranslate %}
       </div>
     </div>
     {% endfor %}
@@ -178,10 +179,10 @@
               {{ course.display_name }}
             </div>
           </a>
-          <span class="badge bg-light text-dark border">{{ course.n_controls }} poste{{ course.n_controls|pluralize }}</span>
+          <span class="badge bg-light text-dark border">{% blocktranslate count n=course.n_controls %}{{ n }} poste{% plural %}{{ n }} postes{% endblocktranslate %}</span>
           {% if course.neg_count %}
-          <span class="badge neg-badge" title="Temps négatifs sur ce circuit">
-            <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ course.neg_count }} temps négatif{{ course.neg_count|pluralize }}
+          <span class="badge neg-badge" title="{% translate "Temps négatifs sur ce circuit" %}">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>{% blocktranslate count n=course.neg_count %}{{ n }} temps négatif{% plural %}{{ n }} temps négatifs{% endblocktranslate %}
           </span>
           {% endif %}
         </div>
@@ -201,7 +202,7 @@
           </a>
           <a href="{% url 'results:class_results' competition.cid hash %}"
              class="btn btn-sm btn-outline-success py-0 px-2" style="font-size:.75rem">
-            <i class="bi bi-list-ol me-1"></i>Résultats
+            <i class="bi bi-list-ol me-1"></i>{% translate "Résultats" %}
           </a>
           <a href="{% url 'results:superman' competition.cid hash %}"
              class="btn btn-sm btn-outline-warning py-0 px-2" style="font-size:.75rem">
@@ -209,11 +210,11 @@
           </a>
           <a href="{% url 'results:performance' competition.cid hash %}"
              class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.75rem">
-            <i class="bi bi-speedometer2 me-1"></i>Perf.
+            <i class="bi bi-speedometer2 me-1"></i>{% translate "Perf." %}
           </a>
           <a href="{% url 'results:grouping' competition.cid hash %}"
              class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:.75rem">
-            <i class="bi bi-diagram-3 me-1"></i>Regroupement
+            <i class="bi bi-diagram-3 me-1"></i>{% translate "Regroupement" %}
           </a>
         </div>
       </div>

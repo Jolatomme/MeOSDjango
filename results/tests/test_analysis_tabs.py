@@ -296,11 +296,14 @@ class TestBadgesEnTeteUnifies:
     def test_compteur_en_postes(self, name):
         """Le compteur d'en-tête dit « poste(s) » — jamais tronçon/contrôle/partant."""
         text = (TEMPLATES_DIR / name).read_text(encoding='utf-8')
-        assert 'poste{{' in text, name
-        assert 'tronçon{{' not in text, name
-        assert 'contrôle{{' not in text, name
-        assert 'partant{{' not in text, name
-        assert 'participant{{' not in text, name
+        # Deux idiomes acceptés : l'ancien `poste{{ n|pluralize }}` et la
+        # forme i18n {% blocktranslate count %}…{% plural %} (obligatoire
+        # depuis l'internationalisation : les filtres sont inertes dans
+        # blocktranslate).
+        assert 'poste{{' in text or 'poste{% plural %}' in text, name
+        for forbidden in ('tronçon', 'contrôle', 'partant', 'participant'):
+            assert forbidden + '{{' not in text, name
+            assert forbidden + '{% plural %}' not in text, name
 
 
 @pytest.mark.parametrize('name', RUNNER_BADGE_TEMPLATES)
@@ -309,7 +312,9 @@ class TestBadgeCoureursUnifie:
     def test_badge_coureurs_uniforme(self, name):
         """Libellé unique « coureur(s) » (plus « classé(s)/partant/participant »)."""
         text = (TEMPLATES_DIR / name).read_text(encoding='utf-8')
-        assert 'coureur{{' in text, name
-        assert 'classé{{' not in text, name
-        assert 'partant{{' not in text, name
-        assert 'participant{{' not in text, name
+        # Même double idiome que test_compteur_en_postes (vieux pluralize ou
+        # blocktranslate count/plural i18n).
+        assert 'coureur{{' in text or 'coureur{% plural %}' in text, name
+        for forbidden in ('classé', 'partant', 'participant'):
+            assert forbidden + '{{' not in text, name
+            assert forbidden + '{% plural %}' not in text, name

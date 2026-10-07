@@ -1,5 +1,5 @@
 {% extends "results/base.html" %}
-{% load static %}
+{% load static i18n %}
 {% block title %}{{ markdown_content.title }} — {{ SITE_NAME }}{% endblock %}
 
 {% block page_header %}
@@ -7,8 +7,8 @@
   <div class="container">
     <nav aria-label="breadcrumb" class="co-breadcrumb">
       <ol class="breadcrumb mb-2 small">
-        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
-        <li class="breadcrumb-item"><a href="{% url 'results:tuto' %}">Tutoriels</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">{% translate "Accueil" %}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'results:tuto' %}">{% translate "Tutoriels" %}</a></li>
         <li class="breadcrumb-item active">{{ markdown_content.title }}</li>
       </ol>
     </nav>
@@ -33,7 +33,7 @@
     </div>
     <div class="mt-3">
       <a href="{% url 'results:tuto' %}" class="btn btn-outline-success">
-        <i class="bi bi-arrow-left me-2"></i>Tous les tutoriels
+        <i class="bi bi-arrow-left me-2"></i>{% translate "Tous les tutoriels" %}
       </a>
     </div>
   </div>

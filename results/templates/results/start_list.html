@@ -1,18 +1,18 @@
 {% extends "results/base.html" %}
-{% load static %}
-{% block title %}Horaires de départ — {{ competition.name }} — {{ SITE_NAME }}{% endblock %}
+{% load static i18n %}
+{% block title %}{% translate "Horaires de départ" %} — {{ competition.name }} — {{ SITE_NAME }}{% endblock %}
 
 {% block page_header %}
 <div class="co-page-header">
   <div class="container">
     <nav aria-label="breadcrumb" class="co-breadcrumb">
       <ol class="breadcrumb mb-2 small">
-        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">{% translate "Accueil" %}</a></li>
         <li class="breadcrumb-item"><a href="{% url 'results:competition_detail' competition.cid %}">{{ competition.name }}</a></li>
-        <li class="breadcrumb-item active">Horaires de départ</li>
+        <li class="breadcrumb-item active">{% translate "Horaires de départ" %}</li>
       </ol>
     </nav>
-    <h1><i class="bi bi-clock me-2 opacity-75"></i>Horaires de départ</h1>
+    <h1><i class="bi bi-clock me-2 opacity-75"></i>{% translate "Horaires de départ" %}</h1>
     {% if competition.date %}
       <div class="mt-1 opacity-75 small">
         <i class="bi bi-calendar me-1"></i>{{ competition.date|date:"l d F Y" }}
@@ -31,19 +31,19 @@
 <div class="page-start">
   <header class="hero-start">
     <div class="hero-inner">
-      <div class="notice">Merci de nous signaler tout changement de puce.</div>
+      <div class="notice">{% translate "Merci de nous signaler tout changement de puce." %}</div>
       <div class="toolbar">
         <div class="toolbar-left">
           <div class="search-wrap">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 21l-4.35-4.35m1.35-5.15a6.5 6.5 0 11-13 0a6.5 6.5 0 0113 0z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-            <input id="searchInput" type="search" placeholder="Recherche : nom, prénom, club, circuit, catégorie…">
+            <input id="searchInput" type="search" placeholder="{% translate "Recherche : nom, prénom, club, circuit, catégorie…" %}">
           </div>
         </div>
         <div class="toolbar-right">
           <div class="view-switch" id="viewSwitch">
-            <button class="btn-view active" data-view-btn="category" type="button"><span class="label-full">Par catégorie</span><span class="label-short">Catégorie</span></button>
-            <button class="btn-view" data-view-btn="club" type="button"><span class="label-full">Par club</span><span class="label-short">Club</span></button>
-            <button class="btn-view" data-view-btn="start_time" type="button"><span class="label-full">Par heure</span><span class="label-short">Heure</span></button>
+            <button class="btn-view active" data-view-btn="category" type="button"><span class="label-full">{% translate "Par catégorie" %}</span><span class="label-short">{% translate "Catégorie" %}</span></button>
+            <button class="btn-view" data-view-btn="club" type="button"><span class="label-full">{% translate "Par club" %}</span><span class="label-short">{% translate "Club" %}</span></button>
+            <button class="btn-view" data-view-btn="start_time" type="button"><span class="label-full">{% translate "Par heure" %}</span><span class="label-short">{% translate "Heure" %}</span></button>
           </div>
         </div>
       </div>
@@ -150,8 +150,8 @@
     url.searchParams.set('view', state.view);
     url.hash = `group-${slug}`;
     navigator.clipboard.writeText(url.toString())
-      .then(() => showToast('Lien copié'))
-      .catch(() => showToast('Impossible de copier le lien'));
+      .then(() => showToast("{% translate 'Lien copié' %}"))
+      .catch(() => showToast("{% translate 'Impossible de copier le lien' %}"));
   }
 
   function td(label, value) {
@@ -159,35 +159,35 @@
   }
 
   function getGroupLabelPlural() {
-    if (state.view === 'category') return 'catégories';
-    if (state.view === 'start_time') return 'heures de départ';
-    return 'clubs';
+    if (state.view === 'category') return "{% translate 'catégories' %}";
+    if (state.view === 'start_time') return "{% translate 'heures de départ' %}";
+    return "{% translate 'clubs' %}";
   }
 
   // Colonnes par vue : label + accesseur. categoryLink affiche la catégorie
   // comme un lien cliquable qui bascule sur la vue « Par catégorie ».
   const COLUMNS = {
     category: [
-      { label: 'Nom / Prénom', value: row => row.full_name },
-      { label: 'Club', value: row => row.club_display },
-      { label: 'Puce', value: row => row.control_card },
-      { label: 'Heure de départ', value: row => row.start_time },
+      { label: "{% translate 'Nom / Prénom' %}", value: row => row.full_name },
+      { label: "{% translate 'Club' %}", value: row => row.club_display },
+      { label: "{% translate 'Puce' %}", value: row => row.control_card },
+      { label: "{% translate 'Heure de départ' %}", value: row => row.start_time },
     ],
     club: [
-      { label: 'Nom / Prénom', value: row => row.full_name },
-      { label: 'Catégorie', value: row => row.category, categoryLink: true },
-      { label: 'Puce', value: row => row.control_card },
-      { label: 'Heure de départ', value: row => row.start_time },
+      { label: "{% translate 'Nom / Prénom' %}", value: row => row.full_name },
+      { label: "{% translate 'Catégorie' %}", value: row => row.category, categoryLink: true },
+      { label: "{% translate 'Puce' %}", value: row => row.control_card },
+      { label: "{% translate 'Heure de départ' %}", value: row => row.start_time },
     ],
     start_time: [
-      { label: 'Nom / Prénom', value: row => row.full_name },
-      { label: 'Club', value: row => row.club_display },
-      { label: 'Catégorie', value: row => row.category, categoryLink: true },
-      { label: 'Puce', value: row => row.control_card },
+      { label: "{% translate 'Nom / Prénom' %}", value: row => row.full_name },
+      { label: "{% translate 'Club' %}", value: row => row.club_display },
+      { label: "{% translate 'Catégorie' %}", value: row => row.category, categoryLink: true },
+      { label: "{% translate 'Puce' %}", value: row => row.control_card },
     ],
   };
 
-  const BIB_COLUMN = { label: 'Dossard', value: row => row.bib };
+  const BIB_COLUMN = { label: "{% translate 'Dossard' %}", value: row => row.bib };
 
   function viewColumns(view) {
     const base = COLUMNS[view] || COLUMNS.category;
@@ -221,11 +221,11 @@
           <div>
             <h2 class="group-title">
               <span>${escapeHtml(group.name)}</span>
-              <span class="copy-link" role="button" tabindex="0" title="Copier le lien vers ce regroupement" data-copy-anchor="${group.slug}">
+              <span class="copy-link" role="button" tabindex="0" title="{% translate 'Copier le lien vers ce regroupement' %}" data-copy-anchor="${group.slug}">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10 13a5 5 0 007.07 0l2.83-2.83a5 5 0 00-7.07-7.07L11 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M14 11a5 5 0 00-7.07 0L4.1 13.83a5 5 0 107.07 7.07L13 20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
               </span>
             </h2>
-            <div class="helper">Merci de signaler tout changement de puce.</div>
+            <div class="helper">{% translate "Merci de signaler tout changement de puce." %}</div>
           </div>
         </div>
         <div class="table-wrap">
@@ -237,8 +237,8 @@
       </section>`;
     }).join('');
 
-    groupsContainer.innerHTML = html || `<div class="empty">Aucun résultat pour cette recherche.</div>`;
-    summaryBar.textContent = `${totalRowsVisible} partants affichés dans ${totalGroupsVisible} ${getGroupLabelPlural()}.`;
+    groupsContainer.innerHTML = html || `<div class="empty">{% translate "Aucun résultat pour cette recherche." %}</div>`;
+    summaryBar.textContent = `{% blocktranslate %}${totalRowsVisible} partants affichés dans ${totalGroupsVisible} ${getGroupLabelPlural()}.{% endblocktranslate %}`;
 
     const quick = document.getElementById("quickLinks");
     quick.innerHTML = groups.map(g =>

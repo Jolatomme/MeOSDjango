@@ -32,6 +32,7 @@ Interface web de résultats en temps réel pour les compétitions de **course d'
 | **Tutoriels** | Articles Markdown intégrés |
 | **Réception MOP** | Endpoint `POST /mop/update/` — MeOS pousse les données en temps réel |
 | **O'checklist** | Rapports de départ YAML |
+| **4 langues** | Sélecteur de drapeaux dans la barre (fr · en · de · sv) — langue du navigateur à la 1ʳᵉ visite, choix conservé en cookie, URLs identiques dans toutes les langues |
 
 ## Stack
 
@@ -45,6 +46,7 @@ cd MeOSDjango
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 # Créer MeOSDjango/dev_settings.py — voir le wiki Installation
+python manage.py compilemessages   # traductions en/de/sv (gettext requis)
 python manage.py migrate
 python manage.py runserver
 ```

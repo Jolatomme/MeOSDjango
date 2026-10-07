@@ -23,6 +23,8 @@ from pathlib import Path
 from markdown.extensions.toc import slugify_unicode
 from django.conf import settings
 from django.db import connection, IntegrityError, transaction
+from django.utils.translation import gettext
+from django.utils.translation import ngettext
 
 logger = logging.getLogger(__name__)
 
@@ -365,7 +367,7 @@ def collect_negative_ctrls(c, controls_seq, radio_map, attested=None):
     prestart = detect_prestart_ctrls(c, controls_seq, radio_map, attested)
     negs = _circuit_negatives(controls_seq, radios, prestart)
     if getattr(c, 'stat', None) == STAT_OK and rt is not None and rt < 0:
-        negs.append('Arrivée')
+        negs.append(gettext('Arrivée'))
     elif rt and rt > 0:
         last_abs = None
         for ctrl in controls_seq:
@@ -373,7 +375,7 @@ def collect_negative_ctrls(c, controls_seq, radio_map, attested=None):
             if abs_t > 0:
                 last_abs = abs_t
         if last_abs and c.rt < last_abs:
-            negs.append('Arrivée')
+            negs.append(gettext('Arrivée'))
     return negs
 
 
@@ -485,7 +487,7 @@ def build_finish_split(rt, last_abs, *, leg_full_race_if_missing=True):
     """
     if rt is None or rt <= 0:
         return {
-            'ctrl_name': 'Arrivée',
+            'ctrl_name': gettext('Arrivée'),
             'abs_time':  '-',
             'leg_time':  '-',
             'leg_raw':   None,
@@ -502,7 +504,7 @@ def build_finish_split(rt, last_abs, *, leg_full_race_if_missing=True):
     else:
         leg_raw = None
     return {
-        'ctrl_name': 'Arrivée',
+        'ctrl_name': gettext('Arrivée'),
         'abs_time':  format_time(rt),
         'leg_time':  format_time(leg_raw) if leg_raw else '-',
         'leg_raw':   leg_raw,
@@ -595,30 +597,35 @@ def get_negative_time_stats(cid):
         kind     = 'multiple'
         box_names = ', '.join(box_controls)
         if len(box_controls) == 1:
-            postes = f"au poste {box_names}"
+            postes = gettext("au poste %(ctrls)s") % {"ctrls": box_names}
         else:
-            postes = f"aux postes {box_names}"
-        message = (
-            f"{count} coureurs ont des temps négatifs {postes} : "
-            "probable boîtier mal synchronisé."
-        )
-        tooltip = 'Temps négatif : boîtier probablement mal synchronisé'
+            postes = gettext("aux postes %(ctrls)s") % {"ctrls": box_names}
+        message = ngettext(
+            "%(n)s coureur a des temps négatifs %(postes)s : "
+            "probable boîtier mal synchronisé.",
+            "%(n)s coureurs ont des temps négatifs %(postes)s : "
+            "probable boîtier mal synchronisé.",
+            count,
+        ) % {"n": count, "postes": postes}
+        tooltip = gettext("Temps négatif : boîtier probablement mal synchronisé")
     elif count == 1:
         kind = 'single'
-        message = (
+        message = gettext(
             "1 coureur a un temps négatif : probable carte SI non effacée "
             "(problème d'effacement de doigts)."
         )
-        tooltip = 'Temps négatif : carte SI probablement non effacée'
+        tooltip = gettext("Temps négatif : carte SI probablement non effacée")
     else:
         kind = 'single'
-        message = (
-            f"{count} coureurs ont des temps négatifs sur des postes "
-            "différents : probables cartes SI non effacées "
-            "(effacement de doigts)."
-        )
-        tooltip = ('Temps négatifs sur des postes différents : '
-                   'cartes SI probablement non effacées')
+        message = ngettext(
+            "%(n)s coureur a des temps négatifs sur des postes différents : "
+            "probables cartes SI non effacées (effacement de doigts).",
+            "%(n)s coureurs ont des temps négatifs sur des postes différents : "
+            "probables cartes SI non effacées (effacement de doigts).",
+            count,
+        ) % {"n": count}
+        tooltip = gettext("Temps négatifs sur des postes différents : "
+                    "cartes SI probablement non effacées")
 
     runners = sorted(
         ({'id': cid_, **info} for cid_, info in affected.items()),

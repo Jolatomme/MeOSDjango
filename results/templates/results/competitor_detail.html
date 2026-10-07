@@ -1,5 +1,5 @@
 {% extends "results/base.html" %}
-{% load meos_tags %}
+{% load meos_tags i18n %}
 {% block title %}{{ competitor.name }} — {{ competition.name }}{% endblock %}
 
 {% block page_header %}
@@ -16,7 +16,7 @@
         <li class="breadcrumb-item active">{{ competitor.name }}</li>
       </ol>
     </nav>
-    <h1><i class="bi bi-person-circle me-2 opacity-75"></i>{{ competitor.name }}{% if competitor.neg_time %} <span class="badge neg-badge align-middle ms-1" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>{% endif %}</h1>
+    <h1><i class="bi bi-person-circle me-2 opacity-75"></i>{{ competitor.name }}{% if competitor.neg_time %} <span class="badge neg-badge align-middle ms-1" title="{% translate "Temps négatif : boîtier mal synchronisé ou carte SI non effacée" %}">{% translate "Temps négatif" %}</span>{% endif %}</h1>
   </div>
 </div>
 {% endblock %}
@@ -28,28 +28,28 @@
   <!-- Fiche -->
   <div class="col-12 col-md-4">
     <div class="co-card">
-      <div class="co-card-header"><i class="bi bi-person-badge me-2"></i>Fiche concurrent</div>
+      <div class="co-card-header"><i class="bi bi-person-badge me-2"></i>{% translate "Fiche concurrent" %}</div>
       <div class="p-3">
         <dl class="row mb-0 small">
-          <dt class="col-5 text-muted">Catégorie</dt>
+          <dt class="col-5 text-muted">{% translate "Catégorie" %}</dt>
           <dd class="col-7">
             {% if cls %}<a href="{% url 'results:class_results' competition.cid cls.name %}">{{ cls.name }}</a>
             {% else %}—{% endif %}
           </dd>
 
-          <dt class="col-5 text-muted">Club</dt>
+          <dt class="col-5 text-muted">{% translate "Club" %}</dt>
           <dd class="col-7">
             {% if org %}<a href="{% url 'results:org_results' competition.cid competitor.org %}">{{ org.name }}</a>
             {% else %}—{% endif %}
           </dd>
 
           {% if competitor.st > 0 %}
-          <dt class="col-5 text-muted">Départ</dt>
+          <dt class="col-5 text-muted">{% translate "Départ" %}</dt>
           <dd class="col-7 fw-bold">{{ competitor.st|meos_time }}</dd>
           {% endif %}
 
           {% if competitor.it > 0 %}
-          <dt class="col-5 text-muted">Arrivée</dt>
+          <dt class="col-5 text-muted">{% translate "Arrivée" %}</dt>
           <dd class="col-7 fw-bold">{{ competitor.it|meos_time }}</dd>
           {% endif %}
         </dl>
@@ -58,7 +58,7 @@
 
     <!-- Résultat -->
     <div class="co-card mt-3">
-      <div class="co-card-header"><i class="bi bi-stopwatch me-2"></i>Résultat</div>
+      <div class="co-card-header"><i class="bi bi-stopwatch me-2"></i>{% translate "Résultat" %}</div>
       <div class="p-3 text-center">
         {% if competitor.is_ok %}
           <div style="font-family:var(--font-display);font-size:3rem;font-weight:800;color:var(--co-green)">
@@ -82,25 +82,26 @@
   <!-- Temps intermédiaires -->
   <div class="col-12 col-md-8">
     <div class="co-card">
-      <div class="co-card-header"><i class="bi bi-diagram-3 me-2"></i>Temps intermédiaires</div>
+      <div class="co-card-header"><i class="bi bi-diagram-3 me-2"></i>{% translate "Temps intermédiaires" %}</div>
       {% if splits and can_show_splits %}
       <div class="table-responsive">
         <table class="results-table">
           <thead>
             <tr>
-              <th>Balise</th>
-              <th class="text-end">Cumulé</th>
-              <th class="text-end">Tronçon</th>
+              <th>{% translate "Balise" %}</th>
+              <th class="text-end">{% translate "Cumulé" %}</th>
+              <th class="text-end">{% translate "Tronçon" %}</th>
             </tr>
           </thead>
           <tbody>
             <tr class="split-row">
-              <td><i class="bi bi-play-fill text-success"></i> Départ</td>
+              <td><i class="bi bi-play-fill text-success"></i> {% translate "Départ" %}</td>
               <td class="text-end split-abs">0:00</td>
               <td class="text-end split-leg">—</td>
             </tr>
+            {% translate "Arrivée" as FIN %}
             {% for sp in splits %}
-            {% if sp.ctrl_name != "Arrivée" %}
+            {% if sp.ctrl_name != FIN %}
             <tr class="split-row">
               <td>{{ sp.ctrl_name }}</td>
               <td class="text-end split-abs">{{ sp.abs_time }}</td>
@@ -109,10 +110,10 @@
             {% endif %}
             {% endfor %}
             {% with last=splits|last %}
-            {% if last.ctrl_name == "Arrivée" %}
+            {% if last.ctrl_name == FIN %}
             {# Ligne affichée pour tout coureur ayant franchi la ligne (rt > 0), y compris non classés (PM…) #}
             <tr class="split-row" style="border-top:2px solid var(--co-green)">
-              <td><i class="bi bi-flag-fill text-danger"></i> Arrivée</td>
+              <td><i class="bi bi-flag-fill text-danger"></i> {% translate "Arrivée" %}</td>
               <td class="text-end split-abs fw-bold" style="color:var(--co-green)">{{ last.abs_time }}</td>
               <td class="text-end split-leg{% if last.neg_leg %} split-neg{% endif %}"{% if last.neg_leg %} title="{{ neg_time_warning.tooltip|default:'Temps négatif' }}"{% endif %}>{{ last.leg_time }}{% if last.neg_leg %} <span class="split-mark-warn">(!)</span>{% endif %}</td>
             </tr>
@@ -124,12 +125,12 @@
       {% elif not can_show_splits %}
       <div class="p-4 text-center text-muted">
         <i class="bi bi-hourglass-split me-2"></i>
-        Temps intermédiaires masqués tant qu’aucun coureur n’a terminé le circuit dans cette catégorie.
+        {% translate "Temps intermédiaires masqués tant qu’aucun coureur n’a terminé le circuit dans cette catégorie." %}
       </div>
       {% else %}
       <div class="p-4 text-center text-muted">
         <i class="bi bi-info-circle me-2"></i>
-        Aucun temps intermédiaire disponible (table <code>mopRadio</code> vide pour ce concurrent).
+        {% blocktranslate %}Aucun temps intermédiaire disponible (table <code>mopRadio</code> vide pour ce concurrent).{% endblocktranslate %}
       </div>
       {% endif %}
     </div>

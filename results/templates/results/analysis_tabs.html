@@ -1,3 +1,4 @@
+{% load i18n %}
 <!-- Barre de navigation entre les analyses ──────────────────────────────────
    Partial UNIQUE pour les catégories ET les circuits.
    - course vide (None) → namespace results:*        (routes /class/<id>/…)
@@ -9,7 +10,7 @@
 {% with ns=course|yesno:"results:course_,results:" %}
 <div class="analysis-tabs-bar">
   <div class="container">
-    <nav class="analysis-tabs" aria-label="Navigation analyses">
+    <nav class="analysis-tabs" aria-label="{% translate 'Navigation analyses' %}">
 
       <a href="{% url ns|add:'live' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'live' %}active{% endif %}">
@@ -19,7 +20,7 @@
       {# Résultats : seul onglet dont le suffixe diffère (class_results / course_results) #}
       <a href="{% if course %}{% url 'results:course_results' competition.cid cls.name %}{% else %}{% url 'results:class_results' competition.cid cls.name %}{% endif %}"
          class="analysis-tab {% if current_analysis == 'results' %}active{% endif %}">
-        <i class="bi bi-list-ol"></i><span>Résultats</span>
+        <i class="bi bi-list-ol"></i><span>{% translate "Résultats" %}</span>
       </a>
 
       <a href="{% url ns|add:'superman' competition.cid cls.name %}"
@@ -29,32 +30,32 @@
 
       <a href="{% url ns|add:'performance' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'performance' %}active{% endif %}">
-        <i class="bi bi-speedometer2"></i><span>Indice perf.</span>
+        <i class="bi bi-speedometer2"></i><span>{% translate "Indice perf." %}</span>
       </a>
 
       <a href="{% url ns|add:'regularity' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'regularity' %}active{% endif %}">
-        <i class="bi bi-activity"></i><span>Régularité</span>
+        <i class="bi bi-activity"></i><span>{% translate "Régularité" %}</span>
       </a>
 
       <a href="{% url ns|add:'grouping' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'grouping' %}active{% endif %}">
-        <i class="bi bi-diagram-3"></i><span>Regroupement</span>
+        <i class="bi bi-diagram-3"></i><span>{% translate "Regroupement" %}</span>
       </a>
 
       <a href="{% url ns|add:'grouping_index' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'grouping_index' %}active{% endif %}">
-        <i class="bi bi-collection"></i><span>Lièvre / Suiveur</span>
+        <i class="bi bi-collection"></i><span>{% translate "Lièvre / Suiveur" %}</span>
       </a>
 
       <a href="{% url ns|add:'duel' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'duel' %}active{% endif %}">
-        <i class="bi bi-people"></i><span>Duel coureurs</span>
+        <i class="bi bi-people"></i><span>{% translate "Duel coureurs" %}</span>
       </a>
 
       <a href="{% url ns|add:'recapitulatif' competition.cid cls.name %}"
          class="analysis-tab {% if current_analysis == 'recapitulatif' %}active{% endif %}">
-        <i class="bi bi-table"></i><span>Récapitulatif</span>
+        <i class="bi bi-table"></i><span>{% translate "Récapitulatif" %}</span>
       </a>
 
     </nav>

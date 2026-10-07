@@ -1,34 +1,34 @@
 {% extends "results/analysis_base.html" %}
 {% load meos_tags %}
-{% load static %}
-{% block analysis_breadcrumb %}Duel coureurs{% endblock %}
+{% load static i18n %}
+{% block analysis_breadcrumb %}{% translate "Duel coureurs" %}{% endblock %}
 {% block analysis_icon %}bi bi-people-fill{% endblock %}
-{% block analysis_title %}Duel coureurs{% endblock %}
+{% block analysis_title %}{% translate "Duel coureurs" %}{% endblock %}
 
 {% block page_header %}
 <div class="co-page-header">
   <div class="container">
     <nav aria-label="breadcrumb" class="co-breadcrumb">
       <ol class="breadcrumb mb-2 small">
-        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">{% translate "Accueil" %}</a></li>
         <li class="breadcrumb-item">
           <a href="{% url 'results:competition_detail' competition.cid %}">{{ competition.name }}</a>
         </li>
         <li class="breadcrumb-item">
           <a href="{% if course %}{% url 'results:course_results' competition.cid course.hash %}{% else %}{% url 'results:class_results' competition.cid cls.name %}{% endif %}">{% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}</a>
         </li>
-        <li class="breadcrumb-item active">Duel coureurs</li>
+        <li class="breadcrumb-item active">{% translate "Duel coureurs" %}</li>
       </ol>
     </nav>
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
         <h1>
-          <i class="bi bi-people-fill me-2 opacity-75" style="color:var(--co-gold)"></i>Duel coureurs
+          <i class="bi bi-people-fill me-2 opacity-75" style="color:var(--co-gold)"></i>{% translate "Duel coureurs" %}
         </h1>
          {% if course %}
          <div class="opacity-75 small mt-1">
            {{ course.display_name }} — {{ competition.name }}
-           <span class="ms-2 badge bg-secondary">{{ course.classes|length }} catégorie{{ course.classes|length|pluralize }}</span>
+           <span class="ms-2 badge bg-secondary">{% blocktranslate count n=course.classes|length %}{{ n }} catégorie{% plural %}{{ n }} catégories{% endblocktranslate %}</span>
          </div>
          <div class="d-flex flex-wrap gap-1 mt-2">
            {% for cat in course.classes %}
@@ -43,9 +43,9 @@
       </div>
       {% if not no_data %}
       <div class="d-flex align-items-center gap-2 flex-wrap">
-        <span class="badge bg-light text-dark fs-6">{{ n_runners }} coureur{{ n_runners|pluralize }}</span>
+        <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=n_runners %}{{ n }} coureur{% plural %}{{ n }} coureurs{% endblocktranslate %}</span>
         {% if n_controls %}
-        <span class="badge bg-light text-dark fs-6">{{ n_controls }} poste{{ n_controls|pluralize }}</span>
+        <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=n_controls %}{{ n }} poste{% plural %}{{ n }} postes{% endblocktranslate %}</span>
         {% endif %}
       </div>
       {% endif %}
@@ -64,7 +64,7 @@
 {% if no_data %}
 <div class="co-card text-center p-5 text-muted">
   <i class="bi bi-people fs-1 d-block mb-3 opacity-25"></i>
-  Aucun coureur disponible pour cette catégorie.
+  {% translate "Aucun coureur disponible pour cette catégorie." %}
 </div>
 
 {% else %}
@@ -72,17 +72,17 @@
 {# ── Sélecteurs de coureurs ──────────────────────────────────────────────────── #}
 <div class="co-card mb-4">
   <div class="co-card-header">
-    <i class="bi bi-people-fill me-2"></i>Choisissez les deux coureurs à comparer
+    <i class="bi bi-people-fill me-2"></i>{% translate "Choisissez les deux coureurs à comparer" %}
   </div>
   <div class="p-3">
     <div class="row g-3 align-items-center">
 
       <div class="col-12 col-md-5">
         <label class="form-label small fw-bold mb-1" style="color:#4363d8">
-          <i class="bi bi-person-fill me-1"></i>Coureur A
+          <i class="bi bi-person-fill me-1"></i>{% translate "Coureur A" %}
         </label>
         <select id="selectA" class="form-select" onchange="onSelectionChange()">
-          <option value="">— Sélectionner —</option>
+          <option value="">{% translate "— Sélectionner —" %}</option>
         </select>
         <div id="badgeA" class="mt-2 d-none">
           <span class="badge duel-badge-a px-3 py-2 fs-6" id="totalA"></span>
@@ -95,10 +95,10 @@
 
       <div class="col-12 col-md-5">
         <label class="form-label small fw-bold mb-1" style="color:#e07840">
-          <i class="bi bi-person-fill me-1"></i>Coureur B
+          <i class="bi bi-person-fill me-1"></i>{% translate "Coureur B" %}
         </label>
         <select id="selectB" class="form-select" onchange="onSelectionChange()">
-          <option value="">— Sélectionner —</option>
+          <option value="">{% translate "— Sélectionner —" %}</option>
         </select>
         <div id="badgeB" class="mt-2 d-none">
           <span class="badge duel-badge-b px-3 py-2 fs-6" id="totalB"></span>
@@ -115,19 +115,19 @@
     <div class="col-4">
       <div class="duel-summary-card duel-summary-a" id="summaryWinsA">
         <div class="duel-summary-val" id="winsAVal">—</div>
-        <div class="duel-summary-lbl">tronçons gagnés</div>
+        <div class="duel-summary-lbl">{% translate "tronçons gagnés" %}</div>
       </div>
     </div>
     <div class="col-4">
       <div class="duel-summary-card duel-summary-tie">
         <div class="duel-summary-val" id="tiesVal">—</div>
-        <div class="duel-summary-lbl">ex-æquo</div>
+        <div class="duel-summary-lbl">{% translate "ex-æquo" %}</div>
       </div>
     </div>
     <div class="col-4">
       <div class="duel-summary-card duel-summary-b" id="summaryWinsB">
         <div class="duel-summary-val" id="winsBVal">—</div>
-        <div class="duel-summary-lbl">tronçons gagnés</div>
+        <div class="duel-summary-lbl">{% translate "tronçons gagnés" %}</div>
       </div>
     </div>
   </div>
@@ -136,16 +136,16 @@
 {# ── Graphique du duel ───────────────────────────────────────────────────────── #}
 <div id="duelChartWrap" class="co-card d-none mb-4">
   <div class="co-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <span><i class="bi bi-graph-up me-2"></i>Visualisation du duel</span>
-    <div class="btn-group btn-group-sm" role="group" aria-label="Type de graphique">
+    <span><i class="bi bi-graph-up me-2"></i>{% translate "Visualisation du duel" %}</span>
+    <div class="btn-group btn-group-sm" role="group" aria-label="{% translate 'Type de graphique' %}">
       <input type="radio" class="btn-check" name="chartType" id="ctGap" value="gap" checked>
-      <label class="btn btn-sm btn-outline-light" for="ctGap">Évolution</label>
+      <label class="btn btn-sm btn-outline-light" for="ctGap">{% translate "Évolution" %}</label>
       <input type="radio" class="btn-check" name="chartType" id="ctGapCum" value="gapcum">
-      <label class="btn btn-sm btn-outline-light" for="ctGapCum">Écart cumulé</label>
+      <label class="btn btn-sm btn-outline-light" for="ctGapCum">{% translate "Écart cumulé" %}</label>
       <input type="radio" class="btn-check" name="chartType" id="ctDelta" value="delta">
-      <label class="btn btn-sm btn-outline-light" for="ctDelta">Écarts par tronçon</label>
+      <label class="btn btn-sm btn-outline-light" for="ctDelta">{% translate "Écarts par tronçon" %}</label>
       <input type="radio" class="btn-check" name="chartType" id="ctBars" value="bars">
-      <label class="btn btn-sm btn-outline-light" for="ctBars">Côte à côte</label>
+      <label class="btn btn-sm btn-outline-light" for="ctBars">{% translate "Côte à côte" %}</label>
     </div>
   </div>
   <div class="p-3">
@@ -156,14 +156,14 @@
 {# ── Tableau de duel ─────────────────────────────────────────────────────────── #}
 <div id="duelTableWrap" class="co-card d-none">
   <div class="co-card-header d-flex justify-content-between align-items-center">
-    <span><i class="bi bi-table me-2"></i>Comparaison tronçon par tronçon</span>
+    <span><i class="bi bi-table me-2"></i>{% translate "Comparaison tronçon par tronçon" %}</span>
     <div class="d-flex align-items-center gap-2">
-      <span class="small text-white opacity-75">Afficher temps :</span>
+      <span class="small text-white opacity-75">{% translate "Afficher temps :" %}</span>
       <div class="btn-group btn-group-sm">
         <input type="radio" class="btn-check" name="timeMode" id="modeLeg" value="leg" checked>
-        <label class="btn btn-sm btn-outline-light" for="modeLeg">Tronçon</label>
+        <label class="btn btn-sm btn-outline-light" for="modeLeg">{% translate "Tronçon" %}</label>
         <input type="radio" class="btn-check" name="timeMode" id="modeAbs" value="abs">
-        <label class="btn btn-sm btn-outline-light" for="modeAbs">Cumulé</label>
+        <label class="btn btn-sm btn-outline-light" for="modeAbs">{% translate "Cumulé" %}</label>
       </div>
     </div>
   </div>
@@ -171,10 +171,10 @@
     <table class="duel-table" id="duelTable">
       <thead>
         <tr>
-          <th class="text-end duel-th-a" id="headA">Coureur A</th>
-          <th class="text-center duel-th-ctrl">Tronçon</th>
-          <th class="text-center duel-th-delta">Écart</th>
-          <th class="text-start duel-th-b" id="headB">Coureur B</th>
+          <th class="text-end duel-th-a" id="headA">{% translate "Coureur A" %}</th>
+          <th class="text-center duel-th-ctrl">{% translate "Tronçon" %}</th>
+          <th class="text-center duel-th-delta">{% translate "Écart" %}</th>
+          <th class="text-start duel-th-b" id="headB">{% translate "Coureur B" %}</th>
         </tr>
       </thead>
       <tbody id="duelTbody"></tbody>
@@ -186,7 +186,7 @@
 {# ── Message quand aucun coureur sélectionné ─────────────────────────────────── #}
 <div id="duelPlaceholder" class="co-card text-center p-5 text-muted">
   <i class="bi bi-people fs-1 d-block mb-3 opacity-25"></i>
-  <p class="mb-0">Sélectionnez deux coureurs ci-dessus pour afficher le duel tronçon par tronçon.</p>
+  <p class="mb-0">{% translate "Sélectionnez deux coureurs ci-dessus pour afficher le duel tronçon par tronçon." %}</p>
 </div>
 
 {% endif %}
@@ -403,7 +403,7 @@ function buildDuel(rA, rB) {
       <td class="text-end">
         <span class="duel-total-time ${totWinA}">${rA.rt_fmt}</span>
       </td>
-      <td class="text-center duel-cell-ctrl" style="color:rgba(255,255,255,.6);font-size:.75rem">TOTAL</td>
+      <td class="text-center duel-cell-ctrl" style="color:rgba(255,255,255,.6);font-size:.75rem">{% translate "TOTAL" %}</td>
       <td class="text-center">${totDeltaHtml}</td>
       <td class="text-start">
         <span class="duel-total-time ${totWinB}">${rB.rt_fmt}</span>
@@ -465,7 +465,7 @@ function renderChart() {
   const labelColor = chartCssVar('--co-text-muted', '#6c757d');
   const tickFont   = { family: "'Barlow Condensed', sans-serif", size: 11 };
   const titleFont  = { family: "'Barlow', sans-serif", size: 12 };
-  const modeLabel  = mode === 'abs' ? 'cumulé' : 'tronçon';
+  const modeLabel  = mode === 'abs' ? "{% translate 'cumulé' %}" : "{% translate 'tronçon' %}";
 
   const xCategory = {
     ticks: { font: tickFont, color: labelColor, maxRotation: 55, minRotation: 0 },
@@ -506,7 +506,7 @@ function renderChart() {
       data: {
         labels,
         datasets: [{
-          label: mode === 'abs' ? 'Écart cumulé' : 'Écart sur le tronçon',
+          label: mode === 'abs' ? "{% translate 'Écart cumulé' %}" : "{% translate 'Écart sur le tronçon' %}",
           data: deltas,
           backgroundColor: barColors,
           borderColor: barColors,
@@ -546,7 +546,7 @@ function renderChart() {
             },
             title: {
               display: true,
-              text: `Écart ${modeLabel} (A − B : sous 0 = A plus rapide)`,
+              text: `{% translate "Écart" %} ${modeLabel}{% translate " (A − B : sous 0 = A plus rapide)" %}`,
               font: titleFont, color: labelColor,
             },
           },
@@ -589,7 +589,7 @@ function renderChart() {
             beginAtZero: true,
             ticks: { font: tickFont, color: labelColor, callback: v => fmtAxisTime(v) },
             grid:  { color: gridColor },
-            title: { display: true, text: `Temps (${modeLabel})`, font: titleFont, color: labelColor },
+            title: { display: true, text: `{% translate "Temps" %} (${modeLabel})`, font: titleFont, color: labelColor },
           },
         },
       },
@@ -612,7 +612,7 @@ function renderChart() {
       data: {
         labels,
         datasets: [{
-          label: 'Écart cumulé (A − B)',
+          label: "{% translate 'Écart cumulé (A − B)' %}",
           data: gaps,
           borderColor: COLOR_TIE,   // trait visible par défaut
           segment: {                // couleur par segment : côté du vainqueur
@@ -662,7 +662,7 @@ function renderChart() {
             },
             title: {
               display: true,
-              text: 'Écart cumulé (A − B : sous 0 = A en tête)',
+              text: "{% translate 'Écart cumulé (A − B : sous 0 = A en tête)' %}",
               font: titleFont, color: labelColor,
             },
           },
@@ -713,7 +713,7 @@ function renderChart() {
           y: {
             ticks: { font: tickFont, color: labelColor, callback: v => fmtAxisTime(v) },
             grid:  { color: gridColor },
-            title: { display: true, text: `Temps (${modeLabel})`, font: titleFont, color: labelColor },
+            title: { display: true, text: `{% translate "Temps" %} (${modeLabel})`, font: titleFont, color: labelColor },
           },
         },
       },

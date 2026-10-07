@@ -20,6 +20,22 @@ const COUtils = (() => {
     };
   }
 
+  // ── Chaînes i18n (source FR) ──────────────────────────────────────────────
+  // base.html injecte les traductions via COUtils.setStrings({...}) — mêmes
+  // clés ; sans injection, les valeurs FR par défaut s'appliquent.
+  let _strings = {
+    alt1: '1er',
+    alt2: '2e',
+    alt3: '3e',
+    showAbandons: 'Afficher abandons',
+    hideAbandons: 'Masquer abandons',
+  };
+
+  /** Fusionne les chaînes traduites (appelé par base.html). */
+  function setStrings(strings) {
+    Object.assign(_strings, strings || {});
+  }
+
   /**
    * Retourne le HTML d'affichage du rang (image médaille ou badge texte).
    * @param {number|null} rank
@@ -27,9 +43,9 @@ const COUtils = (() => {
    */
   function renderMedal(rank) {
     const { gold, silver, bronze } = _medalUrls();
-    if (rank === 1) return `<img src="${gold}"   width="22" height="22" alt="1er">`;
-    if (rank === 2) return `<img src="${silver}" width="22" height="22" alt="2e">`;
-    if (rank === 3) return `<img src="${bronze}" width="22" height="22" alt="3e">`;
+    if (rank === 1) return `<img src="${gold}"   width="22" height="22" alt="${_strings.alt1}">`;
+    if (rank === 2) return `<img src="${silver}" width="22" height="22" alt="${_strings.alt2}">`;
+    if (rank === 3) return `<img src="${bronze}" width="22" height="22" alt="${_strings.alt3}">`;
     if (rank)       return `<span class="rank-n">${rank}</span>`;
     return `<span class="text-muted">—</span>`;
   }
@@ -64,7 +80,7 @@ const COUtils = (() => {
         r.style.display = hidden ? 'none' : '';
       });
       const lbl = document.getElementById(toggleLabelId);
-      if (lbl) lbl.textContent = hidden ? 'Afficher abandons' : 'Masquer abandons';
+      if (lbl) lbl.textContent = hidden ? _strings.showAbandons : _strings.hideAbandons;
     };
   }
 
@@ -278,6 +294,7 @@ const COUtils = (() => {
 
   // ── API publique ──────────────────────────────────────────────────────────
   return {
+    setStrings,
     renderMedal,
     renderRunnerDot,
     makeNonFinisherToggle,

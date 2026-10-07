@@ -11,6 +11,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import ngettext
 from .models import OchecklistReport, OchecklistRunner, OchecklistChangeLog
 
 def decompress_if_needed(request_body, content_encoding_header):
@@ -275,7 +276,9 @@ def clear_reports(request):
     report_ids = request.POST.getlist('report_ids')
     if report_ids:
         deleted, _ = OchecklistReport.objects.filter(id__in=report_ids).delete()
-        messages.success(request, f'{deleted} report(s) deleted.')
+        messages.success(request, ngettext(
+            '%(n)s rapport supprimé.', '%(n)s rapports supprimés.', deleted,
+        ) % {'n': deleted})
     return redirect('ochecklist_report_list')
 
 def report_detail(request, report_id):

@@ -9,6 +9,7 @@ from django.core.cache import cache
 from django.core.exceptions import SuspiciousFileOperation
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import Http404, HttpResponse, JsonResponse
+from django.utils.translation import gettext, ngettext
 from django.views.static import serve as static_serve
 
 
@@ -116,7 +117,7 @@ def _load_class_context(cid, class_id):
         courses_map = get_courses_map(cid)
         course      = courses_map.get(class_id)
         if not course:
-            raise Http404("Circuit non trouvé")
+            raise Http404(gettext("Circuit non trouvé"))
 
         cls = SimpleNamespace(
             id=class_id, name=class_id, cid=cid,
@@ -438,28 +439,35 @@ def _live_neg_time_warning(cid):
     if box_controls:
         kind = 'multiple'
         box_names = ', '.join(box_controls)
-        postes = f"au poste {box_names}" if len(box_controls) == 1 else f"aux postes {box_names}"
-        message = (
-            f"{count} coureurs ont des temps négatifs {postes} : "
-            "probable boîtier mal synchronisé."
-        )
-        tooltip = 'Temps négatif : boîtier probablement mal synchronisé'
+        postes = (gettext("au poste %(ctrls)s") % {"ctrls": box_names}
+                  if len(box_controls) == 1
+                  else gettext("aux postes %(ctrls)s") % {"ctrls": box_names})
+        message = ngettext(
+            "%(n)s coureur a des temps négatifs %(postes)s : "
+            "probable boîtier mal synchronisé.",
+            "%(n)s coureurs ont des temps négatifs %(postes)s : "
+            "probable boîtier mal synchronisé.",
+            count,
+        ) % {"n": count, "postes": postes}
+        tooltip = gettext("Temps négatif : boîtier probablement mal synchronisé")
     elif count == 1:
         kind = 'single'
-        message = (
+        message = gettext(
             "1 coureur a un temps négatif : probable carte SI non effacée "
             "(problème d'effacement de doigts)."
         )
-        tooltip = 'Temps négatif : carte SI probablement non effacée'
+        tooltip = gettext("Temps négatif : carte SI probablement non effacée")
     else:
         kind = 'single'
-        message = (
-            f"{count} coureurs ont des temps négatifs sur des postes "
-            "différents : probables cartes SI non effacées "
-            "(effacement de doigts)."
-        )
-        tooltip = ('Temps négatifs sur des postes différents : '
-                   'cartes SI probablement non effacées')
+        message = ngettext(
+            "%(n)s coureur a des temps négatifs sur des postes différents : "
+            "probables cartes SI non effacées (effacement de doigts).",
+            "%(n)s coureurs ont des temps négatifs sur des postes différents : "
+            "probables cartes SI non effacées (effacement de doigts).",
+            count,
+        ) % {"n": count}
+        tooltip = gettext("Temps négatifs sur des postes différents : "
+                          "cartes SI probablement non effacées")
     return {
         'count': count, 'kind': kind, 'message': message, 'tooltip': tooltip,
         'box_controls': box_controls, 'runners': runners,
@@ -778,7 +786,7 @@ def superman_analysis(request, cid, class_id):
         acc += v if v is not None else 0
         superman_cum.append(acc)
 
-    x_labels = ['Départ'] + controls_labels + ['Arrivée']
+    x_labels = [gettext('Départ')] + controls_labels + [gettext('Arrivée')]
     series   = []
     for i, c in enumerate(finishers):
         radios = radio_map.get(c.id, {})
@@ -804,7 +812,7 @@ def superman_analysis(request, cid, class_id):
             'points': points, 'labels': labels,
         })
 
-    leg_labels = controls_labels + ['Arrivée']
+    leg_labels = controls_labels + [gettext('Arrivée')]
     superman_leg_data = [
         {'ctrl': leg_labels[j],
          'time': format_time(superman_legs[j]) if superman_legs[j] else '-',
@@ -846,7 +854,7 @@ def performance_analysis(request, cid, class_id):
     radio_map       = get_radio_map(cid, [c.id for c in finishers])
     leg_matrix      = build_leg_matrix(finishers, controls_seq, radio_map)
     n_legs          = len(controls_seq) + 1
-    leg_labels      = controls_labels + ['Arrivée']
+    leg_labels      = controls_labels + [gettext('Arrivée')]
     leg_refs        = compute_leg_refs(leg_matrix, n_legs, top_fraction=0.25)
 
     series = []
@@ -907,7 +915,7 @@ def regularity_analysis(request, cid, class_id):
     controls_labels = [c['ctrl_name'] for c in controls_seq]
     radio_map       = get_radio_map(cid, [c.id for c in finishers])
     reg_data        = compute_regularity_analysis(finishers, controls_seq, radio_map)
-    leg_labels      = controls_labels + ['Arrivée']
+    leg_labels      = controls_labels + [gettext('Arrivée')]
 
     series = []
     for i, c in enumerate(finishers):
@@ -969,7 +977,7 @@ def grouping_analysis(request, cid, class_id):
         s['rank']     = result_rank.get(s['id'])
         s['time_fmt'] = format_time(s['time']) if s['time'] > 0 else '—'
 
-    x_labels = ['Départ'] + controls_labels + ['Arrivée']
+    x_labels = [gettext('Départ')] + controls_labels + [gettext('Arrivée')]
     return render(request, 'results/grouping.html', {
         'competition': competition, 'cls': cls, 'course': course,
         'series_json': json.dumps(series), 'x_labels_json': json.dumps(x_labels),
@@ -1027,7 +1035,7 @@ def grouping_index_analysis(request, cid, class_id):
         del r['leg_ref_ids']
 
     ctrl_names = [c['ctrl_name'] for c in controls_seq]
-    all_names  = ['Dép.'] + ctrl_names + ['Arr.']
+    all_names  = [gettext('Dép.')] + ctrl_names + [gettext('Arr.')]
     leg_labels = [f"{all_names[j]}\u2192{all_names[j+1]}" for j in range(len(all_names) - 1)]
 
     return render(request, 'results/grouping_index.html', {

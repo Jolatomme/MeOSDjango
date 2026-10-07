@@ -1,20 +1,20 @@
 {% extends "results/base.html" %}
-{% load static %}
-{% block title %}Verificateur de tirage &mdash; {{ SITE_NAME }}{% endblock %}
+{% load static i18n %}
+{% block title %}{% translate "Verificateur de tirage" %} &mdash; {{ SITE_NAME }}{% endblock %}
 
 {% block page_header %}
 <div class="co-page-header">
   <div class="container">
     <nav aria-label="breadcrumb" class="co-breadcrumb">
       <ol class="breadcrumb mb-2 small">
-        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">Accueil</a></li>
-        <li class="breadcrumb-item active">Verificateur de tirage</li>
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">{% translate "Accueil" %}</a></li>
+        <li class="breadcrumb-item active">{% translate "Verificateur de tirage" %}</li>
       </ol>
     </nav>
     <div>
-      <h1><i class="bi bi-shield-check me-2 opacity-75"></i>Verificateur de tirage MeOS</h1>
+      <h1><i class="bi bi-shield-check me-2 opacity-75"></i>{% translate "Verificateur de tirage MeOS" %}</h1>
       <p class="opacity-75 small mt-1 mb-0">
-        Chargez un fichier <code>.meosxml</code> pour verifier la conformite reglementaire du tirage.
+        {% blocktranslate %}Chargez un fichier <code>.meosxml</code> pour verifier la conformite reglementaire du tirage.{% endblocktranslate %}
       </p>
     </div>
   </div>
@@ -29,7 +29,7 @@
 
 <div class="co-card mb-4">
   <div class="co-card-header">
-    <i class="bi bi-upload me-2"></i>Charger un fichier MeOS
+    <i class="bi bi-upload me-2"></i>{% translate "Charger un fichier MeOS" %}
   </div>
   <div class="p-4">
     <form method="post" enctype="multipart/form-data" id="uploadForm">
@@ -37,14 +37,14 @@
       <div class="row g-3 align-items-end">
         <div class="col-12 col-md-5">
           <label for="meosfile" class="form-label fw-bold small text-muted">
-            Fichier d'exportation MeOS (<code>.meosxml</code>)
+            {% blocktranslate %}Fichier d'exportation MeOS (<code>.meosxml</code>){% endblocktranslate %}
           </label>
           <input type="file" class="form-control" id="meosfile" name="meosfile"
                  accept=".meosxml,.xml" required>
         </div>
         <div class="col-6 col-md-3">
           <label for="gap_seconds" class="form-label fw-bold small text-muted">
-            Écart min. entre 2 coureurs du même club (secondes)
+            {% translate "Écart min. entre 2 coureurs du même club (secondes)" %}
           </label>
           <input type="number" class="form-control" id="gap_seconds" name="gap_seconds"
                  min="1" value="120" step="1">
@@ -52,15 +52,15 @@
         <div class="col-6 col-md-4">
           <label class="form-label">&nbsp;</label>
           <button type="submit" class="btn btn-success w-100 fw-bold" id="submitBtn">
-            <i class="bi bi-shield-check me-2"></i>Verifier la conformite
+            <i class="bi bi-shield-check me-2"></i>{% translate "Verifier la conformite" %}
           </button>
         </div>
       </div>
       <div class="row g-3 mt-3">
         <div class="col-12">
-          <label class="form-label fw-bold small text-muted">Règles à vérifier</label>
+          <label class="form-label fw-bold small text-muted">{% translate "Règles à vérifier" %}</label>
           <div class="bg-body-tertiary rounded p-3 border">
-            <div class="fw-semibold small text-muted mb-1">Tirage au sort</div>
+            <div class="fw-semibold small text-muted mb-1">{% translate "Tirage au sort" %}</div>
             {% for value, label in form.enabled_rules.field.choices %}
             {% if forloop.counter <= 4 %}
             <div class="form-check">
@@ -72,7 +72,7 @@
             {% endif %}
             {% endfor %}
             <hr class="my-2">
-            <div class="fw-semibold small text-muted mb-1">Complétude des données</div>
+            <div class="fw-semibold small text-muted mb-1">{% translate "Complétude des données" %}</div>
             {% for value, label in form.enabled_rules.field.choices %}
             {% if forloop.counter > 4 %}
             <div class="form-check">
@@ -90,10 +90,10 @@
         <div class="col">
           <div class="form-text mb-0">
             <i class="bi bi-info-circle me-1"></i>
-            Exportez depuis MeOS via <em>Fichier &rarr; Sauvegarder sous&hellip;</em>
+            {% blocktranslate %}Exportez depuis MeOS via <em>Fichier &rarr; Sauvegarder sous&hellip;</em>
             au format <code>.meosxml</code>.
             &mdash; Écart min. : si deux coureurs du même club sont séparés par un écart
-            inférieur ou égal à cette valeur (en secondes), ils sont considérés consécutifs.
+            inférieur ou égal à cette valeur (en secondes), ils sont considérés consécutifs.{% endblocktranslate %}
           </div>
         </div>
       </div>
@@ -104,7 +104,7 @@
 {% if parse_error %}
 <div class="alert alert-danger border-0 mb-4" style="border-left:4px solid #dc3545 !important;">
   <i class="bi bi-exclamation-triangle-fill me-2"></i>
-  <strong>Erreur de lecture du fichier :</strong> {{ parse_error }}
+  <strong>{% translate "Erreur de lecture du fichier :" %}</strong> {{ parse_error }}
 </div>
 {% endif %}
 
@@ -120,41 +120,41 @@
       <div class="col-6 col-md-2 d-flex">
         <div class="stat-card h-100">
           <div class="stat-value">{{ report.n_runners }}</div>
-          <div class="stat-label"><i class="bi bi-person me-1"></i>Coureurs tires</div>
+          <div class="stat-label"><i class="bi bi-person me-1"></i>{% translate "Coureurs tires" %}</div>
         </div>
       </div>
       <div class="col-6 col-md-2 d-flex">
         <div class="stat-card h-100 stat-card-warning">
           <div class="stat-value" style="color:#f0a500">{{ report.n_no_start }}</div>
-          <div class="stat-label"><i class="bi bi-person-walking me-1"></i>Depart en parallele</div>
+          <div class="stat-label"><i class="bi bi-person-walking me-1"></i>{% translate "Depart en parallele" %}</div>
         </div>
       </div>
       <div class="col-6 col-md-2 d-flex">
         <div class="stat-card h-100 stat-card-secondary">
           <div class="stat-value" style="color:var(--co-grey)">{{ report.n_vacants }}</div>
-          <div class="stat-label"><i class="bi bi-person-dash me-1"></i>Places vacantes</div>
+          <div class="stat-label"><i class="bi bi-person-dash me-1"></i>{% translate "Places vacantes" %}</div>
         </div>
       </div>
       <div class="col-6 col-md-2 d-flex">
         <div class="stat-card h-100">
           <div class="stat-value">{{ report.n_classes }}</div>
-          <div class="stat-label"><i class="bi bi-tag me-1"></i>Categories</div>
+          <div class="stat-label"><i class="bi bi-tag me-1"></i>{% translate "Categories" %}</div>
         </div>
       </div>
       <div class="col-6 col-md-2 d-flex">
         <div class="stat-card h-100">
           <div class="stat-value">{{ report.n_courses }}</div>
-          <div class="stat-label"><i class="bi bi-map me-1"></i>Circuits</div>
+          <div class="stat-label"><i class="bi bi-map me-1"></i>{% translate "Circuits" %}</div>
         </div>
       </div>
       <div class="col-6 col-md-2 d-flex">
         <div class="stat-card h-100{% if report.has_errors %} stat-card-status-error{% elif report.has_warnings %} stat-card-status-warning{% else %} stat-card-status-ok{% endif %}">
           <div class="stat-value">
-            {% if report.has_errors %}<i class="bi bi-x-circle-fill"></i> Erreurs
-            {% elif report.has_warnings %}<i class="bi bi-exclamation-triangle-fill"></i> Avertissements
-            {% else %}<i class="bi bi-check-circle-fill"></i> Conforme{% endif %}
+            {% if report.has_errors %}<i class="bi bi-x-circle-fill"></i> {% translate "Erreurs" %}
+            {% elif report.has_warnings %}<i class="bi bi-exclamation-triangle-fill"></i> {% translate "Avertissements" %}
+            {% else %}<i class="bi bi-check-circle-fill"></i> {% translate "Conforme" %}{% endif %}
           </div>
-          <div class="stat-label">Statut general</div>
+          <div class="stat-label">{% translate "Statut general" %}</div>
         </div>
       </div>
     </div>
@@ -171,7 +171,7 @@
 </div>
 
 <h2 class="fw-bold mb-3" style="font-family:var(--font-display);font-size:1.2rem">
-  <i class="bi bi-shuffle me-2" style="color:var(--co-gold)"></i>Regles de tirage au sort
+  <i class="bi bi-shuffle me-2" style="color:var(--co-gold)"></i>{% translate "Regles de tirage au sort" %}
 </h2>
 {% for rule in report.results %}
 {% if rule.num <= 4 %}
@@ -180,7 +180,7 @@
 {% endfor %}
 
 <h2 class="fw-bold mb-3 mt-4" style="font-family:var(--font-display);font-size:1.2rem">
-  <i class="bi bi-database-check me-2" style="color:var(--co-gold)"></i>Completude des donnees
+  <i class="bi bi-database-check me-2" style="color:var(--co-gold)"></i>{% translate "Completude des donnees" %}
 </h2>
 {% for rule in report.results %}
 {% if rule.num > 4 %}
@@ -198,7 +198,7 @@
     const btn = document.getElementById('submitBtn');
     if (btn) {
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analyse en cours&hellip;';
+      btn.innerHTML = "<span class='spinner-border spinner-border-sm me-2'></span>{% translate 'Analyse en cours&hellip;' %}";
     }
   });
 </script>

@@ -209,6 +209,65 @@ table { font-variant-numeric: tabular-nums; }
 .co-navbar .nav-link.active { color: var(--co-gold) !important; }
 .co-navbar .nav-link:hover { background: rgba(255,255,255,.07); }
 
+/* ─── Sélecteur de langue (menu déroulant, à côté du titre du site) ───────── */
+
+.co-lang-switch {
+  display: inline-flex;
+  align-items: center;
+  margin-left: .35rem;
+  padding-left: .7rem;
+  border-left: 1px solid rgba(255,255,255,.18);
+}
+/* Déclencheur replié : drapeau de la langue courante + chevron Bootstrap */
+.co-lang-switch .co-lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 6px;
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: .85;
+  transition: opacity .15s, border-color .15s, transform .15s;
+}
+.co-lang-switch .co-lang-toggle img {
+  width: 24px; height: 16px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.3);
+}
+.co-lang-switch .co-lang-toggle:hover { opacity: 1; transform: translateY(-1px); }
+.co-lang-switch .co-lang-toggle:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--co-gold);
+  outline-offset: 2px;
+}
+/* Menu ouvert : liseré or autour du déclencheur (comme l'ancien drapeau actif) */
+.co-lang-switch .co-lang-toggle.show {
+  opacity: 1;
+  border-color: var(--co-gold);
+}
+/* Menu : reprend le thème des dropdowns de la navbar (.co-dropdown) */
+.co-lang-switch .co-lang-menu { padding: .4rem 0; min-width: 11.5rem; }
+.co-lang-menu .co-lang {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  width: 100%;
+  padding: .45rem 1rem;
+  background: transparent;
+  border: 0;
+  text-align: left;
+}
+.co-lang-menu .co-lang img {
+  width: 24px; height: 16px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.3);
+  flex: none;
+}
+.co-lang-menu .co-lang span { flex: 1; }
+.co-lang-menu .co-lang.active i { color: var(--co-gold); opacity: 1; }
+
 /* ─── Navbar dropdown ───────────────────────────────────────────────────────── */
 
 .co-navbar .dropdown-toggle::after { border-color: rgba(255,255,255,.6); }
@@ -929,6 +988,15 @@ body.modal-open #backToTop { display: none; }
     min-height: 2.75rem; min-width: 2.75rem;
     display: flex; align-items: center; justify-content: center;
   }
+
+  /* Sélecteur de langue : compact (replié = toujours visible, à côté du titre) */
+  .co-lang-switch { margin-left: .15rem; padding-left: .45rem; }
+  .co-lang-switch .co-lang-toggle { padding: 2px 4px; }
+  .co-lang-switch .co-lang-toggle img { width: 21px; height: 14px; }
+  /* Très petits écrans : le titre du site passe sur une ligne et le
+     sélecteur de langue reste aligné sans écraser le bouton de menu */
+  .co-navbar .navbar-brand span { white-space: nowrap; }
+  .navbar-brand-group { flex-wrap: wrap; row-gap: .25rem; }
 
   /* Onglets analyses : plusieurs rangs quand la largeur ne suffit pas
      (flex-wrap) — plus de défilement horizontal caché.

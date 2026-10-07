@@ -21,6 +21,7 @@ from django.db import IntegrityError
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.translation import gettext
 from django.views import View
 
 from .forms import RaceCreateForm, RaceEditForm
@@ -125,7 +126,7 @@ class RaceCreateView(View):
                 )
                 form.add_error(
                     None,
-                    "Formulaire invalide. Vérifiez les champs saisis.",
+                    gettext("Formulaire invalide. Vérifiez les champs saisis."),
                 )
             else:
                 logo_file = cleaned.get('logo')
@@ -144,7 +145,7 @@ class RaceCreateView(View):
                     delete_org_logo(logo)
                     form.add_error(
                         None,
-                        "Conflit à la création. Réessayez une nouvelle fois.",
+                        gettext("Conflit à la création. Réessayez une nouvelle fois."),
                     )
                 else:
                     return redirect(

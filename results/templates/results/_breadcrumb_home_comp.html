@@ -1,3 +1,4 @@
+{% load i18n %}
 <!-- {#
   Partial : premiers éléments du fil d'Ariane communs à toutes les pages
   liées à une compétition.
@@ -9,7 +10,7 @@
   #} -->
 
 <li class="breadcrumb-item">
-  <a href="{% url 'results:home' %}">Accueil</a>
+  <a href="{% url 'results:home' %}">{% translate "Accueil" %}</a>
 </li>
 <li class="breadcrumb-item">
   <a href="{% url 'results:competition_detail' competition.cid %}">{{ competition.name }}</a>

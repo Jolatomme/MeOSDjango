@@ -2,39 +2,40 @@ import os
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.utils.translation import gettext, gettext_lazy as _
 
 RULE_CHOICES = [
-    ('club_consecutif',   'R1 — Pas de club consécutif sur le même circuit'),
-    ('entrelacement',     "R2 — Pas d'entrelacement de catégories"),
-    ('premiers_postes',   'R3 — Pas de premier poste commun entre circuits'),
-    ('plages_continues',  'R4 — Regroupement des catégories sur des plages continues'),
-    ('coordonnees_postes','R5 — Coordonnées des postes (xpos / ypos)'),
-    ('circuits_vides',    'R6 — Pas de circuits vides'),
-    ('categories_vides',  'R7 — Pas de catégories vides'),
-    ('completude_coureurs','R8 — Complétude des données coureurs'),
+    ('club_consecutif',   _('R1 — Pas de club consécutif sur le même circuit')),
+    ('entrelacement',     _("R2 — Pas d'entrelacement de catégories")),
+    ('premiers_postes',   _('R3 — Pas de premier poste commun entre circuits')),
+    ('plages_continues',  _('R4 — Regroupement des catégories sur des plages continues')),
+    ('coordonnees_postes', _('R5 — Coordonnées des postes (xpos / ypos)')),
+    ('circuits_vides',    _('R6 — Pas de circuits vides')),
+    ('categories_vides',  _('R7 — Pas de catégories vides')),
+    ('completude_coureurs', _('R8 — Complétude des données coureurs')),
 ]
 _ALL_RULES = [c[0] for c in RULE_CHOICES]
 
 
 class MeosFileForm(forms.Form):
-    meosfile = forms.FileField(label="Fichier MeOS (.xml)")
+    meosfile = forms.FileField(label=_("Fichier MeOS (.xml)"))
     gap_seconds = forms.IntegerField(
-        label="Écart min. entre 2 coureurs du même club (secondes)",
+        label=_("Écart min. entre 2 coureurs du même club (secondes)"),
         initial=120, min_value=1, required=False,
-        help_text="Si deux coureurs du même club sont séparés par un écart inférieur ou égal "
-                  "à cette valeur, ils sont considérés consécutifs.",
+        help_text=_("Si deux coureurs du même club sont séparés par un écart inférieur ou égal "
+                    "à cette valeur, ils sont considérés consécutifs."),
     )
     enabled_rules = forms.MultipleChoiceField(
         choices=RULE_CHOICES,
         initial=_ALL_RULES,
         widget=forms.CheckboxSelectMultiple,
         required=False,
-        label="Règles à vérifier",
+        label=_("Règles à vérifier"),
     )
 
 
 class VerifieMoiFileForm(forms.Form):
-    meosfile = forms.FileField(label="Fichier MeOS (.xml)")
+    meosfile = forms.FileField(label=_("Fichier MeOS (.xml)"))
 
 
 # ─── Logo d'organisateur (upload à la création de course) ─────────────────────
@@ -54,9 +55,9 @@ def validate_org_logo(uploaded):
     """
     ext = os.path.splitext((uploaded.name or '').lower())[1]
     if ext not in LOGO_EXTENSIONS:
-        raise ValidationError("Format accepté : SVG, PNG ou JPEG.")
+        raise ValidationError(gettext("Format accepté : SVG, PNG ou JPEG."))
     if uploaded.size > LOGO_MAX_BYTES:
-        raise ValidationError("Logo trop volumineux (2 Mo maximum).")
+        raise ValidationError(gettext("Logo trop volumineux (2 Mo maximum)."))
 
     head = uploaded.read(512)
     uploaded.seek(0)
@@ -69,20 +70,20 @@ def validate_org_logo(uploaded):
         text = text.lstrip('\ufeff \t\r\n').lower()
         ok = text.startswith(('<svg', '<?xml', '<!doctype'))
     if not ok:
-        raise ValidationError("Fichier illisible — SVG, PNG ou JPEG attendu.")
+        raise ValidationError(gettext("Fichier illisible — SVG, PNG ou JPEG attendu."))
 
 
 class RaceBaseForm(forms.Form):
     """Champs communs création/édition d'une course (cf. race_views)."""
 
-    name = forms.CharField(label="Nom de la course", max_length=64)
+    name = forms.CharField(label=_("Nom de la course"), max_length=64)
     date = forms.DateField(
-        label="Date",
+        label=_("Date"),
         widget=forms.DateInput(attrs={'type': 'date'}),
     )
-    organizer = forms.CharField(label="Organisateur / club", max_length=64)
+    organizer = forms.CharField(label=_("Organisateur / club"), max_length=64)
     homepage = forms.URLField(
-        label="Site web de l'organisateur",
+        label=_("Site web de l'organisateur"),
         max_length=128,
         required=False,
         assume_scheme='https',
@@ -105,13 +106,13 @@ class RaceCreateForm(RaceBaseForm):
     """
 
     website = forms.CharField(
-        label="Site web (champ piège)",
+        label=_("Site web (champ piège)"),
         required=False,
         widget=forms.TextInput(attrs={'autocomplete': 'off', 'tabindex': '-1'}),
     )
     token = forms.CharField(required=False, widget=forms.HiddenInput)
     logo = forms.FileField(
-        label="Logo de l'organisateur",
+        label=_("Logo de l'organisateur"),
         required=False,
         validators=[validate_org_logo],
     )

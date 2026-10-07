@@ -1,5 +1,5 @@
 {% extends "results/base.html" %}
-{% load meos_tags %}
+{% load meos_tags i18n %}
 {% load static %}
 {% block title %}{{ cls.name }} — {{ competition.name }}{% endblock %}
 
@@ -18,18 +18,18 @@
           <i class="bi bi-people-fill me-2 opacity-75"></i>{{ cls.name }}
           <span class="badge bg-warning text-dark ms-2"
                 style="font-size:.6em;vertical-align:middle;">
-            Relais {{ n_legs }} fractions
+            {% blocktranslate %}Relais {{ n_legs }} fractions{% endblocktranslate %}
           </span>
         </h1>
       </div>
       <div class="d-flex gap-2 align-items-center flex-wrap">
         {% if leader_time != '-' %}
           <span class="badge bg-warning text-dark fs-6 fw-bold">
-            <i class="bi bi-stopwatch me-1"></i>Leader : {{ leader_time }}
+            <i class="bi bi-stopwatch me-1"></i>{% blocktranslate %}Leader : {{ leader_time }}{% endblocktranslate %}
           </span>
         {% endif %}
         <span class="badge bg-light text-dark fs-6">
-          {{ teams_data|length }} équipe{{ teams_data|length|pluralize }}
+          {% blocktranslate count n=teams_data|length %}{{ n }} équipe{% plural %}{{ n }} équipes{% endblocktranslate %}
         </span>
       </div>
     </div>
@@ -45,19 +45,19 @@
       <img src="{% static 'results/img/search.svg' %}" width="16" height="16" alt="">
     </span>
     <input type="text" id="teamSearch" class="form-control ps-5"
-           placeholder="Équipe ou club…">
+           placeholder="{% translate "Équipe ou club…" %}">
   </div>
   <button class="btn btn-outline-secondary btn-sm" onclick="toggleNonFinishers()">
-    <i class="bi bi-eye me-1"></i><span id="toggleLabel">Masquer abandons</span>
+    <i class="bi bi-eye me-1"></i><span id="toggleLabel">{% translate "Masquer abandons" %}</span>
   </button>
   <button class="btn btn-outline-primary btn-sm" onclick="toggleAllLegs()">
-    <i class="bi bi-chevron-down me-1"></i><span id="legsToggleLabel">Développer toutes les fractions</span>
+    <i class="bi bi-chevron-down me-1"></i><span id="legsToggleLabel">{% translate "Développer toutes les fractions" %}</span>
   </button>
 </div>
 
 <div class="co-card">
   <div class="co-card-header d-flex justify-content-between">
-    <span><i class="bi bi-trophy me-2"></i>Classement Relais — {{ cls.name }}</span>
+    <span><i class="bi bi-trophy me-2"></i>{% blocktranslate with name=cls.name %}Classement Relais — {{ name }}{% endblocktranslate %}</span>
     <span class="badge bg-warning text-dark">{{ competition.date|date:"d/m/Y" }}</span>
   </div>
   <div class="table-responsive">
@@ -65,10 +65,10 @@
       <thead>
         <tr>
           <th style="width:3rem">#</th>
-          <th>Équipe</th>
-          <th>Club</th>
-          <th class="text-end">Temps total</th>
-          <th class="text-end d-none d-md-table-cell">Écart</th>
+          <th>{% translate "Équipe" %}</th>
+          <th>{% translate "Club" %}</th>
+          <th class="text-end">{% translate "Temps total" %}</th>
+          <th class="text-end d-none d-md-table-cell">{% translate "Écart" %}</th>
         </tr>
       </thead>
       <tbody>
@@ -77,14 +77,14 @@
         <tr class="result-row {% if td.team.neg_time %}neg-row{% endif %} {% if not td.team.stat == 1 %}non-finisher{% endif %}"
             data-name="{{ td.team.name|lower }}" data-org="{{ td.org_name|lower }}">
           <td>
-            {% if td.team.rank == 1 %}<img src="{% static 'results/img/medal-gold.svg' %}" width="22" height="22" alt="1er">
-            {% elif td.team.rank == 2 %}<img src="{% static 'results/img/medal-silver.svg' %}" width="22" height="22" alt="2e">
-            {% elif td.team.rank == 3 %}<img src="{% static 'results/img/medal-bronze.svg' %}" width="22" height="22" alt="3e">
+            {% if td.team.rank == 1 %}<img src="{% static 'results/img/medal-gold.svg' %}" width="22" height="22" alt="{% translate "1er" %}">
+            {% elif td.team.rank == 2 %}<img src="{% static 'results/img/medal-silver.svg' %}" width="22" height="22" alt="{% translate "2e" %}">
+            {% elif td.team.rank == 3 %}<img src="{% static 'results/img/medal-bronze.svg' %}" width="22" height="22" alt="{% translate "3e" %}">
             {% elif td.team.rank %}<span class="rank-n">{{ td.team.rank }}</span>
             {% else %}<span class="text-muted">—</span>
             {% endif %}
           </td>
-          <td class="runner-name fw-bold">{{ td.team.name }}{% if td.team.neg_time %} <span class="badge neg-badge ms-1" title="Temps négatif : boîtier mal synchronisé ou carte SI non effacée">Temps négatif</span>{% endif %}</td>
+          <td class="runner-name fw-bold">{{ td.team.name }}{% if td.team.neg_time %} <span class="badge neg-badge ms-1" title="{% translate "Temps négatif : boîtier mal synchronisé ou carte SI non effacée" %}">{% translate "Temps négatif" %}</span>{% endif %}</td>
           <td class="club-name text-muted">{{ td.org_name|default:"—" }}</td>
           <td class="text-end time-col"
               onclick="toggleLegs('{{ td.team.id }}', this.querySelector('.legs-toggle'))">
@@ -93,7 +93,7 @@
                 {{ td.team.rt|meos_time }}
                 <button class="btn btn-sm btn-link p-0 ms-1 legs-toggle"
                         onclick="event.stopPropagation(); toggleLegs('{{ td.team.id }}', this)"
-                        title="Afficher les fractions">
+                        title="{% translate "Afficher les fractions" %}">
                   <i class="bi bi-chevron-down text-primary" style="font-size:.75rem"></i>
                 </button>
               </span>
@@ -139,7 +139,7 @@
                   {% if can_show_splits and leg.splits %}
                   <button class="btn btn-xs btn-link p-0 splits-toggle"
                           onclick="toggleSplits('{{ td.team.id }}-{{ leg.leg }}', this)"
-                          title="Intermédiaires">
+                          title="{% translate "Intermédiaires" %}">
                     <i class="bi bi-clock-history text-primary"></i>
                     <i class="bi bi-chevron-down text-muted" style="font-size:.7rem"></i>
                   </button>
@@ -149,12 +149,13 @@
                 <div class="lg-splits-content d-none" id="splits-{{ td.team.id }}-{{ leg.leg }}">
                   <div class="splits-grid">
                     <div class="split-cell split-start">
-                      <span class="split-ctrl-name">Départ</span>
+                      <span class="split-ctrl-name">{% translate "Départ" %}</span>
                       <span class="split-time-abs">0:00</span>
                       <span class="split-time-leg">—</span>
                     </div>
+                    {% translate "Arrivée" as FIN %}
                     {% for sp in leg.splits %}
-                    <div class="split-cell{% if sp.ctrl_name == 'Arrivée' %} split-finish{% endif %}">
+                    <div class="split-cell{% if sp.ctrl_name == FIN %} split-finish{% endif %}">
                       <span class="split-ctrl-name">{{ sp.ctrl_name }}</span>
                       <span class="split-time-abs">{{ sp.abs_time }}</span>
                       <span class="split-time-leg{% if sp.neg_leg %} split-neg{% endif %}"{% if sp.neg_leg %} title="{{ neg_time_warning.tooltip|default:'Temps négatif' }}"{% endif %}>{{ sp.leg_time }}{% if sp.neg_leg %} <span class="split-mark-warn">(!)</span>{% endif %}</span>
@@ -172,7 +173,7 @@
         {% empty %}
         <tr>
           <td colspan="7" class="text-center text-muted p-4">
-            <i class="bi bi-inbox me-2"></i>Aucune équipe pour cette catégorie.
+            <i class="bi bi-inbox me-2"></i>{% translate "Aucune équipe pour cette catégorie." %}
           </td>
         </tr>
         {% endfor %}
@@ -183,7 +184,7 @@
 
 <div class="cat-nav-bar">
   <a href="{% url 'results:competition_detail' competition.cid %}" class="btn btn-outline-success">
-    <i class="bi bi-arrow-left me-2"></i>Toutes les catégories
+    <i class="bi bi-arrow-left me-2"></i>{% translate "Toutes les catégories" %}
   </a>
 </div>
 {% endblock %}
@@ -222,8 +223,8 @@
     rowSelector: '.legs-row',
     btnSelector: '.legs-toggle',
     labelId:     'legsToggleLabel',
-    openText:    'Réduire toutes les fractions',
-    closeText:   'Développer toutes les fractions',
+    openText:    "{% translate 'Réduire toutes les fractions' %}",
+    closeText:   "{% translate 'Développer toutes les fractions' %}",
     onClose: () => {
       document.querySelectorAll('.lg-splits-content').forEach(el => el.classList.add('d-none'));
       document.querySelectorAll('.splits-toggle').forEach(b => b.classList.remove('open'));

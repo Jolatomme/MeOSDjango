@@ -21,6 +21,8 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # Sélecteur de langue : vue set_language (POST → cookie co_lang + redirect)
+    path('i18n/', include('django.conf.urls.i18n')),
     path('', include('results.urls')),
     path('ochecklist/', include('ochecklist.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

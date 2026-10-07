@@ -1,3 +1,4 @@
+{% load i18n %}
 <div class="co-card mb-3" id="rule-{{ rule.rule_id }}">
 
 <div class="co-card-header d-flex justify-content-between align-items-center rule-header-{{ rule.status }}">
@@ -6,7 +7,7 @@
       <span style="opacity:.65" class="me-1">R{{ num }}.</span>{{ rule.title }}
     </span>
     <span class="badge ms-2 flex-shrink-0 {% if rule.status == 'ok' %}bg-light text-dark{% elif rule.status == 'error' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
-      {% if rule.status == 'ok' %}OK{% elif rule.status == 'error' %}{{ rule.violations|length }} erreur{{ rule.violations|length|pluralize }}{% else %}{{ rule.violations|length }} avertissement{{ rule.violations|length|pluralize }}{% endif %}
+      {% if rule.status == 'ok' %}OK{% elif rule.status == 'error' %}{% blocktranslate count n=rule.violations|length %}{{ n }} erreur{% plural %}{{ n }} erreurs{% endblocktranslate %}{% else %}{% blocktranslate count n=rule.violations|length %}{{ n }} avertissement{% plural %}{{ n }} avertissements{% endblocktranslate %}{% endif %}
     </span>
   </div>
 

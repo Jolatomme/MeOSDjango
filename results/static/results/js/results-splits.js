@@ -3,6 +3,15 @@ const COResultsSplits = (() => {
   let _errorChart = null;
   let _errorChartOpen = false;
 
+  // ── Chaînes i18n (source FR) ──────────────────────────────────────────────
+  // Les templates injectent les traductions via init(…, strings) — mêmes
+  // clés ; sans injection, les valeurs FR par défaut s'appliquent.
+  let _strings = {
+    rateLabel: 'Coureurs en erreur (%)',
+    avgLabel: 'Erreur moyenne (s)',
+    avgAxis: 'Erreur moy. (s)',
+  };
+
   function _thSec() {
     return parseFloat(document.getElementById('thresholdSec')?.value) || 0;
   }
@@ -67,12 +76,12 @@ const COResultsSplits = (() => {
         labels: data.map(d => d.label),
         datasets: [
           {
-            type: 'bar', label: 'Coureurs en erreur (%)', data: data.map(d => d.rate),
+            type: 'bar', label: _strings.rateLabel, data: data.map(d => d.rate),
             backgroundColor: 'rgba(67,99,216,0.65)', borderColor: 'rgba(67,99,216,0.9)',
             borderWidth: 1, yAxisID: 'yRate', order: 2,
           },
           {
-            type: 'line', label: 'Erreur moyenne (s)', data: data.map(d => d.avg),
+            type: 'line', label: _strings.avgLabel, data: data.map(d => d.avg),
             borderColor: '#f58231', backgroundColor: 'rgba(245,130,49,0.15)',
             borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#f58231',
             tension: 0.3, yAxisID: 'yAvg', order: 1,
@@ -86,11 +95,11 @@ const COResultsSplits = (() => {
         scales: {
           yRate: {
             type: 'linear', position: 'left', min: 0, max: 100,
-            title: { display: true, text: 'Coureurs en erreur (%)' },
+            title: { display: true, text: _strings.rateLabel },
           },
           yAvg: {
             type: 'linear', position: 'right', min: 0,
-            title: { display: true, text: 'Erreur moy. (s)' },
+            title: { display: true, text: _strings.avgAxis },
             grid: { drawOnChartArea: false },
           },
         },
@@ -109,8 +118,9 @@ const COResultsSplits = (() => {
     }
   }
 
-  function init(legErrorData) {
+  function init(legErrorData, strings) {
     _legErrorData = legErrorData || [];
+    Object.assign(_strings, strings || {});
     applyErrorThresholds();
     document.getElementById('thresholdSec')?.addEventListener('input', applyErrorThresholds);
     document.getElementById('thresholdPct')?.addEventListener('input', applyErrorThresholds);

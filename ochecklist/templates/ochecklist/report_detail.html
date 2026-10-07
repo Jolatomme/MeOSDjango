@@ -1,19 +1,20 @@
 {% extends "ochecklist/base.html" %}
+{% load i18n %}
 {% block content %}
 
 <div class="row g-3 mb-4">
   <div class="col-md-6">
     <div class="co-card">
-      <div class="co-card-header"><i class="bi bi-info-circle me-2"></i>Rapport</div>
+      <div class="co-card-header"><i class="bi bi-info-circle me-2"></i>{% translate "Rapport" %}</div>
       <div class="card-body">
         <table class="results-table mb-0">
           <tbody>
-            <tr><td class="fw-semibold pe-3" style="width:8rem">Version</td><td>{{ report.version }}</td></tr>
-            <tr><td class="fw-semibold">Créateur</td><td>{{ report.creator }}</td></tr>
-            <tr><td class="fw-semibold">Créé le</td><td>{{ report.created|date:"d/m/Y H:i:s" }}</td></tr>
-            <tr><td class="fw-semibold">Reçu le</td><td>{{ report.received_at|date:"d/m/Y H:i:s" }}</td></tr>
+            <tr><td class="fw-semibold pe-3" style="width:8rem">{% translate "Version" %}</td><td>{{ report.version }}</td></tr>
+            <tr><td class="fw-semibold">{% translate "Créateur" %}</td><td>{{ report.creator }}</td></tr>
+            <tr><td class="fw-semibold">{% translate "Créé le" %}</td><td>{{ report.created|date:"d/m/Y H:i:s" }}</td></tr>
+            <tr><td class="fw-semibold">{% translate "Reçu le" %}</td><td>{{ report.received_at|date:"d/m/Y H:i:s" }}</td></tr>
             {% if report.event %}
-            <tr><td class="fw-semibold">Événement</td><td>{{ report.event }}</td></tr>
+            <tr><td class="fw-semibold">{% translate "Événement" %}</td><td>{{ report.event }}</td></tr>
             {% endif %}
           </tbody>
         </table>
@@ -22,19 +23,19 @@
   </div>
   <div class="col-md-6">
     <div class="co-card">
-      <div class="co-card-header"><i class="bi bi-bar-chart me-2"></i>Résumé</div>
+      <div class="co-card-header"><i class="bi bi-bar-chart me-2"></i>{% translate "Résumé" %}</div>
       <div class="card-body">
         <div class="row g-2">
           <div class="col-6">
             <div class="stat-card">
               <div class="stat-value">{{ report.runners.count }}</div>
-              <div class="stat-label">Total coureurs</div>
+              <div class="stat-label">{% translate "Total coureurs" %}</div>
             </div>
           </div>
           <div class="col-6">
             <div class="stat-card" style="border-left-color:var(--co-green)">
               <div class="stat-value text-success">{{ started_ok_count }}</div>
-              <div class="stat-label">Partis OK</div>
+              <div class="stat-label">{% translate "Partis OK" %}</div>
             </div>
           </div>
           <div class="col-6">
@@ -46,13 +47,13 @@
           <div class="col-6">
             <div class="stat-card" style="border-left-color:#ffc107">
               <div class="stat-value text-warning">{{ late_start_count }}</div>
-              <div class="stat-label">Départ retardé</div>
+              <div class="stat-label">{% translate "Départ retardé" %}</div>
             </div>
           </div>
           <div class="col-6">
             <div class="stat-card" style="border-left-color:#0dcaf0">
               <div class="stat-value text-info">{{ new_card_count }}</div>
-              <div class="stat-label">Changement puce</div>
+              <div class="stat-label">{% translate "Changement puce" %}</div>
             </div>
           </div>
         </div>
@@ -64,13 +65,13 @@
 {% if runners %}
 <div class="co-card">
   <div class="co-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <span><i class="bi bi-people me-2"></i>Liste des coureurs</span>
+    <span><i class="bi bi-people me-2"></i>{% translate "Liste des coureurs" %}</span>
     <div class="d-flex align-items-center gap-1">
-      <small class="text-muted me-1">Trier :</small>
+      <small class="text-muted me-1">{% translate "Trier :" %}</small>
       <div class="btn-group btn-group-sm" role="group">
-        <a href="." class="btn btn-sm btn-outline-secondary {% if not current_sort %}active{% endif %}">Horaire</a>
-        <a href="?sort={% if current_sort == 'status' %}-{% endif %}status" class="btn btn-sm btn-outline-secondary {% if current_sort == 'status' or current_sort == '-status' %}active{% endif %}">Statut</a>
-        <a href="?sort={% if current_sort == 'card' %}-{% endif %}card" class="btn btn-sm btn-outline-secondary {% if current_sort == 'card' or current_sort == '-card' %}active{% endif %}">Puce</a>
+        <a href="." class="btn btn-sm btn-outline-secondary {% if not current_sort %}active{% endif %}">{% translate "Horaire" %}</a>
+        <a href="?sort={% if current_sort == 'status' %}-{% endif %}status" class="btn btn-sm btn-outline-secondary {% if current_sort == 'status' or current_sort == '-status' %}active{% endif %}">{% translate "Statut" %}</a>
+        <a href="?sort={% if current_sort == 'card' %}-{% endif %}card" class="btn btn-sm btn-outline-secondary {% if current_sort == 'card' or current_sort == '-card' %}active{% endif %}">{% translate "Puce" %}</a>
       </div>
     </div>
   </div>
@@ -79,15 +80,15 @@
       <thead>
         <tr>
           <th style="width:2.5rem">#</th>
-          <th>Nom</th>
-          <th>Dossard</th>
-          <th>Catégorie</th>
-          <th>Club</th>
-          <th>Puce</th>
-          <th>Nouvelle puce</th>
-          <th>Départ</th>
-          <th>Statut</th>
-          <th>Commentaire</th>
+          <th>{% translate "Nom" %}</th>
+          <th>{% translate "Dossard" %}</th>
+          <th>{% translate "Catégorie" %}</th>
+          <th>{% translate "Club" %}</th>
+          <th>{% translate "Puce" %}</th>
+          <th>{% translate "Nouvelle puce" %}</th>
+          <th>{% translate "Départ" %}</th>
+          <th>{% translate "Statut" %}</th>
+          <th>{% translate "Commentaire" %}</th>
         </tr>
       </thead>
       <tbody>
@@ -134,7 +135,7 @@
 <div class="co-card text-center p-5">
   <div class="py-4">
     <i class="bi bi-inbox fs-1 d-block mb-3 opacity-25"></i>
-    <p class="mb-0 text-muted">Aucun coureur dans ce rapport.</p>
+    <p class="mb-0 text-muted">{% translate "Aucun coureur dans ce rapport." %}</p>
   </div>
 </div>
 {% endif %}

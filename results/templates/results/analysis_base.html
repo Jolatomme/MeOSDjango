@@ -1,5 +1,5 @@
 {% extends "results/base.html" %}
-{% load meos_tags %}
+{% load meos_tags i18n %}
 {% load static %}
 {#
   Gabarit commun pour Superman, Performance, Regroupement, etc.
@@ -26,20 +26,20 @@
         </li>
         {% endif %}
 
-        <li class="breadcrumb-item active">{% block analysis_breadcrumb %}Analyse{% endblock %}</li>
+        <li class="breadcrumb-item active">{% block analysis_breadcrumb %}{% translate "Analyse" %}{% endblock %}</li>
       </ol>
     </nav>
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
        <div>
          <h1>
            <i class="{% block analysis_icon %}bi bi-bar-chart{% endblock %} me-2 opacity-75"
-              style="color:var(--co-gold)"></i>{% block analysis_title %}Analyse{% endblock %}
+              style="color:var(--co-gold)"></i>{% block analysis_title %}{% translate "Analyse" %}{% endblock %}
          </h1>
           {# Sous-titre : nom du circuit ou de la catégorie #}
          {% if course %}
          <div class="opacity-75 small mt-1">
            {{ course.display_name }} — {{ competition.name }}
-           <span class="ms-2 badge bg-secondary">{{ course.classes|length }} catégorie{{ course.classes|length|pluralize }}</span>
+           <span class="ms-2 badge bg-secondary">{% blocktranslate count n=course.classes|length %}{{ n }} catégorie{% plural %}{{ n }} catégories{% endblocktranslate %}</span>
          </div>
          {# Pastilles catégories cliquables #}
          {% if course %}
@@ -67,7 +67,7 @@
 {% if no_data %}
 <div class="co-card text-center p-5 text-muted">
   <i class="bi bi-bar-chart fs-1 d-block mb-3 opacity-25"></i>
-  {% block no_data_message %}Pas assez de données pour cette analyse.{% endblock %}
+  {% block no_data_message %}{% translate "Pas assez de données pour cette analyse." %}{% endblock %}
 </div>
 
 {% else %}
@@ -77,21 +77,21 @@
 <div class="co-card mb-3">
   <div class="p-3 d-flex gap-3 align-items-center flex-wrap">
     <div>
-      <label class="form-label mb-1 small fw-bold text-muted">Afficher</label>
+      <label class="form-label mb-1 small fw-bold text-muted">{% translate "Afficher" %}</label>
       <div class="d-flex gap-2">
         <button class="btn btn-sm btn-outline-secondary" onclick="showTop(3)">Top 3</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="showTop(10)">Top 10</button>
-        <button class="btn btn-sm btn-success active" id="btnAll" onclick="showAll()">Tous</button>
+        <button class="btn btn-sm btn-success active" id="btnAll" onclick="showAll()">{% translate "Tous" %}</button>
         <button class="btn btn-sm btn-outline-danger" onclick="hideAll()"
-                title="Masquer toutes les courbes">
-          <i class="bi bi-x-lg"></i> Effacer
+                title="{% translate 'Masquer toutes les courbes' %}">
+          <i class="bi bi-x-lg"></i> {% translate "Effacer" %}
         </button>
       </div>
     </div>
     <div style="max-width:280px;flex:1">
-      <label class="form-label mb-1 small fw-bold text-muted">Rechercher un coureur</label>
+      <label class="form-label mb-1 small fw-bold text-muted">{% translate "Rechercher un coureur" %}</label>
       <input type="text" id="runnerFilter" class="form-control form-control-sm"
-             placeholder="Nom…" oninput="filterRunner(this.value)">
+             placeholder="{% translate 'Nom…' %}" oninput="filterRunner(this.value)">
     </div>
     {% block extra_filters %}{% endblock %}
   </div>
@@ -99,7 +99,7 @@
 
 <div class="co-card mb-4">
   <div class="co-card-header">
-    <i class="{% block chart_icon %}bi bi-graph-up{% endblock %} me-2"></i>{% block chart_title %}Graphique{% endblock %}
+    <i class="{% block chart_icon %}bi bi-graph-up{% endblock %} me-2"></i>{% block chart_title %}{% translate "Graphique" %}{% endblock %}
   </div>
   <div class="p-3">
     <div style="position:relative;height:{% block chart_height %}420{% endblock %}px;">
@@ -113,7 +113,7 @@
 
 <div class="co-card mb-4">
   <div class="co-card-header">
-    <i class="bi bi-table me-2"></i>{% block summary_card_title %}Récapitulatif{% endblock %}
+    <i class="bi bi-table me-2"></i>{% block summary_card_title %}{% translate "Récapitulatif" %}{% endblock %}
   </div>
   <div class="table-responsive">
     <table class="results-table analysis-table">

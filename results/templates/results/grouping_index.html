@@ -1,8 +1,8 @@
 {% extends "results/analysis_base.html" %}
-{% load static %}
-{% block analysis_breadcrumb %}Lièvre / Suiveur{% endblock %}
+{% load static i18n %}
+{% block analysis_breadcrumb %}{% translate "Lièvre / Suiveur" %}{% endblock %}
 {% block analysis_icon %}bi bi-collection{% endblock %}
-{% block analysis_title %}Lièvre / Suiveur{% endblock %}
+{% block analysis_title %}{% translate "Lièvre / Suiveur" %}{% endblock %}
 
 {% block page_header %}
 <div class="co-page-header">
@@ -13,19 +13,19 @@
         <li class="breadcrumb-item">
           <a href="{% if course %}{% url 'results:course_results' competition.cid course.hash %}{% else %}{% url 'results:class_results' competition.cid cls.name %}{% endif %}">{% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}</a>
         </li>
-        <li class="breadcrumb-item active">Lièvre / Suiveur</li>
+        <li class="breadcrumb-item active">{% translate "Lièvre / Suiveur" %}</li>
       </ol>
     </nav>
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
         <h1>
           <i class="bi bi-collection me-2 opacity-75" style="color:var(--co-gold)"></i>
-          Lièvre / Suiveur
+          {% translate "Lièvre / Suiveur" %}
         </h1>
          {% if course %}
          <div class="opacity-75 small mt-1">
            {{ course.display_name }} — {{ competition.name }}
-           <span class="ms-2 badge bg-secondary">{{ course.classes|length }} catégorie{{ course.classes|length|pluralize }}</span>
+           <span class="ms-2 badge bg-secondary">{% blocktranslate count n=course.classes|length %}{{ n }} catégorie{% plural %}{{ n }} catégories{% endblocktranslate %}</span>
          </div>
          <div class="d-flex flex-wrap gap-1 mt-2">
            {% for cat in course.classes %}
@@ -40,9 +40,9 @@
       </div>
       {% if not no_data %}
       <div class="d-flex align-items-center gap-2 flex-wrap">
-        <span class="badge bg-light text-dark fs-6">{{ n_runners }} coureur{{ n_runners|pluralize }}</span>
+        <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=n_runners %}{{ n }} coureur{% plural %}{{ n }} coureurs{% endblocktranslate %}</span>
         {% if n_controls %}
-        <span class="badge bg-light text-dark fs-6">{{ n_controls }} poste{{ n_controls|pluralize }}</span>
+        <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=n_controls %}{{ n }} poste{% plural %}{{ n }} postes{% endblocktranslate %}</span>
         {% endif %}
       </div>
       {% endif %}
@@ -60,7 +60,7 @@
 {% if no_data %}
 <div class="co-card text-center p-5 text-muted">
   <i class="bi bi-collection fs-1 d-block mb-3 opacity-25"></i>
-  Pas assez de données pour calculer l'indice lièvre / suiveur.
+  {% translate "Pas assez de données pour calculer l'indice lièvre / suiveur." %}
 </div>
 
 {% else %}
@@ -69,14 +69,14 @@
 <div class="alert alert-warning border-0 mb-4"
      style="background:var(--co-highlight-bg);border-left:4px solid var(--co-gold) !important;">
   <i class="bi bi-info-circle me-2"></i>
-  L'<strong>indice lièvre / suiveur</strong> évalue les regroupements à partir
+  {% blocktranslate %}L'<strong>indice lièvre / suiveur</strong> évalue les regroupements à partir
   des heures absolues de passage aux postes.
   Une case <strong style="color:#1a6b3c">verte</strong> indique un coureur en
   tête de groupe (lièvre) ; une case <strong style="color:#c0392b">rouge</strong>
   un coureur qui en suit un autre (suiveur).
   Une case grise signifie que le coureur était seul sur ce tronçon.
   L'<strong>indice global</strong> est la moyenne pondérée par la durée de
-  chaque tronçon.
+  chaque tronçon.{% endblocktranslate %}
 </div>
 
 {# ── Seuils ──────────────────────────────────────────────────────────────── #}
@@ -84,7 +84,7 @@
   <div class="p-3 d-flex gap-4 align-items-end flex-wrap">
     <div>
       <label class="form-label mb-1 small fw-bold text-muted">
-        Seuil T1 — lièvre à 100%
+        {% translate "Seuil T1 — lièvre à 100%" %}
       </label>
       <div class="input-group input-group-sm" style="width:110px">
         <input type="number" id="t1Input" class="form-control"
@@ -94,7 +94,7 @@
     </div>
     <div>
       <label class="form-label mb-1 small fw-bold text-muted">
-        Seuil T2 — aucune interaction
+        {% translate "Seuil T2 — aucune interaction" %}
       </label>
       <div class="input-group input-group-sm" style="width:110px">
         <input type="number" id="t2Input" class="form-control"
@@ -103,16 +103,16 @@
       </div>
     </div>
     <button class="btn btn-sm btn-outline-success" id="applyThresholds">
-      <i class="bi bi-arrow-clockwise me-1"></i>Recalculer
+      <i class="bi bi-arrow-clockwise me-1"></i>{% translate "Recalculer" %}
     </button>
     <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
-      <span class="small text-muted fw-bold">Légende :</span>
+      <span class="small text-muted fw-bold">{% translate "Légende :" %}</span>
       <span class="gi-legend-swatch" style="background:#1a6b3c"></span>
-      <span class="small">Lièvre</span>
+      <span class="small">{% translate "Lièvre" %}</span>
       <span class="gi-legend-swatch" style="background:#e0e0e0"></span>
-      <span class="small">Seul</span>
+      <span class="small">{% translate "Seul" %}</span>
       <span class="gi-legend-swatch" style="background:#c0392b"></span>
-      <span class="small">Suiveur</span>
+      <span class="small">{% translate "Suiveur" %}</span>
     </div>
   </div>
 </div>
@@ -120,7 +120,7 @@
 {# ── Heatmap ─────────────────────────────────────────────────────────────── #}
 <div class="co-card mb-4">
   <div class="co-card-header">
-    <i class="bi bi-grid-3x3-gap me-2"></i>Indice par coureur et par tronçon
+    <i class="bi bi-grid-3x3-gap me-2"></i>{% translate "Indice par coureur et par tronçon" %}
   </div>
   <div class="p-0">
     <div id="heatmapWrap" style="overflow-x:auto">
@@ -135,16 +135,16 @@
 {# ── Tableau récapitulatif (4 colonnes sur mobile) ────────────────────── #}
 <div class="co-card mb-4">
   <div class="co-card-header">
-    <i class="bi bi-table me-2"></i>Indice global par coureur
+    <i class="bi bi-table me-2"></i>{% translate "Indice global par coureur" %}
   </div>
   <div class="table-responsive">
     <table class="results-table">
       <thead>
         <tr>
           <th style="width:2.5rem">#</th>
-          <th>Coureur</th>
-          <th>Club</th>
-          <th class="text-center" style="width:8rem">Indice / Profil</th>
+          <th>{% translate "Coureur" %}</th>
+          <th>{% translate "Club" %}</th>
+          <th class="text-center" style="width:8rem">{% translate "Indice / Profil" %}</th>
         </tr>
       </thead>
       <tbody id="summaryBody"></tbody>
@@ -223,11 +223,11 @@ function buildHeatmap() {
   // En-tête
   const head = document.getElementById('heatmapHead');
   let thRow = '<tr>';
-  thRow += '<th class="gi-th-runner">Coureur</th>';
+  thRow += '<th class="gi-th-runner">{% translate "Coureur" %}</th>';
   LEG_LABELS.forEach(lbl => {
     thRow += `<th title="${lbl}">${lbl}</th>`;
   });
-  thRow += '<th class="gi-th-global" title="Indice global pondéré">Global</th>';
+  thRow += '<th class="gi-th-global" title="{% translate 'Indice global pondéré' %}">{% translate "Global" %}</th>';
   thRow += '</tr>';
   head.innerHTML = thRow;
 
@@ -298,7 +298,7 @@ document.getElementById('applyThresholds').addEventListener('click', () => {
   const t1 = parseInt(document.getElementById('t1Input').value, 10) || {{ t1 }};
   const t2 = parseInt(document.getElementById('t2Input').value, 10) || {{ t2 }};
   if (t2 <= t1) {
-    alert('T2 doit être supérieur à T1.');
+    alert("{% translate 'T2 doit être supérieur à T1.' %}");
     return;
   }
   const url = new URL(window.location.href);

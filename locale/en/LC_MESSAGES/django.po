@@ -1,0 +1,3065 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-07 13:21+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: ochecklist/templates/ochecklist/base.html:13 results/templates/404.html:10
+#: results/templates/500.html:10
+#: results/templates/results/_breadcrumb_home_comp.html:13
+#: results/templates/results/competition_detail.html:10
+#: results/templates/results/competition_list.html:11
+#: results/templates/results/drivers.html:10
+#: results/templates/results/duel.html:13
+#: results/templates/results/etiquettes.html:10
+#: results/templates/results/home.html:3
+#: results/templates/results/markdown_content.html:10
+#: results/templates/results/meos_checker.html:10
+#: results/templates/results/race_create.html:11
+#: results/templates/results/race_manage.html:20
+#: results/templates/results/start_list.html:10
+#: results/templates/results/statistics.html:10
+#: results/templates/results/tuto.html:10
+#: results/templates/results/verifie_moi.html:10
+msgid "Accueil"
+msgstr "Home"
+
+#: ochecklist/templates/ochecklist/base.html:19
+msgid "Rapport O'checklist"
+msgstr "O'checklist report"
+
+#: ochecklist/templates/ochecklist/base.html:21
+msgid "Rapport de l'atelier de départ"
+msgstr "Start tent report"
+
+#: ochecklist/templates/ochecklist/report_detail.html:8
+msgid "Rapport"
+msgstr "Report"
+
+#: ochecklist/templates/ochecklist/report_detail.html:12
+#: ochecklist/templates/ochecklist/runner_detail.html:89
+msgid "Version"
+msgstr "Version"
+
+#: ochecklist/templates/ochecklist/report_detail.html:13
+#: ochecklist/templates/ochecklist/report_list.html:29
+#: ochecklist/templates/ochecklist/runner_detail.html:90
+msgid "Créateur"
+msgstr "Created by"
+
+#: ochecklist/templates/ochecklist/report_detail.html:14
+#: ochecklist/templates/ochecklist/report_list.html:30
+#: ochecklist/templates/ochecklist/runner_detail.html:87
+msgid "Créé le"
+msgstr "Created on"
+
+#: ochecklist/templates/ochecklist/report_detail.html:15
+#: ochecklist/templates/ochecklist/report_list.html:31
+#: ochecklist/templates/ochecklist/runner_detail.html:88
+msgid "Reçu le"
+msgstr "Received on"
+
+#: ochecklist/templates/ochecklist/report_detail.html:17
+#: ochecklist/templates/ochecklist/report_list.html:28
+#: ochecklist/templates/ochecklist/runner_detail.html:86
+msgid "Événement"
+msgstr "Event"
+
+#: ochecklist/templates/ochecklist/report_detail.html:26
+msgid "Résumé"
+msgstr "Summary"
+
+#: ochecklist/templates/ochecklist/report_detail.html:32
+msgid "Total coureurs"
+msgstr "Total runners"
+
+#: ochecklist/templates/ochecklist/report_detail.html:38
+msgid "Partis OK"
+msgstr "Started OK"
+
+#: ochecklist/templates/ochecklist/report_detail.html:50
+#: ochecklist/templates/ochecklist/runner_detail.html:65
+msgid "Départ retardé"
+msgstr "Delayed start"
+
+#: ochecklist/templates/ochecklist/report_detail.html:56
+msgid "Changement puce"
+msgstr "SI card change"
+
+#: ochecklist/templates/ochecklist/report_detail.html:68
+msgid "Liste des coureurs"
+msgstr "Runner list"
+
+#: ochecklist/templates/ochecklist/report_detail.html:70
+msgid "Trier :"
+msgstr "Sort:"
+
+#: ochecklist/templates/ochecklist/report_detail.html:72
+msgid "Horaire"
+msgstr "Start time"
+
+#: ochecklist/templates/ochecklist/report_detail.html:73
+#: ochecklist/templates/ochecklist/report_detail.html:90
+#: ochecklist/templates/ochecklist/runner_detail.html:33
+msgid "Statut"
+msgstr "Status"
+
+#: ochecklist/templates/ochecklist/report_detail.html:74
+#: ochecklist/templates/ochecklist/report_detail.html:87
+#: ochecklist/templates/ochecklist/runner_detail.html:18
+#: results/templates/results/start_list.html:173
+#: results/templates/results/start_list.html:179
+#: results/templates/results/start_list.html:186
+#: results/templates/results/verifie_moi.html:133
+msgid "Puce"
+msgstr "SI card"
+
+#: ochecklist/templates/ochecklist/report_detail.html:83
+#: ochecklist/templates/ochecklist/runner_detail.html:13
+#: results/templates/results/competition_list.html:51
+#: results/templates/results/verifie_moi.html:130
+msgid "Nom"
+msgstr "Name"
+
+#: ochecklist/templates/ochecklist/report_detail.html:84
+#: ochecklist/templates/ochecklist/runner_detail.html:14
+#: results/templates/results/start_list.html:190
+msgid "Dossard"
+msgstr "Bib"
+
+#: ochecklist/templates/ochecklist/report_detail.html:85
+#: ochecklist/templates/ochecklist/runner_detail.html:17
+#: results/templates/results/_neg_time_warning.html:23
+#: results/templates/results/class_results.html:98
+#: results/templates/results/competitor_detail.html:34
+#: results/templates/results/course_results.html:62
+#: results/templates/results/org_results.html:36
+#: results/templates/results/recapitulatif.html:106
+#: results/templates/results/start_list.html:44
+#: results/templates/results/start_list.html:178
+#: results/templates/results/start_list.html:185
+#: results/templates/results/verifie_moi.html:132
+msgid "Catégorie"
+msgstr "Category"
+
+#: ochecklist/templates/ochecklist/report_detail.html:86
+#: ochecklist/templates/ochecklist/runner_detail.html:16
+#: results/templates/results/class_results.html:99
+#: results/templates/results/competitor_detail.html:40
+#: results/templates/results/course_results.html:63
+#: results/templates/results/grouping.html:56
+#: results/templates/results/grouping_index.html:146
+#: results/templates/results/performance.html:61
+#: results/templates/results/recapitulatif.html:107
+#: results/templates/results/regularity.html:129
+#: results/templates/results/relay_results.html:69
+#: results/templates/results/start_list.html:45
+#: results/templates/results/start_list.html:172
+#: results/templates/results/start_list.html:184
+#: results/templates/results/superman.html:92
+#: results/templates/results/verifie_moi.html:131
+msgid "Club"
+msgstr "Club"
+
+#: ochecklist/templates/ochecklist/report_detail.html:88
+#: ochecklist/templates/ochecklist/runner_detail.html:41
+#: ochecklist/templates/ochecklist/runner_detail.html:66
+msgid "Nouvelle puce"
+msgstr "New SI card"
+
+#: ochecklist/templates/ochecklist/report_detail.html:89
+#: ochecklist/templates/ochecklist/runner_detail.html:19
+#: results/templates/results/_split_detail_row.html:11
+#: results/templates/results/competitor_detail.html:47
+#: results/templates/results/competitor_detail.html:98
+#: results/templates/results/grouping.html:57
+#: results/templates/results/grouping.html:60
+#: results/templates/results/relay_results.html:152 results/views.py:789
+#: results/views.py:980
+msgid "Départ"
+msgstr "Start"
+
+#: ochecklist/templates/ochecklist/report_detail.html:91
+#: ochecklist/templates/ochecklist/runner_detail.html:46
+#: ochecklist/templates/ochecklist/runner_detail.html:67
+msgid "Commentaire"
+msgstr "Comment"
+
+#: ochecklist/templates/ochecklist/report_detail.html:138
+msgid "Aucun coureur dans ce rapport."
+msgstr "No runner in this report."
+
+#: ochecklist/templates/ochecklist/report_list.html:8
+msgid "Rapports reçus"
+msgstr "Received reports"
+
+#: ochecklist/templates/ochecklist/report_list.html:9
+#, python-format
+msgid "%(n)s rapport"
+msgid_plural "%(n)s rapports"
+msgstr[0] "%(n)s report"
+msgstr[1] "%(n)s reports"
+
+#: ochecklist/templates/ochecklist/report_list.html:17
+msgid "Tout sélectionner"
+msgstr "Select all"
+
+#: ochecklist/templates/ochecklist/report_list.html:20
+msgid "Supprimer la sélection"
+msgstr "Delete selection"
+
+#: ochecklist/templates/ochecklist/report_list.html:32
+msgid "Coureurs"
+msgstr "Runners"
+
+#: ochecklist/templates/ochecklist/report_list.html:45
+msgid "Détail"
+msgstr "Details"
+
+#: ochecklist/templates/ochecklist/report_list.html:58
+msgid "Aucun rapport O'checklist reçu."
+msgstr "No O'checklist report received."
+
+#: ochecklist/templates/ochecklist/report_list.html:59
+msgid ""
+"Les rapports apparaîtront ici après réception de l'application O'checklist."
+msgstr "Reports will appear here once received from the O'checklist app."
+
+#: ochecklist/templates/ochecklist/runner_detail.html:58
+msgid "Journal des modifications"
+msgstr "Change log"
+
+#: ochecklist/templates/ochecklist/runner_detail.html:68
+msgid "Nouveau coureur"
+msgstr "New runner"
+
+#: ochecklist/templates/ochecklist/runner_detail.html:73
+msgid "Aucune modification enregistrée."
+msgstr "No change recorded."
+
+#: ochecklist/templates/ochecklist/runner_detail.html:81
+msgid "Rapport associé"
+msgstr "Linked report"
+
+#: ochecklist/templates/ochecklist/runner_detail.html:99
+msgid "Retour au rapport"
+msgstr "Back to report"
+
+#: ochecklist/views.py:280
+#, python-format
+msgid "%(n)s rapport supprimé."
+msgid_plural "%(n)s rapports supprimés."
+msgstr[0] "%(n)s report deleted."
+msgstr[1] "%(n)s reports deleted."
+
+#: results/admin.py:58 results/templates/results/race_manage.html:125
+msgid "Compétition"
+msgstr "Competition"
+
+#: results/admin.py:65 results/forms.py:81 results/models.py:62
+#: results/templates/results/competition_list.html:53
+msgid "Date"
+msgstr "Date"
+
+#: results/admin.py:82
+#, python-format
+msgid ""
+"%(n)s lien(s) de gestion révoqué(s) — les clés API MeOS restent actives."
+msgstr "%(n)s management link(s) revoked — the MeOS API keys stay active."
+
+#: results/admin.py:90
+msgid "Révoquer les liens de gestion privés"
+msgstr "Revoke private management links"
+
+#: results/admin.py:107
+#, python-format
+msgid "Données MOP supprimées pour cid=%(cid)s (%(name)s)."
+msgstr "MOP data deleted for cid=%(cid)s (%(name)s)."
+
+#: results/apps.py:8 results/templates/results/analysis_tabs.html:23
+#: results/templates/results/class_results.html:5
+#: results/templates/results/class_results.html:18
+#: results/templates/results/class_results.html:25
+#: results/templates/results/competition_detail.html:138
+#: results/templates/results/competition_detail.html:205
+#: results/templates/results/course_results.html:4
+#: results/templates/results/course_results.html:13
+#: results/templates/results/course_results.html:18
+#: results/tests/test_i18n.py:249
+msgid "Résultats"
+msgstr "Results"
+
+#: results/forms.py:8
+msgid "R1 — Pas de club consécutif sur le même circuit"
+msgstr "R1 — No consecutive runners from the same club on one course"
+
+#: results/forms.py:9
+msgid "R2 — Pas d'entrelacement de catégories"
+msgstr "R2 — No interleaving of categories"
+
+#: results/forms.py:10
+msgid "R3 — Pas de premier poste commun entre circuits"
+msgstr "R3 — No shared first control between courses"
+
+#: results/forms.py:11
+msgid "R4 — Regroupement des catégories sur des plages continues"
+msgstr "R4 — Categories grouped into continuous start blocks"
+
+#: results/forms.py:12
+msgid "R5 — Coordonnées des postes (xpos / ypos)"
+msgstr "R5 — Control coordinates (xpos / ypos)"
+
+#: results/forms.py:13
+msgid "R6 — Pas de circuits vides"
+msgstr "R6 — No empty courses"
+
+#: results/forms.py:14
+msgid "R7 — Pas de catégories vides"
+msgstr "R7 — No empty categories"
+
+#: results/forms.py:15
+msgid "R8 — Complétude des données coureurs"
+msgstr "R8 — Runner data completeness"
+
+#: results/forms.py:21 results/forms.py:38
+msgid "Fichier MeOS (.xml)"
+msgstr "MeOS file (.xml)"
+
+#: results/forms.py:23 results/templates/results/meos_checker.html:47
+msgid "Écart min. entre 2 coureurs du même club (secondes)"
+msgstr "Min. gap between 2 runners from the same club (seconds)"
+
+#: results/forms.py:25
+msgid ""
+"Si deux coureurs du même club sont séparés par un écart inférieur ou égal à "
+"cette valeur, ils sont considérés consécutifs."
+msgstr ""
+"If two runners from the same club are separated by a gap less than or equal "
+"to this value, they are considered consecutive."
+
+#: results/forms.py:33 results/templates/results/meos_checker.html:61
+msgid "Règles à vérifier"
+msgstr "Rules to check"
+
+#: results/forms.py:58
+msgid "Format accepté : SVG, PNG ou JPEG."
+msgstr "Accepted format: SVG, PNG or JPEG."
+
+#: results/forms.py:60
+msgid "Logo trop volumineux (2 Mo maximum)."
+msgstr "Logo too large (2 MB max)."
+
+#: results/forms.py:73
+msgid "Fichier illisible — SVG, PNG ou JPEG attendu."
+msgstr "Unreadable file — expected SVG, PNG or JPEG."
+
+#: results/forms.py:79
+msgid "Nom de la course"
+msgstr "Race name"
+
+#: results/forms.py:84
+msgid "Organisateur / club"
+msgstr "Organizer / club"
+
+#: results/forms.py:86 results/templates/results/race_create.html:91
+#: results/templates/results/race_manage.html:199
+msgid "Site web de l'organisateur"
+msgstr "Organizer website"
+
+#: results/forms.py:109
+msgid "Site web (champ piège)"
+msgstr "Website (honeypot field)"
+
+#: results/forms.py:115 results/templates/results/race_create.html:117
+msgid "Logo de l'organisateur"
+msgstr "Organizer logo"
+
+#: results/meos_checker.py:143
+#, python-format
+msgid "XML invalide : %(exc)s"
+msgstr "Invalid XML: %(exc)s"
+
+#: results/meos_checker.py:251
+msgid "(sans club)"
+msgstr "(no club)"
+
+#: results/meos_checker.py:253
+#, python-format
+msgid "Club #%(id)s"
+msgstr "Club #%(id)s"
+
+#: results/meos_checker.py:260
+#, python-format
+msgid "Cat #%(id)s"
+msgstr "Cat #%(id)s"
+
+#: results/meos_checker.py:296
+#, python-format
+msgid ""
+"Club %(club)s — Circuit %(course)s : %(n1)s (%(c1)s) à %(t1)s, %(n2)s "
+"(%(c2)s) à %(t2)s"
+msgstr ""
+"Club %(club)s — Course %(course)s: %(n1)s (%(c1)s) at %(t1)s, %(n2)s "
+"(%(c2)s) at %(t2)s"
+
+#: results/meos_checker.py:308
+msgid "Aucun club n'a deux coureurs consécutifs sur le même circuit."
+msgstr "No club has two consecutive runners on the same course."
+
+#: results/meos_checker.py:310
+#, python-format
+msgid "%(n)s paire de coureurs du même club consécutifs."
+msgid_plural "%(n)s paires de coureurs du même club consécutifs."
+msgstr[0] "%(n)s pair of consecutive runners from the same club."
+msgstr[1] "%(n)s pairs of consecutive runners from the same club."
+
+#: results/meos_checker.py:315
+msgid "Pas de club consécutif sur le même circuit"
+msgstr "No consecutive runners from the same club on one course"
+
+#: results/meos_checker.py:365 results/meos_checker.py:501
+#, python-format
+msgid ">>> 1er %(cat)s : %(name)s à %(time)s"
+msgstr ">>> First %(cat)s: %(name)s at %(time)s"
+
+#: results/meos_checker.py:371 results/meos_checker.py:505
+#, python-format
+msgid ">>> Der %(cat)s : %(name)s à %(time)s"
+msgstr ">>> Last %(cat)s: %(name)s at %(time)s"
+
+#: results/meos_checker.py:383
+#, python-format
+msgid ""
+"Circuit %(course)s — %(n)s catégorie entrelacée : %(cats)s (séquence des "
+"%(k)s 1ers départs ci-dessous)"
+msgid_plural ""
+"Circuit %(course)s — %(n)s catégories entrelacées : %(cats)s (séquence des "
+"%(k)s 1ers départs ci-dessous)"
+msgstr[0] ""
+"Course %(course)s — %(n)s interleaved category: %(cats)s (sequence of the "
+"%(k)s first starts below)"
+msgstr[1] ""
+"Course %(course)s — %(n)s interleaved categories: %(cats)s (sequence of the "
+"%(k)s first starts below)"
+
+#: results/meos_checker.py:401
+msgid "Chaque catégorie forme un bloc continu sur son circuit."
+msgstr "Each category forms a continuous block on its course."
+
+#: results/meos_checker.py:403
+#, python-format
+msgid "%(n)s circuit avec des catégories entrelacées."
+msgid_plural "%(n)s circuits avec des catégories entrelacées."
+msgstr[0] "%(n)s course with interleaved categories."
+msgstr[1] "%(n)s courses with interleaved categories."
+
+#: results/meos_checker.py:408
+msgid "Pas d'entrelacement de catégories sur un même circuit"
+msgstr "No interleaving of categories on the same course"
+
+#: results/meos_checker.py:429
+#, python-format
+msgid ""
+"Poste n°%(ctrl)s partagé comme 1er poste par %(n)s circuits : %(courses)s"
+msgstr ""
+"Control #%(ctrl)s shared as first control by %(n)s courses: %(courses)s"
+
+#: results/meos_checker.py:437
+msgid "Chaque circuit commence par un premier poste unique."
+msgstr "Each course starts with a unique first control."
+
+#: results/meos_checker.py:439
+#, python-format
+msgid "%(n)s conflit de premier poste détecté."
+msgid_plural "%(n)s conflits de premier poste détectés."
+msgstr[0] "%(n)s first-control conflict detected."
+msgstr[1] "%(n)s first-control conflicts detected."
+
+#: results/meos_checker.py:444
+msgid "Pas de premier poste commun entre circuits"
+msgstr "No shared first control between courses"
+
+#: results/meos_checker.py:486
+#, python-format
+msgid "%(name)s (%(cls)s) à %(time)s"
+msgstr "%(name)s (%(cls)s) at %(time)s"
+
+#: results/meos_checker.py:512
+#, python-format
+msgid ""
+"Circuit %(course)s — %(cat)s (%(tmin)s–%(tmax)s) : %(n)s départ de %(cats)s "
+"intercalé"
+msgid_plural ""
+"Circuit %(course)s — %(cat)s (%(tmin)s–%(tmax)s) : %(n)s départs de %(cats)s "
+"intercalés"
+msgstr[0] ""
+"Course %(course)s — %(cat)s (%(tmin)s–%(tmax)s): %(n)s start from %(cats)s "
+"interleaved"
+msgstr[1] ""
+"Course %(course)s — %(cat)s (%(tmin)s–%(tmax)s): %(n)s starts from %(cats)s "
+"interleaved"
+
+#: results/meos_checker.py:533
+msgid ""
+"Toutes les catégories sont regroupées sur des plages de départ continues."
+msgstr "All categories are grouped into continuous start blocks."
+
+#: results/meos_checker.py:535
+#, python-format
+msgid "%(n)s plage de catégorie non continue."
+msgid_plural "%(n)s plages de catégorie non continues."
+msgstr[0] "%(n)s non-continuous category block."
+msgstr[1] "%(n)s non-continuous category blocks."
+
+#: results/meos_checker.py:540
+msgid "Regroupement des catégories sur des plages continues"
+msgstr "Categories grouped into continuous start blocks"
+
+#: results/meos_checker.py:560
+#, python-format
+msgid "Poste n°%(num)s : %(missing)s manquant"
+msgid_plural "Poste n°%(num)s : %(missing)s manquants"
+msgstr[0] "Control #%(num)s: %(missing)s missing"
+msgstr[1] "Control #%(num)s: %(missing)s missing"
+
+#: results/meos_checker.py:567
+msgid "Tous les postes ont des coordonnées xpos et ypos."
+msgstr "All controls have xpos and ypos coordinates."
+
+#: results/meos_checker.py:569
+#, python-format
+msgid "%(n)s poste sans coordonnées complètes."
+msgid_plural "%(n)s postes sans coordonnées complètes."
+msgstr[0] "%(n)s control without complete coordinates."
+msgstr[1] "%(n)s controls without complete coordinates."
+
+#: results/meos_checker.py:574
+msgid "Coordonnées des postes (xpos / ypos)"
+msgstr "Control coordinates (xpos / ypos)"
+
+#: results/meos_checker.py:584
+#, python-format
+msgid "Circuit « %(name)s » : aucun poste défini."
+msgstr "Course «%(name)s»: no control defined."
+
+#: results/meos_checker.py:590
+msgid "Aucun circuit vide."
+msgstr "No empty course."
+
+#: results/meos_checker.py:592
+#, python-format
+msgid "%(n)s circuit vide sans postes."
+msgid_plural "%(n)s circuits vides sans postes."
+msgstr[0] "%(n)s empty course without controls."
+msgstr[1] "%(n)s empty courses without controls."
+
+#: results/meos_checker.py:597
+msgid "Pas de circuits vides"
+msgstr "No empty courses"
+
+#: results/meos_checker.py:612
+#, python-format
+msgid "Catégorie « %(name)s » : aucun coureur inscrit."
+msgstr "Category «%(name)s»: no runner entered."
+
+#: results/meos_checker.py:618
+msgid "Toutes les catégories ont au moins un coureur."
+msgstr "Every category has at least one runner."
+
+#: results/meos_checker.py:620
+#, python-format
+msgid "%(n)s catégorie sans coureur."
+msgid_plural "%(n)s catégories sans coureur."
+msgstr[0] "%(n)s category without runners."
+msgstr[1] "%(n)s categories without runners."
+
+#: results/meos_checker.py:625
+msgid "Pas de catégories vides"
+msgstr "No empty categories"
+
+#: results/meos_checker.py:648
+#, python-format
+msgid "ID dupliqué (id=%(id)s) : « %(old)s » et « %(new)s »"
+msgstr "Duplicate ID (id=%(id)s): «%(old)s» and «%(new)s»"
+
+#: results/meos_checker.py:661
+msgid "catégorie"
+msgstr "category"
+
+#: results/meos_checker.py:667
+msgid "circuit"
+msgstr "course"
+
+#: results/meos_checker.py:671
+msgid "numéro de puce (CardNo)"
+msgstr "SI card number (CardNo)"
+
+#: results/meos_checker.py:675
+msgid "heure de départ"
+msgstr "start time"
+
+#: results/meos_checker.py:679
+#, python-format
+msgid "%(name)s (id=%(id)s) : %(missing)s"
+msgstr "%(name)s (id=%(id)s): %(missing)s"
+
+#: results/meos_checker.py:686
+msgid ""
+"Tous les coureurs ont leurs données obligatoires et des identifiants uniques."
+msgstr "All runners have their required data and unique IDs."
+
+#: results/meos_checker.py:691
+#, python-format
+msgid "%(n)s doublon d'ID"
+msgid_plural "%(n)s doublons d'ID"
+msgstr[0] "%(n)s duplicate ID"
+msgstr[1] "%(n)s duplicate IDs"
+
+#: results/meos_checker.py:693
+#, python-format
+msgid "%(n)s coureur avec données manquantes"
+msgid_plural "%(n)s coureurs avec données manquantes"
+msgstr[0] "%(n)s runner with missing data"
+msgstr[1] "%(n)s runners with missing data"
+
+#: results/meos_checker.py:701
+msgid ""
+"Complétude des données coureurs (circuit, catégorie, puce, départ, ID unique)"
+msgstr "Runner data completeness (course, category, SI card, start, unique ID)"
+
+#: results/models.py:44
+msgctxt "mopstatus"
+msgid "Inconnu"
+msgstr "Unknown"
+
+#: results/models.py:45
+msgctxt "mopstatus"
+msgid "OK"
+msgstr "OK"
+
+#: results/models.py:46
+msgctxt "mopstatus"
+msgid "No Timing"
+msgstr "No Timing"
+
+#: results/models.py:47
+msgctxt "mopstatus"
+msgid "PM"
+msgstr "PM"
+
+#: results/models.py:48
+msgctxt "mopstatus"
+msgid "Abandon"
+msgstr "DNF"
+
+#: results/models.py:49
+msgctxt "mopstatus"
+msgid "DSQ"
+msgstr "DSQ"
+
+#: results/models.py:50
+msgctxt "mopstatus"
+msgid "H.T."
+msgstr "OT"
+
+#: results/models.py:51
+msgctxt "mopstatus"
+msgid "Hors compét."
+msgstr "Out of comp."
+
+#: results/models.py:52
+msgctxt "mopstatus"
+msgid "Non partant"
+msgstr "DNS"
+
+#: results/models.py:53
+msgctxt "mopstatus"
+msgid "Cancel"
+msgstr "Cancel"
+
+#: results/models.py:54
+msgctxt "mopstatus"
+msgid "Non participant"
+msgstr "Non-participant"
+
+#: results/models.py:61 results/models.py:72
+msgid "compétition"
+msgstr "Competition"
+
+#: results/models.py:63
+#| msgid "Organisateur"
+msgid "organisateur"
+msgstr "Organizer"
+
+#: results/models.py:64
+#| msgid "Retour à l'accueil"
+msgid "page d'accueil"
+msgstr "homepage"
+
+#: results/models.py:73 results/tests/test_i18n.py:237
+msgid "compétitions"
+msgstr "Competitions"
+
+#: results/models.py:249 results/models.py:299
+msgid "gelée"
+msgstr "frozen"
+
+#: results/models.py:250
+msgid "Bloque l'écrasement des données MOP (MOPComplete/UPDATE refusés)"
+msgstr "Blocks overwriting of MOP data (MOPComplete/UPDATE rejected)"
+
+#: results/models.py:254
+msgid "visible"
+msgstr "visible"
+
+#: results/models.py:255
+msgid "Afficher cette compétition dans la liste publique"
+msgstr "Show this competition in the public list"
+
+#: results/models.py:259
+msgid "à effacer"
+msgstr "To delete"
+
+#: results/models.py:260
+msgid "Marquer comme supprimée (masquée de la liste publique)"
+msgstr "Mark as deleted (hidden from the public list)"
+
+#: results/models.py:267
+msgid "clé API MeOS"
+msgstr "MeOS API key"
+
+#: results/models.py:268
+msgid ""
+"« Password » MeOS unique à cette compétition (NULL = mot de passe global)"
+msgstr "Unique MeOS «Password» for this competition (NULL = global password)"
+
+#: results/models.py:275
+msgid "jeton de gestion"
+msgstr "management token"
+
+#: results/models.py:276
+msgid "Secret du lien privé de gestion de la course"
+msgstr "Secret of the private race management link"
+
+#: results/models.py:282
+msgid "créée le"
+msgstr "created on"
+
+#: results/models.py:288
+msgid "configuration compétition"
+msgstr "competition configuration"
+
+#: results/models.py:289 results/tests/test_i18n.py:238
+msgid "configurations compétitions"
+msgstr "competition configurations"
+
+#: results/models.py:301
+msgid "supprimée"
+msgstr "deleted"
+
+#: results/models.py:303
+msgid "masquée"
+msgstr "hidden"
+
+#: results/race_views.py:129
+msgid "Formulaire invalide. Vérifiez les champs saisis."
+msgstr "Invalid form. Please check the entered fields."
+
+#: results/race_views.py:148
+msgid "Conflit à la création. Réessayez une nouvelle fois."
+msgstr "Conflict during creation. Please try again."
+
+#: results/services.py:370 results/services.py:378 results/services.py:490
+#: results/services.py:507 results/templates/results/_split_detail_row.html:2
+#: results/templates/results/_split_detail_row.html:35
+#: results/templates/results/competitor_detail.html:52
+#: results/templates/results/competitor_detail.html:102
+#: results/templates/results/competitor_detail.html:116
+#: results/templates/results/grouping.html:58
+#: results/templates/results/grouping.html:61
+#: results/templates/results/relay_results.html:156 results/views.py:789
+#: results/views.py:815 results/views.py:857 results/views.py:918
+#: results/views.py:980
+msgid "Arrivée"
+msgstr "Finish"
+
+#: results/services.py:600 results/views.py:442
+#, python-format
+msgid "au poste %(ctrls)s"
+msgstr "at control %(ctrls)s"
+
+#: results/services.py:602 results/views.py:444
+#, python-format
+msgid "aux postes %(ctrls)s"
+msgstr "at controls %(ctrls)s"
+
+#: results/services.py:604 results/views.py:446
+#, python-format
+msgid ""
+"%(n)s coureur a des temps négatifs %(postes)s : probable boîtier mal "
+"synchronisé."
+msgid_plural ""
+"%(n)s coureurs ont des temps négatifs %(postes)s : probable boîtier mal "
+"synchronisé."
+msgstr[0] ""
+"%(n)s runner has negative times %(postes)s: probably a poorly synchronized "
+"unit."
+msgstr[1] ""
+"%(n)s runners have negative times %(postes)s: probably a poorly synchronized "
+"unit."
+
+#: results/services.py:610 results/views.py:452
+msgid "Temps négatif : boîtier probablement mal synchronisé"
+msgstr "Negative time: unit probably not synchronized"
+
+#: results/services.py:614 results/views.py:456
+msgid ""
+"1 coureur a un temps négatif : probable carte SI non effacée (problème "
+"d'effacement de doigts)."
+msgstr ""
+"1 runner has a negative time: SI card probably not cleared (finger punch "
+"clearing problem)."
+
+#: results/services.py:617 results/views.py:459
+msgid "Temps négatif : carte SI probablement non effacée"
+msgstr "Negative time: SI card probably not cleared"
+
+#: results/services.py:621 results/views.py:463
+#, python-format
+msgid ""
+"%(n)s coureur a des temps négatifs sur des postes différents : probables "
+"cartes SI non effacées (effacement de doigts)."
+msgid_plural ""
+"%(n)s coureurs ont des temps négatifs sur des postes différents : probables "
+"cartes SI non effacées (effacement de doigts)."
+msgstr[0] ""
+"%(n)s runner has negative times at different controls: SI cards probably not "
+"cleared (finger punch clearing)."
+msgstr[1] ""
+"%(n)s runners have negative times at different controls: SI cards probably "
+"not cleared (finger punch clearing)."
+
+#: results/services.py:627 results/views.py:469
+msgid ""
+"Temps négatifs sur des postes différents : cartes SI probablement non "
+"effacées"
+msgstr "Negative times at different controls: SI cards probably not cleared"
+
+#: results/templates/404.html:3 results/templates/404.html:11
+msgid "Erreur 404"
+msgstr "Error 404"
+
+#: results/templates/404.html:14
+msgid "Page introuvable"
+msgstr "Page not found"
+
+#: results/templates/404.html:26
+msgid "404 — Perdu en pleine forêt ?"
+msgstr "404 — Lost in the middle of the forest?"
+
+#: results/templates/404.html:28
+msgid ""
+"La page que vous cherchez n'existe pas ou n'est plus disponible.\n"
+"        Vérifiez l'adresse ou revenez à l'accueil pour retrouver les "
+"résultats."
+msgstr ""
+"The page you are looking for does not exist or is no longer available. Check "
+"the address or return to the home page to find the results."
+
+#: results/templates/404.html:32 results/templates/500.html:32
+msgid "Retour à l'accueil"
+msgstr "Back to home"
+
+#: results/templates/500.html:3 results/templates/500.html:11
+msgid "Erreur 500"
+msgstr "Error 500"
+
+#: results/templates/500.html:14
+msgid "Erreur interne"
+msgstr "Internal error"
+
+#: results/templates/500.html:26
+msgid "500 — Une erreur est survenue"
+msgstr "500 — An error occurred"
+
+#: results/templates/500.html:28
+msgid ""
+"Un problème inattendu s'est produit sur le serveur.\n"
+"        Merci de réessayer dans quelques instants."
+msgstr ""
+"An unexpected problem occurred on the server. Please try again in a few "
+"moments."
+
+#: results/templates/admin/results/competitionconfig/change_form.html:9
+msgid "Supprimer les données MOP"
+msgstr "Delete MOP data"
+
+#: results/templates/admin/results/competitionconfig/change_form.html:10
+msgid "Supprimer TOUTES les données MOP de cette compétition ?"
+msgstr "Delete ALL MOP data for this competition?"
+
+#: results/templates/results/_analysis_partial.html:4
+msgid "Analyse partielle"
+msgstr "Partial analysis"
+
+#: results/templates/results/_analysis_partial.html:4
+#, python-format
+msgid "%(n)s coureur arrivé sur %(n_total)s"
+msgid_plural "%(n)s coureurs arrivés sur %(n_total)s"
+msgstr[0] "%(n)s runner arrived out of %(n_total)s"
+msgstr[1] "%(n)s runners arrived out of %(n_total)s"
+
+#: results/templates/results/_analysis_partial.html:5
+msgid ""
+"Les coureurs encore en course ou non partis n'apparaissent pas : l'analyse "
+"se complète au fil des arrivées."
+msgstr ""
+"Runners still racing or not yet started do not appear: the analysis fills in "
+"as finishes come in."
+
+#: results/templates/results/_category_modal.html:10
+msgid "Choisir une catégorie"
+msgstr "Choose a category"
+
+#: results/templates/results/_category_modal.html:12
+#: results/templates/results/_category_modal.html:29
+msgid "Fermer"
+msgstr "Close"
+
+#: results/templates/results/_category_modal.html:27
+msgid "Page compétition"
+msgstr "Competition page"
+
+#: results/templates/results/_checker_rule_card.html:10
+#, python-format
+msgid "%(n)s erreur"
+msgid_plural "%(n)s erreurs"
+msgstr[0] "%(n)s error"
+msgstr[1] "%(n)s errors"
+
+#: results/templates/results/_checker_rule_card.html:10
+#, python-format
+msgid "%(n)s avertissement"
+msgid_plural "%(n)s avertissements"
+msgstr[0] "%(n)s warning"
+msgstr[1] "%(n)s warnings"
+
+#: results/templates/results/_error_chart_card.html:5
+msgid "Taux d'erreur par tronçon"
+msgstr "Error rate per leg"
+
+#: results/templates/results/_neg_time_warning.html:10
+msgid "Poste suspecté"
+msgid_plural "Postes suspects"
+msgstr[0] "Suspected control"
+msgstr[1] "Suspected controls"
+
+#: results/templates/results/_neg_time_warning.html:12
+#: results/templates/results/class_results.html:44
+#: results/templates/results/course_results.html:32
+#: results/templates/results/duel.html:46
+#: results/templates/results/grouping.html:13
+#: results/templates/results/grouping_index.html:43
+#: results/templates/results/performance.html:13
+#: results/templates/results/recapitulatif.html:41
+#: results/templates/results/regularity.html:42
+#: results/templates/results/superman.html:16
+#: results/templates/results/verifie_moi.html:110
+#, python-format
+msgid "%(n)s coureur"
+msgid_plural "%(n)s coureurs"
+msgstr[0] "%(n)s runner"
+msgstr[1] "%(n)s runners"
+
+#: results/templates/results/_neg_time_warning.html:22
+#: results/templates/results/grouping.html:55
+#: results/templates/results/grouping_index.html:145
+#: results/templates/results/grouping_index.html:226
+#: results/templates/results/performance.html:60
+#: results/templates/results/regularity.html:128
+msgid "Coureur"
+msgstr "Runner"
+
+#: results/templates/results/_neg_time_warning.html:24
+msgid "Postes au temps négatif"
+msgstr "Controls with negative times"
+
+#: results/templates/results/_neg_time_warning.html:34
+msgid "Plusieurs coureurs concernés sur ce poste"
+msgstr "Several runners affected at this control"
+
+#: results/templates/results/_result_filters_bar.html:10
+#: results/templates/results/base.html:203
+#: results/templates/results/relay_results.html:51
+msgid "Masquer abandons"
+msgstr "Hide DNFs"
+
+#: results/templates/results/_result_filters_bar.html:14
+#: results/templates/results/class_results.html:246
+#: results/templates/results/course_results.html:170
+msgid "Développer tous les intermédiaires"
+msgstr "Expand all splits"
+
+#: results/templates/results/_result_filters_bar.html:17
+#: results/templates/results/recapitulatif.html:82
+msgid "Seuil erreur :"
+msgstr "Error threshold:"
+
+#: results/templates/results/_result_filters_bar.html:19
+#: results/templates/results/recapitulatif.html:84
+msgid "Seuil en secondes"
+msgstr "Threshold in seconds"
+
+#: results/templates/results/_result_filters_bar.html:23
+#: results/templates/results/recapitulatif.html:88
+msgid "Seuil en pourcent"
+msgstr "Threshold in percent"
+
+#: results/templates/results/analysis_base.html:29
+#: results/templates/results/analysis_base.html:36
+msgid "Analyse"
+msgstr "Analysis"
+
+#: results/templates/results/analysis_base.html:42
+#: results/templates/results/class_results.html:31
+#: results/templates/results/course_results.html:22
+#: results/templates/results/duel.html:31
+#: results/templates/results/grouping_index.html:28
+#: results/templates/results/recapitulatif.html:29
+#: results/templates/results/regularity.html:28
+#, python-format
+msgid "%(n)s catégorie"
+msgid_plural "%(n)s catégories"
+msgstr[0] "%(n)s category"
+msgstr[1] "%(n)s categories"
+
+#: results/templates/results/analysis_base.html:70
+msgid "Pas assez de données pour cette analyse."
+msgstr "Not enough data for this analysis."
+
+#: results/templates/results/analysis_base.html:80
+#: results/templates/results/grouping.html:36
+msgid "Afficher"
+msgstr "Show"
+
+#: results/templates/results/analysis_base.html:84
+#: results/templates/results/grouping.html:40
+msgid "Tous"
+msgstr "All"
+
+#: results/templates/results/analysis_base.html:86
+msgid "Masquer toutes les courbes"
+msgstr "Hide all curves"
+
+#: results/templates/results/analysis_base.html:87
+msgid "Effacer"
+msgstr "Clear"
+
+#: results/templates/results/analysis_base.html:92
+msgid "Rechercher un coureur"
+msgstr "Search for a runner"
+
+#: results/templates/results/analysis_base.html:94
+msgid "Nom…"
+msgstr "Name…"
+
+#: results/templates/results/analysis_base.html:102
+msgid "Graphique"
+msgstr "Chart"
+
+#: results/templates/results/analysis_base.html:116
+#: results/templates/results/analysis_tabs.html:58
+#: results/templates/results/recapitulatif.html:5
+#: results/templates/results/recapitulatif.html:20
+#: results/templates/results/recapitulatif.html:25
+msgid "Récapitulatif"
+msgstr "Summary"
+
+#: results/templates/results/analysis_tabs.html:13
+msgid "Navigation analyses"
+msgstr "Analysis navigation"
+
+#: results/templates/results/analysis_tabs.html:33
+msgid "Indice perf."
+msgstr "Perf. index"
+
+#: results/templates/results/analysis_tabs.html:38
+#: results/templates/results/regularity.html:3
+#: results/templates/results/regularity.html:5
+#: results/templates/results/regularity.html:16
+#: results/templates/results/regularity.html:23
+msgid "Régularité"
+msgstr "Consistency"
+
+#: results/templates/results/analysis_tabs.html:43
+#: results/templates/results/competition_detail.html:150
+#: results/templates/results/competition_detail.html:217
+msgid "Regroupement"
+msgstr "Grouping"
+
+#: results/templates/results/analysis_tabs.html:48
+#: results/templates/results/grouping_index.html:3
+#: results/templates/results/grouping_index.html:5
+#: results/templates/results/grouping_index.html:16
+#: results/templates/results/grouping_index.html:23
+msgid "Lièvre / Suiveur"
+msgstr "Hare / Follower"
+
+#: results/templates/results/analysis_tabs.html:53
+#: results/templates/results/duel.html:4 results/templates/results/duel.html:6
+#: results/templates/results/duel.html:20
+#: results/templates/results/duel.html:26
+msgid "Duel coureurs"
+msgstr "Runner duel"
+
+#: results/templates/results/base.html:47
+msgid "Langue"
+msgstr "Language"
+
+#: results/templates/results/base.html:63
+msgid "Menu"
+msgstr "Menu"
+
+#: results/templates/results/base.html:69
+msgid "Basculer mode sombre/clair"
+msgstr "Toggle dark/light mode"
+
+#: results/templates/results/base.html:69 templates/admin/base_site.html:59
+msgid "Mode sombre / clair"
+msgstr "Dark / light mode"
+
+#: results/templates/results/base.html:76
+#: results/templates/results/race_manage.html:3
+msgid "Gestion"
+msgstr "Manage"
+
+#: results/templates/results/base.html:81
+#: results/templates/results/competition_list.html:3
+#: results/templates/results/competition_list.html:12
+#: results/templates/results/competition_list.html:16
+msgid "Liste des compétitions"
+msgstr "Competition list"
+
+#: results/templates/results/base.html:87
+#: results/templates/results/race_create.html:3
+#: results/templates/results/race_create.html:12
+#: results/templates/results/race_create.html:16
+#: results/templates/results/race_manage.html:22
+msgid "Créer une course"
+msgstr "Create a race"
+
+#: results/templates/results/base.html:94
+msgid "Admin"
+msgstr "Admin"
+
+#: results/templates/results/base.html:102
+msgid "Ressources GEC"
+msgstr "GEC resources"
+
+#: results/templates/results/base.html:107
+msgid "Etiquettes pour boitiers"
+msgstr "Labels for units"
+
+#: results/templates/results/base.html:112
+#: results/templates/results/drivers.html:11
+msgid "Drivers"
+msgstr "Drivers"
+
+#: results/templates/results/base.html:118
+#: results/templates/results/meos_checker.html:3
+#: results/templates/results/meos_checker.html:11
+msgid "Verificateur de tirage"
+msgstr "Draw checker"
+
+#: results/templates/results/base.html:123
+msgid "Vérifie moi (CSV)"
+msgstr "Start-list check (CSV)"
+
+#: results/templates/results/base.html:128
+msgid "Atelier Départ"
+msgstr "Start tent"
+
+#: results/templates/results/base.html:134
+#: results/templates/results/markdown_content.html:11
+#: results/templates/results/tuto.html:11
+msgid "Tutoriels"
+msgstr "Tutorials"
+
+#: results/templates/results/base.html:163
+msgid "Données MeOS"
+msgstr "MeOS data"
+
+#: results/templates/results/base.html:165
+msgid "Hébergé par"
+msgstr "Hosted by"
+
+#: results/templates/results/base.html:175
+msgid "Retour en haut de page"
+msgstr "Back to top of page"
+
+#: results/templates/results/base.html:175
+msgid "Retour en haut"
+msgstr "Back to top"
+
+#: results/templates/results/base.html:199
+#: results/templates/results/class_results.html:112
+#: results/templates/results/course_results.html:75
+#: results/templates/results/org_results.html:46
+#: results/templates/results/relay_results.html:80
+msgid "1er"
+msgstr "1st"
+
+#: results/templates/results/base.html:200
+#: results/templates/results/class_results.html:113
+#: results/templates/results/course_results.html:76
+#: results/templates/results/org_results.html:48
+#: results/templates/results/relay_results.html:81
+msgid "2e"
+msgstr "2nd"
+
+#: results/templates/results/base.html:201
+#: results/templates/results/class_results.html:114
+#: results/templates/results/course_results.html:77
+#: results/templates/results/org_results.html:50
+#: results/templates/results/relay_results.html:82
+msgid "3e"
+msgstr "3rd"
+
+#: results/templates/results/base.html:202
+msgid "Afficher abandons"
+msgstr "Show DNFs"
+
+#: results/templates/results/class_results.html:41
+#: results/templates/results/course_results.html:29
+#: results/templates/results/recapitulatif.html:38
+#: results/templates/results/relay_results.html:28
+#, python-format
+msgid "Leader : %(leader_time)s"
+msgstr "Leader: %(leader_time)s"
+
+#: results/templates/results/class_results.html:46
+#: results/templates/results/competition_detail.html:121
+#: results/templates/results/competition_detail.html:182
+#: results/templates/results/course_results.html:34
+#: results/templates/results/duel.html:48
+#: results/templates/results/grouping.html:15
+#: results/templates/results/grouping_index.html:45
+#: results/templates/results/live_results.html:28
+#: results/templates/results/performance.html:15
+#: results/templates/results/recapitulatif.html:43
+#: results/templates/results/regularity.html:44
+#: results/templates/results/superman.html:18
+#, python-format
+msgid "%(n)s poste"
+msgid_plural "%(n)s postes"
+msgstr[0] "%(n)s control"
+msgstr[1] "%(n)s controls"
+
+#: results/templates/results/class_results.html:62
+#: results/templates/results/recapitulatif.html:64
+msgid "Catégories sur ce circuit"
+msgstr "Categories on this course"
+
+#: results/templates/results/class_results.html:74
+msgid "Nom, club ou catégorie…"
+msgstr "Name, club or category…"
+
+#: results/templates/results/class_results.html:77
+#: results/templates/results/course_results.html:47
+msgid "Nom ou club…"
+msgstr "Name or club…"
+
+#: results/templates/results/class_results.html:87
+msgid "Classement"
+msgstr "Ranking"
+
+#: results/templates/results/class_results.html:88
+#: results/templates/results/recapitulatif.html:77
+#, python-format
+msgid "Circuit %(name)s"
+msgstr "Course %(name)s"
+
+#: results/templates/results/class_results.html:97
+#: results/templates/results/course_results.html:61
+#: results/templates/results/org_results.html:35
+#: results/templates/results/recapitulatif.html:105
+#: results/templates/results/superman.html:91
+msgid "Concurrent"
+msgstr "Competitor"
+
+#: results/templates/results/class_results.html:100
+#: results/templates/results/course_results.html:64
+#: results/templates/results/duel.html:592
+#: results/templates/results/duel.html:716
+#: results/templates/results/performance.html:62
+#: results/templates/results/regularity.html:132
+#: results/templates/results/regularity.html:137
+#: results/templates/results/superman.html:67
+#: results/templates/results/superman.html:93
+msgid "Temps"
+msgstr "Time"
+
+#: results/templates/results/class_results.html:101
+#: results/templates/results/course_results.html:65
+#: results/templates/results/duel.html:176
+#: results/templates/results/duel.html:549
+#: results/templates/results/relay_results.html:71
+msgid "Écart"
+msgstr "Gap"
+
+#: results/templates/results/class_results.html:102
+msgid "Rang dans la catégorie"
+msgstr "Category rank"
+
+#: results/templates/results/class_results.html:102
+msgid "Rg. cat."
+msgstr "Cat. rank"
+
+#: results/templates/results/class_results.html:122
+#: results/templates/results/competitor_detail.html:19
+#: results/templates/results/course_results.html:85
+#: results/templates/results/live_results.html:185
+#: results/templates/results/recapitulatif.html:124
+#: results/templates/results/recapitulatif.html:167
+#: results/templates/results/relay_results.html:87
+msgid "Temps négatif : boîtier mal synchronisé ou carte SI non effacée"
+msgstr "Negative time: unit not synchronized or SI card not cleared"
+
+#: results/templates/results/class_results.html:122
+#: results/templates/results/competitor_detail.html:19
+#: results/templates/results/course_results.html:85
+#: results/templates/results/live_results.html:186
+#: results/templates/results/recapitulatif.html:124
+#: results/templates/results/recapitulatif.html:167
+#: results/templates/results/relay_results.html:87
+msgid "Temps négatif"
+msgstr "Negative time"
+
+#: results/templates/results/class_results.html:145
+#: results/templates/results/course_results.html:102
+msgid "Afficher les intermédiaires"
+msgstr "Show splits"
+
+#: results/templates/results/class_results.html:184
+#: results/templates/results/recapitulatif.html:185
+msgid "Aucun résultat."
+msgstr "No results."
+
+#: results/templates/results/class_results.html:202
+#: results/templates/results/live_results.html:124
+#: results/templates/results/recapitulatif.html:202
+msgid "Début"
+msgstr "From"
+
+#: results/templates/results/class_results.html:206
+#: results/templates/results/class_results.html:221
+#: results/templates/results/course_results.html:143
+#: results/templates/results/live_results.html:128
+#: results/templates/results/live_results.html:143
+#: results/templates/results/org_results.html:99
+#: results/templates/results/recapitulatif.html:206
+#: results/templates/results/recapitulatif.html:221
+#: results/templates/results/relay_results.html:187
+msgid "Toutes les catégories"
+msgstr "All categories"
+
+#: results/templates/results/class_results.html:214
+#: results/templates/results/live_results.html:136
+#: results/templates/results/recapitulatif.html:214
+msgid "Fin"
+msgstr "To"
+
+#: results/templates/results/class_results.html:233
+#: results/templates/results/course_results.html:156
+#, python-format
+msgid "Coureurs en erreur (%%)"
+msgstr "Runners in error (%%)"
+
+#: results/templates/results/class_results.html:234
+#: results/templates/results/course_results.html:157
+msgid "Erreur moyenne (s)"
+msgstr "Average error (s)"
+
+#: results/templates/results/class_results.html:235
+#: results/templates/results/course_results.html:158
+msgid "Erreur moy. (s)"
+msgstr "Avg. error (s)"
+
+#: results/templates/results/class_results.html:245
+#: results/templates/results/course_results.html:169
+msgid "Réduire tous les intermédiaires"
+msgstr "Collapse all splits"
+
+#: results/templates/results/competition_detail.html:27
+#: results/templates/results/home.html:92
+msgid "Site de l'organisateur — nouvel onglet"
+msgstr "Organizer website — new tab"
+
+#: results/templates/results/competition_detail.html:32
+#: results/templates/results/statistics.html:3
+#: results/templates/results/statistics.html:12
+#: results/templates/results/statistics.html:15
+msgid "Statistiques"
+msgstr "Statistics"
+
+#: results/templates/results/competition_detail.html:36
+#: results/templates/results/start_list.html:3
+#: results/templates/results/start_list.html:12
+#: results/templates/results/start_list.html:15
+msgid "Horaires de départ"
+msgstr "Start times"
+
+#: results/templates/results/competition_detail.html:57
+msgid "Catégories"
+msgstr "Categories"
+
+#: results/templates/results/competition_detail.html:64
+#: results/templates/results/meos_checker.html:147
+msgid "Circuits"
+msgstr "Courses"
+
+#: results/templates/results/competition_detail.html:75
+#: results/templates/results/start_list.html:44
+msgid "Par catégorie"
+msgstr "By category"
+
+#: results/templates/results/competition_detail.html:80
+msgid "Par circuit"
+msgstr "By course"
+
+#: results/templates/results/competition_detail.html:88
+#: results/templates/results/verifie_moi.html:121
+msgid "Filtrer…"
+msgstr "Filter…"
+
+#: results/templates/results/competition_detail.html:101
+msgid "Relais"
+msgstr "Relay"
+
+#: results/templates/results/competition_detail.html:104
+#: results/templates/results/relay_results.html:32
+#, python-format
+msgid "%(n)s équipe"
+msgid_plural "%(n)s équipes"
+msgstr[0] "%(n)s team"
+msgstr[1] "%(n)s teams"
+
+#: results/templates/results/competition_detail.html:106
+#: results/templates/results/competition_detail.html:123
+msgid "Temps négatifs dans cette catégorie"
+msgstr "Negative times in this category"
+
+#: results/templates/results/competition_detail.html:107
+#: results/templates/results/competition_detail.html:124
+#: results/templates/results/competition_detail.html:185
+#, python-format
+msgid "%(n)s temps négatif"
+msgid_plural "%(n)s temps négatifs"
+msgstr[0] "%(n)s negative time"
+msgstr[1] "%(n)s negative times"
+
+#: results/templates/results/competition_detail.html:129
+#, python-format
+msgid "%(nf)s classé"
+msgid_plural "%(nf)s classés"
+msgstr[0] "%(nf)s classified"
+msgstr[1] "%(nf)s classified"
+
+#: results/templates/results/competition_detail.html:129
+#, python-format
+msgid "%(nt)s partant"
+msgid_plural "%(nt)s partants"
+msgstr[0] "%(nt)s starter"
+msgstr[1] "%(nt)s starters"
+
+#: results/templates/results/competition_detail.html:146
+#: results/templates/results/competition_detail.html:213
+msgid "Perf."
+msgstr "Perf."
+
+#: results/templates/results/competition_detail.html:160
+#, python-format
+msgid "Aucune catégorie trouvée (cid=%(cid)s)."
+msgstr "No category found (cid=%(cid)s)."
+
+#: results/templates/results/competition_detail.html:184
+msgid "Temps négatifs sur ce circuit"
+msgstr "Negative times on this course"
+
+#: results/templates/results/competition_list.html:18
+msgid "Toutes les compétitions présentes dans la base, avec leur CID."
+msgstr "All competitions in the database, with their CID."
+
+#: results/templates/results/competition_list.html:28
+msgid "Prochaine compétition"
+msgstr "Next competition"
+
+#: results/templates/results/competition_list.html:33
+msgid "CID à utiliser pour la prochaine course"
+msgstr "CID to use for the next race"
+
+#: results/templates/results/competition_list.html:41
+#, python-format
+msgid "Compétitions (%(n)s)"
+msgstr "Competitions (%(n)s)"
+
+#: results/templates/results/competition_list.html:49
+msgid "CID"
+msgstr "CID"
+
+#: results/templates/results/competition_list.html:49
+msgid "Trier par CID"
+msgstr "Sort by CID"
+
+#: results/templates/results/competition_list.html:53
+msgid "Trier par date"
+msgstr "Sort by date"
+
+#: results/templates/results/competition_list.html:55
+msgid "Organisateur"
+msgstr "Organizer"
+
+#: results/templates/results/competition_list.html:77
+msgid "Aucune compétition trouvée dans la table <code>mopCompetition</code>."
+msgstr "No competition found in the <code>mopCompetition</code> table."
+
+#: results/templates/results/competitor_detail.html:31
+msgid "Fiche concurrent"
+msgstr "Competitor details"
+
+#: results/templates/results/competitor_detail.html:61
+msgid "Résultat"
+msgstr "Result"
+
+#: results/templates/results/competitor_detail.html:85
+#: results/templates/results/recapitulatif.html:76
+msgid "Temps intermédiaires"
+msgstr "Splits"
+
+#: results/templates/results/competitor_detail.html:91
+msgid "Balise"
+msgstr "Punch"
+
+#: results/templates/results/competitor_detail.html:92
+#: results/templates/results/duel.html:166
+msgid "Cumulé"
+msgstr "Cumulative"
+
+#: results/templates/results/competitor_detail.html:93
+#: results/templates/results/duel.html:164
+#: results/templates/results/duel.html:175
+#: results/templates/results/superman.html:66
+msgid "Tronçon"
+msgstr "Leg"
+
+#: results/templates/results/competitor_detail.html:128
+msgid ""
+"Temps intermédiaires masqués tant qu’aucun coureur n’a terminé le circuit "
+"dans cette catégorie."
+msgstr "Splits hidden until a runner has finished the course in this category."
+
+#: results/templates/results/competitor_detail.html:133
+msgid ""
+"Aucun temps intermédiaire disponible (table <code>mopRadio</code> vide pour "
+"ce concurrent)."
+msgstr ""
+"No split available (<code>mopRadio</code> table empty for this competitor)."
+
+#: results/templates/results/course_results.html:53
+#, python-format
+msgid "Classement circuit — %(name)s"
+msgstr "Course ranking — %(name)s"
+
+#: results/templates/results/course_results.html:84
+#, python-format
+msgid "(%(rank)s<sup>e</sup> cat.)"
+msgstr "(%(rank)s<sup>th</sup> cat.)"
+
+#: results/templates/results/course_results.html:132
+msgid "Aucun résultat pour ce circuit."
+msgstr "No results for this course."
+
+#: results/templates/results/drivers.html:3
+#, python-format
+msgid "Drivers GEC — %(SITE_NAME)s"
+msgstr "GEC drivers — %(SITE_NAME)s"
+
+#: results/templates/results/drivers.html:14
+msgid "Drivers pour matériel de GEC"
+msgstr "Drivers for GEC hardware"
+
+#: results/templates/results/drivers.html:22
+msgid "Imprimantes thermiques"
+msgstr "Thermal printers"
+
+#: results/templates/results/drivers.html:29
+#: results/templates/results/drivers.html:40
+msgid "Pilote imprimante thermique"
+msgstr "Thermal printer driver"
+
+#: results/templates/results/drivers.html:33
+#: results/templates/results/drivers.html:44
+msgid "Site Officiel"
+msgstr "Official website"
+
+#: results/templates/results/drivers.html:51
+msgid "Drivers / Suite "
+msgstr "Drivers / More "
+
+#: results/templates/results/drivers.html:55
+msgid "Site officiel"
+msgstr "Official website"
+
+#: results/templates/results/duel.html:67
+msgid "Aucun coureur disponible pour cette catégorie."
+msgstr "No runner available for this category."
+
+#: results/templates/results/duel.html:75
+msgid "Choisissez les deux coureurs à comparer"
+msgstr "Choose the two runners to compare"
+
+#: results/templates/results/duel.html:82
+#: results/templates/results/duel.html:174
+msgid "Coureur A"
+msgstr "Runner A"
+
+#: results/templates/results/duel.html:85
+#: results/templates/results/duel.html:101
+msgid "— Sélectionner —"
+msgstr "— Select —"
+
+#: results/templates/results/duel.html:98
+#: results/templates/results/duel.html:177
+msgid "Coureur B"
+msgstr "Runner B"
+
+#: results/templates/results/duel.html:118
+#: results/templates/results/duel.html:130
+msgid "tronçons gagnés"
+msgstr "legs won"
+
+#: results/templates/results/duel.html:124
+msgid "ex-æquo"
+msgstr "tied"
+
+#: results/templates/results/duel.html:139
+msgid "Visualisation du duel"
+msgstr "Duel view"
+
+#: results/templates/results/duel.html:140
+msgid "Type de graphique"
+msgstr "Chart type"
+
+#: results/templates/results/duel.html:142
+msgid "Évolution"
+msgstr "Progression"
+
+#: results/templates/results/duel.html:144
+#: results/templates/results/duel.html:509
+msgid "Écart cumulé"
+msgstr "Cumulative gap"
+
+#: results/templates/results/duel.html:146
+msgid "Écarts par tronçon"
+msgstr "Gaps per leg"
+
+#: results/templates/results/duel.html:148
+msgid "Côte à côte"
+msgstr "Side by side"
+
+#: results/templates/results/duel.html:159
+msgid "Comparaison tronçon par tronçon"
+msgstr "Leg-by-leg comparison"
+
+#: results/templates/results/duel.html:161
+msgid "Afficher temps :"
+msgstr "Show times:"
+
+#: results/templates/results/duel.html:189
+msgid ""
+"Sélectionnez deux coureurs ci-dessus pour afficher le duel tronçon par "
+"tronçon."
+msgstr "Select two runners above to show the leg-by-leg duel."
+
+#: results/templates/results/duel.html:406
+msgid "TOTAL"
+msgstr "TOTAL"
+
+#: results/templates/results/duel.html:468
+msgid "cumulé"
+msgstr "cumulative"
+
+#: results/templates/results/duel.html:468
+msgid "tronçon"
+msgstr "leg"
+
+#: results/templates/results/duel.html:509
+msgid "Écart sur le tronçon"
+msgstr "Gap on the leg"
+
+#: results/templates/results/duel.html:549
+msgid " (A − B : sous 0 = A plus rapide)"
+msgstr " (A − B: below 0 = A is faster)"
+
+#: results/templates/results/duel.html:615
+msgid "Écart cumulé (A − B)"
+msgstr "Cumulative gap (A − B)"
+
+#: results/templates/results/duel.html:665
+msgid "Écart cumulé (A − B : sous 0 = A en tête)"
+msgstr "Cumulative gap (A − B: below 0 = A leads)"
+
+#: results/templates/results/etiquettes.html:3
+#, python-format
+msgid "Étiquettes boîtiers — %(SITE_NAME)s"
+msgstr "Unit labels — %(SITE_NAME)s"
+
+#: results/templates/results/etiquettes.html:11
+msgid "Étiquettes"
+msgstr "Labels"
+
+#: results/templates/results/etiquettes.html:15
+msgid "Étiquettes pour boîtiers"
+msgstr "Labels for units"
+
+#: results/templates/results/etiquettes.html:17
+msgid "Planches au bon format pour numéroter les boîtiers si besoin."
+msgstr "Correctly sized sheets to number your units if needed."
+
+#: results/templates/results/etiquettes.html:27
+msgid "Planches d'étiquettes — choisissez vos numéros"
+msgstr "Label sheets — choose your numbers"
+
+#: results/templates/results/etiquettes.html:34
+msgid "Boîtiers 31 à 60"
+msgstr "Units 31 to 60"
+
+#: results/templates/results/etiquettes.html:35
+#: results/templates/results/etiquettes.html:47
+#: results/templates/results/etiquettes.html:59
+#: results/templates/results/etiquettes.html:71
+#: results/templates/results/etiquettes.html:83
+msgid "Planche PDF prête à imprimer"
+msgstr "PDF sheet ready to print"
+
+#: results/templates/results/etiquettes.html:46
+msgid "Boîtiers 61 à 90"
+msgstr "Units 61 to 90"
+
+#: results/templates/results/etiquettes.html:58
+msgid "Boîtiers 91 à 120"
+msgstr "Units 91 to 120"
+
+#: results/templates/results/etiquettes.html:70
+msgid "Boîtiers 121 à 150"
+msgstr "Units 121 to 150"
+
+#: results/templates/results/etiquettes.html:82
+msgid "Boîtiers 151 à 180"
+msgstr "Units 151 to 180"
+
+#: results/templates/results/grouping.html:5
+#, python-format
+msgid "Regroupement — %(c_name)s — %(comp_name)s"
+msgstr "Grouping — %(c_name)s — %(comp_name)s"
+
+#: results/templates/results/grouping.html:6
+#: results/templates/results/grouping.html:8
+msgid "Regroupement des coureurs"
+msgstr "Runner grouping"
+
+#: results/templates/results/grouping.html:21
+msgid "Pas assez de données pour afficher le regroupement des coureurs."
+msgstr "Not enough data to display runner grouping."
+
+#: results/templates/results/grouping.html:27
+msgid ""
+"Le graphique montre le <strong>déroulé de la course en heure absolue</"
+"strong>.\n"
+"  Des <strong>lignes proches</strong> indiquent des coureurs ayant "
+"probablement couru ensemble.\n"
+"  Une ligne <strong>plus horizontale</strong> signifie un coureur plus "
+"rapide sur ce tronçon.\n"
+"  Un <strong>croisement de lignes</strong> révèle un dépassement."
+msgstr ""
+"The chart shows the <strong>race progression in absolute time</strong>.\n"
+"  <strong>Close lines</strong> indicate runners who probably ran together.\n"
+"  A <strong>more horizontal</strong> line means a faster runner on this "
+"leg.\n"
+"  A <strong>crossing of lines</strong> reveals an overtake."
+
+#: results/templates/results/grouping.html:37
+msgid "Type de coureurs"
+msgstr "Runner type"
+
+#: results/templates/results/grouping.html:43
+msgid "Classés seulement"
+msgstr "Classified only"
+
+#: results/templates/results/grouping.html:49
+msgid "Temps de passage absolu par poste de contrôle"
+msgstr "Absolute passage time per control"
+
+#: results/templates/results/grouping.html:63
+msgid "Temps de course"
+msgstr "Race time"
+
+#: results/templates/results/grouping.html:181
+msgid "Heure de passage (temps absolu)"
+msgstr "Passage time (absolute time)"
+
+#: results/templates/results/grouping_index.html:63
+msgid "Pas assez de données pour calculer l'indice lièvre / suiveur."
+msgstr "Not enough data to compute the hare / follower index."
+
+#: results/templates/results/grouping_index.html:72
+msgid ""
+"L'<strong>indice lièvre / suiveur</strong> évalue les regroupements à "
+"partir\n"
+"  des heures absolues de passage aux postes.\n"
+"  Une case <strong style=\"color:#1a6b3c\">verte</strong> indique un coureur "
+"en\n"
+"  tête de groupe (lièvre) ; une case <strong style=\"color:#c0392b\">rouge</"
+"strong>\n"
+"  un coureur qui en suit un autre (suiveur).\n"
+"  Une case grise signifie que le coureur était seul sur ce tronçon.\n"
+"  L'<strong>indice global</strong> est la moyenne pondérée par la durée de\n"
+"  chaque tronçon."
+msgstr ""
+"The <strong>hare / follower index</strong> evaluates grouping based on\n"
+"  absolute passage times at the controls.\n"
+"  A <strong style=\"color:#1a6b3c\">green</strong> cell marks a runner at "
+"the\n"
+"  front of a group (hare); a <strong style=\"color:#c0392b\">red</strong> "
+"cell\n"
+"  a runner following another (follower).\n"
+"  A grey cell means the runner was alone on this leg.\n"
+"  The <strong>overall index</strong> is the average weighted by the duration "
+"of\n"
+"  each leg."
+
+#: results/templates/results/grouping_index.html:87
+#, python-format
+msgid "Seuil T1 — lièvre à 100%%"
+msgstr "Threshold T1 — hare at 100%%"
+
+#: results/templates/results/grouping_index.html:97
+msgid "Seuil T2 — aucune interaction"
+msgstr "Threshold T2 — no interaction"
+
+#: results/templates/results/grouping_index.html:106
+msgid "Recalculer"
+msgstr "Recalculate"
+
+#: results/templates/results/grouping_index.html:109
+msgid "Légende :"
+msgstr "Legend:"
+
+#: results/templates/results/grouping_index.html:111
+msgid "Lièvre"
+msgstr "Hare"
+
+#: results/templates/results/grouping_index.html:113
+msgid "Seul"
+msgstr "Alone"
+
+#: results/templates/results/grouping_index.html:115
+msgid "Suiveur"
+msgstr "Follower"
+
+#: results/templates/results/grouping_index.html:123
+msgid "Indice par coureur et par tronçon"
+msgstr "Index by runner and leg"
+
+#: results/templates/results/grouping_index.html:138
+msgid "Indice global par coureur"
+msgstr "Overall index by runner"
+
+#: results/templates/results/grouping_index.html:147
+msgid "Indice / Profil"
+msgstr "Index / Profile"
+
+#: results/templates/results/grouping_index.html:230
+msgid "Indice global pondéré"
+msgstr "Weighted overall index"
+
+#: results/templates/results/grouping_index.html:230
+msgid "Global"
+msgstr "Overall"
+
+#: results/templates/results/grouping_index.html:301
+msgid "T2 doit être supérieur à T1."
+msgstr "T2 must be greater than T1."
+
+#: results/templates/results/home.html:21
+msgid "Compétitions"
+msgstr "Competitions"
+
+#: results/templates/results/home.html:27
+msgid "Année"
+msgstr "Year"
+
+#: results/templates/results/home.html:33
+msgid "3 plus récentes"
+msgstr "3 most recent"
+
+#: results/templates/results/home.html:37
+msgid "Toutes"
+msgstr "All"
+
+#: results/templates/results/home.html:49
+msgid "X derniers mois"
+msgstr "Last X months"
+
+#: results/templates/results/home.html:53
+msgid "Filtrer"
+msgstr "Filter"
+
+#: results/templates/results/home.html:63
+msgid "Sans date"
+msgstr "No date"
+
+#: results/templates/results/home.html:81
+msgid "Course en attente du premier import MeOS"
+msgstr "Race awaiting first MeOS import"
+
+#: results/templates/results/home.html:82
+#: results/templates/results/live_results.html:87
+#: results/templates/results/live_results.html:172
+msgid "En attente"
+msgstr "Waiting"
+
+#: results/templates/results/home.html:98
+msgid "Voir les résultats"
+msgstr "View results"
+
+#: results/templates/results/home.html:103
+msgid "Horaires"
+msgstr "Schedule"
+
+#: results/templates/results/home.html:124
+msgid "Aucune compétition ne correspond aux filtres sélectionnés."
+msgstr "No competition matches the selected filters."
+
+#: results/templates/results/home.html:125
+msgid "Essayez une autre année ou un nombre de mois plus grand."
+msgstr "Try another year or a larger number of months."
+
+#: results/templates/results/home.html:127
+msgid "Aucune compétition trouvée dans la base de données MeOS."
+msgstr "No competition found in the MeOS database."
+
+#: results/templates/results/home.html:128
+msgid ""
+"Vérifiez la connexion et que la table <code>mopCompetition</code> contient "
+"des données."
+msgstr ""
+"Check the connection and that the <code>mopCompetition</code> table contains "
+"data."
+
+#: results/templates/results/live_results.html:27
+msgid "Suivi en temps réel de la progression sur le parcours"
+msgstr "Real-time tracking of progress on the course"
+
+#: results/templates/results/live_results.html:32
+msgid "Temps de course depuis le premier départ"
+msgstr "Race time since first start"
+
+#: results/templates/results/live_results.html:35
+msgid "Heure actuelle"
+msgstr "Current time"
+
+#: results/templates/results/live_results.html:39
+#: results/templates/results/live_results.html:197
+msgid "Course terminée"
+msgstr "Race finished"
+
+#: results/templates/results/live_results.html:41
+#: results/templates/results/live_results.html:198
+msgid "Course à venir"
+msgstr "Race upcoming"
+
+#: results/templates/results/live_results.html:43
+#: results/templates/results/live_results.html:199
+msgid "En direct"
+msgstr "Live"
+
+#: results/templates/results/live_results.html:59
+msgid ""
+"Seuls les postes équipés d'un émetteur radio remontent leur poinçon en "
+"direct. La barre place le coureur sur le parcours en\n"
+"\t  fonction du dernier poinçon reçu (l'arrivée compte pour un poste). Un "
+"coureur ayant pointé le dernier poste radio apparaît\n"
+"\t  « En attente validation GEC » : son parcours est terminé mais sa carte "
+"n'a pas encore été lue à la GEC — le statut définitif n'est officiel\n"
+"\t  qu'une fois sa puce lue."
+msgstr ""
+"Only controls fitted with a radio emitter report their punch live. The bar "
+"places the runner on the course\n"
+"\t  according to the last punch received (the finish counts as a control). A "
+"runner who punched the last radio control appears\n"
+"\t  « Waiting for GEC validation »: their course is complete but their card "
+"has not yet been read at GEC — the final status is official\n"
+"\t  only once their SI card has been read."
+
+#: results/templates/results/live_results.html:69
+#: results/templates/results/live_results.html:169
+#: results/templates/results/live_results.html:182
+msgid "En course"
+msgstr "On course"
+
+#: results/templates/results/live_results.html:75
+msgid "Validation GEC"
+msgstr "GEC validation"
+
+#: results/templates/results/live_results.html:81
+#: results/templates/results/live_results.html:171
+msgid "Arrivés"
+msgstr "Finishers"
+
+#: results/templates/results/live_results.html:93
+#: results/templates/results/live_results.html:173
+msgid "Terminé"
+msgstr "Finished"
+
+#: results/templates/results/live_results.html:101
+msgid "Classement live"
+msgstr "Live ranking"
+
+#: results/templates/results/live_results.html:102
+msgid "Dernière mise à jour"
+msgstr "Last update"
+
+#: results/templates/results/live_results.html:108
+msgid "Chargement…"
+msgstr "Loading…"
+
+#: results/templates/results/live_results.html:170
+msgid "En attente validation GEC"
+msgstr "Waiting for GEC validation"
+
+#: results/templates/results/live_results.html:176
+msgid "Aucun coureur parti pour le moment."
+msgstr "No runner has started yet."
+
+#: results/templates/results/live_results.html:177
+msgid "Aucun coureur en attente de validation GEC."
+msgstr "No runner waiting for GEC validation."
+
+#: results/templates/results/live_results.html:178
+msgid "Aucun arrivé pour le moment."
+msgstr "No finisher yet."
+
+#: results/templates/results/live_results.html:179
+msgid "Aucun coureur en attente."
+msgstr "No runner waiting."
+
+#: results/templates/results/live_results.html:180
+msgid "Aucun."
+msgstr "None."
+
+#: results/templates/results/live_results.html:183
+#, python-format
+msgid "Temps négatif au poste %%s"
+msgstr "Negative time at control %%s"
+
+#: results/templates/results/live_results.html:184
+#, python-format
+msgid "Temps négatif aux postes %%s"
+msgstr "Negative time at controls %%s"
+
+#: results/templates/results/live_results.html:187
+msgid "Tous les postes du parcours"
+msgstr "All controls on the course"
+
+#: results/templates/results/live_results.html:188
+#, python-format
+msgid "%%s — poinçon avant le départ"
+msgstr "%%s — punch before the start"
+
+#: results/templates/results/live_results.html:189
+msgid "Temps final provisoire — validation GEC en attente"
+msgstr "Provisional final time — GEC validation pending"
+
+#: results/templates/results/live_results.html:190
+msgid "Temps de course depuis le départ"
+msgstr "Race time since the start"
+
+#: results/templates/results/live_results.html:191
+#: results/templates/results/start_list.html:174
+#: results/templates/results/start_list.html:180
+msgid "Heure de départ"
+msgstr "Start time"
+
+#: results/templates/results/live_results.html:192
+#, python-format
+msgid "Départ %%s"
+msgstr "Start %%s"
+
+#: results/templates/results/live_results.html:193
+msgid "Aucun coureur — le flux MOP n'a peut-être pas encore été reçu."
+msgstr "No runner — the MOP feed may not have been received yet."
+
+#: results/templates/results/live_results.html:194
+#, python-format
+msgid "Mis à jour %%s"
+msgstr "Updated %%s"
+
+#: results/templates/results/live_results.html:195
+#, python-format
+msgid "il y a %%s"
+msgstr "%%s ago"
+
+#: results/templates/results/live_results.html:196
+#, python-format
+msgid "dans %%s"
+msgstr "in %%s"
+
+#: results/templates/results/live_results.html:200
+msgid "Hors ligne"
+msgstr "Offline"
+
+#: results/templates/results/live_results.html:201
+#, python-format
+msgid "%%s j %%s h %%s min %%s s"
+msgstr "%%s d %%s h %%s min %%s s"
+
+#: results/templates/results/live_results.html:202
+#, python-format
+msgid "%%s h %%s min %%s s"
+msgstr "%%s h %%s min %%s s"
+
+#: results/templates/results/live_results.html:203
+#, python-format
+msgid "%%s min %%s s"
+msgstr "%%s min %%s s"
+
+#: results/templates/results/live_results.html:204
+#, python-format
+msgid "%%s s"
+msgstr "%%s s"
+
+#: results/templates/results/markdown_content.html:36
+msgid "Tous les tutoriels"
+msgstr "All tutorials"
+
+#: results/templates/results/meos_checker.html:15
+msgid "Verificateur de tirage MeOS"
+msgstr "MeOS draw checker"
+
+#: results/templates/results/meos_checker.html:17
+msgid ""
+"Chargez un fichier <code>.meosxml</code> pour verifier la conformite "
+"reglementaire du tirage."
+msgstr ""
+"Upload a <code>.meosxml</code> file to check that the draw complies with the "
+"rules."
+
+#: results/templates/results/meos_checker.html:32
+#: results/templates/results/verifie_moi.html:44
+msgid "Charger un fichier MeOS"
+msgstr "Upload a MeOS file"
+
+#: results/templates/results/meos_checker.html:40
+#: results/templates/results/verifie_moi.html:52
+msgid "Fichier d'exportation MeOS (<code>.meosxml</code>)"
+msgstr "MeOS export file (<code>.meosxml</code>)"
+
+#: results/templates/results/meos_checker.html:55
+msgid "Verifier la conformite"
+msgstr "Check compliance"
+
+#: results/templates/results/meos_checker.html:63
+msgid "Tirage au sort"
+msgstr "Draw"
+
+#: results/templates/results/meos_checker.html:75
+msgid "Complétude des données"
+msgstr "Data completeness"
+
+#: results/templates/results/meos_checker.html:93
+msgid ""
+"Exportez depuis MeOS via <em>Fichier &rarr; Sauvegarder sous&hellip;</em>\n"
+"            au format <code>.meosxml</code>.\n"
+"            &mdash; Écart min. : si deux coureurs du même club sont séparés "
+"par un écart\n"
+"            inférieur ou égal à cette valeur (en secondes), ils sont "
+"considérés consécutifs."
+msgstr ""
+"Export from MeOS via <em>File &rarr; Save as&hellip;</em>\n"
+"            in <code>.meosxml</code> format.\n"
+"            &mdash; Min. gap: if two runners from the same club are "
+"separated by a gap\n"
+"            less than or equal to this value (in seconds), they are "
+"considered consecutive."
+
+#: results/templates/results/meos_checker.html:107
+#: results/templates/results/verifie_moi.html:72
+msgid "Erreur de lecture du fichier :"
+msgstr "File read error:"
+
+#: results/templates/results/meos_checker.html:123
+msgid "Coureurs tires"
+msgstr "Runners drawn"
+
+#: results/templates/results/meos_checker.html:129
+msgid "Depart en parallele"
+msgstr "Parallel start"
+
+#: results/templates/results/meos_checker.html:135
+msgid "Places vacantes"
+msgstr "Empty slots"
+
+#: results/templates/results/meos_checker.html:141
+msgid "Categories"
+msgstr "Categories"
+
+#: results/templates/results/meos_checker.html:153
+msgid "Erreurs"
+msgstr "Errors"
+
+#: results/templates/results/meos_checker.html:154
+msgid "Avertissements"
+msgstr "Warnings"
+
+#: results/templates/results/meos_checker.html:155
+msgid "Conforme"
+msgstr "Compliant"
+
+#: results/templates/results/meos_checker.html:157
+msgid "Statut general"
+msgstr "Overall status"
+
+#: results/templates/results/meos_checker.html:174
+msgid "Regles de tirage au sort"
+msgstr "Draw rules"
+
+#: results/templates/results/meos_checker.html:183
+msgid "Completude des donnees"
+msgstr "Data completeness"
+
+#: results/templates/results/meos_checker.html:201
+msgid "Analyse en cours&hellip;"
+msgstr "Analysis in progress&hellip;"
+
+#: results/templates/results/org_results.html:18
+#, python-format
+msgid "%(n)s concurrent"
+msgid_plural "%(n)s concurrents"
+msgstr[0] "%(n)s competitor"
+msgstr[1] "%(n)s competitors"
+
+#: results/templates/results/org_results.html:28
+#, python-format
+msgid "Concurrents — %(name)s"
+msgstr "Competitors — %(name)s"
+
+#: results/templates/results/org_results.html:37
+msgid "Temps&nbsp;/&nbsp;Statut"
+msgstr "Time&nbsp;/&nbsp;Status"
+
+#: results/templates/results/org_results.html:87
+msgid "Aucun concurrent pour ce club."
+msgstr "No competitor from this club."
+
+#: results/templates/results/performance.html:5
+#, python-format
+msgid "Indice de performance — %(c_name)s — %(comp_name)s"
+msgstr "Performance index — %(c_name)s — %(comp_name)s"
+
+#: results/templates/results/performance.html:6
+#: results/templates/results/performance.html:8
+#: results/templates/results/performance.html:180
+msgid "Indice de performance"
+msgstr "Performance index"
+
+#: results/templates/results/performance.html:21
+msgid "Pas assez de données pour calculer l'indice de performance."
+msgstr "Not enough data to compute the performance index."
+
+#: results/templates/results/performance.html:27
+#, python-format
+msgid ""
+"L'<strong>indice de performance</strong> d'un coureur sur un tronçon est la\n"
+"  <strong>moyenne des 25%% meilleurs temps</strong> divisée par son propre "
+"temps.\n"
+"  Une valeur de <strong>1.0</strong> signifie qu'il court au niveau des "
+"meilleurs.\n"
+"  Une <strong>courbe haute et étroite</strong> indique une course "
+"régulière ;\n"
+"  une <strong>courbe étalée</strong> révèle des irrégularités entre les "
+"tronçons.\n"
+"  Chaque tronçon est <strong>pondéré par sa longueur</strong> (temps de "
+"référence)."
+msgstr ""
+"A runner's <strong>performance index</strong> on a leg is the\n"
+"  <strong>average of the 25%% fastest times</strong> divided by their own "
+"time.\n"
+"  A value of <strong>1.0</strong> means they run at the level of the best.\n"
+"  A <strong>tall, narrow curve</strong> indicates a consistent race;\n"
+"  a <strong>spread-out curve</strong> reveals inconsistencies between legs.\n"
+"  Each leg is <strong>weighted by its length</strong> (reference time)."
+
+#: results/templates/results/performance.html:39
+msgid "Lissage &sigma; ="
+msgstr "Smoothing &sigma; ="
+
+#: results/templates/results/performance.html:48
+msgid "Distribution des indices de performance"
+msgstr "Distribution of performance indices"
+
+#: results/templates/results/performance.html:52
+#: results/templates/results/regularity.html:118
+msgid "Récapitulatif par coureur"
+msgstr "Summary by runner"
+
+#: results/templates/results/performance.html:54
+msgid ""
+"IP moyen pondéré &middot; Régularité = écart-type (plus petit = plus "
+"régulier)"
+msgstr ""
+"Weighted avg. PI &middot; Consistency = standard deviation (lower = more "
+"consistent)"
+
+#: results/templates/results/performance.html:63
+#: results/templates/results/regularity.html:133
+#: results/templates/results/regularity.html:138
+msgid "IP moyen"
+msgstr "Avg. PI"
+
+#: results/templates/results/performance.html:64
+msgid "Régularité (&sigma;)"
+msgstr "Consistency (&sigma;)"
+
+#: results/templates/results/performance.html:168
+msgid "IP = "
+msgstr "PI = "
+
+#: results/templates/results/performance.html:187
+msgid "Densité (pondérée par longueur)"
+msgstr "Density (weighted by length)"
+
+#: results/templates/results/performance.html:210
+msgid "IP = 1.00"
+msgstr "PI = 1.00"
+
+#: results/templates/results/race_create.html:18
+msgid ""
+"Créez votre course sans compte : une clé API MeOS unique et un lien\n"
+"        privé de gestion sont générés automatiquement."
+msgstr ""
+"Create your race without an account: a unique MeOS API key and a private\n"
+"        management link are generated automatically."
+
+#: results/templates/results/race_create.html:32
+msgid "Informations de la course"
+msgstr "Race information"
+
+#: results/templates/results/race_create.html:55
+#: results/templates/results/race_manage.html:166
+msgid "Nom de la course *"
+msgstr "Race name *"
+
+#: results/templates/results/race_create.html:67
+#: results/templates/results/race_manage.html:177
+msgid "Date *"
+msgstr "Date *"
+
+#: results/templates/results/race_create.html:79
+#: results/templates/results/race_manage.html:188
+msgid "Organisateur / club *"
+msgstr "Organizer / club *"
+
+#: results/templates/results/race_create.html:122
+msgid "SVG, PNG ou JPEG — 2 Mo maximum."
+msgstr "SVG, PNG or JPEG — 2 MB max."
+
+#: results/templates/results/race_create.html:131
+msgid "Créer la course"
+msgstr "Create the race"
+
+#: results/templates/results/race_create.html:133
+msgid "Annuler"
+msgstr "Cancel"
+
+#: results/templates/results/race_create.html:141
+msgid "Comment ça marche ?"
+msgstr "How does it work?"
+
+#: results/templates/results/race_create.html:145
+msgid "Renseignez le nom, la date et le club organisateur."
+msgstr "Enter the name, date and organizing club."
+
+#: results/templates/results/race_create.html:147
+msgid ""
+"Après création, une <strong>clé API MeOS unique</strong> et un\n"
+"            <strong>lien privé de gestion</strong> sont affichés."
+msgstr ""
+"After creation, a <strong>unique MeOS API key</strong> and a\n"
+"            <strong>private management link</strong> are displayed."
+
+#: results/templates/results/race_create.html:151
+msgid ""
+"Dans MeOS (<em>Outils &rarr; Serveur Online</em>) : URL = celle du site,\n"
+"            <strong>Password = la clé API</strong>, numéro de compétition\n"
+"            <strong>laissé vide</strong>, compression ZIP désactivée,\n"
+"            format <em>MeOS Online Protocol XML 2.0</em>."
+msgstr ""
+"In MeOS (<em>Tools &rarr; Online Server</em>): URL = the site URL,\n"
+"            <strong>Password = the API key</strong>, competition number\n"
+"            <strong>left empty</strong>, ZIP compression disabled,\n"
+"            format <em>MeOS Online Protocol XML 2.0</em>."
+
+#: results/templates/results/race_create.html:157
+msgid ""
+"Conservez le lien privé : il permet de retrouver la clé,\n"
+"            de la régénérer et d'éditer les informations."
+msgstr ""
+"Keep the private link: it lets you recover the key,\n"
+"            regenerate it and edit the information."
+
+#: results/templates/results/race_create.html:163
+msgid ""
+"La course apparaît immédiatement sur le site, en attente du premier\n"
+"          import MeOS."
+msgstr ""
+"The race appears on the site immediately, awaiting the first\n"
+"          MeOS import."
+
+#: results/templates/results/race_manage.html:24
+msgid "Gestion de course"
+msgstr "Race management"
+
+#: results/templates/results/race_manage.html:34
+#, python-format
+msgid "CID interne : %(cid)s"
+msgstr "Internal CID: %(cid)s"
+
+#: results/templates/results/race_manage.html:46
+msgid "Nouvelle clé API générée."
+msgstr "New API key generated."
+
+#: results/templates/results/race_manage.html:47
+msgid ""
+"Remplacez l'ancienne clé dans MeOS, sans quoi les envois seront refusés."
+msgstr "Replace the old key in MeOS, otherwise uploads will be rejected."
+
+#: results/templates/results/race_manage.html:52
+msgid "Nouveau lien de gestion généré."
+msgstr "New management link generated."
+
+#: results/templates/results/race_manage.html:53
+msgid "Mettez à jour vos favoris : l'ancien lien ne fonctionne plus."
+msgstr "Update your bookmarks: the old link no longer works."
+
+#: results/templates/results/race_manage.html:58
+msgid "Informations de la course mises à jour."
+msgstr "Race information updated."
+
+#: results/templates/results/race_manage.html:64
+msgid ""
+"Ce lien est <strong>privé</strong> : toute personne qui le possède peut\n"
+"  afficher la clé API et la régénérer. Conservez-le précieusement (avec la\n"
+"  fiche imprimée ci-dessous)."
+msgstr ""
+"This link is <strong>private</strong>: anyone who has it can\n"
+"  view the API key and regenerate it. Keep it safe (with the\n"
+"  printed sheet below)."
+
+#: results/templates/results/race_manage.html:71
+msgid "Copier le lien de gestion"
+msgstr "Copy management link"
+
+#: results/templates/results/race_manage.html:76
+msgid "Régénérer le lien de gestion ? L\\'ancien lien ne fonctionnera plus."
+msgstr "Regenerate the management link? The old link will stop working."
+
+#: results/templates/results/race_manage.html:80
+msgid "Régénérer le lien de gestion"
+msgstr "Regenerate management link"
+
+#: results/templates/results/race_manage.html:87
+msgid "Paramètres à saisir dans MeOS"
+msgstr "Settings to enter in MeOS"
+
+#: results/templates/results/race_manage.html:90
+msgid "Imprimer / PDF"
+msgstr "Print / PDF"
+
+#: results/templates/results/race_manage.html:99
+msgid "URL d'envoi"
+msgstr "Upload URL"
+
+#: results/templates/results/race_manage.html:105
+msgid "Copier l'URL"
+msgstr "Copy URL"
+
+#: results/templates/results/race_manage.html:118
+msgid "Copier la clé"
+msgstr "Copy key"
+
+#: results/templates/results/race_manage.html:126
+msgid "laisser vide"
+msgstr "leave empty"
+
+#: results/templates/results/race_manage.html:129
+msgid "Compression ZIP"
+msgstr "ZIP compression"
+
+#: results/templates/results/race_manage.html:130
+msgid "Désactivée"
+msgstr "Disabled"
+
+#: results/templates/results/race_manage.html:133
+msgid "Intervalle"
+msgstr "Interval"
+
+#: results/templates/results/race_manage.html:134
+msgid "0 seconde"
+msgstr "0 seconds"
+
+#: results/templates/results/race_manage.html:137
+msgid "Format"
+msgstr "Format"
+
+#: results/templates/results/race_manage.html:145
+msgid ""
+"Régénérer la clé API ? L\\'ancienne clé deviendra immédiatement invalide."
+msgstr ""
+"Regenerate the API key? The previous key will become invalid immediately."
+
+#: results/templates/results/race_manage.html:149
+msgid "Régénérer la clé"
+msgstr "Regenerate key"
+
+#: results/templates/results/race_manage.html:157
+msgid "Modifier l'événement"
+msgstr "Edit event"
+
+#: results/templates/results/race_manage.html:224
+msgid "Enregistrer les modifications"
+msgstr "Save changes"
+
+#: results/templates/results/race_manage.html:228
+msgid "Créer une autre course"
+msgstr "Create another race"
+
+#: results/templates/results/recapitulatif.html:94
+msgid "Télécharger en CSV"
+msgstr "Download CSV"
+
+#: results/templates/results/recapitulatif.html:112 results/views.py:1038
+msgid "Arr."
+msgstr "Finish"
+
+#: results/templates/results/regularity.html:39
+#, python-format
+msgid "σ catégorie : %(category_regularity)s"
+msgstr "σ category: %(category_regularity)s"
+
+#: results/templates/results/regularity.html:62
+msgid ""
+"Pas assez de coureurs classés pour calculer la régularité\n"
+"  (minimum 2 requis)."
+msgstr ""
+"Not enough ranked runners to compute consistency\n"
+"  (minimum 2 required)."
+
+#: results/templates/results/regularity.html:72
+msgid ""
+"La <strong>régularité</strong> est mesurée par la déviation standard (σ) "
+"des\n"
+"  <strong>indices de performance</strong> — une valeur plus faible indique "
+"une\n"
+"  meilleure régularité."
+msgstr ""
+"<strong>Consistency</strong> is measured by the standard deviation (σ) of "
+"the\n"
+"  <strong>performance indices</strong> — a lower value means better\n"
+"  consistency."
+
+#: results/templates/results/regularity.html:76
+msgid ""
+"<strong>Coureur</strong> : σ pondéré de ses IP sur l'ensemble des tronçons\n"
+"        (pondéré par la longueur estimée du tronçon)."
+msgstr ""
+"<strong>Runner</strong>: weighted σ of their PIs across all legs\n"
+"        (weighted by the estimated leg length)."
+
+#: results/templates/results/regularity.html:78
+msgid ""
+"<strong>Tronçon</strong> : σ des IP de <em>tous</em> les coureurs sur ce "
+"tronçon\n"
+"        — un σ élevé signale un tronçon à forte dispersion (erreurs "
+"nombreuses ou\n"
+"        dénivelé/orientation difficile)."
+msgstr ""
+"<strong>Leg</strong>: σ of the PIs of <em>all</em> runners on this leg\n"
+"        — a high σ flags a leg with wide spread (many mistakes or\n"
+"        steep/hard navigation)."
+
+#: results/templates/results/regularity.html:81
+msgid ""
+"<strong>Catégorie</strong> : moyenne des σ pondérés de tous les coureurs."
+msgstr "<strong>Category</strong>: average of the weighted σ of all runners."
+
+#: results/templates/results/regularity.html:88
+msgid "Régularité par coureur (σ pondéré) —"
+msgstr "Consistency by runner (weighted σ) —"
+
+#: results/templates/results/regularity.html:89
+msgid "trié du plus régulier au moins régulier"
+msgstr "sorted from most to least consistent"
+
+#: results/templates/results/regularity.html:101
+msgid "Dispersion par tronçon (σ des IP)"
+msgstr "Dispersion by leg (σ of PIs)"
+
+#: results/templates/results/regularity.html:109
+msgid ""
+"Un tronçon avec un σ élevé présente une grande disparité de niveau entre\n"
+"      les coureurs — terrain sélectif, erreurs fréquentes ou poste difficile "
+"à trouver."
+msgstr ""
+"A leg with a high σ shows a large gap in level between\n"
+"      runners — selective terrain, frequent mistakes or a hard-to-find "
+"control."
+
+#: results/templates/results/regularity.html:120
+msgid "trié par régularité croissante (σ pondéré)"
+msgstr "sorted by increasing consistency (weighted σ)"
+
+#: results/templates/results/regularity.html:127
+msgid "Rang régularité"
+msgstr "Consistency rank"
+
+#: results/templates/results/regularity.html:127
+msgid "reg."
+msgstr "cons."
+
+#: results/templates/results/regularity.html:130
+#: results/templates/results/regularity.html:131
+msgid "Rang course"
+msgstr "Race rank"
+
+#: results/templates/results/regularity.html:131
+msgid "Rg"
+msgstr "Rank"
+
+#: results/templates/results/regularity.html:133
+msgid "Indice de performance moyen pondéré"
+msgstr "Weighted average performance index"
+
+#: results/templates/results/regularity.html:134
+msgid "Déviation standard pondérée"
+msgstr "Weighted standard deviation"
+
+#: results/templates/results/regularity.html:134
+msgid "σ (régularité)"
+msgstr "σ (consistency)"
+
+#: results/templates/results/regularity.html:135
+#: results/templates/results/regularity.html:142
+msgid "Profil σ"
+msgstr "σ profile"
+
+#: results/templates/results/regularity.html:136
+msgid "Temps / IP moyen"
+msgstr "Time / avg. PI"
+
+#: results/templates/results/regularity.html:140
+msgid "Déviation standard pondérée / profil"
+msgstr "Weighted standard deviation / profile"
+
+#: results/templates/results/regularity.html:217
+msgid "σ pondéré"
+msgstr "weighted σ"
+
+#: results/templates/results/regularity.html:238
+#: results/templates/results/regularity.html:292
+msgid "σ = "
+msgstr "σ = "
+
+#: results/templates/results/regularity.html:239
+msgid "IP moyen = "
+msgstr "Avg. PI = "
+
+#: results/templates/results/regularity.html:240
+msgid "Temps : "
+msgstr "Time: "
+
+#: results/templates/results/regularity.html:250
+msgid "Déviation standard pondérée (σ)"
+msgstr "Weighted standard deviation (σ)"
+
+#: results/templates/results/regularity.html:273
+msgid "σ des IP"
+msgstr "σ of PIs"
+
+#: results/templates/results/regularity.html:292
+msgid "Référence : "
+msgstr "Reference: "
+
+#: results/templates/results/regularity.html:305
+msgid "σ des IP (dispersion entre coureurs)"
+msgstr "σ of PIs (spread between runners)"
+
+#: results/templates/results/relay_results.html:21
+#, python-format
+msgid "Relais %(n_legs)s fractions"
+msgstr "Relay %(n_legs)s legs"
+
+#: results/templates/results/relay_results.html:48
+msgid "Équipe ou club…"
+msgstr "Team or club…"
+
+#: results/templates/results/relay_results.html:54
+#: results/templates/results/relay_results.html:227
+msgid "Développer toutes les fractions"
+msgstr "Expand all legs"
+
+#: results/templates/results/relay_results.html:60
+#, python-format
+msgid "Classement Relais — %(name)s"
+msgstr "Relay ranking — %(name)s"
+
+#: results/templates/results/relay_results.html:68
+msgid "Équipe"
+msgstr "Team"
+
+#: results/templates/results/relay_results.html:70
+msgid "Temps total"
+msgstr "Total time"
+
+#: results/templates/results/relay_results.html:96
+msgid "Afficher les fractions"
+msgstr "Show legs"
+
+#: results/templates/results/relay_results.html:142
+msgid "Intermédiaires"
+msgstr "Splits"
+
+#: results/templates/results/relay_results.html:176
+msgid "Aucune équipe pour cette catégorie."
+msgstr "No team in this category."
+
+#: results/templates/results/relay_results.html:226
+msgid "Réduire toutes les fractions"
+msgstr "Collapse all legs"
+
+#: results/templates/results/start_list.html:34
+msgid "Merci de nous signaler tout changement de puce."
+msgstr "Please report any SI card change to us."
+
+#: results/templates/results/start_list.html:39
+msgid "Recherche : nom, prénom, club, circuit, catégorie…"
+msgstr "Search: name, first name, club, course, category…"
+
+#: results/templates/results/start_list.html:45
+msgid "Par club"
+msgstr "By club"
+
+#: results/templates/results/start_list.html:46
+msgid "Par heure"
+msgstr "By time"
+
+#: results/templates/results/start_list.html:46
+#: results/templates/results/verifie_moi.html:129
+msgid "Heure"
+msgstr "Time"
+
+#: results/templates/results/start_list.html:153
+msgid "Lien copié"
+msgstr "Link copied"
+
+#: results/templates/results/start_list.html:154
+msgid "Impossible de copier le lien"
+msgstr "Could not copy the link"
+
+#: results/templates/results/start_list.html:162
+msgid "catégories"
+msgstr "categories"
+
+#: results/templates/results/start_list.html:163
+msgid "heures de départ"
+msgstr "start times"
+
+#: results/templates/results/start_list.html:164
+msgid "clubs"
+msgstr "clubs"
+
+#: results/templates/results/start_list.html:171
+#: results/templates/results/start_list.html:177
+#: results/templates/results/start_list.html:183
+msgid "Nom / Prénom"
+msgstr "Name / First name"
+
+#: results/templates/results/start_list.html:224
+msgid "Copier le lien vers ce regroupement"
+msgstr "Copy link to this grouping"
+
+#: results/templates/results/start_list.html:228
+msgid "Merci de signaler tout changement de puce."
+msgstr "Please report any SI card change."
+
+#: results/templates/results/start_list.html:240
+msgid "Aucun résultat pour cette recherche."
+msgstr "No result for this search."
+
+#: results/templates/results/start_list.html:241
+msgid ""
+"${totalRowsVisible} partants affichés dans ${totalGroupsVisible} $"
+"{getGroupLabelPlural()}."
+msgstr ""
+"${totalRowsVisible} starters displayed in ${totalGroupsVisible} $"
+"{getGroupLabelPlural()}."
+
+#: results/templates/results/statistics.html:27
+msgid "Partants"
+msgstr "Starters"
+
+#: results/templates/results/statistics.html:33
+msgid "Classés"
+msgstr "Classified"
+
+#: results/templates/results/statistics.html:42
+msgid "Taux classement"
+msgstr "Classification rate"
+
+#: results/templates/results/statistics.html:52
+msgid "Top clubs (classés)"
+msgstr "Top clubs (classified)"
+
+#: results/templates/results/statistics.html:71
+msgid "Taux de classement"
+msgstr "Classification rate"
+
+#: results/templates/results/statistics.html:86
+#, python-format
+msgid "%(finished)s / %(total)s concurrents classés"
+msgstr "%(finished)s / %(total)s competitors classified"
+
+#: results/templates/results/superman.html:14
+#, python-format
+msgid "Superman : %(superman_total)s"
+msgstr "Superman: %(superman_total)s"
+
+#: results/templates/results/superman.html:24
+msgid "Pas assez de données pour calculer l'analyse Superman."
+msgstr "Not enough data to compute the Superman analysis."
+
+#: results/templates/results/superman.html:30
+msgid ""
+"Le <strong>Superman</strong> est un coureur fictif qui réalise le\n"
+"  <strong>meilleur tronçon de chaque contrôle</strong>.\n"
+"  Le graphique montre le retard cumulé de chaque coureur par rapport au "
+"Superman.\n"
+"  Une courbe <em>plate</em> signifie que le coureur court à la vitesse du "
+"meilleur sur ce tronçon ;\n"
+"  une courbe <em>qui descend</em> signifie qu'il perd du temps."
+msgstr ""
+"The <strong>Superman</strong> is a fictional runner who posts the\n"
+"  <strong>best leg time at every control</strong>.\n"
+"  The chart shows each runner's cumulative time loss against Superman.\n"
+"  A <em>flat</em> curve means the runner is going at the best speed on this "
+"leg;\n"
+"  a <em>downward</em> curve means they are losing time."
+
+#: results/templates/results/superman.html:40
+msgid "Axe Y"
+msgstr "Y axis"
+
+#: results/templates/results/superman.html:41
+msgid "Format axe Y"
+msgstr "Y-axis format"
+
+#: results/templates/results/superman.html:47
+msgid "Secondes"
+msgstr "Seconds"
+
+#: results/templates/results/superman.html:53
+msgid "Retard cumulé vs Superman"
+msgstr "Cumulative loss vs Superman"
+
+#: results/templates/results/superman.html:59
+msgid "Meilleurs tronçons Superman"
+msgstr "Superman best legs"
+
+#: results/templates/results/superman.html:60
+#, python-format
+msgid "Total : %(superman_total)s"
+msgstr "Total: %(superman_total)s"
+
+#: results/templates/results/superman.html:68
+msgid "Coureur(s)"
+msgstr "Runner(s)"
+
+#: results/templates/results/superman.html:181
+msgid "Retard vs Superman"
+msgstr "Loss vs Superman"
+
+#: results/templates/results/tuto.html:3
+#, python-format
+msgid "Tutoriels MeOS — %(SITE_NAME)s"
+msgstr "MeOS tutorials — %(SITE_NAME)s"
+
+#: results/templates/results/tuto.html:14
+msgid "Tutoriels MeOS"
+msgstr "MeOS tutorials"
+
+#: results/templates/results/tuto.html:41
+msgid "Aucun tutoriel disponible pour le moment."
+msgstr "No tutorial available yet."
+
+#: results/templates/results/verifie_moi.html:3
+#: results/templates/results/verifie_moi.html:11
+msgid "Vérifie moi"
+msgstr "Start-list check"
+
+#: results/templates/results/verifie_moi.html:15
+msgid "Générateur CSV — Vérifie moi"
+msgstr "CSV generator — Start-list check"
+
+#: results/templates/results/verifie_moi.html:17
+msgid ""
+"Générez la liste de départ à importer dans l'application Android\n"
+"        <strong>O Checklist / Vérifie moi</strong> à partir d'un fichier "
+"MeOS."
+msgstr ""
+"Generate the start list to import into the Android app\n"
+"        <strong>O Checklist / Vérifie moi</strong> from a MeOS file."
+
+#: results/templates/results/verifie_moi.html:31
+msgid "Mode d'emploi :"
+msgstr "How to:"
+
+#: results/templates/results/verifie_moi.html:33
+msgid ""
+"Exportez votre compétition depuis MeOS via <em>Fichier → Sauvegarder sous…</"
+"em>\n"
+"        au format <code>.meosxml</code>."
+msgstr ""
+"Export your competition from MeOS via <em>File → Save as…</em>\n"
+"        in <code>.meosxml</code> format."
+
+#: results/templates/results/verifie_moi.html:35
+msgid "Chargez ce fichier ci-dessous et vérifiez la prévisualisation."
+msgstr "Upload this file below and check the preview."
+
+#: results/templates/results/verifie_moi.html:36
+msgid ""
+"Téléchargez le CSV et importez-le dans l'application\n"
+"        <strong>O Checklist</strong> sur Android."
+msgstr ""
+"Download the CSV and import it into the\n"
+"        <strong>O Checklist</strong> app on Android."
+
+#: results/templates/results/verifie_moi.html:59
+msgid "Générer"
+msgstr "Generate"
+
+#: results/templates/results/verifie_moi.html:82
+msgid "Coureurs dans le CSV"
+msgstr "Runners in the CSV"
+
+#: results/templates/results/verifie_moi.html:88
+msgid "Avec numéro de puce"
+msgstr "With SI card number"
+
+#: results/templates/results/verifie_moi.html:95
+msgid "Exclus (départ parallèle)"
+msgstr "Excluded (parallel start)"
+
+#: results/templates/results/verifie_moi.html:101
+msgid "Télécharger le CSV"
+msgstr "Download CSV"
+
+#: results/templates/results/verifie_moi.html:111
+msgid "sans heure de départ a été exclu"
+msgid_plural "sans heure de départ ont été exclus"
+msgstr[0] "without a start time was excluded"
+msgstr[1] "without a start time were excluded"
+
+#: results/templates/results/verifie_moi.html:112
+msgid "du CSV — ils partent en parallèle avec un autre dispositif."
+msgstr "from the CSV — they start in parallel with another system."
+
+#: results/templates/results/verifie_moi.html:119
+msgid "Prévisualisation — liste de départ"
+msgstr "Preview — start list"
+
+#: results/templates/results/verifie_moi.html:166
+msgid "Format du fichier CSV généré"
+msgstr "Format of the generated CSV file"
+
+#: results/templates/results/verifie_moi.html:170
+msgid ""
+"Une ligne par coureur avec heure de départ, triée chronologiquement.\n"
+"      Les coureurs sans heure de départ (départ en parallèle) sont exclus.\n"
+"      Séparateur : virgule."
+msgstr ""
+"One line per runner with start time, sorted chronologically.\n"
+"      Runners without a start time (parallel start) are excluded.\n"
+"      Separator: comma."
+
+#: results/templates/results/verifie_moi.html:219
+msgid "Génération…"
+msgstr "Generating…"
+
+#: results/views.py:120
+msgid "Circuit non trouvé"
+msgstr "Course not found"
+
+#: results/views.py:1038
+msgid "Dép."
+msgstr "Start"
+
+#: templates/admin/base_site.html:54
+msgid "Retour au site"
+msgstr "Back to the site"
+
+#: templates/admin/base_site.html:58
+msgid "Basculer le mode sombre"
+msgstr "Toggle dark mode"
+
+#: templates/admin/base_site.html:68
+msgid "Welcome,"
+msgstr "Welcome,"
+
+#: templates/admin/base_site.html:71
+msgid "View site"
+msgstr "View site"
+
+#: templates/admin/base_site.html:73
+msgid "Change password"
+msgstr "Change password"
+
+#: templates/admin/base_site.html:77
+msgid "Log out"
+msgstr "Log out"
+
+#~ msgid "rapport"
+#~ msgstr "report"
+
+#~ msgid "erreur"
+#~ msgstr "error"
+
+#~ msgid "Poste"
+#~ msgstr "Control"
+
+#~ msgid "coureur"
+#~ msgstr "runner"
+
