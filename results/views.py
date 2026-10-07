@@ -33,7 +33,7 @@ from .services import (
     compute_course_hash, get_courses_map,
     competition_visible, run_controls_only,
     rank_live, race_start_clock, race_end_clock, race_state,
-    race_in_progress, mark_negative_times, clock_tenths, _now_abs, _st_abs,
+    race_in_progress, mark_negative_times, clock_tenths, _now_abs,
     LIVE_GROUPS, has_completed,
 )
 
@@ -516,11 +516,11 @@ def live_results(request, cid, class_id):
 
     groups = {g: [c for c in live if c.live_group == g] for g in LIVE_GROUPS}
 
-    race_start = race_start_clock(competitors, competition_date=comp_date)
+    race_start = race_start_clock(competitors)
     state      = race_state(live, now, race_start, competition_date=comp_date)
     race_end   = None
     if state == 'finished':
-        race_end = race_end_clock(competitors, competition_date=comp_date) or _now_abs(comp_date, now)
+        race_end = race_end_clock(competitors) or _now_abs(comp_date, now)
     # Horloges absolues pour le JS (gère compétition future et passage minuit)
     server_now_abs = _now_abs(comp_date, now)
     race_start_abs = race_start
@@ -583,11 +583,11 @@ def _build_live_payload(cid, cls, competitors, course, competition=None):
             c.neg_time  = False
             c.neg_ctrls = []
 
-    race_start = race_start_clock(competitors, competition_date=comp_date)
+    race_start = race_start_clock(competitors)
     state      = race_state(live, now, race_start, competition_date=comp_date)
     race_end   = None
     if state == 'finished':
-        race_end = race_end_clock(competitors, competition_date=comp_date) or _now_abs(comp_date, now)
+        race_end = race_end_clock(competitors) or _now_abs(comp_date, now)
 
     runners = []
     ctrl_ids = {c['ctrl_id'] for c in controls_seq}
@@ -596,7 +596,7 @@ def _build_live_payload(cid, cls, competitors, course, competition=None):
         _st_abs_val = getattr(c, 'st_abs', None)
         if not isinstance(_st_abs_val, int):
             try:
-                _st_abs_val = _st_abs(c.st, comp_date) if isinstance(c.st, int) else c.st
+                _st_abs_val = c.st
             except Exception:
                 _st_abs_val = getattr(c, 'st', None)
             if not isinstance(_st_abs_val, int):

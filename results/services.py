@@ -1138,29 +1138,6 @@ def _now_abs(competition_date, now_dt):
     return days * _DAY_TENTHS + now_t
 
 
-def _st_abs(st, competition_date=None):
-    """Valeur absolue de ``st`` depuis le début de la compétition.
-
-    ``st`` est normalement modulo jour (0..863999). Si MeOS envoie une valeur
-    > ``_DAY_TENTHS`` (tenths depuis 00:00 du 1er jour, voir mop.xsd), elle est
-    déjà absolue et est conservée telle quelle. Dans le cas modulo, l'offset
-    jour est porté par ``_now_abs`` (``now_abs`` négatif avant la compétition,
-    >864000 après minuit), donc ``st`` reste inchangé.
-    """
-    # Gère les MagicMock des tests (comparaison renvoie un mock, pas bool)
-    try:
-        if st is None or st <= 0:
-            return st
-    except Exception:
-        return st
-    try:
-        if st > _DAY_TENTHS:
-            return st
-    except Exception:
-        return st
-    return st
-
-
 def format_clock(tenths):
     """Formate une heure murale (1/10 s depuis minuit) en 'HH:MM:SS'.
 
@@ -1184,23 +1161,19 @@ def _is_definitive(stat):
     return stat in LIVE_DONE_PRIORITY
 
 
-def race_start_clock(competitors, competition_date=None):
-    """1/10 s depuis minuit du premier départ valide, ou None.
+def race_start_clock(competitors):
+    """1/10 s depuis minuit du premier départ valide (``st`` brut), ou None.
 
-    Si ``competition_date`` est fourni, la valeur retournée est absolue
-    (depuis 00:00 du jour de la compétition) pour les calculs live ;
-    sinon, valeur modulo jour (legacy).
+    L'offset jour (compétition future, passage minuit) est porté par
+    ``_now_abs`` lors des comparaisons, pas ici.
     """
-    starts = [_st_abs(c.st, competition_date) for c in competitors if c.st and c.st > 0]
+    starts = [c.st for c in competitors if c.st and c.st > 0]
     return min(starts) if starts else None
 
 
-def race_end_clock(competitors, competition_date=None):
-    """1/10 s depuis minuit de la dernière arrivée (st + rt), ou None.
-
-    Si ``competition_date`` est fourni, la valeur retournée est absolue.
-    """
-    ends = [_st_abs(c.st, competition_date) + c.rt for c in competitors
+def race_end_clock(competitors):
+    """1/10 s depuis minuit de la dernière arrivée (``st`` + ``rt``), ou None."""
+    ends = [c.st + c.rt for c in competitors
             if c.is_ok and c.st and c.st > 0 and c.rt and c.rt > 0]
     return max(ends) if ends else None
 
@@ -1220,23 +1193,15 @@ def race_state(competitors, now=None, race_start=None, competition_date=None):
     comparés en temps absolu (gère compétition future et passage minuit).
     """
     now_t = _now_abs(competition_date, now or datetime.now())
-    # race_start may be modulo or absolute; if competition_date given, ensure
-    # it is absolute for comparison (legacy callers pass modulo).
-    race_start_abs = race_start
-    if competition_date is not None and race_start is not None and race_start <= _DAY_TENTHS:
-        # race_start was computed without date or is modulo -> keep as is for
-        # today's race, but for future/midnight now_t is absolute, so comparison
-        # now_t < race_start would be wrong for future? For modulo race_start 360k
-        # and now_abs -2160000, -2160000 < 360k true -> upcoming correct.
-        # For midnight: now_abs 870k, race_start 828k? Actually race_start 360k? No, min st is 828k for 23:00 start? Then 870k <828k false -> live correct.
-        # So keep as is; absolute st>DAY already handled.
-        race_start_abs = race_start
-
+    # ``race_start`` (voir race_start_clock) est en ``st`` brut : modulo jour
+    # pour une course classique, déjà absolu si st > _DAY_TENTHS. ``now_t`` est
+    # absolu (offset jour porté par _now_abs), la comparaison vaut donc dans les
+    # deux cas — course future (now_t négatif) comme passage minuit.
     en_course  = [c for c in competitors if getattr(c, 'live_group', None) == 'en_course']
     en_attente = [c for c in competitors if getattr(c, 'live_group', None) == 'en_attente']
     if not en_course and not en_attente:
         return 'finished'
-    if race_start_abs is None or now_t < race_start_abs:
+    if race_start is None or now_t < race_start:
         return 'upcoming'
     return 'live'
 
@@ -1246,7 +1211,7 @@ def race_in_progress(competitors, now=None, competition_date=None):
     now = now or datetime.now()
     now_abs = _now_abs(competition_date, now)
     return any(
-        not c.is_ok and not _is_definitive(c.stat) and c.st > 0 and _st_abs(c.st, competition_date) <= now_abs
+        not c.is_ok and not _is_definitive(c.stat) and c.st > 0 and c.st <= now_abs
         for c in competitors
     )
 
@@ -1373,7 +1338,7 @@ def rank_live(competitors, radio_map, now, controls_seq=None, competition_date=N
         c.neg_time = getattr(c, 'neg_time', False) is True or (
             c.stat == STAT_OK and c.rt is not None and c.rt < 0
         )
-        c.st_abs = _st_abs(getattr(c, 'st', 0), competition_date)
+        c.st_abs = getattr(c, 'st', 0)
         radios  = radio_map.get(c.id, {})
         punches = [
             (ctrl, rt) for ctrl, rt in radios.items() if rt and rt > 0
