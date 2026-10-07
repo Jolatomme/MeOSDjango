@@ -1267,6 +1267,13 @@ class TestApiClassResults:
         data = json.loads(api_class_results(rf_get(), cid=1, class_id=10).content)
         assert data['results'] == []
 
+    @patch('results.views.competition_visible', return_value=False)
+    def test_course_cachee_404(self, mock_vis):
+        """L'API JSON respecte la visibilité comme les pages HTML."""
+        from results.views import api_class_results
+        with pytest.raises(Http404):
+            api_class_results(rf_get(), cid=1, class_id=10)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # superman_analysis

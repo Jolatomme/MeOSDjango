@@ -32,20 +32,22 @@ _PREFIX_RE = re.compile(r'^\d+(\.\d+)*\.?\s+')
 
 
 def competition_visible(cid):
-    """Return True if the competition is visible (not deleted, not hidden)."""
+    """Return True if the competition is visible (not deleted, not hidden).
+
+    Course sans ligne de configuration (créée directement dans MeOS, jamais
+    gérée depuis le site) → visible. En cas d'erreur DB : **fail closed**
+    (course masquée) — on n'expose jamais une course cachée sur une erreur.
+    """
     try:
-        with connection.cursor() as cur:
-            cur.execute(
-                "SELECT frozen, visible, deleted FROM results_competitionconfig WHERE cid=%s",
-                [cid],
-            )
-            row = cur.fetchone()
+        cfg = CompetitionConfig.objects.filter(cid=cid).first()
     except Exception:
+        logger.warning(
+            "competition_visible(%s) : erreur DB, course masquée", cid,
+            exc_info=True)
+        return False
+    if cfg is None:
         return True
-    if not row or len(row) < 3:
-        return True
-    _frozen, visible, deleted = row
-    return not deleted and visible
+    return not cfg.deleted and cfg.visible
 
 
 def slugify_no_prefix(value, separator='-'):

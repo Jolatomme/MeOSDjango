@@ -389,6 +389,8 @@ def org_results(request, cid, org_id):
 
 def api_class_results(request, cid, class_id):
     """JSON API — returns ranked finishers for a class with times and gaps."""
+    if not competition_visible(cid):
+        raise Http404
     class_id        = _resolve_class_id(cid, class_id)
     competitors     = list(Mopcompetitor.objects.filter(cid=cid, cls=class_id))
     org_map         = get_org_map(cid)

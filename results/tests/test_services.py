@@ -1409,31 +1409,34 @@ class TestCompetitionVisible:
     """Toutes les branches de competition_visible (DB mockée)."""
 
     @staticmethod
-    def _fetchone(row):
-        cursor = MagicMock()
-        cursor.fetchone.return_value = row
-        with patch('results.services.connection') as mock_conn:
-            mock_conn.cursor.return_value.__enter__.return_value = cursor
+    def _call(cfg):
+        """cfg : CompetitionConfig retourné par la requête (None = pas de ligne)."""
+        with patch('results.services.CompetitionConfig') as MockCfg:
+            MockCfg.objects.filter.return_value.first.return_value = cfg
             from results.services import competition_visible
             return competition_visible(42)
 
+    @staticmethod
+    def _config(**kwargs):
+        from results.models import CompetitionConfig
+        return CompetitionConfig(cid=42, **kwargs)
+
     def test_visible_si_ligne_non_supprimee_et_visible(self):
-        assert self._fetchone((0, 1, 0)) == True
+        assert self._call(self._config(visible=True, deleted=False)) is True
 
     def test_cachee_si_visible_a_zero(self):
-        assert self._fetchone((0, 0, 0)) == False
+        assert self._call(self._config(visible=False, deleted=False)) is False
 
     def test_cachee_si_supprimee(self):
-        assert self._fetchone((0, 1, 1)) == False
+        assert self._call(self._config(visible=True, deleted=True)) is False
 
     def test_visible_si_aucune_ligne(self):
-        assert self._fetchone(None) is True
+        """Course créée dans MeOS sans config côté site → visible."""
+        assert self._call(None) is True
 
-    def test_visible_si_ligne_trop_courte(self):
-        assert self._fetchone((0, 1)) is True
-
-    @patch('results.services.connection')
-    def test_visible_si_erreur_db(self, mock_conn):
-        mock_conn.cursor.side_effect = Exception('db down')
+    @patch('results.services.CompetitionConfig')
+    def test_cachee_si_erreur_db(self, MockCfg):
+        """Fail closed : une erreur DB ne doit jamais exposer une course."""
+        MockCfg.objects.filter.side_effect = Exception('db down')
         from results.services import competition_visible
-        assert competition_visible(42) is True
+        assert competition_visible(42) is False
