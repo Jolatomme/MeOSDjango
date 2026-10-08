@@ -63,6 +63,7 @@ git pull
 # Le pull retire dev_settings.py du suivi (renommé en .example.py) :
 # on remet le vrai fichier, désormais ignoré par git
 cp dev_settings.backup MeOSDjango/dev_settings.py
+git apply --3way settings_local.patch || true
 
 # Vérifier la clé secrète — si elle vaut 'toto', la régénérer :
 grep DJANGO_SECRET_KEY MeOSDjango/dev_settings.py
