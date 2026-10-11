@@ -227,6 +227,58 @@ class TestChainesJavascript:
         assert f'showAbandons: "{attendu}"' in html
 
 
+# ─── Champ fichier personnalisé (checker, vérifie-moi, création de course) ────
+
+TEMPLATES_CHAMP_FICHIER = [
+    'results/meos_checker.html',
+    'results/verifie_moi.html',
+    'results/race_create.html',
+]
+FR_BOUTON_FICHIER = 'Choisir un fichier'    # bouton affiché par nos soins
+FR_AUCUN_FICHIER = 'Aucun fichier choisi'   # nom de fichier par défaut
+
+
+def _render(template, lang='fr'):
+    """Rendu d'une page complète (base.html + context processors, sans DB)."""
+    request = RequestFactory().get('/')
+    with translation.override(lang):
+        return get_template(template).render({}, request)
+
+
+class TestChampFichierPersonnalise:
+    """Le widget natif <input type="file"> est rendu par le navigateur dans
+    SA propre langue (jamais celle du site) : les trois pages remplacent
+    l'input masqué par leur propre bouton + nom de fichier traduits
+    (wrapper ``.co-file``), gérés par ``COUtils.initFileInputs``."""
+
+    def test_markup_sur_les_trois_pages(self):
+        for template in TEMPLATES_CHAMP_FICHIER:
+            html = _render(template)
+            assert 'class="co-file"' in html, template
+            assert 'class="co-file-input"' in html, template
+            assert 'btn btn-outline-success co-file-btn' in html, template
+            assert f'data-default="{FR_AUCUN_FICHIER}"' in html, template
+            assert f'<span class="co-file-name">{FR_AUCUN_FICHIER}</span>' in html, template
+            assert f'</i>{FR_BOUTON_FICHIER}' in html, template
+
+    def test_plus_de_widget_natif_form_control(self):
+        """L'ancien <input type="file" class="form-control"> a disparu."""
+        for template in ('results/meos_checker.html', 'results/verifie_moi.html'):
+            assert 'class="form-control" id="meosfile"' not in _render(template)
+
+    @pytest.mark.parametrize('lang', ['en', 'de', 'sv'])
+    def test_libelles_traduits_dans_le_catalogue(self, lang):
+        _skip_si_non_compile(lang)
+        html = _render('results/meos_checker.html', lang)
+        with translation.override(lang):
+            bouton = translation.gettext(FR_BOUTON_FICHIER)
+            aucun = translation.gettext(FR_AUCUN_FICHIER)
+        assert bouton != FR_BOUTON_FICHIER
+        assert aucun != FR_AUCUN_FICHIER
+        assert bouton in html
+        assert f'data-default="{aucun}"' in html
+
+
 # ─── Libellés du menu admin (verbose_name des modèles + section) ─────────────
 
 class TestLibellesAdmin:

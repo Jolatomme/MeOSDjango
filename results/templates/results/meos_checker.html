@@ -39,8 +39,15 @@
           <label for="meosfile" class="form-label fw-bold small text-muted">
             {% blocktranslate %}Fichier d'exportation MeOS (<code>.meosxml</code>){% endblocktranslate %}
           </label>
-          <input type="file" class="form-control" id="meosfile" name="meosfile"
-                 accept=".meosxml,.xml" required>
+          <div class="co-file">
+            <input type="file" class="co-file-input" id="meosfile" name="meosfile"
+                   accept=".meosxml,.xml" required
+                   data-default="{% translate 'Aucun fichier choisi' %}">
+            <label for="meosfile" class="btn btn-outline-success co-file-btn">
+              <i class="bi bi-folder2-open me-1"></i>{% translate "Choisir un fichier" %}
+            </label>
+            <span class="co-file-name">{% translate "Aucun fichier choisi" %}</span>
+          </div>
         </div>
         <div class="col-6 col-md-3">
           <label for="gap_seconds" class="form-label fw-bold small text-muted">

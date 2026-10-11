@@ -720,3 +720,67 @@ describe('COUtils.initBackToTop', () => {
     expect(document.getElementById('backToTop').classList.contains('visible')).toBe(true);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// initFileInputs (champ fichier personnalisé — remplace le widget natif du
+// navigateur, qui parle la langue du navigateur et non celle du site)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('COUtils.initFileInputs', () => {
+  const FORM_HTML = `
+    <form id="uploadForm">
+      <div class="co-file">
+        <input type="file" class="co-file-input" id="meosfile"
+               data-default="Aucun fichier choisi">
+        <label for="meosfile">Choisir un fichier</label>
+        <span class="co-file-name">Aucun fichier choisi</span>
+      </div>
+    </form>`;
+
+  function mount(html) {
+    document.body.innerHTML = html;
+    COUtils.initFileInputs();
+  }
+
+  function selectFile(input, name) {
+    Object.defineProperty(input, 'files', { value: [{ name }], configurable: true });
+    input.dispatchEvent(new Event('change'));
+  }
+
+  test('au chargement, le texte par défaut est conservé', () => {
+    mount(FORM_HTML);
+    expect(document.querySelector('.co-file-name').textContent).toBe('Aucun fichier choisi');
+    expect(document.querySelector('.co-file').classList.contains('has-file')).toBe(false);
+  });
+
+  test('change → nom du fichier + classe has-file', () => {
+    mount(FORM_HTML);
+    selectFile(document.getElementById('meosfile'), 'tirage.meosxml');
+    expect(document.querySelector('.co-file-name').textContent).toBe('tirage.meosxml');
+    expect(document.querySelector('.co-file').classList.contains('has-file')).toBe(true);
+  });
+
+  test('reset du formulaire → retour au texte par défaut', async () => {
+    mount(FORM_HTML);
+    const input = document.getElementById('meosfile');
+    selectFile(input, 'tirage.meosxml');
+
+    document.getElementById('uploadForm').dispatchEvent(new Event('reset'));
+    // Le navigateur vide input.files lors du reset — le simulons ici,
+    // la synchro étant différée (setTimeout) pour lire la valeur post-reset.
+    Object.defineProperty(input, 'files', { value: [], configurable: true });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelector('.co-file-name').textContent).toBe('Aucun fichier choisi');
+    expect(document.querySelector('.co-file').classList.contains('has-file')).toBe(false);
+  });
+
+  test('input sans wrapper .co-file ignoré sans erreur', () => {
+    document.body.innerHTML = '<input type="file" class="co-file-input">';
+    expect(() => COUtils.initFileInputs()).not.toThrow();
+  });
+
+  test('wrapper sans .co-file-name ignoré sans erreur', () => {
+    document.body.innerHTML = '<div class="co-file"><input type="file" class="co-file-input"></div>';
+    expect(() => COUtils.initFileInputs()).not.toThrow();
+  });
+});

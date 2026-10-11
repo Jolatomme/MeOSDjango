@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-07 13:21+0200\n"
+"POT-Creation-Date: 2026-10-11 11:20+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -123,14 +123,14 @@ msgstr "Status"
 #: results/templates/results/start_list.html:173
 #: results/templates/results/start_list.html:179
 #: results/templates/results/start_list.html:186
-#: results/templates/results/verifie_moi.html:133
+#: results/templates/results/verifie_moi.html:140
 msgid "Puce"
 msgstr "SI-Karte"
 
 #: ochecklist/templates/ochecklist/report_detail.html:83
 #: ochecklist/templates/ochecklist/runner_detail.html:13
 #: results/templates/results/competition_list.html:51
-#: results/templates/results/verifie_moi.html:130
+#: results/templates/results/verifie_moi.html:137
 msgid "Nom"
 msgstr "Name"
 
@@ -151,7 +151,7 @@ msgstr "Startnummer"
 #: results/templates/results/start_list.html:44
 #: results/templates/results/start_list.html:178
 #: results/templates/results/start_list.html:185
-#: results/templates/results/verifie_moi.html:132
+#: results/templates/results/verifie_moi.html:139
 msgid "Catégorie"
 msgstr "Wertungsklasse"
 
@@ -170,7 +170,7 @@ msgstr "Wertungsklasse"
 #: results/templates/results/start_list.html:172
 #: results/templates/results/start_list.html:184
 #: results/templates/results/superman.html:92
-#: results/templates/results/verifie_moi.html:131
+#: results/templates/results/verifie_moi.html:138
 msgid "Club"
 msgstr "Verein"
 
@@ -187,8 +187,8 @@ msgstr "Neue SI-Karte"
 #: results/templates/results/competitor_detail.html:98
 #: results/templates/results/grouping.html:57
 #: results/templates/results/grouping.html:60
-#: results/templates/results/relay_results.html:152 results/views.py:789
-#: results/views.py:980
+#: results/templates/results/relay_results.html:152 results/views.py:762
+#: results/views.py:953
 msgid "Départ"
 msgstr "Start"
 
@@ -300,7 +300,7 @@ msgstr "MOP-Daten für cid=%(cid)s (%(name)s) gelöscht."
 #: results/templates/results/course_results.html:4
 #: results/templates/results/course_results.html:13
 #: results/templates/results/course_results.html:18
-#: results/tests/test_i18n.py:249
+#: results/tests/test_i18n.py:261
 msgid "Résultats"
 msgstr "Ergebnisse"
 
@@ -340,7 +340,7 @@ msgstr "R8 — Vollständigkeit der Läuferdaten"
 msgid "Fichier MeOS (.xml)"
 msgstr "MeOS-Datei (.xml)"
 
-#: results/forms.py:23 results/templates/results/meos_checker.html:47
+#: results/forms.py:23 results/templates/results/meos_checker.html:54
 msgid "Écart min. entre 2 coureurs du même club (secondes)"
 msgstr "Min. Abstand zwischen 2 Läufern desselben Vereins (Sekunden)"
 
@@ -352,7 +352,7 @@ msgstr ""
 "Liegen zwei Läufer desselben Vereins höchstens um diesen Wert auseinander, "
 "gelten sie als aufeinanderfolgend."
 
-#: results/forms.py:33 results/templates/results/meos_checker.html:61
+#: results/forms.py:33 results/templates/results/meos_checker.html:68
 msgid "Règles à vérifier"
 msgstr "Zu prüfende Regeln"
 
@@ -708,16 +708,14 @@ msgid "compétition"
 msgstr "Wettbewerb"
 
 #: results/models.py:63
-#| msgid "Organisateur"
 msgid "organisateur"
 msgstr "Veranstalter"
 
 #: results/models.py:64
-#| msgid "Retour à l'accueil"
 msgid "page d'accueil"
 msgstr "Startseite"
 
-#: results/models.py:73 results/tests/test_i18n.py:237
+#: results/models.py:73 results/tests/test_i18n.py:249
 msgid "compétitions"
 msgstr "Wettbewerbe"
 
@@ -773,7 +771,7 @@ msgstr "erstellt am"
 msgid "configuration compétition"
 msgstr "Wettbewerbskonfiguration"
 
-#: results/models.py:289 results/tests/test_i18n.py:238
+#: results/models.py:289 results/tests/test_i18n.py:250
 msgid "configurations compétitions"
 msgstr "Wettbewerbskonfigurationen"
 
@@ -793,31 +791,31 @@ msgstr "Ungültiges Formular. Bitte die Eingaben prüfen."
 msgid "Conflit à la création. Réessayez une nouvelle fois."
 msgstr "Konflikt beim Erstellen. Bitte erneut versuchen."
 
-#: results/services.py:370 results/services.py:378 results/services.py:490
-#: results/services.py:507 results/templates/results/_split_detail_row.html:2
+#: results/services.py:367 results/services.py:375 results/services.py:487
+#: results/services.py:504 results/templates/results/_split_detail_row.html:2
 #: results/templates/results/_split_detail_row.html:35
 #: results/templates/results/competitor_detail.html:52
 #: results/templates/results/competitor_detail.html:102
 #: results/templates/results/competitor_detail.html:116
 #: results/templates/results/grouping.html:58
 #: results/templates/results/grouping.html:61
-#: results/templates/results/relay_results.html:156 results/views.py:789
-#: results/views.py:815 results/views.py:857 results/views.py:918
-#: results/views.py:980
+#: results/templates/results/relay_results.html:156 results/views.py:762
+#: results/views.py:788 results/views.py:830 results/views.py:891
+#: results/views.py:953
 msgid "Arrivée"
 msgstr "Ziel"
 
-#: results/services.py:600 results/views.py:442
+#: results/services.py:543
 #, python-format
 msgid "au poste %(ctrls)s"
 msgstr "an Kontrolle %(ctrls)s"
 
-#: results/services.py:602 results/views.py:444
+#: results/services.py:545
 #, python-format
 msgid "aux postes %(ctrls)s"
 msgstr "an Kontrollpunkten %(ctrls)s"
 
-#: results/services.py:604 results/views.py:446
+#: results/services.py:547
 #, python-format
 msgid ""
 "%(n)s coureur a des temps négatifs %(postes)s : probable boîtier mal "
@@ -832,11 +830,11 @@ msgstr[1] ""
 "%(n)s Läufer haben negative Zeiten %(postes)s: vermutlich nicht "
 "synchronisiertes Kontrollgerät."
 
-#: results/services.py:610 results/views.py:452
+#: results/services.py:553
 msgid "Temps négatif : boîtier probablement mal synchronisé"
 msgstr "Negative Zeit: Kontrollgerät wahrscheinlich nicht synchronisiert"
 
-#: results/services.py:614 results/views.py:456
+#: results/services.py:557
 msgid ""
 "1 coureur a un temps négatif : probable carte SI non effacée (problème "
 "d'effacement de doigts)."
@@ -844,11 +842,11 @@ msgstr ""
 "1 Läufer hat eine negative Zeit: vermutlich eine nicht gelöschte SI-Karte "
 "(Löschproblem)."
 
-#: results/services.py:617 results/views.py:459
+#: results/services.py:560
 msgid "Temps négatif : carte SI probablement non effacée"
 msgstr "Negative Zeit: SI-Karte vermutlich nicht gelöscht"
 
-#: results/services.py:621 results/views.py:463
+#: results/services.py:564
 #, python-format
 msgid ""
 "%(n)s coureur a des temps négatifs sur des postes différents : probables "
@@ -863,7 +861,7 @@ msgstr[1] ""
 "%(n)s Läufer haben negative Zeiten an verschiedenen Kontrollpunkten: "
 "vermutlich nicht gelöschte SI-Karten (Löschproblem)."
 
-#: results/services.py:627 results/views.py:469
+#: results/services.py:570
 msgid ""
 "Temps négatifs sur des postes différents : cartes SI probablement non "
 "effacées"
@@ -991,7 +989,7 @@ msgstr[1] "Verdächtige Kontrollpunkte"
 #: results/templates/results/recapitulatif.html:41
 #: results/templates/results/regularity.html:42
 #: results/templates/results/superman.html:16
-#: results/templates/results/verifie_moi.html:110
+#: results/templates/results/verifie_moi.html:117
 #, python-format
 msgid "%(n)s coureur"
 msgid_plural "%(n)s coureurs"
@@ -1016,7 +1014,7 @@ msgid "Plusieurs coureurs concernés sur ce poste"
 msgstr "Mehrere Läufer betroffen auf dieser Kontrolle"
 
 #: results/templates/results/_result_filters_bar.html:10
-#: results/templates/results/base.html:203
+#: results/templates/results/base.html:215
 #: results/templates/results/relay_results.html:51
 msgid "Masquer abandons"
 msgstr "Aufgegebene ausblenden"
@@ -1140,34 +1138,35 @@ msgid "Duel coureurs"
 msgstr "Läufer-Duell"
 
 #: results/templates/results/base.html:47
+#: results/templates/results/base.html:51
 msgid "Langue"
 msgstr "Sprache"
 
-#: results/templates/results/base.html:63
+#: results/templates/results/base.html:74
 msgid "Menu"
 msgstr "Menü"
 
-#: results/templates/results/base.html:69
+#: results/templates/results/base.html:80
 msgid "Basculer mode sombre/clair"
 msgstr "Zwischen Dunkel- und Hellmodus wechseln"
 
-#: results/templates/results/base.html:69 templates/admin/base_site.html:59
+#: results/templates/results/base.html:80 templates/admin/base_site.html:59
 msgid "Mode sombre / clair"
 msgstr "Dunkel-/Hellmodus"
 
-#: results/templates/results/base.html:76
+#: results/templates/results/base.html:87
 #: results/templates/results/race_manage.html:3
 msgid "Gestion"
 msgstr "Verwaltung"
 
-#: results/templates/results/base.html:81
+#: results/templates/results/base.html:92
 #: results/templates/results/competition_list.html:3
 #: results/templates/results/competition_list.html:12
 #: results/templates/results/competition_list.html:16
 msgid "Liste des compétitions"
 msgstr "Wettkampfliste"
 
-#: results/templates/results/base.html:87
+#: results/templates/results/base.html:98
 #: results/templates/results/race_create.html:3
 #: results/templates/results/race_create.html:12
 #: results/templates/results/race_create.html:16
@@ -1175,60 +1174,60 @@ msgstr "Wettkampfliste"
 msgid "Créer une course"
 msgstr "Wettkampf erstellen"
 
-#: results/templates/results/base.html:94
+#: results/templates/results/base.html:105
 msgid "Admin"
 msgstr "Admin"
 
-#: results/templates/results/base.html:102
+#: results/templates/results/base.html:113
 msgid "Ressources GEC"
 msgstr "GEC-Ressourcen"
 
-#: results/templates/results/base.html:107
+#: results/templates/results/base.html:118
 msgid "Etiquettes pour boitiers"
 msgstr "Etiketten für Punchgeräte"
 
-#: results/templates/results/base.html:112
+#: results/templates/results/base.html:123
 #: results/templates/results/drivers.html:11
 msgid "Drivers"
 msgstr "Treiber"
 
-#: results/templates/results/base.html:118
+#: results/templates/results/base.html:129
 #: results/templates/results/meos_checker.html:3
 #: results/templates/results/meos_checker.html:11
 msgid "Verificateur de tirage"
 msgstr "Auslosungsprüfer"
 
-#: results/templates/results/base.html:123
+#: results/templates/results/base.html:134
 msgid "Vérifie moi (CSV)"
 msgstr "Vérifie moi (CSV)"
 
-#: results/templates/results/base.html:128
+#: results/templates/results/base.html:139
 msgid "Atelier Départ"
 msgstr "Startbereich"
 
-#: results/templates/results/base.html:134
+#: results/templates/results/base.html:145
 #: results/templates/results/markdown_content.html:11
 #: results/templates/results/tuto.html:11
 msgid "Tutoriels"
 msgstr "Tutorials"
 
-#: results/templates/results/base.html:163
+#: results/templates/results/base.html:174
 msgid "Données MeOS"
 msgstr "MeOS-Daten"
 
-#: results/templates/results/base.html:165
+#: results/templates/results/base.html:176
 msgid "Hébergé par"
 msgstr "Gehostet von"
 
-#: results/templates/results/base.html:175
+#: results/templates/results/base.html:186
 msgid "Retour en haut de page"
 msgstr "Zurück zum Seitenanfang"
 
-#: results/templates/results/base.html:175
+#: results/templates/results/base.html:186
 msgid "Retour en haut"
 msgstr "Nach oben"
 
-#: results/templates/results/base.html:199
+#: results/templates/results/base.html:211
 #: results/templates/results/class_results.html:112
 #: results/templates/results/course_results.html:75
 #: results/templates/results/org_results.html:46
@@ -1236,7 +1235,7 @@ msgstr "Nach oben"
 msgid "1er"
 msgstr "1."
 
-#: results/templates/results/base.html:200
+#: results/templates/results/base.html:212
 #: results/templates/results/class_results.html:113
 #: results/templates/results/course_results.html:76
 #: results/templates/results/org_results.html:48
@@ -1244,7 +1243,7 @@ msgstr "1."
 msgid "2e"
 msgstr "2."
 
-#: results/templates/results/base.html:201
+#: results/templates/results/base.html:213
 #: results/templates/results/class_results.html:114
 #: results/templates/results/course_results.html:77
 #: results/templates/results/org_results.html:50
@@ -1252,7 +1251,7 @@ msgstr "2."
 msgid "3e"
 msgstr "3."
 
-#: results/templates/results/base.html:202
+#: results/templates/results/base.html:214
 msgid "Afficher abandons"
 msgstr "Aufgegebene einblenden"
 
@@ -1443,7 +1442,7 @@ msgid "Catégories"
 msgstr "Wertungsklassen"
 
 #: results/templates/results/competition_detail.html:64
-#: results/templates/results/meos_checker.html:147
+#: results/templates/results/meos_checker.html:154
 msgid "Circuits"
 msgstr "Strecken"
 
@@ -1457,7 +1456,7 @@ msgid "Par circuit"
 msgstr "Nach Strecke"
 
 #: results/templates/results/competition_detail.html:88
-#: results/templates/results/verifie_moi.html:121
+#: results/templates/results/verifie_moi.html:128
 msgid "Filtrer…"
 msgstr "Filtern…"
 
@@ -2204,19 +2203,34 @@ msgstr "MeOS-Datei laden"
 msgid "Fichier d'exportation MeOS (<code>.meosxml</code>)"
 msgstr "MeOS-Exportdatei (<code>.meosxml</code>)"
 
-#: results/templates/results/meos_checker.html:55
+#: results/templates/results/meos_checker.html:45
+#: results/templates/results/meos_checker.html:49
+#: results/templates/results/race_create.html:123
+#: results/templates/results/race_create.html:127
+#: results/templates/results/verifie_moi.html:57
+#: results/templates/results/verifie_moi.html:61
+msgid "Aucun fichier choisi"
+msgstr "Keine Datei ausgewählt"
+
+#: results/templates/results/meos_checker.html:47
+#: results/templates/results/race_create.html:125
+#: results/templates/results/verifie_moi.html:59
+msgid "Choisir un fichier"
+msgstr "Datei auswählen"
+
+#: results/templates/results/meos_checker.html:62
 msgid "Verifier la conformite"
 msgstr "Konformität prüfen"
 
-#: results/templates/results/meos_checker.html:63
+#: results/templates/results/meos_checker.html:70
 msgid "Tirage au sort"
 msgstr "Auslosung"
 
-#: results/templates/results/meos_checker.html:75
+#: results/templates/results/meos_checker.html:82
 msgid "Complétude des données"
 msgstr "Vollständigkeit der Daten"
 
-#: results/templates/results/meos_checker.html:93
+#: results/templates/results/meos_checker.html:100
 msgid ""
 "Exportez depuis MeOS via <em>Fichier &rarr; Sauvegarder sous&hellip;</em>\n"
 "            au format <code>.meosxml</code>.\n"
@@ -2231,52 +2245,52 @@ msgstr ""
 "höchstens um diesen Wert (in Sekunden) auseinander,\n"
 "            gelten sie als aufeinanderfolgend."
 
-#: results/templates/results/meos_checker.html:107
-#: results/templates/results/verifie_moi.html:72
+#: results/templates/results/meos_checker.html:114
+#: results/templates/results/verifie_moi.html:79
 msgid "Erreur de lecture du fichier :"
 msgstr "Fehler beim Lesen der Datei:"
 
-#: results/templates/results/meos_checker.html:123
+#: results/templates/results/meos_checker.html:130
 msgid "Coureurs tires"
 msgstr "Ausgeloste Läufer"
 
-#: results/templates/results/meos_checker.html:129
+#: results/templates/results/meos_checker.html:136
 msgid "Depart en parallele"
 msgstr "Parallelstart"
 
-#: results/templates/results/meos_checker.html:135
+#: results/templates/results/meos_checker.html:142
 msgid "Places vacantes"
 msgstr "Freie Plätze"
 
-#: results/templates/results/meos_checker.html:141
+#: results/templates/results/meos_checker.html:148
 msgid "Categories"
 msgstr "Wertungsklassen"
 
-#: results/templates/results/meos_checker.html:153
+#: results/templates/results/meos_checker.html:160
 msgid "Erreurs"
 msgstr "Fehler"
 
-#: results/templates/results/meos_checker.html:154
+#: results/templates/results/meos_checker.html:161
 msgid "Avertissements"
 msgstr "Warnungen"
 
-#: results/templates/results/meos_checker.html:155
+#: results/templates/results/meos_checker.html:162
 msgid "Conforme"
 msgstr "Konform"
 
-#: results/templates/results/meos_checker.html:157
+#: results/templates/results/meos_checker.html:164
 msgid "Statut general"
 msgstr "Gesamtstatus"
 
-#: results/templates/results/meos_checker.html:174
+#: results/templates/results/meos_checker.html:181
 msgid "Regles de tirage au sort"
 msgstr "Regeln der Auslosung"
 
-#: results/templates/results/meos_checker.html:183
+#: results/templates/results/meos_checker.html:190
 msgid "Completude des donnees"
 msgstr "Vollständigkeit der Daten"
 
-#: results/templates/results/meos_checker.html:201
+#: results/templates/results/meos_checker.html:208
 msgid "Analyse en cours&hellip;"
 msgstr "Analyse läuft&hellip;"
 
@@ -2414,27 +2428,27 @@ msgstr "Datum *"
 msgid "Organisateur / club *"
 msgstr "Veranstalter / Verein *"
 
-#: results/templates/results/race_create.html:122
+#: results/templates/results/race_create.html:129
 msgid "SVG, PNG ou JPEG — 2 Mo maximum."
 msgstr "SVG, PNG oder JPEG — maximal 2 MB."
 
-#: results/templates/results/race_create.html:131
+#: results/templates/results/race_create.html:138
 msgid "Créer la course"
 msgstr "Wettkampf erstellen"
 
-#: results/templates/results/race_create.html:133
+#: results/templates/results/race_create.html:140
 msgid "Annuler"
 msgstr "Abbrechen"
 
-#: results/templates/results/race_create.html:141
+#: results/templates/results/race_create.html:148
 msgid "Comment ça marche ?"
 msgstr "Wie funktioniert das?"
 
-#: results/templates/results/race_create.html:145
+#: results/templates/results/race_create.html:152
 msgid "Renseignez le nom, la date et le club organisateur."
 msgstr "Tragen Sie Name, Datum und den veranstaltenden Verein ein."
 
-#: results/templates/results/race_create.html:147
+#: results/templates/results/race_create.html:154
 msgid ""
 "Après création, une <strong>clé API MeOS unique</strong> et un\n"
 "            <strong>lien privé de gestion</strong> sont affichés."
@@ -2443,7 +2457,7 @@ msgstr ""
 "strong> und ein\n"
 "            <strong>privater Verwaltungslink</strong> angezeigt."
 
-#: results/templates/results/race_create.html:151
+#: results/templates/results/race_create.html:158
 msgid ""
 "Dans MeOS (<em>Outils &rarr; Serveur Online</em>) : URL = celle du site,\n"
 "            <strong>Password = la clé API</strong>, numéro de compétition\n"
@@ -2456,7 +2470,7 @@ msgstr ""
 "            <strong>leer lassen</strong>, ZIP-Kompression deaktiviert,\n"
 "            Format <em>MeOS Online Protocol XML 2.0</em>."
 
-#: results/templates/results/race_create.html:157
+#: results/templates/results/race_create.html:164
 msgid ""
 "Conservez le lien privé : il permet de retrouver la clé,\n"
 "            de la régénérer et d'éditer les informations."
@@ -2464,7 +2478,7 @@ msgstr ""
 "Bewahren Sie den privaten Link auf: Damit finden Sie den Schlüssel wieder,\n"
 "            erzeugen Sie ihn neu und bearbeiten Sie die Angaben."
 
-#: results/templates/results/race_create.html:163
+#: results/templates/results/race_create.html:170
 msgid ""
 "La course apparaît immédiatement sur le site, en attente du premier\n"
 "          import MeOS."
@@ -2600,7 +2614,7 @@ msgstr "Weiteren Wettkampf erstellen"
 msgid "Télécharger en CSV"
 msgstr "Als CSV herunterladen"
 
-#: results/templates/results/recapitulatif.html:112 results/views.py:1038
+#: results/templates/results/recapitulatif.html:112 results/views.py:1011
 msgid "Arr."
 msgstr "Ziel"
 
@@ -2818,7 +2832,7 @@ msgid "Par heure"
 msgstr "Nach Uhrzeit"
 
 #: results/templates/results/start_list.html:46
-#: results/templates/results/verifie_moi.html:129
+#: results/templates/results/verifie_moi.html:136
 msgid "Heure"
 msgstr "Uhrzeit"
 
@@ -3010,45 +3024,45 @@ msgstr ""
 "Laden Sie die CSV herunter und importieren Sie sie in die Android-App\n"
 "        <strong>O Checklist</strong>."
 
-#: results/templates/results/verifie_moi.html:59
+#: results/templates/results/verifie_moi.html:66
 msgid "Générer"
 msgstr "Erzeugen"
 
-#: results/templates/results/verifie_moi.html:82
+#: results/templates/results/verifie_moi.html:89
 msgid "Coureurs dans le CSV"
 msgstr "Läufer in der CSV"
 
-#: results/templates/results/verifie_moi.html:88
+#: results/templates/results/verifie_moi.html:95
 msgid "Avec numéro de puce"
 msgstr "Mit SI-Kartennummer"
 
-#: results/templates/results/verifie_moi.html:95
+#: results/templates/results/verifie_moi.html:102
 msgid "Exclus (départ parallèle)"
 msgstr "Ausgeschlossen (Parallelstart)"
 
-#: results/templates/results/verifie_moi.html:101
+#: results/templates/results/verifie_moi.html:108
 msgid "Télécharger le CSV"
 msgstr "CSV herunterladen"
 
-#: results/templates/results/verifie_moi.html:111
+#: results/templates/results/verifie_moi.html:118
 msgid "sans heure de départ a été exclu"
 msgid_plural "sans heure de départ ont été exclus"
 msgstr[0] "ohne Startzeit wurde ausgeschlossen"
 msgstr[1] "ohne Startzeit wurden ausgeschlossen"
 
-#: results/templates/results/verifie_moi.html:112
+#: results/templates/results/verifie_moi.html:119
 msgid "du CSV — ils partent en parallèle avec un autre dispositif."
 msgstr "aus der CSV — sie starten parallel mit einer anderen Anlage."
 
-#: results/templates/results/verifie_moi.html:119
+#: results/templates/results/verifie_moi.html:126
 msgid "Prévisualisation — liste de départ"
 msgstr "Vorschau — Startliste"
 
-#: results/templates/results/verifie_moi.html:166
+#: results/templates/results/verifie_moi.html:173
 msgid "Format du fichier CSV généré"
 msgstr "Format der erzeugten CSV-Datei"
 
-#: results/templates/results/verifie_moi.html:170
+#: results/templates/results/verifie_moi.html:177
 msgid ""
 "Une ligne par coureur avec heure de départ, triée chronologiquement.\n"
 "      Les coureurs sans heure de départ (départ en parallèle) sont exclus.\n"
@@ -3058,15 +3072,15 @@ msgstr ""
 "      Läufer ohne Startzeit (Parallelstart) sind ausgeschlossen.\n"
 "      Trennzeichen: Komma."
 
-#: results/templates/results/verifie_moi.html:219
+#: results/templates/results/verifie_moi.html:226
 msgid "Génération…"
 msgstr "Wird erzeugt…"
 
-#: results/views.py:120
+#: results/views.py:121
 msgid "Circuit non trouvé"
 msgstr "Strecke nicht gefunden"
 
-#: results/views.py:1038
+#: results/views.py:1011
 msgid "Dép."
 msgstr "Start"
 
@@ -3105,4 +3119,3 @@ msgstr "Abmelden"
 
 #~ msgid "coureur"
 #~ msgstr "Läufer"
-

@@ -292,6 +292,41 @@ const COUtils = (() => {
     _update();
   }
 
+  // ── Champs fichier personnalisés ───────────────────────────────────────────
+  // Le widget natif <input type="file"> est rendu par le navigateur dans SA
+  // propre langue (jamais celle du site) : les templates masquent l'input
+  // (classe .co-file-input) et affichent leur propre bouton + nom de fichier.
+  // Seul le NOM du fichier change ici (données) ; le texte par défaut
+  // (« Aucun fichier choisi ») est déjà traduit par Django dans le HTML
+  // et conservé dans l'attribut data-default de l'input.
+
+  /**
+   * Branche chaque `.co-file-input` sur le nom de fichier affiché à côté
+   * (`.co-file-name`, dans son `.co-file` parent) :
+   * - change  → nom du fichier sélectionné (+ classe `has-file` du wrapper) ;
+   * - reset   → retour au texte par défaut (la valeur n'est réinitialisée
+   *             qu'après l'événement : synchro différée).
+   */
+  function initFileInputs() {
+    document.querySelectorAll('.co-file-input').forEach(function (input) {
+      const wrap = input.closest('.co-file');
+      const name = wrap && wrap.querySelector('.co-file-name');
+      if (!name) return;
+      const defaultText = input.dataset.default || name.textContent;
+
+      function _sync() {
+        const file = input.files && input.files[0];
+        name.textContent = file ? file.name : defaultText;
+        if (wrap) wrap.classList.toggle('has-file', !!file);
+      }
+
+      input.addEventListener('change', _sync);
+      if (input.form) {
+        input.form.addEventListener('reset', function () { setTimeout(_sync, 0); });
+      }
+    });
+  }
+
   // ── API publique ──────────────────────────────────────────────────────────
   return {
     setStrings,
@@ -304,5 +339,6 @@ const COUtils = (() => {
     bindSimpleSearch,
     bindTableSort,
     initBackToTop,
+    initFileInputs,
   };
 })();

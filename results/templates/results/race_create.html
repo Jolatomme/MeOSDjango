@@ -116,9 +116,16 @@
               <label for="{{ form.logo.id_for_label }}" class="form-label fw-bold small text-muted">
                 {% translate "Logo de l'organisateur" %}
               </label>
-              <input type="file" class="form-control{% if form.logo.errors %} is-invalid{% endif %}"
-                     id="{{ form.logo.id_for_label }}" name="{{ form.logo.html_name }}"
-                     accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg">
+              <div class="co-file{% if form.logo.errors %} is-invalid{% endif %}">
+                <input type="file" class="co-file-input"
+                       id="{{ form.logo.id_for_label }}" name="{{ form.logo.html_name }}"
+                       accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg"
+                       data-default="{% translate 'Aucun fichier choisi' %}">
+                <label for="{{ form.logo.id_for_label }}" class="btn btn-outline-success co-file-btn">
+                  <i class="bi bi-folder2-open me-1"></i>{% translate "Choisir un fichier" %}
+                </label>
+                <span class="co-file-name">{% translate "Aucun fichier choisi" %}</span>
+              </div>
               <div class="form-text">{% translate "SVG, PNG ou JPEG — 2 Mo maximum." %}</div>
               {% for error in form.logo.errors %}
                 <div class="invalid-feedback d-block">{{ error }}</div>

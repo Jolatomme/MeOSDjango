@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-07 13:21+0200\n"
+"POT-Creation-Date: 2026-10-11 11:20+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -123,14 +123,14 @@ msgstr "Status"
 #: results/templates/results/start_list.html:173
 #: results/templates/results/start_list.html:179
 #: results/templates/results/start_list.html:186
-#: results/templates/results/verifie_moi.html:133
+#: results/templates/results/verifie_moi.html:140
 msgid "Puce"
 msgstr "Bricka"
 
 #: ochecklist/templates/ochecklist/report_detail.html:83
 #: ochecklist/templates/ochecklist/runner_detail.html:13
 #: results/templates/results/competition_list.html:51
-#: results/templates/results/verifie_moi.html:130
+#: results/templates/results/verifie_moi.html:137
 msgid "Nom"
 msgstr "Namn"
 
@@ -151,7 +151,7 @@ msgstr "Startnummer"
 #: results/templates/results/start_list.html:44
 #: results/templates/results/start_list.html:178
 #: results/templates/results/start_list.html:185
-#: results/templates/results/verifie_moi.html:132
+#: results/templates/results/verifie_moi.html:139
 msgid "Catégorie"
 msgstr "Klass"
 
@@ -170,7 +170,7 @@ msgstr "Klass"
 #: results/templates/results/start_list.html:172
 #: results/templates/results/start_list.html:184
 #: results/templates/results/superman.html:92
-#: results/templates/results/verifie_moi.html:131
+#: results/templates/results/verifie_moi.html:138
 msgid "Club"
 msgstr "Klubb"
 
@@ -187,8 +187,8 @@ msgstr "Ny bricka"
 #: results/templates/results/competitor_detail.html:98
 #: results/templates/results/grouping.html:57
 #: results/templates/results/grouping.html:60
-#: results/templates/results/relay_results.html:152 results/views.py:789
-#: results/views.py:980
+#: results/templates/results/relay_results.html:152 results/views.py:762
+#: results/views.py:953
 msgid "Départ"
 msgstr "Start"
 
@@ -298,7 +298,7 @@ msgstr "MOP-data borttagen för cid=%(cid)s (%(name)s)."
 #: results/templates/results/course_results.html:4
 #: results/templates/results/course_results.html:13
 #: results/templates/results/course_results.html:18
-#: results/tests/test_i18n.py:249
+#: results/tests/test_i18n.py:261
 msgid "Résultats"
 msgstr "Resultat"
 
@@ -338,7 +338,7 @@ msgstr "R8 — Fullständighet i tävlandedata"
 msgid "Fichier MeOS (.xml)"
 msgstr "MeOS-fil (.xml)"
 
-#: results/forms.py:23 results/templates/results/meos_checker.html:47
+#: results/forms.py:23 results/templates/results/meos_checker.html:54
 msgid "Écart min. entre 2 coureurs du même club (secondes)"
 msgstr "Minsta mellanrum mellan 2 tävlande från samma klubb (sekunder)"
 
@@ -350,7 +350,7 @@ msgstr ""
 "Om två tävlande från samma klubb åtskiljs av ett mellanrum som är lika med "
 "eller mindre än detta värde betraktas de som konsekventa."
 
-#: results/forms.py:33 results/templates/results/meos_checker.html:61
+#: results/forms.py:33 results/templates/results/meos_checker.html:68
 msgid "Règles à vérifier"
 msgstr "Regler att kontrollera"
 
@@ -702,16 +702,14 @@ msgid "compétition"
 msgstr "Tävling"
 
 #: results/models.py:63
-#| msgid "Organisateur"
 msgid "organisateur"
 msgstr "Arrangör"
 
 #: results/models.py:64
-#| msgid "Retour à l'accueil"
 msgid "page d'accueil"
 msgstr "startsida"
 
-#: results/models.py:73 results/tests/test_i18n.py:237
+#: results/models.py:73 results/tests/test_i18n.py:249
 msgid "compétitions"
 msgstr "Tävlingar"
 
@@ -764,7 +762,7 @@ msgstr "skapad"
 msgid "configuration compétition"
 msgstr "tävlingskonfiguration"
 
-#: results/models.py:289 results/tests/test_i18n.py:238
+#: results/models.py:289 results/tests/test_i18n.py:250
 msgid "configurations compétitions"
 msgstr "tävlingskonfigurationer"
 
@@ -784,31 +782,31 @@ msgstr "Ogiltigt formulär. Kontrollera de ifyllda fälten."
 msgid "Conflit à la création. Réessayez une nouvelle fois."
 msgstr "Konflikt vid skapande. Försök igen."
 
-#: results/services.py:370 results/services.py:378 results/services.py:490
-#: results/services.py:507 results/templates/results/_split_detail_row.html:2
+#: results/services.py:367 results/services.py:375 results/services.py:487
+#: results/services.py:504 results/templates/results/_split_detail_row.html:2
 #: results/templates/results/_split_detail_row.html:35
 #: results/templates/results/competitor_detail.html:52
 #: results/templates/results/competitor_detail.html:102
 #: results/templates/results/competitor_detail.html:116
 #: results/templates/results/grouping.html:58
 #: results/templates/results/grouping.html:61
-#: results/templates/results/relay_results.html:156 results/views.py:789
-#: results/views.py:815 results/views.py:857 results/views.py:918
-#: results/views.py:980
+#: results/templates/results/relay_results.html:156 results/views.py:762
+#: results/views.py:788 results/views.py:830 results/views.py:891
+#: results/views.py:953
 msgid "Arrivée"
 msgstr "Mål"
 
-#: results/services.py:600 results/views.py:442
+#: results/services.py:543
 #, python-format
 msgid "au poste %(ctrls)s"
 msgstr "vid kontroll %(ctrls)s"
 
-#: results/services.py:602 results/views.py:444
+#: results/services.py:545
 #, python-format
 msgid "aux postes %(ctrls)s"
 msgstr "vid kontrollerna %(ctrls)s"
 
-#: results/services.py:604 results/views.py:446
+#: results/services.py:547
 #, python-format
 msgid ""
 "%(n)s coureur a des temps négatifs %(postes)s : probable boîtier mal "
@@ -823,11 +821,11 @@ msgstr[1] ""
 "%(n)s tävlande har negativa tider %(postes)s: förmodligen en enhet med "
 "felaktig synkronisering."
 
-#: results/services.py:610 results/views.py:452
+#: results/services.py:553
 msgid "Temps négatif : boîtier probablement mal synchronisé"
 msgstr "Negativ tid: enheten är förmodligen felaktigt synkroniserad"
 
-#: results/services.py:614 results/views.py:456
+#: results/services.py:557
 msgid ""
 "1 coureur a un temps négatif : probable carte SI non effacée (problème "
 "d'effacement de doigts)."
@@ -835,11 +833,11 @@ msgstr ""
 "1 tävlande har negativ tid: förmodligen en SI-bricka som inte har rensats "
 "(problem med rensningen)."
 
-#: results/services.py:617 results/views.py:459
+#: results/services.py:560
 msgid "Temps négatif : carte SI probablement non effacée"
 msgstr "Negativ tid: SI-brickan är förmodligen inte rensad"
 
-#: results/services.py:621 results/views.py:463
+#: results/services.py:564
 #, python-format
 msgid ""
 "%(n)s coureur a des temps négatifs sur des postes différents : probables "
@@ -854,7 +852,7 @@ msgstr[1] ""
 "%(n)s tävlande har negativa tider på olika kontrollpunkter: förmodligen SI-"
 "brickor som inte har rensats (problem med rensningen)."
 
-#: results/services.py:627 results/views.py:469
+#: results/services.py:570
 msgid ""
 "Temps négatifs sur des postes différents : cartes SI probablement non "
 "effacées"
@@ -979,7 +977,7 @@ msgstr[1] "Misstänkta kontroller"
 #: results/templates/results/recapitulatif.html:41
 #: results/templates/results/regularity.html:42
 #: results/templates/results/superman.html:16
-#: results/templates/results/verifie_moi.html:110
+#: results/templates/results/verifie_moi.html:117
 #, python-format
 msgid "%(n)s coureur"
 msgid_plural "%(n)s coureurs"
@@ -1004,7 +1002,7 @@ msgid "Plusieurs coureurs concernés sur ce poste"
 msgstr "Flera tävlande berörda på denna kontrollpunkt"
 
 #: results/templates/results/_result_filters_bar.html:10
-#: results/templates/results/base.html:203
+#: results/templates/results/base.html:215
 #: results/templates/results/relay_results.html:51
 msgid "Masquer abandons"
 msgstr "Dölj avbrott"
@@ -1128,34 +1126,35 @@ msgid "Duel coureurs"
 msgstr "Duell mellan tävlande"
 
 #: results/templates/results/base.html:47
+#: results/templates/results/base.html:51
 msgid "Langue"
 msgstr "Språk"
 
-#: results/templates/results/base.html:63
+#: results/templates/results/base.html:74
 msgid "Menu"
 msgstr "Meny"
 
-#: results/templates/results/base.html:69
+#: results/templates/results/base.html:80
 msgid "Basculer mode sombre/clair"
 msgstr "Växla mörkt/ljust läge"
 
-#: results/templates/results/base.html:69 templates/admin/base_site.html:59
+#: results/templates/results/base.html:80 templates/admin/base_site.html:59
 msgid "Mode sombre / clair"
 msgstr "Mörkt / ljust läge"
 
-#: results/templates/results/base.html:76
+#: results/templates/results/base.html:87
 #: results/templates/results/race_manage.html:3
 msgid "Gestion"
 msgstr "Hantering"
 
-#: results/templates/results/base.html:81
+#: results/templates/results/base.html:92
 #: results/templates/results/competition_list.html:3
 #: results/templates/results/competition_list.html:12
 #: results/templates/results/competition_list.html:16
 msgid "Liste des compétitions"
 msgstr "Tävlingslista"
 
-#: results/templates/results/base.html:87
+#: results/templates/results/base.html:98
 #: results/templates/results/race_create.html:3
 #: results/templates/results/race_create.html:12
 #: results/templates/results/race_create.html:16
@@ -1163,60 +1162,60 @@ msgstr "Tävlingslista"
 msgid "Créer une course"
 msgstr "Skapa en tävling"
 
-#: results/templates/results/base.html:94
+#: results/templates/results/base.html:105
 msgid "Admin"
 msgstr "Admin"
 
-#: results/templates/results/base.html:102
+#: results/templates/results/base.html:113
 msgid "Ressources GEC"
 msgstr "GEC-resurser"
 
-#: results/templates/results/base.html:107
+#: results/templates/results/base.html:118
 msgid "Etiquettes pour boitiers"
 msgstr "Etiketter för enheter"
 
-#: results/templates/results/base.html:112
+#: results/templates/results/base.html:123
 #: results/templates/results/drivers.html:11
 msgid "Drivers"
 msgstr "Drivrutiner"
 
-#: results/templates/results/base.html:118
+#: results/templates/results/base.html:129
 #: results/templates/results/meos_checker.html:3
 #: results/templates/results/meos_checker.html:11
 msgid "Verificateur de tirage"
 msgstr "Dragningskontroll"
 
-#: results/templates/results/base.html:123
+#: results/templates/results/base.html:134
 msgid "Vérifie moi (CSV)"
 msgstr "Vérifie moi (CSV)"
 
-#: results/templates/results/base.html:128
+#: results/templates/results/base.html:139
 msgid "Atelier Départ"
 msgstr "Startkontroll"
 
-#: results/templates/results/base.html:134
+#: results/templates/results/base.html:145
 #: results/templates/results/markdown_content.html:11
 #: results/templates/results/tuto.html:11
 msgid "Tutoriels"
 msgstr "Guider"
 
-#: results/templates/results/base.html:163
+#: results/templates/results/base.html:174
 msgid "Données MeOS"
 msgstr "MeOS-data"
 
-#: results/templates/results/base.html:165
+#: results/templates/results/base.html:176
 msgid "Hébergé par"
 msgstr "Hostas av"
 
-#: results/templates/results/base.html:175
+#: results/templates/results/base.html:186
 msgid "Retour en haut de page"
 msgstr "Tillbaka till sidans topp"
 
-#: results/templates/results/base.html:175
+#: results/templates/results/base.html:186
 msgid "Retour en haut"
 msgstr "Till upp"
 
-#: results/templates/results/base.html:199
+#: results/templates/results/base.html:211
 #: results/templates/results/class_results.html:112
 #: results/templates/results/course_results.html:75
 #: results/templates/results/org_results.html:46
@@ -1224,7 +1223,7 @@ msgstr "Till upp"
 msgid "1er"
 msgstr "1:a"
 
-#: results/templates/results/base.html:200
+#: results/templates/results/base.html:212
 #: results/templates/results/class_results.html:113
 #: results/templates/results/course_results.html:76
 #: results/templates/results/org_results.html:48
@@ -1232,7 +1231,7 @@ msgstr "1:a"
 msgid "2e"
 msgstr "2:a"
 
-#: results/templates/results/base.html:201
+#: results/templates/results/base.html:213
 #: results/templates/results/class_results.html:114
 #: results/templates/results/course_results.html:77
 #: results/templates/results/org_results.html:50
@@ -1240,7 +1239,7 @@ msgstr "2:a"
 msgid "3e"
 msgstr "3:e"
 
-#: results/templates/results/base.html:202
+#: results/templates/results/base.html:214
 msgid "Afficher abandons"
 msgstr "Visa avbrott"
 
@@ -1431,7 +1430,7 @@ msgid "Catégories"
 msgstr "Klasser"
 
 #: results/templates/results/competition_detail.html:64
-#: results/templates/results/meos_checker.html:147
+#: results/templates/results/meos_checker.html:154
 msgid "Circuits"
 msgstr "Banor"
 
@@ -1445,7 +1444,7 @@ msgid "Par circuit"
 msgstr "Per bana"
 
 #: results/templates/results/competition_detail.html:88
-#: results/templates/results/verifie_moi.html:121
+#: results/templates/results/verifie_moi.html:128
 msgid "Filtrer…"
 msgstr "Filtrera…"
 
@@ -2184,19 +2183,34 @@ msgstr "Ladda upp en MeOS-fil"
 msgid "Fichier d'exportation MeOS (<code>.meosxml</code>)"
 msgstr "MeOS-exportfil (<code>.meosxml</code>)"
 
-#: results/templates/results/meos_checker.html:55
+#: results/templates/results/meos_checker.html:45
+#: results/templates/results/meos_checker.html:49
+#: results/templates/results/race_create.html:123
+#: results/templates/results/race_create.html:127
+#: results/templates/results/verifie_moi.html:57
+#: results/templates/results/verifie_moi.html:61
+msgid "Aucun fichier choisi"
+msgstr "Ingen fil vald"
+
+#: results/templates/results/meos_checker.html:47
+#: results/templates/results/race_create.html:125
+#: results/templates/results/verifie_moi.html:59
+msgid "Choisir un fichier"
+msgstr "Välj fil"
+
+#: results/templates/results/meos_checker.html:62
 msgid "Verifier la conformite"
 msgstr "Kontrollera regeluppfyllnad"
 
-#: results/templates/results/meos_checker.html:63
+#: results/templates/results/meos_checker.html:70
 msgid "Tirage au sort"
 msgstr "Dragning"
 
-#: results/templates/results/meos_checker.html:75
+#: results/templates/results/meos_checker.html:82
 msgid "Complétude des données"
 msgstr "Datafullständighet"
 
-#: results/templates/results/meos_checker.html:93
+#: results/templates/results/meos_checker.html:100
 msgid ""
 "Exportez depuis MeOS via <em>Fichier &rarr; Sauvegarder sous&hellip;</em>\n"
 "            au format <code>.meosxml</code>.\n"
@@ -2212,52 +2226,52 @@ msgstr ""
 "            mellanrum som är lika med eller mindre än detta värde (i "
 "sekunder) betraktas de som konsekventa."
 
-#: results/templates/results/meos_checker.html:107
-#: results/templates/results/verifie_moi.html:72
+#: results/templates/results/meos_checker.html:114
+#: results/templates/results/verifie_moi.html:79
 msgid "Erreur de lecture du fichier :"
 msgstr "Fel vid läsning av filen:"
 
-#: results/templates/results/meos_checker.html:123
+#: results/templates/results/meos_checker.html:130
 msgid "Coureurs tires"
 msgstr "Tävlande i dragningen"
 
-#: results/templates/results/meos_checker.html:129
+#: results/templates/results/meos_checker.html:136
 msgid "Depart en parallele"
 msgstr "Parallella starter"
 
-#: results/templates/results/meos_checker.html:135
+#: results/templates/results/meos_checker.html:142
 msgid "Places vacantes"
 msgstr "Lediga platser"
 
-#: results/templates/results/meos_checker.html:141
+#: results/templates/results/meos_checker.html:148
 msgid "Categories"
 msgstr "Klasser"
 
-#: results/templates/results/meos_checker.html:153
+#: results/templates/results/meos_checker.html:160
 msgid "Erreurs"
 msgstr "Fel"
 
-#: results/templates/results/meos_checker.html:154
+#: results/templates/results/meos_checker.html:161
 msgid "Avertissements"
 msgstr "Varningar"
 
-#: results/templates/results/meos_checker.html:155
+#: results/templates/results/meos_checker.html:162
 msgid "Conforme"
 msgstr "Godkänd"
 
-#: results/templates/results/meos_checker.html:157
+#: results/templates/results/meos_checker.html:164
 msgid "Statut general"
 msgstr "Totalstatus"
 
-#: results/templates/results/meos_checker.html:174
+#: results/templates/results/meos_checker.html:181
 msgid "Regles de tirage au sort"
 msgstr "Regler för dragningen"
 
-#: results/templates/results/meos_checker.html:183
+#: results/templates/results/meos_checker.html:190
 msgid "Completude des donnees"
 msgstr "Datafullständighet"
 
-#: results/templates/results/meos_checker.html:201
+#: results/templates/results/meos_checker.html:208
 msgid "Analyse en cours&hellip;"
 msgstr "Analyserar&hellip;"
 
@@ -2390,27 +2404,27 @@ msgstr "Datum *"
 msgid "Organisateur / club *"
 msgstr "Arrangör / klubb *"
 
-#: results/templates/results/race_create.html:122
+#: results/templates/results/race_create.html:129
 msgid "SVG, PNG ou JPEG — 2 Mo maximum."
 msgstr "SVG, PNG eller JPEG — högst 2 MB."
 
-#: results/templates/results/race_create.html:131
+#: results/templates/results/race_create.html:138
 msgid "Créer la course"
 msgstr "Skapa tävlingen"
 
-#: results/templates/results/race_create.html:133
+#: results/templates/results/race_create.html:140
 msgid "Annuler"
 msgstr "Avbryt"
 
-#: results/templates/results/race_create.html:141
+#: results/templates/results/race_create.html:148
 msgid "Comment ça marche ?"
 msgstr "Så fungerar det"
 
-#: results/templates/results/race_create.html:145
+#: results/templates/results/race_create.html:152
 msgid "Renseignez le nom, la date et le club organisateur."
 msgstr "Ange namn, datum och arrangörsklubb."
 
-#: results/templates/results/race_create.html:147
+#: results/templates/results/race_create.html:154
 msgid ""
 "Après création, une <strong>clé API MeOS unique</strong> et un\n"
 "            <strong>lien privé de gestion</strong> sont affichés."
@@ -2419,7 +2433,7 @@ msgstr ""
 "en\n"
 "            <strong>privat hanteringslänk</strong>."
 
-#: results/templates/results/race_create.html:151
+#: results/templates/results/race_create.html:158
 msgid ""
 "Dans MeOS (<em>Outils &rarr; Serveur Online</em>) : URL = celle du site,\n"
 "            <strong>Password = la clé API</strong>, numéro de compétition\n"
@@ -2431,7 +2445,7 @@ msgstr ""
 "            <strong>lämnas tomt</strong>, ZIP-komprimering avstängd,\n"
 "            formatet <em>MeOS Online Protocol XML 2.0</em>."
 
-#: results/templates/results/race_create.html:157
+#: results/templates/results/race_create.html:164
 msgid ""
 "Conservez le lien privé : il permet de retrouver la clé,\n"
 "            de la régénérer et d'éditer les informations."
@@ -2439,7 +2453,7 @@ msgstr ""
 "Spara den privata länken: med den kan du hitta nyckeln,\n"
 "            generera om den och redigera uppgifterna."
 
-#: results/templates/results/race_create.html:163
+#: results/templates/results/race_create.html:170
 msgid ""
 "La course apparaît immédiatement sur le site, en attente du premier\n"
 "          import MeOS."
@@ -2568,7 +2582,7 @@ msgstr "Skapa en annan tävling"
 msgid "Télécharger en CSV"
 msgstr "Ladda ner som CSV"
 
-#: results/templates/results/recapitulatif.html:112 results/views.py:1038
+#: results/templates/results/recapitulatif.html:112 results/views.py:1011
 msgid "Arr."
 msgstr "Mål"
 
@@ -2785,7 +2799,7 @@ msgid "Par heure"
 msgstr "Per tid"
 
 #: results/templates/results/start_list.html:46
-#: results/templates/results/verifie_moi.html:129
+#: results/templates/results/verifie_moi.html:136
 msgid "Heure"
 msgstr "Tid"
 
@@ -2975,45 +2989,45 @@ msgstr ""
 "Ladda ner CSV-filen och importera den i appen\n"
 "        <strong>O Checklist</strong> på Android."
 
-#: results/templates/results/verifie_moi.html:59
+#: results/templates/results/verifie_moi.html:66
 msgid "Générer"
 msgstr "Skapa"
 
-#: results/templates/results/verifie_moi.html:82
+#: results/templates/results/verifie_moi.html:89
 msgid "Coureurs dans le CSV"
 msgstr "Tävlande i CSV-filen"
 
-#: results/templates/results/verifie_moi.html:88
+#: results/templates/results/verifie_moi.html:95
 msgid "Avec numéro de puce"
 msgstr "Med bricknummer"
 
-#: results/templates/results/verifie_moi.html:95
+#: results/templates/results/verifie_moi.html:102
 msgid "Exclus (départ parallèle)"
 msgstr "Exkluderade (parallell start)"
 
-#: results/templates/results/verifie_moi.html:101
+#: results/templates/results/verifie_moi.html:108
 msgid "Télécharger le CSV"
 msgstr "Ladda ner CSV-filen"
 
-#: results/templates/results/verifie_moi.html:111
+#: results/templates/results/verifie_moi.html:118
 msgid "sans heure de départ a été exclu"
 msgid_plural "sans heure de départ ont été exclus"
 msgstr[0] "utan starttid har tagits bort"
 msgstr[1] "utan starttid har tagits bort"
 
-#: results/templates/results/verifie_moi.html:112
+#: results/templates/results/verifie_moi.html:119
 msgid "du CSV — ils partent en parallèle avec un autre dispositif."
 msgstr "ur CSV-filen — de startar parallellt med en annan enhet."
 
-#: results/templates/results/verifie_moi.html:119
+#: results/templates/results/verifie_moi.html:126
 msgid "Prévisualisation — liste de départ"
 msgstr "Förhandsvisning — startlista"
 
-#: results/templates/results/verifie_moi.html:166
+#: results/templates/results/verifie_moi.html:173
 msgid "Format du fichier CSV généré"
 msgstr "Format för den genererade CSV-filen"
 
-#: results/templates/results/verifie_moi.html:170
+#: results/templates/results/verifie_moi.html:177
 msgid ""
 "Une ligne par coureur avec heure de départ, triée chronologiquement.\n"
 "      Les coureurs sans heure de départ (départ en parallèle) sont exclus.\n"
@@ -3023,15 +3037,15 @@ msgstr ""
 "      Tävlande utan starttid (parallell start) exkluderas.\n"
 "      Separator: kommatecken."
 
-#: results/templates/results/verifie_moi.html:219
+#: results/templates/results/verifie_moi.html:226
 msgid "Génération…"
 msgstr "Genererar…"
 
-#: results/views.py:120
+#: results/views.py:121
 msgid "Circuit non trouvé"
 msgstr "Banan hittades inte"
 
-#: results/views.py:1038
+#: results/views.py:1011
 msgid "Dép."
 msgstr "Start"
 
@@ -3070,4 +3084,3 @@ msgstr "Logga ut"
 
 #~ msgid "coureur"
 #~ msgstr "tävlande"
-

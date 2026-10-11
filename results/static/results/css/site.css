@@ -578,6 +578,44 @@ html[data-theme="dark"] .org-logo { border-color: rgba(0, 0, 0, .25); }
 .badge-co-dns { background: var(--co-grey); color: #fff; }
 .badge-co-bad { background: var(--co-warn); color: #fff; }
 
+/* ─── Champ fichier personnalisé ───────────────────────────────────────────── */
+/* Le widget natif <input type="file"> est rendu par le navigateur dans SA
+   propre langue (jamais celle du site) : on le masque visuellement (clip,
+   pas display:none — focus clavier et validation « required » conservés)
+   et on affiche notre bouton + nom de fichier, traduits par Django. */
+
+.co-file { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+
+.co-file-input {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.co-file-btn { display: inline-flex; align-items: center; white-space: nowrap; }
+
+.co-file-input:focus-visible + .co-file-btn {
+  outline: 2px solid var(--co-gold);
+  outline-offset: 2px;
+}
+
+.co-file-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--co-text-muted);
+  font-size: .9rem;
+}
+.co-file.has-file .co-file-name { color: var(--co-text); font-weight: 600; }
+
+.co-file.is-invalid .co-file-btn { border-color: var(--co-warn); color: var(--co-warn); }
+
 /* ─── Footer ─────────────────────────────────────────────────────────────────── */
 
 footer {
