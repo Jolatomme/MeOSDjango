@@ -316,6 +316,11 @@ def competitor_detail(request, cid, competitor_id):
     else:
         controls_seq, _ = get_class_controls(cid, competitor.cls)
     class_competitors = list(Mopcompetitor.objects.filter(cid=cid, cls=competitor.cls))
+    # Fiche v2 (rangs au poste, écart au leader) — initialisés hors du branch
+    # can_show pour être toujours présents dans le contexte.
+    competitor_rank = None
+    gap_to_first = None
+    class_rank_total = 0
     # Per-category gate: hide punches until one runner in the category has finished
     # Fallback for legacy mocks (empty list) — treat as can_show to keep old tests
     if not class_competitors:
@@ -338,13 +343,54 @@ def competitor_detail(request, cid, competitor_id):
             last_abs = splits[-1]['abs_raw']
             splits.append(build_finish_split(competitor.rt, last_abs))
         competitor.neg_time = any(sp.get('neg_leg') for sp in splits)
+
+        # Fiche v2 : rang au poste (cumulé) + meilleur tronçon de la catégorie,
+        # calculés sur TOUS les concurrents classés (mêmes helpers que l'export
+        # CSV/recap). Le coureur affiché récupère ses splits enrichis (même
+        # longueur garde les siens). Fraction relais exclue : fourches →
+        # parcours propre à chaque coureur, incomparable. L'enrichissement est
+        # défensif — une situation exotique laisse la fiche s'afficher sans
+        # les colonnes de rang plutôt que de lever une erreur 500.
+        if member is None and class_competitors:
+            try:
+                finishers, _, leader_time = rank_finishers(class_competitors)
+                for c in class_competitors:
+                    c.splits = compute_splits(
+                        c.id, controls_seq, radio_map,
+                        detect_prestart_ctrls(c, controls_seq, radio_map, attested))
+                    _rt = getattr(c, 'rt', None)
+                    if c.splits and isinstance(_rt, int) and not isinstance(_rt, bool) and _rt > 0:
+                        c.splits.append(build_finish_split(_rt, c.splits[-1]['abs_raw']))
+                mark_best_splits(finishers, class_competitors)
+                rank_splits(finishers, class_competitors)
+                class_rank_total = len(finishers)
+                mine = next((c for c in class_competitors if c.id == competitor_id), None)
+                if mine is not None:
+                    if len(mine.splits) == len(splits):
+                        splits = mine.splits
+                    rank = getattr(mine, 'rank', None)
+                    if isinstance(rank, int) and not isinstance(rank, bool):
+                        competitor_rank = rank
+                    if competitor_rank is not None and isinstance(leader_time, int) \
+                            and not isinstance(leader_time, bool) \
+                            and isinstance(competitor.rt, int) \
+                            and not isinstance(competitor.rt, bool):
+                        gap_to_first = competitor.rt - leader_time
+            except Exception:
+                pass  # enrichment optionnel : la fiche reste affichable
     else:
         splits = []
         competitor.neg_time = False
+    # Graphique d'évolution du rang : au moins 2 postes classés requis.
+    rank_chart = sum(1 for sp in splits if isinstance(sp, dict) and sp.get('abs_rank')) >= 2
     return render(request, 'results/competitor_detail.html', {
         'competition': competition, 'competitor': competitor,
         'org': org, 'cls': cls, 'splits': splits,
         'can_show_splits': can_show,
+        'competitor_rank': competitor_rank,
+        'gap_to_first': gap_to_first,
+        'class_rank_total': class_rank_total,
+        'rank_chart': rank_chart,
         'neg_time_warning': get_negative_time_stats(cid),
         'total_time': format_time(competitor.rt) if competitor.is_ok else competitor.status_label,
     })
@@ -522,6 +568,49 @@ def live_results(request, cid, class_id):
 
 
 _LIVE_CACHE_TTL = 3   # s — < intervalle de polling (5 s) : partage du calcul entre spectateurs
+_DAY_TENTHS = 24 * 3600 * 10   # 1/10 s d'une journée (horloge modulo jour)
+
+
+def _ctrl_avg_from_arrivals(runners, radio_map, controls_seq):
+    """Temps cumulé moyen (1/10 s) par poste du parcours parmi les arrivés.
+
+    Alimente l'interpolation de « progression estimée » : entre deux
+    poinçons, un coureur en course progresse à l'allure moyenne des arrivés
+    (méthode d'OrientLive). La moyenne des temps de course complète est
+    rangée sous la clé réservée ``'_finish'`` (cible entre le dernier poste
+    et l'arrivée). Retourne ``{}`` sans arrivé exploitable — le client garde
+    alors la barre par poinçon."""
+    ctrl_ids = {c['ctrl_id'] for c in (controls_seq or [])}
+    if not ctrl_ids:
+        return {}
+    arrived = [r for r in runners
+               if r['group'] == 'arrives'
+               and isinstance(r['rt'], int) and not isinstance(r['rt'], bool)
+               and r['rt'] > 0]
+    if not arrived:
+        return {}
+    sums, counts = {}, {}
+    for r in arrived:
+        for ctrl, t in (radio_map.get(r['id'], {}) or {}).items():
+            if ctrl in ctrl_ids and isinstance(t, int) \
+                    and not isinstance(t, bool) and t > 0:
+                sums[ctrl] = sums.get(ctrl, 0) + t
+                counts[ctrl] = counts.get(ctrl, 0) + 1
+    avg = {cid: sums[cid] / counts[cid] for cid in counts}
+    avg['_finish'] = sum(r['rt'] for r in arrived) / len(arrived)
+    return avg
+
+
+def _etag_view(payload):
+    """Copie du payload sans les champs volatils pour l'empreinte ETag.
+
+    ``progress_est`` dépend de ``now`` (interpolation temps réel) : comme
+    les horloges serveur, il doit rester hors empreinte, sinon deux polls
+    sans nouvelle donnée MeOS produiraient des ETags différents et les
+    réponses 304 (backoff du polling) cesseraient."""
+    runners = [{k: v for k, v in r.items() if k != 'progress_est'}
+               for r in payload['runners']]
+    return {**payload, 'runners': runners}
 
 
 def _build_live_payload(cid, cls, competitors, course, competition=None):
@@ -622,6 +711,102 @@ def _build_live_payload(cid, cls, competitors, course, competition=None):
             ],
         })
 
+    # Écart au leader (1/10 s) : le premier arrivé du classement live sert de
+    # référence. Les arrivés exposent rt - leader ; les coureurs en validation
+    # GEC (arrivée radio détectée, puce pas encore lue) comparent leur temps
+    # provisoire. Les autres groupes : None. isinstance garanti (rt peut être
+    # un mock dans les tests).
+    leader_rt = None
+    leader_id = None
+    for r in runners:
+        if r['group'] == 'arrives' and isinstance(r['rt'], int) \
+                and not isinstance(r['rt'], bool):
+            leader_rt = r['rt']          # arrivés déjà triés par rt croissant
+            leader_id = r['id']
+            break
+    for r in runners:
+        behind = None
+        if leader_rt is not None:
+            if r['group'] == 'arrives' and isinstance(r['rt'], int) \
+                    and not isinstance(r['rt'], bool):
+                behind = r['rt'] - leader_rt
+            elif r['group'] == 'valid_gec':
+                prov = r['provisional_rt']
+                if isinstance(prov, int) and not isinstance(prov, bool):
+                    behind = prov - leader_rt
+        r['behind'] = behind
+
+    # Écart au premier de la catégorie, par poinçon : cible de l'infobulle
+    # des temps cumulés du live (« Écart sur le leader : +2:15 » au lieu du
+    # nom du poste, déjà visible sur la vignette à côté). Référence = le
+    # premier arrivé (même coureur que « behind ») ; avant la première
+    # arrivée, le leader en validation GEC (arrivée radio), sinon l'en-course
+    # de tête (ordre du classement live). Un poste que la référence n'a pas
+    # pointé (ou un poinçon avant départ) laisse l'infoble sans écart.
+    ref_id = leader_id
+    if ref_id is None:
+        for grp in ('valid_gec', 'en_course'):
+            for r in runners:
+                if r['group'] == grp:
+                    ref_id = r['id']
+                    break
+            if ref_id is not None:
+                break
+    ref_punches = radio_map.get(ref_id, {}) if ref_id is not None else {}
+    for r in runners:
+        for p in r['radio_punches']:
+            t_ref = ref_punches.get(p['ctrl'])
+            if p['time'] > 0 and isinstance(t_ref, int) \
+                    and not isinstance(t_ref, bool) and t_ref > 0:
+                p['behind'] = p['time'] - t_ref
+            else:
+                p['behind'] = None
+
+    # Progression estimée (0→1) : la barre avance en continu entre deux
+    # poinçons en interpolant à l'allure moyenne des arrivés (cf.
+    # _ctrl_avg_from_arrivals), au lieu de sauter d'un poste à l'autre.
+    # Volatil (dépend de now) → exclu de l'empreinte ETag via _etag_view.
+    ctrl_avg = _ctrl_avg_from_arrivals(runners, radio_map, controls_seq)
+    n_ctrl = len(controls_seq or [])
+    if ctrl_avg and n_ctrl:
+        now_clock = clock_tenths(now)
+        now_abs_val = _now_abs(comp_date, now)
+        for r in runners:
+            est = None
+            if r['group'] == 'arrives':
+                est = 1.0
+            elif r['group'] in ('en_course', 'valid_gec'):
+                pos = r.get('progress_pos')
+                pos = pos if isinstance(pos, int) \
+                    and not isinstance(pos, bool) else 0
+                # Dernier poinçon radio sur le parcours (temps cumulé)
+                t_last = None
+                for ctrl, t in (radio_map.get(r['id'], {}) or {}).items():
+                    if ctrl in ctrl_ids and isinstance(t, int) \
+                            and not isinstance(t, bool) and t > 0:
+                        if t_last is None or t > t_last:
+                            t_last = t
+                # Cible : poste suivant dans le parcours, sinon l'arrivée
+                target = (ctrl_avg.get(controls_seq[pos]['ctrl_id'])
+                          if pos < n_ctrl else ctrl_avg.get('_finish'))
+                # Écoulé depuis le départ (absolu si daté, sinon modulo jour)
+                elapsed = None
+                st_abs_r = r.get('st_abs')
+                if isinstance(st_abs_r, int) and not isinstance(st_abs_r, bool) \
+                        and isinstance(now_abs_val, int):
+                    elapsed = now_abs_val - st_abs_r
+                else:
+                    st_r = r.get('st')
+                    if isinstance(st_r, int) and not isinstance(st_r, bool):
+                        elapsed = (now_clock - st_r) % _DAY_TENTHS
+                if t_last is not None and isinstance(target, (int, float)) \
+                        and not isinstance(target, bool) \
+                        and target > t_last and elapsed is not None \
+                        and elapsed > t_last:
+                    frac = min(1.0, (elapsed - t_last) / (target - t_last))
+                    est = min(1.0, (pos + frac) / n_ctrl)
+            r['progress_est'] = round(est, 4) if est is not None else None
+
     payload = {
         'success':            True,
         'race_start_clock':   race_start,
@@ -638,9 +823,91 @@ def _build_live_payload(cid, cls, competitors, course, competition=None):
         'runners':            runners,
     }
     etag = '"%s"' % hashlib.sha1(
-        json.dumps(payload, sort_keys=True).encode('utf-8')
+        json.dumps(_etag_view(payload), sort_keys=True).encode('utf-8')
     ).hexdigest()
     return payload, etag
+
+
+def _live_payload_cached(cid, class_id):
+    """(payload, ETag) avec cache ~3 s partagé par classe/circuit.
+
+    Retourne ``(None, None)`` pour un relais (live non géré) : l'appelant
+    décide de la réponse (422 pour la catégorie demandée, favori omis pour
+    une catégorie adjacente)."""
+    cache_key = f'live:{cid}:{class_id}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    competition, cls, competitors, course = _load_class_context(cid, class_id)
+    if _is_relay(cid, cls, course):
+        return None, None
+    payload, etag = _build_live_payload(cid, cls, competitors, course,
+                                        competition=competition)
+    cache.set(cache_key, (payload, etag), _LIVE_CACHE_TTL)
+    return payload, etag
+
+
+_FAV_MAX_IDS = 120          # plafond de favoris suivis transmis par requête
+
+
+def _parse_fav_ids(raw):
+    """``?fav=1,2,3`` → set d'identifiants valides (borné).
+
+    Toute entrée non numérique (négatifs, décimaux, chiffres exotiques…)
+    est ignorée : ne lève jamais d'exception quelle que soit la valeur
+    reçue, et reste raisonnable en taille d'URL."""
+    if not raw:
+        return set()
+    out = set()
+    for tok in str(raw).split(','):
+        tok = tok.strip()
+        if not (tok.isascii() and tok.isdigit()):
+            continue
+        v = int(tok)
+        if 0 < v < 10 ** 9:
+            out.add(v)
+            if len(out) >= _FAV_MAX_IDS:
+                break
+    return out
+
+
+def _fav_others_payload(cid, fav_ids, main_ids):
+    """Favoris suivis hors catégorie/circuit affiché (onglet Favoris).
+
+    Pour chaque catégorie concernée, renvoie un extrait du payload live de
+    cette catégorie (réutilise le cache ~3 s partagé) : postes, classement
+    et progression propres au parcours du coureur, dans sa propre catégorie.
+    Le relais est exclu (live non géré) et un identifiant inconnu est
+    simplement ignoré."""
+    others = fav_ids - main_ids
+    if not others:
+        return []
+    try:
+        rows = list(Mopcompetitor.objects.filter(cid=cid, id__in=others)
+                    .values_list('id', 'cls'))
+    except Exception:
+        return []
+    by_cls = {}
+    for rid, cls_id in rows:
+        if isinstance(rid, int) and isinstance(cls_id, int):
+            by_cls.setdefault(cls_id, set()).add(rid)
+    out = []
+    for cls_id in sorted(by_cls):           # ordre déterministe (ETag)
+        try:
+            payload, _etag = _live_payload_cached(cid, cls_id)
+        except Exception:
+            continue                        # catégorie disparue : ignorée
+        if payload is None:
+            continue                        # relais : live non géré
+        selected = [r for r in payload['runners'] if r['id'] in by_cls[cls_id]]
+        if selected:
+            out.append({
+                'cls_name':   payload['cls_name'],
+                'controls':   payload['controls'],
+                'n_controls': payload['n_controls'],
+                'runners':    selected,
+            })
+    return out
 
 
 def api_live_results(request, cid, class_id):
@@ -651,19 +918,32 @@ def api_live_results(request, cid, class_id):
     conditionnelles : l'empreinte porte sur les champs stables uniquement
     (les horloges serveur sont réinjectées fraîches), donc un poll sans
     nouvelle donnée MeOS renvoie un 304 sans corps.
+
+    ``?fav=`` (ids suivis par le client, toutes catégories confondues)
+    ajoute à la réponse les favoris des **autres** catégories dans
+    ``fav_others`` — l'onglet Favoris reste ainsi peuplé quand on change
+    de catégorie. L'empreinte en tient compte (ajout/retrait d'un suivi
+    casse le 304), hors ``progress_est`` volatile.
     """
-    cache_key = f'live:{cid}:{class_id}'
-    cached = cache.get(cache_key)
-    if cached is not None:
-        payload, etag = cached
-    else:
-        competition, cls, competitors, course = _load_class_context(cid, class_id)
+    payload, etag = _live_payload_cached(cid, class_id)
+    if payload is None:
+        return JsonResponse({'success': False, 'error': 'relay'}, status=422)
 
-        if _is_relay(cid, cls, course):
-            return JsonResponse({'success': False, 'error': 'relay'}, status=422)
-
-        payload, etag = _build_live_payload(cid, cls, competitors, course, competition=competition)
-        cache.set(cache_key, (payload, etag), _LIVE_CACHE_TTL)
+    fav_others = []
+    fav_ids = _parse_fav_ids(request.GET.get('fav'))
+    if fav_ids:
+        fav_others = _fav_others_payload(
+            cid, fav_ids, {r['id'] for r in payload['runners']})
+        if fav_others:
+            stable = [
+                {'cls_name': e['cls_name'],
+                 'runners': [{k: v for k, v in r.items() if k != 'progress_est'}
+                             for r in e['runners']]}
+                for e in fav_others
+            ]
+            etag = '"%s"' % hashlib.sha1(
+                json.dumps({'base': etag, 'fav': stable},
+                           sort_keys=True).encode('utf-8')).hexdigest()
 
     if request.headers.get('If-None-Match') == etag:
         return HttpResponse(status=304, headers={'ETag': etag, 'Cache-Control': 'no-cache'})
@@ -679,6 +959,8 @@ def api_live_results(request, cid, class_id):
     except Exception:
         comp_date = None
     data = dict(payload)
+    if fav_others:
+        data['fav_others'] = fav_others
     data['server_now']       = int(now.timestamp() * 1000)
     data['server_now_clock'] = clock_tenths(now)
     data['server_now_abs']   = _now_abs(comp_date, now)
@@ -686,6 +968,39 @@ def api_live_results(request, cid, class_id):
     resp['ETag'] = etag
     resp['Cache-Control'] = 'no-cache'
     return resp
+
+
+_RACE_INDEX_CACHE_TTL = 60   # s — index quasi statique (données MOP figées)
+
+
+def api_race_index(request, cid):
+    """JSON API — index des coureurs de la course pour la recherche live.
+
+    Retourne l'ensemble des coureurs (toutes catégories) avec nom, club et
+    catégorie : alimente la recherche par nom/club de la page Live sans
+    poller chaque catégorie. Mise en cache ~1 min (l'index ne bouge qu'à un
+    import MeOS). Les classes relais sont exclues (live non géré pour les
+    équipes).
+    """
+    if not competition_visible(cid):
+        raise Http404
+    cache_key = f'raceindex:{cid}'
+    data = cache.get(cache_key)
+    if data is None:
+        org_map = get_org_map(cid)
+        cls_map = {c.id: c.name for c in Mopclass.objects.filter(cid=cid)}
+        relay_cls = set(
+            Mopteam.objects.filter(cid=cid).values_list('cls', flat=True))
+        runners = [
+            {'id': c.id, 'name': c.name,
+             'org': org_map.get(c.org, ''),
+             'cls': cls_map.get(c.cls, '')}
+            for c in Mopcompetitor.objects.filter(cid=cid)
+            if c.cls not in relay_cls
+        ]
+        data = {'success': True, 'runners': runners}
+        cache.set(cache_key, data, _RACE_INDEX_CACHE_TTL)
+    return JsonResponse(data)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

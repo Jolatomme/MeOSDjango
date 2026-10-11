@@ -667,7 +667,9 @@ def mark_best_splits(finishers, all_results):
                     best = raw
         if best is not None:
             for c in all_results:
-                if c.splits[idx]['leg_raw'] == best:
+                # Guard : un concurrent sans tronçon arrivée (ou d'une autre
+                # fourche) peut avoir moins de lignes que le premier classé.
+                if idx < len(c.splits) and c.splits[idx]['leg_raw'] == best:
                     c.splits[idx]['is_best'] = True
 
 
@@ -703,6 +705,9 @@ def rank_splits(finishers, all_results):
         leg_rank_map = build_rank_map(leg_times)
         abs_rank_map = build_rank_map(abs_times)
         for c in all_results:
+            # Guard : cf. mark_best_splits — lignes potentiellement absentes.
+            if idx >= len(c.splits):
+                continue
             c.splits[idx]['leg_rank'] = leg_rank_map.get(c.id)
             c.splits[idx]['abs_rank'] = abs_rank_map.get(c.id)
 

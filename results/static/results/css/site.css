@@ -490,7 +490,12 @@ html[data-theme="dark"] .org-logo { border-color: rgba(0, 0, 0, .25); }
   width: 4rem; height: .45rem; border-radius: 999px;
   background: var(--co-track-bg); overflow: hidden;
 }
-.live-progress-bar { display: block; height: 100%; border-radius: 999px; background: var(--co-green); }
+/* Barre de progression : transition douce entre deux polls (la largeur vient
+   de la progression estimée côté serveur → avance continue) */
+.live-progress-bar {
+  display: block; height: 100%; border-radius: 999px; background: var(--co-green);
+  transition: width 4.5s linear;
+}
 .live-progress-done { font-weight: 700; }
 
 /* Styles live (déplacés depuis live_results.html) */
@@ -503,6 +508,159 @@ html[data-theme="dark"] .org-logo { border-color: rgba(0, 0, 0, .25); }
 @keyframes liveFlash { 0%,100% { background: transparent; } 50% { background: rgba(25,135,84,.08); } }
 .live-time { font-variant-numeric: tabular-nums; }
 .live-clock { font-variant-numeric: tabular-nums; letter-spacing: .05em; }
+
+/* ─── Onglets LIVE / FAVORIS / RÉSULTATS (sur le bandeau vert du panneau) ──── */
+/* text-transform: uppercase hérité du bandeau : « Live » s'affiche « LIVE »
+   (les glyphes l/I de Barlow sont identiques — capitales = non ambigu). */
+.live-tabs { gap: .35rem; margin-bottom: 0; }
+.live-tabs .nav-link {
+  padding: .3rem .8rem; font-size: .85rem; font-weight: 600;
+  border-radius: 999px; color: rgba(255, 255, 255, .8); background: transparent;
+}
+.live-tabs .nav-link:hover,
+.live-tabs .nav-link:focus-visible { background: rgba(255, 255, 255, .18); color: #fff; }
+.live-tabs .nav-link.active { background: #fff; color: var(--co-forest); }
+.live-tabs .nav-link .badge { background: rgba(255, 255, 255, .28); color: #fff; font-weight: 600; }
+.live-tabs .nav-link.active .badge { background: var(--co-forest); color: #fff; }
+
+/* ─── Barre d'outils du panneau live (recherche / réglages / refresh) ─────── */
+.live-tool-btn {
+  padding: .3rem .55rem; font-weight: 600; line-height: 1.3;
+  color: #fff; background: rgba(255, 255, 255, .14);
+  border: 1px solid rgba(255, 255, 255, .5);
+}
+.live-tool-btn:hover,
+.live-tool-btn:focus-visible { background: #fff; border-color: #fff; color: var(--co-forest); }
+/* Badge « Mis à jour à … » lisible sur le bandeau vert */
+.live-upd-badge {
+  background: rgba(255, 255, 255, .92); color: var(--co-forest);
+  font-variant-numeric: tabular-nums;
+}
+/* ─── Fraîcheur des données + attente du prochain poll ────────────────────── */
+.live-fresh-dot {
+  display: inline-block; width: .55rem; height: .55rem; border-radius: 50%;
+  margin-right: .4rem; background: var(--co-green); vertical-align: middle;
+  box-shadow: 0 0 0 2px rgba(13, 51, 32, .18);
+}
+.live-fresh-dot[data-fresh='fresh-stale'] { background: #e0a100; }
+.live-fresh-dot[data-fresh='fresh-old'] {
+  background: #d9342b; animation: freshPulse 1.2s ease-in-out infinite;
+}
+@keyframes freshPulse { 50% { opacity: .3; } }
+.live-refresh-line { height: 3px; background: var(--co-border); overflow: hidden; }
+.live-refresh-line > span {
+  display: block; height: 100%; width: 100%;
+  background: var(--co-green); opacity: .6;
+}
+#liveRefreshBtn.is-spinning i { animation: liveSpin .6s linear; }
+@keyframes liveSpin { to { transform: rotate(360deg); } }
+
+/* ─── Fiche coureur v2 : boutons bandeau, ★, meilleur tronçon, graphe ──────── */
+/* Boutons d'action sur bandeau vert (page_header) — même esprit que .live-tool-btn */
+.co-head-btn {
+  padding: .3rem .6rem; font-weight: 600; line-height: 1.4;
+  color: #fff; background: rgba(255, 255, 255, .14);
+  border: 1px solid rgba(255, 255, 255, .5);
+}
+.co-head-btn:hover,
+.co-head-btn:focus-visible { background: #fff; border-color: #fff; color: var(--co-forest); }
+.co-head-btn .fiche-fav-star { transition: color .15s; color: rgba(255, 255, 255, .65); }
+.co-head-btn.is-fav { border-color: var(--co-gold); }
+.co-head-btn.is-fav:hover,
+.co-head-btn.is-fav:focus-visible { border-color: #fff; }
+.co-head-btn.is-fav .fiche-fav-star { color: var(--co-gold); }
+/* Tronçon le plus rapide de la catégorie (★) + colonne Rang */
+.split-best { color: var(--co-gold); font-size: .8rem; }
+.split-rank { font-variant-numeric: tabular-nums; }
+/* Graphe d'évolution du rang (fiche.js — Chart.js, comme les analyses) */
+.fiche-rank-chart { position: relative; height: 260px; }
+@media (max-width: 576px) {
+  .fiche-rank-chart { height: 210px; }
+}
+
+/* ─── Favori ★ ──────────────────────────────────────────────────────────────── */
+.live-fav {
+  border: 0; background: transparent; padding: 0 .1rem;
+  color: var(--co-text-muted); font-size: .95rem; line-height: 1;
+  cursor: pointer; transition: color .15s, transform .15s;
+}
+.live-fav:hover, .live-fav:focus-visible { color: var(--co-medal-gold, #f0a500); transform: scale(1.15); }
+.live-fav.is-fav { color: var(--co-medal-gold, #f0a500); }
+.live-fav-row .runner-name a { color: var(--co-text); }
+tr.live-fav-row { box-shadow: inset 3px 0 0 var(--co-medal-gold, #f0a500); }
+
+/* ─── Écart sur le leader ───────────────────────────────────────────────────── */
+.live-behind {
+  margin-left: .4rem; font-size: .74rem; font-weight: 600;
+  color: var(--co-text-muted); font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Badge catégorie (mode circuit) dans une ligne live */
+.live-runner-line .club-class {
+  font-weight: 600; font-size: .66rem; letter-spacing: .02em;
+  border-color: var(--co-border) !important; color: var(--co-text-muted);
+}
+
+/* ─── Bandeaux d'arrivée (toasts) ───────────────────────────────────────────── */
+.live-toasts {
+  position: fixed; right: 1rem; bottom: 1rem; z-index: 1080;
+  display: flex; flex-direction: column; gap: .5rem;
+  max-width: min(22rem, calc(100vw - 2rem)); pointer-events: none;
+}
+.live-toast {
+  pointer-events: auto; display: flex; align-items: center; gap: .6rem;
+  background: var(--co-surface); color: var(--co-text);
+  border: 1px solid var(--co-border); border-left: 4px solid var(--co-green);
+  border-radius: var(--co-radius-lg); box-shadow: var(--co-shadow-hover);
+  padding: .65rem .8rem; cursor: pointer;
+  animation: toastIn .25s ease-out;
+}
+@keyframes toastIn { from { opacity: 0; transform: translateY(.75rem); } to { opacity: 1; transform: none; } }
+.live-toast > i { color: var(--co-green); font-size: 1.2rem; }
+.live-toast-body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.live-toast-body strong { font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.live-toast-meta { font-size: .78rem; color: var(--co-text-muted); font-variant-numeric: tabular-nums; }
+.live-toast-close {
+  border: 0; background: transparent; color: var(--co-text-muted);
+  font-size: 1.2rem; line-height: 1; padding: 0 .15rem; cursor: pointer;
+}
+
+/* ─── Surlignage d'une ligne (?hl= ou sélection depuis la recherche) ────────── */
+tr.live-hl > td, tr.live-hl { animation: liveHl 4s ease-out; }
+@keyframes liveHl {
+  0%, 60%  { background: var(--co-highlight-bg, rgba(240,165,0,.22)); }
+  100% { background: transparent; }
+}
+
+/* ─── Résultats de la recherche (modale) ────────────────────────────────────── */
+/* Ligne entière = bascule ★ favori (la modale reste ouverte → multi-
+ * sélection, p. ex. tout un club) ; le badge de catégorie = lien de saut. */
+.search-hit {
+  padding: .5rem .75rem; font-size: .92rem;
+  display: flex; align-items: center; gap: .55rem; cursor: pointer;
+}
+.search-hit .badge { font-weight: 600; }
+.search-hit.is-fav { box-shadow: inset 3px 0 0 var(--co-medal-gold, #f0a500); }
+.search-hit-name {
+  flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.search-fav {
+  flex: 0 0 auto; border: 0; background: transparent; padding: 0;
+  color: var(--co-text-muted); font-size: 1rem; line-height: 1;
+  cursor: pointer; transition: color .15s, transform .15s;
+}
+.search-fav:hover, .search-fav:focus-visible {
+  color: var(--co-medal-gold, #f0a500); transform: scale(1.15);
+}
+.search-fav.is-fav { color: var(--co-medal-gold, #f0a500); }
+.search-jump { flex: 0 0 auto; text-decoration: none; }
+.search-jump:hover .badge,
+.search-jump:focus-visible .badge {
+  background: var(--co-green); color: #fff; border-color: var(--co-green);
+}
+.search-pick-hint { background: transparent; }
 
 /* ─── Stat cards ─────────────────────────────────────────────────────────────── */
 
@@ -1058,6 +1216,13 @@ body.modal-open #backToTop { display: none; }
   .results-table tbody td { padding: .45rem .65rem; }
   .results-table thead th { padding: .5rem .65rem; }
   .analysis-tab { padding: .45rem .7rem; font-size: .77rem; letter-spacing: 0; }
+
+  /* Onglets live : compacts, courent sur plusieurs rangs si besoin */
+  .live-tabs { flex-wrap: wrap; row-gap: .3rem; }
+  .live-tabs .nav-link { padding: .35rem .6rem; font-size: .78rem; }
+
+  /* Bandeaux d'arrivée : plein largeur au-dessus du bouton ↑ */
+  .live-toasts { left: 1rem; right: 1rem; max-width: none; bottom: 4.25rem; }
 
   /* Cibles tactiles : au moins 44px sur tout ce qui se clique / saisit */
   .btn:not(.btn-close),

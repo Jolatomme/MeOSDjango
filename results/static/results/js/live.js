@@ -6,6 +6,11 @@
  * course est local (1 s) entre deux polls ; l'horloge serveur fournie par
  * l'API sert de référence pour « il y a X s ».
  *
+ * Les ids suivis (★, toutes catégories) sont transmis à chaque poll
+ * (?fav=…) : l'API renvoie dans « fav_others » les favoris des autres
+ * catégories, que l'onglet Favoris affiche avec leur propre parcours —
+ * les suivis survivent donc au changement de catégorie.
+ *
  * Initialisé depuis live_results.html :
  *   LiveResults.init({ apiUrl, cid, isCourse, initialRaceStart, initialNowClock })
  */
@@ -15,6 +20,14 @@ const LiveResults = (() => {
   const POLL_INTERVAL_MS = 5000;
   const POLL_MAX_INTERVAL_MS = 30000;
   const DAY_TENTHS = 24 * 3600 * 10;
+
+  // ── Réglages persistés (localStorage) ─────────────────────────────────────
+  const LS_FAVS      = 'co-live-favs';      // {"<cid>": [id, …]}
+  const LS_TAB       = 'co-live-tab';       // 'live' | 'favos' | 'resultats'
+  const LS_REFRESH   = 'co-live-refresh';   // 'auto' | 'eco' | 'slow' | 'manual'
+  const LS_ARRIVALS  = 'co-live-arrivals';  // '1' | '0'
+
+  const REFRESH_BASE = { auto: 5000, eco: 10000, slow: 30000, manual: null };
 
   const GROUP_ORDER = ['en_course', 'valid_gec', 'arrives', 'en_attente', 'termine'];
   const GROUP_ICONS = {
@@ -65,6 +78,18 @@ const LiveResults = (() => {
     raceUpcoming: 'Course à venir',
     liveNow: 'En direct',
     offline: 'Hors ligne',
+    favEmpty: 'Aucun favori pour cette course — touchez ★ sur un coureur pour le suivre.',
+    favAriaAdd: 'Suivre ce coureur',
+    favAriaRemove: 'Ne plus suivre ce coureur',
+    behindTitle: 'Écart sur le leader',
+    arrivalTitle: 'Arrivée de %s',
+    arrivalProvisional: 'Arrivée (provisoire) de %s',
+    searchLoading: 'Recherche…',
+    searchHint: 'Tapez un nom de coureur ou de club.',
+    searchNoResult: 'Aucun coureur ni club trouvé.',
+    searchClassPrefix: 'Voir %s en live',
+    searchPickHint: 'Cliquez sur un coureur pour le suivre (★) — plusieurs sélections possibles.',
+    toastClose: 'Fermer',
     fmtDayHourMinSec: '%s j %s h %s min %s s',
     fmtHourMinSec: '%s h %s min %s s',
     fmtMinSec: '%s min %s s',
@@ -82,11 +107,63 @@ const LiveResults = (() => {
   let lastData = null;
   let lastFetchClientMs = 0;
   // Polling conditionnel : ETag de la dernière réponse + intervalle courant
-  // (backoff ×2 jusqu'à POLL_MAX_INTERVAL_MS tant que rien ne change, reset
-  // à POLL_INTERVAL_MS dès une mise à jour).
+  // (backoff ×2 jusqu'au plafond tant que rien ne change, reset à l'intervalle
+  // de base dès une mise à jour).
   let lastEtag = null;
   let pollIntervalMs = POLL_INTERVAL_MS;
   let currentRaceState = 'live';
+
+  // ── État UI (favoris, onglet, réglages) ────────────────────────────────────
+  let activeTab = 'live';          // 'live' | 'favos' | 'resultats'
+  let favIds = new Set();          // ids suivis pour la course courante
+  let seenArrivals = null;         // Set des ids déjà notifiés (baseline 1er poll)
+  let highlightRid = null;         // id à surligner (?hl= ou recherche)
+  let searchIndex = null;          // index de la course (fetch paresseux)
+
+  function lsGet(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+  }
+  function lsSet(key, value) {
+    try { localStorage.setItem(key, value); } catch (e) { /* stockage indisponible */ }
+  }
+
+  function loadFavs() {
+    try {
+      const all = JSON.parse(lsGet(LS_FAVS) || '{}');
+      favIds = new Set((all[String(cfg.cid)] || []).map(Number));
+    } catch (e) {
+      favIds = new Set();
+    }
+  }
+
+  function saveFavs() {
+    let all = {};
+    try { all = JSON.parse(lsGet(LS_FAVS) || '{}'); } catch (e) { all = {}; }
+    all[String(cfg.cid)] = [...favIds];
+    lsSet(LS_FAVS, JSON.stringify(all));
+  }
+
+  /** ids suivis transmis au serveur (?fav=…) : l'API en déduit les favoris
+   *  des AUTRES catégories (payload « fav_others ») — les suivis restent
+   *  visibles dans l'onglet Favoris quel que soit l'écran catégorie affiché. */
+  function favQuery() {
+    if (!favIds.size) return '';
+    return '?fav=' + [...favIds].slice(0, 120).join(',');
+  }
+
+  function refreshMode() {
+    const v = lsGet(LS_REFRESH);
+    return (v in REFRESH_BASE) ? v : 'auto';
+  }
+
+  function baseInterval() {
+    const b = REFRESH_BASE[refreshMode()];
+    return b == null ? POLL_INTERVAL_MS : b;
+  }
+
+  function arrivalsEnabled() {
+    return lsGet(LS_ARRIVALS) !== '0';
+  }
 
   // ── Petits utilitaires ───────────────────────────────────────────────────
 
@@ -219,8 +296,14 @@ const LiveResults = (() => {
     // la position du poste le plus avancé (progress_pos).
     const pos = runner.group === 'termine' ? (runner.progress_count || 0) : runner.progress_pos;
     if (total === 0 || !pos) return '';
-    // Dénominateur : postes du parcours uniquement (le poste d'arrivée ne compte pas)
-    const pct = Math.min(100, Math.max(2, Math.round((pos / total) * 100)));
+    // Barre : progression estimée fournie par le serveur (interpolation à
+    // l'allure moyenne des arrivés entre deux poinçons, cf. views.py) quand
+    // elle existe — sinon position par poinçon. La transition CSS fait le
+    // lien glissant d'un poll à l'autre.
+    const est = runner.progress_est;
+    const hasEst = typeof est === 'number' && isFinite(est);
+    const pct = Math.min(100, Math.max(2, Math.round(
+      (hasEst ? est : pos / total) * 100)));
     return `<span class="live-progress">
       <span class="live-progress-count">${pos}/${total}</span>
       <span class="live-progress-track"><span class="live-progress-bar" style="width:${pct}%"></span></span>
@@ -233,6 +316,9 @@ const LiveResults = (() => {
    *  alignement vertical des poinçons d'une ligne sur l'autre. Le « il y a X »
    *  (qui tique) est posé hors géométrie en fin de liste — il ne concerne que
    *  le dernier poste atteint des coureurs encore en course.
+   *  Infobulle du temps cumulé : l'écart au premier de la catégorie à ce
+   *  poste (payload « behind » par poinçon) — le nom du poste reste sur la
+   *  vignette juste à côté ; repli sur le nom si l'écart est inconnu.
    *  Retourne '' si aucun poste à afficher. */
   function radioPunchCell(runner, data) {
     const showsPosts = RUNNING_GROUPS.includes(runner.group) || runner.group === 'arrives';
@@ -240,9 +326,12 @@ const LiveResults = (() => {
     const items = runner.radio_punches.map((p) => {
       const name = esc(ctrlName(data, p.ctrl));
       const beforeStart = p.time <= 0;
+      const hasBehind = typeof p.behind === 'number' && isFinite(p.behind);
       const timeTitle = beforeStart
         ? fill(T.preStartPunch, name)
-        : name;
+        : hasBehind
+          ? `${T.behindTitle} : ${(p.behind > 0 ? '+' : '') + fmtRaceTime(p.behind)}`
+          : name;
       return `<span class="live-punch">` +
         `<span class="badge bg-light text-dark border" title="${name}">${name}</span>` +
         `<span class="live-punch-time${beforeStart ? ' live-punch-prestart' : ''}" title="${esc(timeTitle)}">${fmtRaceTime(p.time)}</span>` +
@@ -255,9 +344,18 @@ const LiveResults = (() => {
     return items.join('');
   }
 
+  /** Écart sur le leader (payload « behind », 1/10 s) : « +1:23 » à côté du
+   *  temps. Absent pour le leader (0) et pour les groupes sans temps. */
+  function behindSpan(runner) {
+    const b = runner.behind;
+    if (b == null || b === 0) return '';
+    const label = (b > 0 ? '+' : '') + fmtRaceTime(b);
+    return `<span class="live-behind" title="${esc(T.behindTitle)}">${label}</span>`;
+  }
+
   function timeCell(runner) {
     if (runner.group === 'arrives') {
-      const t = `<span class="live-time-value fw-bold">${fmtRaceTime(runner.rt)}</span>`;
+      const t = `<span class="live-time-value fw-bold">${fmtRaceTime(runner.rt)}</span>${behindSpan(runner)}`;
       if (runner.neg_time) {
         return `${t} ${negBadge(runner, 'ms-1')}`;
       }
@@ -267,7 +365,8 @@ const LiveResults = (() => {
       // Poinçon d'arrivée radio (ou résultat préliminaire) : temps final
       // provisoire affiché, en attendant la validation GEC.
       const t = runner.provisional_rt != null ? runner.provisional_rt : runner.last_time;
-      return `<span class="live-time-value fw-bold" title="${esc(T.provisionalTime)}">${fmtRaceTime(t)}</span>`;
+      const prov = runner.provisional_rt != null ? behindSpan(runner) : '';
+      return `<span class="live-time-value fw-bold" title="${esc(T.provisionalTime)}">${fmtRaceTime(t)}</span>${prov}`;
     }
     if (RUNNING_GROUPS.includes(runner.group) && runner.st > 0) {
       const stAbs = runner.st_abs != null ? runner.st_abs : runner.st;
@@ -350,16 +449,25 @@ const LiveResults = (() => {
   // ── Rendu ──────────────────────────────────────────────────────────────────
 
   /** Une ligne coureur = grille 3 colonnes :
-   *  classement | nom (club) + couples poste/temps | temps + progression. */
+   *  classement | ★ + nom (club) + couples poste/temps | temps + progression. */
   function runnerRow(r, data) {
-    const punches = radioPunchCell(r, data);
-    const progress = progressCell(r, data);
-    return `<tr class="live-runner${RUNNING_GROUPS.includes(r.group) ? ' live-running' : ''}">
+    // Favori d'une autre catégorie (_ctx) : postes/progression de SON parcours
+    const ctx = r._ctx || data;
+    const punches = radioPunchCell(r, ctx);
+    const progress = progressCell(r, ctx);
+    const fav = favIds.has(r.id);
+    return `<tr class="live-runner${RUNNING_GROUPS.includes(r.group) ? ' live-running' : ''}${fav ? ' live-fav-row' : ''}"
+                data-rid="${r.id}">
       <td class="live-cell-rank">${rankCell(r)}</td>
       <td class="live-cell-main">
         <div class="live-runner-line runner-name">
+          <button type="button" class="live-fav${fav ? ' is-fav' : ''}"
+                  data-fav-id="${r.id}" aria-pressed="${fav}"
+                  title="${esc(fav ? T.favAriaRemove : T.favAriaAdd)}"
+                  aria-label="${esc(fav ? T.favAriaRemove : T.favAriaAdd)}">★</button>
           <a href="/competition/${cfg.cid}/competitor/${r.id}/">${esc(r.name)}</a>
           ${r.org ? `<span class="club-name">(${esc(r.org)})</span>` : ''}
+          ${r.class_name && (cfg.isCourse || r._ctx) ? `<span class="badge bg-light text-dark border club-class">${esc(r.class_name)}</span>` : ''}
           ${r.neg_time ? negBadge(r) : ''}
         </div>
         ${punches ? `<div class="live-punches">${punches}</div>` : ''}
@@ -371,6 +479,46 @@ const LiveResults = (() => {
     </tr>`;
   }
 
+  /** Les runners visibles dépendent de l'onglet actif :
+   *  - live      : tout (groupes dans l'ordre usuel)
+   *  - favos     : uniquement les ★ suivis
+   *  - resultats : arrivés classés, puis « Terminé » sans classement.
+   *  Dans chaque cas, les favoris remontent en tête (comme « Mes coureurs »
+   *  d'OrientLive) — stable partition, l'ordre d'origine est préservé au sein
+   *  de chaque bloc (render() re-groupe ensuite par groupe live). */
+  function favToTop(list) {
+    const favs = list.filter((r) => favIds.has(r.id));
+    if (!favs.length) return list;
+    return favs.concat(list.filter((r) => !favIds.has(r.id)));
+  }
+
+  /** Favoris appartenant à d'autres catégories que l'affichée : extraits
+   *  « fav_others » du payload (déjà filtrés serveur — refiltrés ici, car
+   *  lastData peut dater d'un retrait de ★). Chaque coureur reçoit
+   *  ``_ctx`` (les postes + effectif de SA catégorie) pour les cellules. */
+  function favOthers(data) {
+    const out = [];
+    for (const entry of (data && data.fav_others) || []) {
+      for (const r of entry.runners) {
+        if (favIds.has(r.id)) {
+          r._ctx = entry;
+          out.push(r);
+        }
+      }
+    }
+    return out;
+  }
+
+  function visibleRunners(data) {
+    if (activeTab === 'favos') {
+      return data.runners.filter((r) => favIds.has(r.id)).concat(favOthers(data));
+    }
+    if (activeTab === 'resultats') {
+      return favToTop(data.runners.filter((r) => r.group === 'arrives' || r.group === 'termine'));
+    }
+    return favToTop(data.runners);
+  }
+
   function render(data) {
     lastData = data;
     const body = document.getElementById('liveBody');
@@ -379,34 +527,71 @@ const LiveResults = (() => {
     const counts = { en_course: 0, valid_gec: 0, arrives: 0, en_attente: 0, termine: 0 };
     for (const r of data.runners) counts[r.group] = (counts[r.group] || 0) + 1;
 
+    const shown = visibleRunners(data);
     const html = [];
-    for (const group of GROUP_ORDER) {
-      const rows = data.runners.filter((r) => r.group === group);
-      html.push(`<tr class="live-group-row"><td>
-          <i class="bi ${GROUP_ICONS[group]} me-2"></i>${T.groupLabels[group]}
-          <span class="badge bg-light text-dark ms-2">${rows.length}</span>
-        </td></tr>`);
-      if (!rows.length) {
-        html.push(`<tr><td class="text-muted small p-2 ps-4">${T.groupEmpty[group]}</td></tr>`);
-        continue;
-      }
-      for (const r of rows) html.push(runnerRow(r, data));
-    }
-
-    if (!data.runners.length) {
+    if (!shown.length) {
+      // État vide selon l'onglet (les coureurs peuvent exister mais être masqués)
+      let emptyMsg = T.emptyRunners;
+      if (activeTab === 'favos') emptyMsg = T.favEmpty;
+      else if (data.runners.length) emptyMsg = T.groupEmpty[activeTab === 'resultats' ? 'arrives' : 'en_course'];
       html.push(`<tr><td class="text-center text-muted p-4">
-        <i class="bi bi-inbox me-2"></i>${esc(T.emptyRunners)}
+        <i class="bi bi-inbox me-2"></i>${esc(emptyMsg)}
       </td></tr>`);
+    } else {
+      const groups = activeTab === 'resultats' ? ['arrives', 'termine'] : GROUP_ORDER;
+      for (const group of groups) {
+        const rows = shown.filter((r) => r.group === group);
+        if (activeTab === 'favos' && !rows.length) continue;   // pas d'en-tête vide
+        html.push(`<tr class="live-group-row"><td>
+            <i class="bi ${GROUP_ICONS[group]} me-2"></i>${T.groupLabels[group]}
+            <span class="badge bg-light text-dark ms-2">${rows.length}</span>
+          </td></tr>`);
+        if (!rows.length) {
+          html.push(`<tr><td class="text-muted small p-2 ps-4">${T.groupEmpty[group]}</td></tr>`);
+          continue;
+        }
+        for (const r of rows) html.push(runnerRow(r, data));
+      }
     }
 
     body.innerHTML = html.join('');
     syncPunchWidths();
+    applyHighlight();
     setText('liveCountEnCourse', counts.en_course);
     setText('liveCountValidGec', counts.valid_gec);
     setText('liveCountArrives', counts.arrives);
     setText('liveCountWaiting', counts.en_attente);
     setText('liveCountDone', counts.termine);
-    setText('liveLastUpdate', fill(T.updatedPrefix, fmtClock(data.server_now_clock)));
+    setText('tabCountLive', data.runners.length);
+    setText('tabCountFav', data.runners.filter((r) => favIds.has(r.id)).length
+      + favOthers(data).length);
+    setText('tabCountRes', counts.arrives + counts.termine);
+    // Badge compact : seule l'heure (le préfixe « Mis à jour » vit dans le
+    // title — le bandeau vert doit tenir sur une ligne au format desktop).
+    const updClock = fmtClock(data.server_now_clock);
+    setText('liveLastUpdate', updClock);
+    const updEl = document.getElementById('liveLastUpdate');
+    if (updEl) updEl.title = fill(T.updatedPrefix, updClock);
+  }
+
+  /** Surligne la ligne highlightRid (recherche ?hl= ou sélection) et la fait
+   *  défiler dans le champ de vision. Un favori d'une autre catégorie n'existe
+   *  que dans l'onglet Favoris : on y bascule d'abord (garanti de boucle : si
+   *  l'onglet est déjà Favoris et que la ligne manque, on abandonne). */
+  function applyHighlight() {
+    if (highlightRid == null) return;
+    const row = document.querySelector(`#liveBody tr[data-rid="${highlightRid}"]`);
+    if (!row) {
+      if (activeTab !== 'favos' && lastData
+          && favOthers(lastData).some((r) => r.id === highlightRid)) {
+        switchToRowIfHidden(highlightRid);
+      }
+      return;
+    }
+    row.classList.add('live-hl');
+    row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    setTimeout(() => row.classList.remove('live-hl'), 4000);
+    highlightRid = null;
   }
 
   function raceElapsed(data) {
@@ -467,6 +652,7 @@ const LiveResults = (() => {
   /** Recalcule chaque seconde : « il y a X », chronos des coureurs en course
    *  et compte à rebours des coureurs en attente. Gère les horloges absolues. */
   function updateTickers(data) {
+    updateFreshness();
     if (!data) return;
     const useAbs = data.server_now_abs != null;
     const now = useAbs ? absNow(data) : tenthsNow(data);
@@ -540,16 +726,104 @@ const LiveResults = (() => {
     pollTimer = setTimeout(poll, ms);
   }
 
+  // ── Fraîcheur des données + attente du prochain poll ────────────────────────
+
+  /** Pastille de fraîcheur à côté de l'horloge du bandeau : verte < 20 s
+   *  depuis le dernier fetch réussi, orange < 60 s, rouge au-delà (onglet
+   *  mis en arrière-plan ou serveur injoignable — le badge « Hors ligne »
+   *  signale l'échec du poll lui-même). */
+  function updateFreshness() {
+    const dot = document.getElementById('liveFreshDot');
+    if (!dot || !lastFetchClientMs) return;
+    const ageMs = Date.now() - lastFetchClientMs;
+    const state = ageMs > 60000 ? 'fresh-old' : (ageMs > 20000 ? 'fresh-stale' : 'fresh-ok');
+    if (dot.dataset.fresh !== state) {
+      dot.dataset.fresh = state;
+      dot.title = fill(T.agoPrefix, fmtAgo(Math.round(ageMs / 100)));
+    }
+  }
+
+  /** Fine ligne sous le bandeau : compte à rebours visuel du prochain poll
+   *  (redémarrée à chaque planification ; mascée en mode manuel). */
+  function startCountdown(ms) {
+    const line = document.getElementById('liveRefreshLine');
+    const bar = document.getElementById('liveRefreshBar');
+    if (!line || !bar) return;
+    if (ms > POLL_MAX_INTERVAL_MS) { line.classList.add('d-none'); return; }
+    line.classList.remove('d-none');
+    bar.style.transition = 'none';
+    bar.style.width = '100%';
+    void bar.offsetWidth;                       // reflow : redémarre l'animation
+    bar.style.transition = `width ${ms}ms linear`;
+    bar.style.width = '0%';
+  }
+
+  function hideCountdown() {
+    const line = document.getElementById('liveRefreshLine');
+    if (line) line.classList.add('d-none');
+  }
+
+  // ── Popups d'arrivée ───────────────────────────────────────────────────────
+
+  /** Détecte les nouvelles arrivées entre deux payloads et affiche un
+   *  bandeau. Le premier poll pose la baseline (pas de popup au chargement :
+   *  seules les arrivées survenues pendant la session sont notifiées). */
+  function notifyArrivals(data) {
+    const arrived = data.runners.filter(
+      (r) => r.group === 'arrives' || (r.group === 'valid_gec' && r.provisional_rt != null));
+    if (seenArrivals === null) {
+      seenArrivals = new Set(arrived.map((r) => r.id));
+      return;
+    }
+    for (const r of arrived) {
+      if (seenArrivals.has(r.id)) continue;
+      seenArrivals.add(r.id);
+      if (arrivalsEnabled()) showArrivalToast(r);
+    }
+  }
+
+  function showArrivalToast(r) {
+    const box = document.getElementById('liveToasts');
+    if (!box) return;
+    const provisional = r.group !== 'arrives';
+    const title = fill(
+      provisional ? T.arrivalProvisional : T.arrivalTitle, r.name);
+    const time = fmtRaceTime(provisional ? r.provisional_rt : r.rt);
+    const rank = r.rank != null ? ` <span class="badge bg-success-subtle text-success">#${r.rank}</span>` : '';
+    const el = document.createElement('div');
+    el.className = 'live-toast';
+    el.setAttribute('role', 'status');
+    el.innerHTML = `<i class="bi bi-flag-fill"></i>
+      <span class="live-toast-body">
+        <strong>${esc(title)}</strong>
+        <span class="live-toast-meta">${esc(time)}${rank}${cfg.isCourse && r.class_name ? ` · ${esc(r.class_name)}` : ''}</span>
+      </span>
+      <button type="button" class="live-toast-close" aria-label="${esc(T.toastClose)}">&times;</button>`;
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('.live-toast-close')) { el.remove(); return; }
+      switchToRowIfHidden(r.id);
+      highlightRid = r.id;
+      applyHighlight();
+      el.remove();
+    });
+    box.appendChild(el);
+    // Max 4 bandeaux empilés : le plus ancien tombe.
+    while (box.children.length > 4) box.firstChild.remove();
+    setTimeout(() => el.remove(), 8000);
+  }
+
+  // ── Polling ─────────────────────────────────────────────────────────────────
+
   async function poll() {
     try {
       const headers = { 'Accept': 'application/json' };
       if (lastEtag) headers['If-None-Match'] = lastEtag;
-      const resp = await fetch(cfg.apiUrl, { headers });
+      const resp = await fetch(cfg.apiUrl + favQuery(), { headers });
       if (resp.status === 304) {
         // Rien de nouveau depuis le dernier poll : on ralentit progressivement
         setLiveStatus(true);
         pollIntervalMs = Math.min(pollIntervalMs * 2, POLL_MAX_INTERVAL_MS);
-        schedulePoll(pollIntervalMs);
+        scheduleNext();
         return;
       }
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -558,16 +832,216 @@ const LiveResults = (() => {
       lastEtag = resp.headers.get('ETag');
       lastFetchClientMs = Date.now();
       render(data);
+      notifyArrivals(data);
       startClock(data);
       setRaceState(data.race_state);
       setLiveStatus(true);
-      pollIntervalMs = POLL_INTERVAL_MS;
+      pollIntervalMs = baseInterval();
     } catch (err) {
       setLiveStatus(false);
       // Erreur : on garde l'intervalle courant (pas de charge supplémentaire
       // si le serveur souffre déjà).
     }
+    scheduleNext();
+  }
+
+  /** Planifie le poll suivant selon le mode d'actualisation (manuel = ↻ seul). */
+  function scheduleNext() {
+    if (refreshMode() === 'manual') { hideCountdown(); return; }
     schedulePoll(pollIntervalMs);
+    startCountdown(pollIntervalMs);
+  }
+
+  /** Change de mode d'actualisation (déclenché depuis la modale Réglages). */
+  function setRefreshMode(mode) {
+    lsSet(LS_REFRESH, mode);
+    clearTimeout(pollTimer);
+    pollIntervalMs = baseInterval();
+    updateRefreshHint();
+    if (mode !== 'manual') poll(); else hideCountdown();
+  }
+
+  // ── UI : onglets, favoris, réglages, recherche ──────────────────────────────
+
+  /** Onglets LIVE / FAVORIS / RÉSULTATS (état persisté par course). */
+  function initTabs() {
+    const stored = lsGet(LS_TAB);
+    if (['live', 'favos', 'resultats'].includes(stored)) activeTab = stored;
+    for (const btn of document.querySelectorAll('#liveTabs [data-live-tab]')) {
+      btn.classList.toggle('active', btn.dataset.liveTab === activeTab);
+      btn.addEventListener('click', () => {
+        activeTab = btn.dataset.liveTab;
+        lsSet(LS_TAB, activeTab);
+        for (const b of document.querySelectorAll('#liveTabs [data-live-tab]')) {
+          b.classList.toggle('active', b === btn);
+        }
+        if (lastData) render(lastData);
+      });
+    }
+  }
+
+  /** Bascule le ★ d'un coureur (lignes du tableau + résultats de la
+   *  recherche) : sauvegarde, re-rendu immédiat, puis poll pour que le suivi
+   *  rejoigne/quitte « fav_others » sans attendre l'intervalle courant. */
+  function toggleFav(id) {
+    if (favIds.has(id)) favIds.delete(id); else favIds.add(id);
+    saveFavs();
+    if (lastData) render(lastData);
+    clearTimeout(pollTimer);
+    poll();
+  }
+
+  /** ★ favoris : délégation sur le tbody (recréé à chaque render). */
+  function initFavs() {
+    const body = document.getElementById('liveBody');
+    if (!body) return;
+    body.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-fav-id]');
+      if (!btn) return;
+      e.preventDefault();
+      toggleFav(Number(btn.dataset.favId));
+    });
+  }
+
+  /** Modale Réglages : radios d'actualisation + popup d'arrivée. */
+  function initSettings() {
+    const mode = refreshMode();
+    const radio = document.getElementById(`liveRefresh${mode.charAt(0).toUpperCase()}${mode.slice(1)}`);
+    if (radio) radio.checked = true;
+    for (const r of document.querySelectorAll('input[name="liveRefresh"]')) {
+      r.addEventListener('change', () => { if (r.checked) setRefreshMode(r.value); });
+    }
+    const arrivals = document.getElementById('liveArrivalsToggle');
+    if (arrivals) {
+      arrivals.checked = arrivalsEnabled();
+      arrivals.addEventListener('change', () => {
+        lsSet(LS_ARRIVALS, arrivals.checked ? '1' : '0');
+      });
+    }
+    const refreshBtn = document.getElementById('liveRefreshBtn');
+    if (refreshBtn) refreshBtn.addEventListener('click', () => {
+      refreshBtn.classList.add('is-spinning');
+      setTimeout(() => refreshBtn.classList.remove('is-spinning'), 650);
+      poll();
+    });
+    updateRefreshHint();
+  }
+
+  /** En mode manuel, rappel visible à côté de la dernière mise à jour. */
+  function updateRefreshHint() {
+    const hint = document.getElementById('liveRefreshHint');
+    if (hint) hint.classList.toggle('d-none', refreshMode() !== 'manual');
+  }
+
+  /** Modale Recherche : index de la course (fetch paresseux) + filtre local. */
+  function initSearch() {
+    const input = document.getElementById('liveSearchInput');
+    const results = document.getElementById('liveSearchResults');
+    if (!input || !results) return;
+
+    function normalize(s) {
+      return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function renderResults() {
+      const q = normalize(input.value.trim());
+      if (!searchIndex) { results.innerHTML = `<div class="list-group-item text-muted small text-center border-0">${esc(T.searchLoading)}</div>`; return; }
+      if (!q) {
+        results.innerHTML = `<div class="list-group-item text-muted small text-center border-0">${esc(T.searchHint)}</div>`;
+        return;
+      }
+      const hits = searchIndex.filter((r) => normalize(r.name).includes(q) || normalize(r.org).includes(q)).slice(0, 30);
+      if (!hits.length) {
+        results.innerHTML = `<div class="list-group-item text-muted small text-center border-0">${esc(T.searchNoResult)}</div>`;
+        return;
+      }
+      // Chaque ligne se clique pour suivre (★) — la modale reste ouverte :
+      // on peut alors sélectionner plusieurs coureurs, p. ex. tout un club.
+      // Le badge de catégorie est le lien de saut (« Voir … en live »).
+      results.innerHTML = hits.map((r) => {
+        const fav = favIds.has(r.id);
+        return `
+        <div class="list-group-item list-group-item-action search-hit${fav ? ' is-fav' : ''}"
+             data-rid="${r.id}" data-cls="${esc(r.cls)}">
+          <button type="button" class="search-fav${fav ? ' is-fav' : ''}"
+                  aria-pressed="${fav}"
+                  title="${esc(fav ? T.favAriaRemove : T.favAriaAdd)}"
+                  aria-label="${esc(fav ? T.favAriaRemove : T.favAriaAdd)}">★</button>
+          <span class="search-hit-name">
+            <span class="fw-semibold">${esc(r.name)}</span>
+            ${r.org ? `<span class="text-muted small ms-1">${esc(r.org)}</span>` : ''}
+          </span>
+          <a class="search-jump" href="${esc(cfg.classLiveTpl.replace('__CLS__', encodeURIComponent(r.cls)) + `?hl=${r.id}`)}"
+             title="${esc(fill(T.searchClassPrefix, r.cls))}">
+            <span class="badge bg-light text-dark border">${esc(r.cls)}</span>
+          </a>
+        </div>`;
+      }).join('') +
+        `<div class="list-group-item search-pick-hint text-muted small text-center border-0">${esc(T.searchPickHint)}</div>`;
+    }
+
+    input.addEventListener('input', renderResults);
+
+    // Chargement paresseux de l'index à la première ouverture de la modale
+    const modal = document.getElementById('liveSearchModal');
+    if (modal) {
+      modal.addEventListener('show.bs.modal', () => {
+        renderResults();               // état ★ à jour (bascules hors modale)
+        if (searchIndex) return;
+        fetch(cfg.searchApiUrl, { headers: { 'Accept': 'application/json' } })
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+          .then((d) => { searchIndex = d.runners || []; renderResults(); })
+          .catch(() => { searchIndex = []; renderResults(); });
+      });
+    }
+
+    // Clic sur un résultat :
+    //  - badge de catégorie (.search-jump) → ancien comportement de saut
+    //    (course actuelle : onglet + surlignage ; autre : page live de la
+    //    catégorie avec ?hl=) ;
+    //  - ailleurs dans la ligne → ★ favori (la modale reste ouverte pour
+    //    sélectionner plusieurs coureurs, p. ex. tout un club).
+    results.addEventListener('click', (e) => {
+      const jump = e.target.closest('.search-jump');
+      const hit = e.target.closest('.search-hit');
+      if (!hit) return;
+      const rid = Number(hit.dataset.rid);
+      if (jump) {
+        e.preventDefault();
+        const cls = hit.dataset.cls;
+        const modalEl = document.getElementById('liveSearchModal');
+        if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        const inPage = lastData && (
+          lastData.runners.some((r) => r.id === rid)
+          || favOthers(lastData).some((r) => r.id === rid));
+        if (inPage) {
+          switchToRowIfHidden(rid);
+          highlightRid = rid;
+          applyHighlight();
+        } else if (cls) {
+          window.location.href = cfg.classLiveTpl.replace('__CLS__', encodeURIComponent(cls)) + `?hl=${rid}`;
+        }
+        return;
+      }
+      toggleFav(rid);
+      renderResults();                 // repeindre ★ et ligne sélectionnée
+    });
+  }
+
+  /** La ligne peut être masquée par l'onglet actif : bascule sur l'onglet où
+   *  elle existe — Live pour un coureur de la catégorie affichée, Favoris
+   *  pour un favori d'une autre catégorie (absent du payload courant) —
+   *  puis re-rend si elle n'était pas dans le DOM. */
+  function switchToRowIfHidden(rid) {
+    if (document.querySelector(`#liveBody tr[data-rid="${rid}"]`)) return;
+    const extra = lastData ? favOthers(lastData).some((r) => r.id === rid) : false;
+    const tab = extra ? 'favos' : 'live';
+    activeTab = tab;
+    lsSet(LS_TAB, tab);
+    for (const b of document.querySelectorAll('#liveTabs [data-live-tab]')) {
+      b.classList.toggle('active', b.dataset.liveTab === tab);
+    }
+    if (lastData) render(lastData);
   }
 
   function init(config) {
@@ -580,7 +1054,21 @@ const LiveResults = (() => {
     };
     lastFetchClientMs = Date.now();
     currentRaceState = cfg.initialRaceState || 'live';
+    loadFavs();
+    // Surlignage demandé par la recherche (?hl=<id>) : mémorisé avant le
+    // premier render, appliqué dès qu'il apparaît dans le tableau. L'onglet
+    // est forcé sur Live (l'onglet Favoris/Résultats pourrait masquer la ligne).
+    const hl = new URLSearchParams(window.location.search).get('hl');
+    if (hl) {
+      highlightRid = Number(hl);
+      activeTab = 'live';
+      lsSet(LS_TAB, 'live');
+    }
     watchMeasureContext();
+    initTabs();
+    initFavs();
+    initSettings();
+    initSearch();
     startClock({
       race_start_clock: cfg.initialRaceStart,
       race_start_abs: cfg.initialRaceStartAbs,
@@ -595,9 +1083,10 @@ const LiveResults = (() => {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         clearTimeout(pollTimer);
-      } else {
+        hideCountdown();
+      } else if (refreshMode() !== 'manual') {
         // Retour sur l'onglet : poll immédiat + intervalle de base
-        pollIntervalMs = POLL_INTERVAL_MS;
+        pollIntervalMs = baseInterval();
         poll();
       }
     });

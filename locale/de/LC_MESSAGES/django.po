@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-11 11:20+0200\n"
+"POT-Creation-Date: 2026-10-11 21:17+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -144,7 +144,7 @@ msgstr "Startnummer"
 #: ochecklist/templates/ochecklist/runner_detail.html:17
 #: results/templates/results/_neg_time_warning.html:23
 #: results/templates/results/class_results.html:98
-#: results/templates/results/competitor_detail.html:34
+#: results/templates/results/competitor_detail.html:51
 #: results/templates/results/course_results.html:62
 #: results/templates/results/org_results.html:36
 #: results/templates/results/recapitulatif.html:106
@@ -158,7 +158,7 @@ msgstr "Wertungsklasse"
 #: ochecklist/templates/ochecklist/report_detail.html:86
 #: ochecklist/templates/ochecklist/runner_detail.html:16
 #: results/templates/results/class_results.html:99
-#: results/templates/results/competitor_detail.html:40
+#: results/templates/results/competitor_detail.html:57
 #: results/templates/results/course_results.html:63
 #: results/templates/results/grouping.html:56
 #: results/templates/results/grouping_index.html:146
@@ -183,12 +183,12 @@ msgstr "Neue SI-Karte"
 #: ochecklist/templates/ochecklist/report_detail.html:89
 #: ochecklist/templates/ochecklist/runner_detail.html:19
 #: results/templates/results/_split_detail_row.html:11
-#: results/templates/results/competitor_detail.html:47
-#: results/templates/results/competitor_detail.html:98
+#: results/templates/results/competitor_detail.html:64
+#: results/templates/results/competitor_detail.html:126
 #: results/templates/results/grouping.html:57
 #: results/templates/results/grouping.html:60
-#: results/templates/results/relay_results.html:152 results/views.py:762
-#: results/views.py:953
+#: results/templates/results/relay_results.html:152 results/views.py:1077
+#: results/views.py:1268
 msgid "Départ"
 msgstr "Start"
 
@@ -300,7 +300,8 @@ msgstr "MOP-Daten für cid=%(cid)s (%(name)s) gelöscht."
 #: results/templates/results/course_results.html:4
 #: results/templates/results/course_results.html:13
 #: results/templates/results/course_results.html:18
-#: results/tests/test_i18n.py:261
+#: results/templates/results/live_results.html:119
+#: results/tests/test_i18n.py:313
 msgid "Résultats"
 msgstr "Ergebnisse"
 
@@ -715,7 +716,7 @@ msgstr "Veranstalter"
 msgid "page d'accueil"
 msgstr "Startseite"
 
-#: results/models.py:73 results/tests/test_i18n.py:249
+#: results/models.py:73 results/tests/test_i18n.py:301
 msgid "compétitions"
 msgstr "Wettbewerbe"
 
@@ -771,7 +772,7 @@ msgstr "erstellt am"
 msgid "configuration compétition"
 msgstr "Wettbewerbskonfiguration"
 
-#: results/models.py:289 results/tests/test_i18n.py:250
+#: results/models.py:289 results/tests/test_i18n.py:302
 msgid "configurations compétitions"
 msgstr "Wettbewerbskonfigurationen"
 
@@ -794,14 +795,14 @@ msgstr "Konflikt beim Erstellen. Bitte erneut versuchen."
 #: results/services.py:367 results/services.py:375 results/services.py:487
 #: results/services.py:504 results/templates/results/_split_detail_row.html:2
 #: results/templates/results/_split_detail_row.html:35
-#: results/templates/results/competitor_detail.html:52
-#: results/templates/results/competitor_detail.html:102
-#: results/templates/results/competitor_detail.html:116
+#: results/templates/results/competitor_detail.html:69
+#: results/templates/results/competitor_detail.html:131
+#: results/templates/results/competitor_detail.html:146
 #: results/templates/results/grouping.html:58
 #: results/templates/results/grouping.html:61
-#: results/templates/results/relay_results.html:156 results/views.py:762
-#: results/views.py:788 results/views.py:830 results/views.py:891
-#: results/views.py:953
+#: results/templates/results/relay_results.html:156 results/views.py:1077
+#: results/views.py:1103 results/views.py:1145 results/views.py:1206
+#: results/views.py:1268
 msgid "Arrivée"
 msgstr "Ziel"
 
@@ -948,6 +949,10 @@ msgstr "Wertungsklasse wählen"
 
 #: results/templates/results/_category_modal.html:12
 #: results/templates/results/_category_modal.html:29
+#: results/templates/results/live_results.html:210
+#: results/templates/results/live_results.html:244
+#: results/templates/results/live_results.html:259
+#: results/templates/results/live_results.html:341
 msgid "Fermer"
 msgstr "Schließen"
 
@@ -1344,7 +1349,7 @@ msgstr "Rang Kl."
 #: results/templates/results/class_results.html:122
 #: results/templates/results/competitor_detail.html:19
 #: results/templates/results/course_results.html:85
-#: results/templates/results/live_results.html:185
+#: results/templates/results/live_results.html:314
 #: results/templates/results/recapitulatif.html:124
 #: results/templates/results/recapitulatif.html:167
 #: results/templates/results/relay_results.html:87
@@ -1356,7 +1361,7 @@ msgstr ""
 #: results/templates/results/class_results.html:122
 #: results/templates/results/competitor_detail.html:19
 #: results/templates/results/course_results.html:85
-#: results/templates/results/live_results.html:186
+#: results/templates/results/live_results.html:315
 #: results/templates/results/recapitulatif.html:124
 #: results/templates/results/recapitulatif.html:167
 #: results/templates/results/relay_results.html:87
@@ -1374,7 +1379,7 @@ msgid "Aucun résultat."
 msgstr "Keine Ergebnisse."
 
 #: results/templates/results/class_results.html:202
-#: results/templates/results/live_results.html:124
+#: results/templates/results/live_results.html:177
 #: results/templates/results/recapitulatif.html:202
 msgid "Début"
 msgstr "Von"
@@ -1382,8 +1387,8 @@ msgstr "Von"
 #: results/templates/results/class_results.html:206
 #: results/templates/results/class_results.html:221
 #: results/templates/results/course_results.html:143
-#: results/templates/results/live_results.html:128
-#: results/templates/results/live_results.html:143
+#: results/templates/results/live_results.html:181
+#: results/templates/results/live_results.html:196
 #: results/templates/results/org_results.html:99
 #: results/templates/results/recapitulatif.html:206
 #: results/templates/results/recapitulatif.html:221
@@ -1392,7 +1397,7 @@ msgid "Toutes les catégories"
 msgstr "Alle Wertungsklassen"
 
 #: results/templates/results/class_results.html:214
-#: results/templates/results/live_results.html:136
+#: results/templates/results/live_results.html:189
 #: results/templates/results/recapitulatif.html:214
 msgid "Fin"
 msgstr "Bis"
@@ -1551,36 +1556,81 @@ msgstr "Veranstalter"
 msgid "Aucune compétition trouvée dans la table <code>mopCompetition</code>."
 msgstr "Kein Wettkampf in der Tabelle <code>mopCompetition</code> gefunden."
 
-#: results/templates/results/competitor_detail.html:31
+#: results/templates/results/competitor_detail.html:25
+#: results/templates/results/competitor_detail.html:29
+#: results/templates/results/live_results.html:331
+msgid "Suivre ce coureur"
+msgstr "Diesen Läufer verfolgen"
+
+#: results/templates/results/competitor_detail.html:26
+#: results/templates/results/live_results.html:332
+msgid "Ne plus suivre ce coureur"
+msgstr "Diesen Läufer nicht mehr verfolgen"
+
+#: results/templates/results/competitor_detail.html:33
+#: results/templates/results/start_list.html:153
+msgid "Lien copié"
+msgstr "Link kopiert"
+
+#: results/templates/results/competitor_detail.html:34
+msgid "Partager"
+msgstr "Teilen"
+
+#: results/templates/results/competitor_detail.html:48
 msgid "Fiche concurrent"
 msgstr "Teilnehmerprofil"
 
-#: results/templates/results/competitor_detail.html:61
+#: results/templates/results/competitor_detail.html:78
 msgid "Résultat"
 msgstr "Ergebnis"
 
-#: results/templates/results/competitor_detail.html:85
+#: results/templates/results/competitor_detail.html:87
+#, python-format
+msgid "Rang %(rank)s sur %(total)s"
+msgstr "Rang %(rank)s von %(total)s"
+
+#: results/templates/results/competitor_detail.html:90
+#: results/templates/results/live_results.html:333
+msgid "Écart sur le leader"
+msgstr "Abstand zum Führenden"
+
+#: results/templates/results/competitor_detail.html:112
 #: results/templates/results/recapitulatif.html:76
 msgid "Temps intermédiaires"
 msgstr "Zwischenzeiten"
 
-#: results/templates/results/competitor_detail.html:91
+#: results/templates/results/competitor_detail.html:118
 msgid "Balise"
 msgstr "Kontrollzeit"
 
-#: results/templates/results/competitor_detail.html:92
+#: results/templates/results/competitor_detail.html:119
+#: results/templates/results/competitor_detail.html:177
 #: results/templates/results/duel.html:166
 msgid "Cumulé"
 msgstr "Gesamt"
 
-#: results/templates/results/competitor_detail.html:93
+#: results/templates/results/competitor_detail.html:120
+#: results/templates/results/competitor_detail.html:178
 #: results/templates/results/duel.html:164
 #: results/templates/results/duel.html:175
 #: results/templates/results/superman.html:66
 msgid "Tronçon"
 msgstr "Abschnitt"
 
-#: results/templates/results/competitor_detail.html:128
+#: results/templates/results/competitor_detail.html:121
+msgid "Rang au cumulé dans la catégorie (arrivés seulement)"
+msgstr "Kumulierter Rang in der Kategorie (nur Zielläufer)"
+
+#: results/templates/results/competitor_detail.html:121
+#: results/templates/results/competitor_detail.html:176
+msgid "Rang"
+msgstr "Rang"
+
+#: results/templates/results/competitor_detail.html:137
+msgid "Meilleur tronçon"
+msgstr "Bester Abschnitt"
+
+#: results/templates/results/competitor_detail.html:159
 msgid ""
 "Temps intermédiaires masqués tant qu’aucun coureur n’a terminé le circuit "
 "dans cette catégorie."
@@ -1588,13 +1638,18 @@ msgstr ""
 "Zwischenzeiten werden ausgeblendet, solange kein Läufer diese Strecke in der "
 "Wertungsklasse beendet hat."
 
-#: results/templates/results/competitor_detail.html:133
+#: results/templates/results/competitor_detail.html:164
 msgid ""
 "Aucun temps intermédiaire disponible (table <code>mopRadio</code> vide pour "
 "ce concurrent)."
 msgstr ""
 "Keine Zwischenzeit verfügbar (Tabelle <code>mopRadio</code> für diesen "
 "Teilnehmer leer)."
+
+#: results/templates/results/competitor_detail.html:172
+#: results/templates/results/competitor_detail.html:175
+msgid "Évolution du classement"
+msgstr "Rangverlauf"
 
 #: results/templates/results/course_results.html:53
 #, python-format
@@ -1962,7 +2017,7 @@ msgstr "Wettkampf wartet auf den ersten MeOS-Import"
 
 #: results/templates/results/home.html:82
 #: results/templates/results/live_results.html:87
-#: results/templates/results/live_results.html:172
+#: results/templates/results/live_results.html:301
 msgid "En attente"
 msgstr "Wartend"
 
@@ -2007,17 +2062,17 @@ msgid "Heure actuelle"
 msgstr "Aktuelle Uhrzeit"
 
 #: results/templates/results/live_results.html:39
-#: results/templates/results/live_results.html:197
+#: results/templates/results/live_results.html:326
 msgid "Course terminée"
 msgstr "Wettkampf beendet"
 
 #: results/templates/results/live_results.html:41
-#: results/templates/results/live_results.html:198
+#: results/templates/results/live_results.html:327
 msgid "Course à venir"
 msgstr "Wettkampf bevorsteht"
 
 #: results/templates/results/live_results.html:43
-#: results/templates/results/live_results.html:199
+#: results/templates/results/live_results.html:328
 msgid "En direct"
 msgstr "Live"
 
@@ -2041,8 +2096,8 @@ msgstr ""
 "\t  wenn seine SI-Karte gelesen wurde."
 
 #: results/templates/results/live_results.html:69
-#: results/templates/results/live_results.html:169
-#: results/templates/results/live_results.html:182
+#: results/templates/results/live_results.html:298
+#: results/templates/results/live_results.html:311
 msgid "En course"
 msgstr "Unterwegs"
 
@@ -2051,12 +2106,12 @@ msgid "Validation GEC"
 msgstr "GEC-Validierung"
 
 #: results/templates/results/live_results.html:81
-#: results/templates/results/live_results.html:171
+#: results/templates/results/live_results.html:300
 msgid "Arrivés"
 msgstr "Im Ziel"
 
 #: results/templates/results/live_results.html:93
-#: results/templates/results/live_results.html:173
+#: results/templates/results/live_results.html:302
 msgid "Terminé"
 msgstr "Beendet"
 
@@ -2064,115 +2119,222 @@ msgstr "Beendet"
 msgid "Classement live"
 msgstr "Live-Wertung"
 
-#: results/templates/results/live_results.html:102
+#: results/templates/results/live_results.html:107
+msgid "Live"
+msgstr "Live"
+
+#: results/templates/results/live_results.html:113
+msgid "Favoris"
+msgstr "Favoriten"
+
+#: results/templates/results/live_results.html:128
+msgid "Rechercher un coureur ou un club"
+msgstr "Läufer oder Verein suchen"
+
+#: results/templates/results/live_results.html:129
+#: results/templates/results/live_results.html:257
+msgid "Rechercher"
+msgstr "Suchen"
+
+#: results/templates/results/live_results.html:133
+#: results/templates/results/live_results.html:134
+#: results/templates/results/live_results.html:208
+msgid "Réglages"
+msgstr "Einstellungen"
+
+#: results/templates/results/live_results.html:137
+msgid "Actualiser maintenant"
+msgstr "Jetzt aktualisieren"
+
+#: results/templates/results/live_results.html:138
+msgid "Actualiser"
+msgstr "Aktualisieren"
+
+#: results/templates/results/live_results.html:140
 msgid "Dernière mise à jour"
 msgstr "Letzte Aktualisierung"
 
-#: results/templates/results/live_results.html:108
+#: results/templates/results/live_results.html:144
+msgid "Actualisation manuelle — touchez ↻ pour rafraîchir."
+msgstr "Manuelle Aktualisierung — ↻ antippen zum Aktualisieren."
+
+#: results/templates/results/live_results.html:158
 msgid "Chargement…"
 msgstr "Lädt…"
 
-#: results/templates/results/live_results.html:170
+#: results/templates/results/live_results.html:215
+#: results/templates/results/live_results.html:217
+msgid "Actualisation"
+msgstr "Aktualisierung"
+
+#: results/templates/results/live_results.html:219
+msgid "Automatique (≈5 s)"
+msgstr "Automatisch (≈5 s)"
+
+#: results/templates/results/live_results.html:222
+msgid "Économie (10 s)"
+msgstr "Sparmodus (10 s)"
+
+#: results/templates/results/live_results.html:225
+msgid "Lente (30 s)"
+msgstr "Langsam (30 s)"
+
+#: results/templates/results/live_results.html:228
+msgid "Manuelle"
+msgstr "Manuell"
+
+#: results/templates/results/live_results.html:233
+msgid "Popups d'arrivée"
+msgstr "Ziel-Pop-ups"
+
+#: results/templates/results/live_results.html:238
+msgid "Afficher un bandeau à chaque arrivée"
+msgstr "Bei jedem Zieleinlauf ein Banner anzeigen"
+
+#: results/templates/results/live_results.html:263
+#: results/templates/results/live_results.html:264
+msgid "Coureur ou club…"
+msgstr "Läufer oder Verein…"
+
+#: results/templates/results/live_results.html:267
+#: results/templates/results/live_results.html:337
+msgid "Tapez un nom de coureur ou de club."
+msgstr "Läufer- oder Vereinsnamen eingeben."
+
+#: results/templates/results/live_results.html:299
 msgid "En attente validation GEC"
 msgstr "Wartet auf GEC-Validierung"
 
-#: results/templates/results/live_results.html:176
+#: results/templates/results/live_results.html:305
 msgid "Aucun coureur parti pour le moment."
 msgstr "Zurzeit kein gestarteter Läufer."
 
-#: results/templates/results/live_results.html:177
+#: results/templates/results/live_results.html:306
 msgid "Aucun coureur en attente de validation GEC."
 msgstr "Kein Läufer wartet auf die GEC-Validierung."
 
-#: results/templates/results/live_results.html:178
+#: results/templates/results/live_results.html:307
 msgid "Aucun arrivé pour le moment."
 msgstr "Zurzeit kein Läufer im Ziel."
 
-#: results/templates/results/live_results.html:179
+#: results/templates/results/live_results.html:308
 msgid "Aucun coureur en attente."
 msgstr "Kein Läufer in der Warteschlange."
 
-#: results/templates/results/live_results.html:180
+#: results/templates/results/live_results.html:309
 msgid "Aucun."
 msgstr "Keine."
 
-#: results/templates/results/live_results.html:183
+#: results/templates/results/live_results.html:312
 #, python-format
 msgid "Temps négatif au poste %%s"
 msgstr "Negative Zeit bei Kontrolle %%s"
 
-#: results/templates/results/live_results.html:184
+#: results/templates/results/live_results.html:313
 #, python-format
 msgid "Temps négatif aux postes %%s"
 msgstr "Negative Zeiten bei Kontrollpunkten %%s"
 
-#: results/templates/results/live_results.html:187
+#: results/templates/results/live_results.html:316
 msgid "Tous les postes du parcours"
 msgstr "Alle Kontrollpunkte der Strecke"
 
-#: results/templates/results/live_results.html:188
+#: results/templates/results/live_results.html:317
 #, python-format
 msgid "%%s — poinçon avant le départ"
 msgstr "%%s — Punch vor dem Start"
 
-#: results/templates/results/live_results.html:189
+#: results/templates/results/live_results.html:318
 msgid "Temps final provisoire — validation GEC en attente"
 msgstr "Provisorische Endzeit — GEC-Validierung ausstehend"
 
-#: results/templates/results/live_results.html:190
+#: results/templates/results/live_results.html:319
 msgid "Temps de course depuis le départ"
 msgstr "Laufzeit seit dem Start"
 
-#: results/templates/results/live_results.html:191
+#: results/templates/results/live_results.html:320
 #: results/templates/results/start_list.html:174
 #: results/templates/results/start_list.html:180
 msgid "Heure de départ"
 msgstr "Startzeit"
 
-#: results/templates/results/live_results.html:192
+#: results/templates/results/live_results.html:321
 #, python-format
 msgid "Départ %%s"
 msgstr "Start %%s"
 
-#: results/templates/results/live_results.html:193
+#: results/templates/results/live_results.html:322
 msgid "Aucun coureur — le flux MOP n'a peut-être pas encore été reçu."
 msgstr "Kein Läufer — der MOP-Stream ist vielleicht noch nicht eingetroffen."
 
-#: results/templates/results/live_results.html:194
+#: results/templates/results/live_results.html:323
 #, python-format
 msgid "Mis à jour %%s"
 msgstr "Aktualisiert %%s"
 
-#: results/templates/results/live_results.html:195
+#: results/templates/results/live_results.html:324
 #, python-format
 msgid "il y a %%s"
 msgstr "vor %%s"
 
-#: results/templates/results/live_results.html:196
+#: results/templates/results/live_results.html:325
 #, python-format
 msgid "dans %%s"
 msgstr "in %%s"
 
-#: results/templates/results/live_results.html:200
+#: results/templates/results/live_results.html:329
 msgid "Hors ligne"
 msgstr "Offline"
 
-#: results/templates/results/live_results.html:201
+#: results/templates/results/live_results.html:330
+msgid ""
+"Aucun favori pour cette course — touchez ★ sur un coureur pour le suivre."
+msgstr ""
+
+#: results/templates/results/live_results.html:334
+#, python-format
+msgid "Arrivée de %%s"
+msgstr "Zieleinlauf von %%s"
+
+#: results/templates/results/live_results.html:335
+#, python-format
+msgid "Arrivée (provisoire) de %%s"
+msgstr "Vorläufiger Zieleinlauf von %%s"
+
+#: results/templates/results/live_results.html:336
+msgid "Recherche…"
+msgstr "Suche…"
+
+#: results/templates/results/live_results.html:338
+msgid "Aucun coureur ni club trouvé."
+msgstr "Kein Läufer und kein Verein gefunden."
+
+#: results/templates/results/live_results.html:339
+#, python-format
+msgid "Voir %%s en live"
+msgstr "%%s live ansehen"
+
+#: results/templates/results/live_results.html:340
+msgid ""
+"Cliquez sur un coureur pour le suivre (★) — plusieurs sélections possibles."
+msgstr "Klicken Sie auf einen Läufer, um ihm zu folgen (★) — mehrere Auswahlen möglich."
+
+#: results/templates/results/live_results.html:342
 #, python-format
 msgid "%%s j %%s h %%s min %%s s"
 msgstr "%%s T %%s Std %%s Min %%s S"
 
-#: results/templates/results/live_results.html:202
+#: results/templates/results/live_results.html:343
 #, python-format
 msgid "%%s h %%s min %%s s"
 msgstr "%%s Std %%s Min %%s S"
 
-#: results/templates/results/live_results.html:203
+#: results/templates/results/live_results.html:344
 #, python-format
 msgid "%%s min %%s s"
 msgstr "%%s Min %%s S"
 
-#: results/templates/results/live_results.html:204
+#: results/templates/results/live_results.html:345
 #, python-format
 msgid "%%s s"
 msgstr "%%s S"
@@ -2614,7 +2776,7 @@ msgstr "Weiteren Wettkampf erstellen"
 msgid "Télécharger en CSV"
 msgstr "Als CSV herunterladen"
 
-#: results/templates/results/recapitulatif.html:112 results/views.py:1011
+#: results/templates/results/recapitulatif.html:112 results/views.py:1326
 msgid "Arr."
 msgstr "Ziel"
 
@@ -2835,10 +2997,6 @@ msgstr "Nach Uhrzeit"
 #: results/templates/results/verifie_moi.html:136
 msgid "Heure"
 msgstr "Uhrzeit"
-
-#: results/templates/results/start_list.html:153
-msgid "Lien copié"
-msgstr "Link kopiert"
 
 #: results/templates/results/start_list.html:154
 msgid "Impossible de copier le lien"
@@ -3080,7 +3238,7 @@ msgstr "Wird erzeugt…"
 msgid "Circuit non trouvé"
 msgstr "Strecke nicht gefunden"
 
-#: results/views.py:1011
+#: results/views.py:1326
 msgid "Dép."
 msgstr "Start"
 

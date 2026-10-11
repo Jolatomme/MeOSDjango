@@ -1,5 +1,5 @@
 {% extends "results/base.html" %}
-{% load meos_tags i18n %}
+{% load meos_tags static i18n %}
 {% block title %}{{ competitor.name }} — {{ competition.name }}{% endblock %}
 
 {% block page_header %}
@@ -17,6 +17,23 @@
       </ol>
     </nav>
     <h1><i class="bi bi-person-circle me-2 opacity-75"></i>{{ competitor.name }}{% if competitor.neg_time %} <span class="badge neg-badge align-middle ms-1" title="{% translate "Temps négatif : boîtier mal synchronisé ou carte SI non effacée" %}">{% translate "Temps négatif" %}</span>{% endif %}</h1>
+    <div class="mt-2 d-flex flex-wrap gap-2">
+      {% if can_show_splits %}
+      {# ★ partagé avec l'onglet Favoris du LIVE (COUtils.favs, clé co-live-favs) #}
+      <button type="button" class="btn btn-sm co-head-btn" id="ficheFavBtn"
+              data-cid="{{ competition.cid }}" data-rid="{{ competitor.id }}"
+              data-label-follow="{% translate "Suivre ce coureur" %}"
+              data-label-unfollow="{% translate "Ne plus suivre ce coureur" %}"
+              aria-pressed="false">
+        <span class="fiche-fav-star" aria-hidden="true">★</span>
+        <span class="fiche-fav-label">{% translate "Suivre ce coureur" %}</span>
+      </button>
+      {% endif %}
+      <button type="button" class="btn btn-sm co-head-btn" id="ficheShareBtn"
+              data-msg-copied="{% translate "Lien copié" %}">
+        <i class="bi bi-share me-1"></i><span class="fiche-share-label">{% translate "Partager" %}</span>
+      </button>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -64,6 +81,16 @@
           <div style="font-family:var(--font-display);font-size:3rem;font-weight:800;color:var(--co-green)">
             {{ total_time }}
           </div>
+          {% if competitor_rank %}
+          <div class="mt-2 d-flex justify-content-center flex-wrap gap-2">
+            <span class="badge bg-success fs-6">
+              {% blocktranslate with rank=competitor_rank total=class_rank_total %}Rang {{ rank }} sur {{ total }}{% endblocktranslate %}
+            </span>
+            {% if gap_to_first %}
+            <span class="badge bg-dark fs-6" title="{% translate "Écart sur le leader" %}">+{{ gap_to_first|meos_time }}</span>
+            {% endif %}
+          </div>
+          {% endif %}
           <div class="mt-1">
             <span class="badge badge-co-ok fs-6"><i class="bi bi-check-circle me-1"></i>OK</span>
           </div>
@@ -85,12 +112,13 @@
       <div class="co-card-header"><i class="bi bi-diagram-3 me-2"></i>{% translate "Temps intermédiaires" %}</div>
       {% if splits and can_show_splits %}
       <div class="table-responsive">
-        <table class="results-table">
+        <table class="results-table" id="ficheSplits">
           <thead>
             <tr>
               <th>{% translate "Balise" %}</th>
               <th class="text-end">{% translate "Cumulé" %}</th>
               <th class="text-end">{% translate "Tronçon" %}</th>
+              <th class="text-end" title="{% translate "Rang au cumulé dans la catégorie (arrivés seulement)" %}">{% translate "Rang" %}</th>
             </tr>
           </thead>
           <tbody>
@@ -98,24 +126,27 @@
               <td><i class="bi bi-play-fill text-success"></i> {% translate "Départ" %}</td>
               <td class="text-end split-abs">0:00</td>
               <td class="text-end split-leg">—</td>
+              <td></td>
             </tr>
             {% translate "Arrivée" as FIN %}
             {% for sp in splits %}
             {% if sp.ctrl_name != FIN %}
-            <tr class="split-row">
+            <tr class="split-row" data-ctrl="{{ sp.ctrl_name }}" data-abs="{{ sp.abs_time }}" data-leg="{{ sp.leg_time }}"{% if sp.abs_rank %} data-rank="{{ sp.abs_rank }}"{% endif %}>
               <td>{{ sp.ctrl_name }}</td>
               <td class="text-end split-abs">{{ sp.abs_time }}</td>
-              <td class="text-end split-leg{% if sp.neg_leg %} split-neg{% endif %}"{% if sp.neg_leg %} title="{{ neg_time_warning.tooltip|default:'Temps négatif' }}"{% endif %}>{{ sp.leg_time }}{% if sp.neg_leg %} <span class="split-mark-warn">(!)</span>{% endif %}</td>
+              <td class="text-end split-leg{% if sp.neg_leg %} split-neg{% endif %}"{% if sp.neg_leg %} title="{{ neg_time_warning.tooltip|default:'Temps négatif' }}"{% endif %}>{{ sp.leg_time }}{% if sp.is_best %} <span class="split-best" title="{% translate "Meilleur tronçon" %}">★</span>{% endif %}{% if sp.neg_leg %} <span class="split-mark-warn">(!)</span>{% endif %}</td>
+              <td class="text-end split-rank">{% if sp.abs_rank %}{{ sp.abs_rank }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
             </tr>
             {% endif %}
             {% endfor %}
             {% with last=splits|last %}
             {% if last.ctrl_name == FIN %}
             {# Ligne affichée pour tout coureur ayant franchi la ligne (rt > 0), y compris non classés (PM…) #}
-            <tr class="split-row" style="border-top:2px solid var(--co-green)">
+            <tr class="split-row" style="border-top:2px solid var(--co-green)" data-ctrl="{{ FIN }}" data-abs="{{ last.abs_time }}" data-leg="{{ last.leg_time }}"{% if last.abs_rank %} data-rank="{{ last.abs_rank }}"{% endif %}>
               <td><i class="bi bi-flag-fill text-danger"></i> {% translate "Arrivée" %}</td>
               <td class="text-end split-abs fw-bold" style="color:var(--co-green)">{{ last.abs_time }}</td>
               <td class="text-end split-leg{% if last.neg_leg %} split-neg{% endif %}"{% if last.neg_leg %} title="{{ neg_time_warning.tooltip|default:'Temps négatif' }}"{% endif %}>{{ last.leg_time }}{% if last.neg_leg %} <span class="split-mark-warn">(!)</span>{% endif %}</td>
+              <td class="text-end split-rank fw-bold">{% if last.abs_rank %}{{ last.abs_rank }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
             </tr>
             {% endif %}
             {% endwith %}
@@ -134,6 +165,25 @@
       </div>
       {% endif %}
     </div>
+
+    {% if rank_chart %}
+    <!-- Évolution du classement (Chart.js, survol interactif comme les analyses) -->
+    <div class="co-card mt-3">
+      <div class="co-card-header"><i class="bi bi-graph-up me-2"></i>{% translate "Évolution du classement" %}</div>
+      <div class="p-3">
+        <div id="ficheRankChart" class="fiche-rank-chart"
+             data-title="{% translate "Évolution du classement" %}"
+             data-lbl-rank="{% translate "Rang" %}"
+             data-lbl-abs="{% translate "Cumulé" %}"
+             data-lbl-leg="{% translate "Tronçon" %}"></div>
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if rank_chart %}<script src="{% static 'results/js/chart.umd.min.js' %}"></script>{% endif %}
+<script src="{% static 'results/js/fiche.js' %}"></script>
 {% endblock %}

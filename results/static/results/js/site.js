@@ -258,7 +258,11 @@ const COUtils = (() => {
       });
     });
 
-    renderChevrons();
+    // Tri initial : sans lui, les lignes restent dans l'ordre de la base alors
+    // que l'en-tête affiche déjà le chevron de l'ordre déclaré (le queryset
+    // de CompetitionListView n'est pas ordonné).
+    if (sortKey) sortRows();
+    else renderChevrons();
   }
 
   // ── Bouton retour en haut ─────────────────────────────────────────────────
@@ -327,6 +331,47 @@ const COUtils = (() => {
     });
   }
 
+  // ── Favoris (« Suivre ») ──────────────────────────────────────────────────
+  // Même stockage que l'onglet Favoris du live (live.js, clé « co-live-favs ») :
+  // localStorage['co-live-favs'] = { "<cid>": [rid, …] }. La fiche coureur et
+  // la page LIVE lisent/écrivent la même liste (aucun croisement de temps de
+  // vie : chaque page recharge au montage).
+  const FAVS_KEY = 'co-live-favs';
+
+  function _lsGet(key) {
+    try { return window.localStorage.getItem(key); } catch (e) { return null; }
+  }
+  function _lsSet(key, value) {
+    try { window.localStorage.setItem(key, value); } catch (e) { /* stockage indisponible */ }
+  }
+
+  function _favsAll() {
+    try {
+      const all = JSON.parse(_lsGet(FAVS_KEY) || '{}');
+      return (all && typeof all === 'object') ? all : {};
+    } catch (e) { return {}; }
+  }
+
+  const favs = {
+    /** Set des ids suivis pour une compétition (ids numériques). */
+    ids(cid) {
+      return new Set((_favsAll()[String(cid)] || []).map(Number));
+    },
+    /** true si le coureur est suivi. */
+    has(cid, rid) {
+      return this.ids(cid).has(Number(rid));
+    },
+    /** Ajoute ou retire des favoris — retourne le nouvel état (true = suivi). */
+    toggle(cid, rid) {
+      const all = _favsAll();
+      const set = new Set((all[String(cid)] || []).map(Number));
+      const now = !set.has(Number(rid));
+      if (now) set.add(Number(rid)); else set.delete(Number(rid));
+      all[String(cid)] = [...set];
+      _lsSet(FAVS_KEY, JSON.stringify(all));
+      return now;
+    },
+  };
   // ── API publique ──────────────────────────────────────────────────────────
   return {
     setStrings,
@@ -340,5 +385,6 @@ const COUtils = (() => {
     bindTableSort,
     initBackToTop,
     initFileInputs,
+    favs,
   };
 })();

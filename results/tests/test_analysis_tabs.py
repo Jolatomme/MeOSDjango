@@ -42,7 +42,7 @@ TABS = [
 
 # Libellés attendus de la barre d'onglets (identiques catégorie ET circuit)
 TABS_LABELS = {
-    'live':           'Live',
+    'live':           'LIVE',
     'results':        'Résultats',
     'superman':       'Superman',
     'performance':    'Indice perf.',

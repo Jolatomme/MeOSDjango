@@ -2,13 +2,12 @@
  * test_site_js.test.js
  *
  * Tests unitaires pour COUtils (results/static/results/js/site.js).
- * Exécuter avec : npx jest test_site_js.test.js
+ * Exécuter avec (depuis la racine du projet) : npx jest results/tests/test_site_js.test.js
+ *   (ou npm run test:js)
  *
- * Dépendances : jest, jest-environment-jsdom
- *   npm install --save-dev jest jest-environment-jsdom
- *
- * Configuration jest dans package.json :
- *   { "jest": { "testEnvironment": "jsdom" } }
+ * Dépendances : jest, jest-environment-jsdom — devDependencies du package.json
+ * à la racine, config « jest » (testEnvironment: "jsdom") dans le même fichier.
+ *   npm install   # 1 fois (node_modules/ est gitignoré)
  */
 
 'use strict';
@@ -17,10 +16,15 @@
 const fs   = require('fs');
 const path = require('path');
 
-const src = fs.readFileSync(path.join(__dirname, 'site.js'), 'utf8');
+const src = fs.readFileSync(
+  path.join(__dirname, '..', 'static', 'results', 'js', 'site.js'),
+  'utf8'
+);
 
 // Injecte le script dans le contexte global jsdom
-// (eval dans le contexte global pour que COUtils soit accessible)
+// (un export explicite est ajouté : un const déclaré dans un eval strict
+// n'échappe pas à la portée de l'eval — sans cela, COUtils est inaccessible
+// dans les tests)
 beforeEach(() => {
   // Réinitialise le DOM entre chaque test
   document.body.innerHTML = '';
@@ -28,7 +32,7 @@ beforeEach(() => {
   document.body.dataset.medalSilver = '/static/medal-silver.svg';
   document.body.dataset.medalBronze = '/static/medal-bronze.svg';
   // eslint-disable-next-line no-eval
-  eval(src);
+  eval(src + '\n;globalThis.COUtils = COUtils;');
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -112,11 +116,15 @@ describe('COUtils.renderRunnerDot', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('COUtils.makeNonFinisherToggle', () => {
   function setupDOM() {
+    // Les <tr> ne sont conservés par le parseur HTML QUE dans une <table> :
+    // placés nus dans <body>, ils sont silencieusement ignorés.
     document.body.innerHTML = `
       <span id="toggleLabel">Masquer abandons</span>
-      <tr class="non-finisher"></tr>
-      <tr class="non-finisher"></tr>
-      <tr class="result-row"></tr>
+      <table><tbody>
+        <tr class="non-finisher"></tr>
+        <tr class="non-finisher"></tr>
+        <tr class="result-row"></tr>
+      </tbody></table>
     `;
   }
 
@@ -142,7 +150,7 @@ describe('COUtils.makeNonFinisherToggle', () => {
   });
 
   test('ne plante pas si le label est absent du DOM', () => {
-    document.body.innerHTML = `<tr class="non-finisher"></tr>`;
+    document.body.innerHTML = `<table><tbody><tr class="non-finisher"></tr></tbody></table>`;
     const toggle = COUtils.makeNonFinisherToggle('labelInexistant');
     expect(() => toggle()).not.toThrow();
   });
@@ -782,5 +790,58 @@ describe('COUtils.initFileInputs', () => {
   test('wrapper sans .co-file-name ignoré sans erreur', () => {
     document.body.innerHTML = '<div class="co-file"><input type="file" class="co-file-input"></div>';
     expect(() => COUtils.initFileInputs()).not.toThrow();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// favs — favoris « Suivre » partagés avec la page LIVE (clé co-live-favs,
+// même format que live.js : { "<cid>": [rid, …] })
+// ─────────────────────────────────────────────────────────────────────────────
+describe('COUtils.favs', () => {
+  beforeEach(() => { localStorage.clear(); });
+
+  test('ids() → ensemble vide sans donnée', () => {
+    expect(COUtils.favs.ids(4).size).toBe(0);
+  });
+
+  test('ids() lit la clé co-live-favs au format du live', () => {
+    localStorage.setItem('co-live-favs', JSON.stringify({ '4': [12, 34] }));
+    const ids = COUtils.favs.ids(4);
+    expect(ids.has(12)).toBe(true);
+    expect(ids.has(34)).toBe(true);
+    expect(ids.size).toBe(2);
+    expect(COUtils.favs.ids(5).size).toBe(0);   // autre compétition isolée
+  });
+
+  test('has() compare en numérique (rid string ou number)', () => {
+    localStorage.setItem('co-live-favs', '{"4":[12]}');
+    expect(COUtils.favs.has(4, 12)).toBe(true);
+    expect(COUtils.favs.has('4', '12')).toBe(true);
+    expect(COUtils.favs.has(4, 99)).toBe(false);
+  });
+
+  test('toggle() ajoute puis retire, en préservant les autres cids', () => {
+    localStorage.setItem('co-live-favs', '{"9":[7]}');
+    expect(COUtils.favs.toggle(4, 12)).toBe(true);        // suivi
+    expect(COUtils.favs.has(4, 12)).toBe(true);
+    const all = JSON.parse(localStorage.getItem('co-live-favs'));
+    expect(all['9']).toEqual([7]);                          // intact
+    expect(all['4']).toEqual([12]);
+    expect(COUtils.favs.toggle(4, 12)).toBe(false);        // plus suivi
+    expect(COUtils.favs.has(4, 12)).toBe(false);
+    expect(JSON.parse(localStorage.getItem('co-live-favs'))['4']).toEqual([]);
+  });
+
+  test('toggle() normalise les ids en nombres', () => {
+    expect(COUtils.favs.toggle(4, '12')).toBe(true);
+    expect(JSON.parse(localStorage.getItem('co-live-favs'))['4']).toEqual([12]);
+    expect(COUtils.favs.has(4, 12)).toBe(true);
+  });
+
+  test('JSON corrompu → comportement vide, sans lever', () => {
+    localStorage.setItem('co-live-favs', '{pas du json');
+    expect(COUtils.favs.ids(4).size).toBe(0);
+    expect(COUtils.favs.toggle(4, 12)).toBe(true);
+    expect(COUtils.favs.has(4, 12)).toBe(true);
   });
 });

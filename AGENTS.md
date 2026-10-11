@@ -24,8 +24,10 @@ python manage.py setup_db
 #   --force         drop existing tables first (DANGEROUS, incompatible with --dry-run)
 #   --fake-initial  mark tables as created in django_migrations (existing DBs)
 
-# JavaScript unit tests (requires jest + jest-environment-jsdom)
-npx jest test_site_js.test.js
+# JavaScript unit tests (jest — config dans package.json, à la racine)
+#   npm install       # 1 fois, crée node_modules/ (gitignoré)
+npx jest results/tests/test_site_js.test.js
+npm run test:js
 
 # Translations (fr = source language → en/de/sv catalogs, gettext required)
 python manage.py makemessages -l en -l de -l sv   # after marking new strings
@@ -56,7 +58,7 @@ python manage.py compilemessages                  # *.mo ignored by git — requ
 - Python tests run **without a database** — DB is fully mocked via `unittest.mock` (see `results/tests/conftest.py`)
 - `pytest.ini` adds `--cov=results --cov=ochecklist` (coverage)
 - `results/tests/test_i18n.py` — language selector, `set_language` cookie, URL invariance; tests asserting *translated* content skip themselves when `compilemessages` has not been run (`locale/*/LC_MESSAGES/django.mo` is gitignored)
-- JavaScript unit tests for `site.js` (COUtils): `npx jest test_site_js.test.js` — run from `results/tests/`, requires `jest` + `jest-environment-jsdom` (see header of `results/tests/test_site_js.test.js`)
+- JavaScript unit tests for `site.js` (COUtils): `npx jest results/tests/test_site_js.test.js` (or `npm run test:js`) — run **from the repo root**; jest + jest-environment-jsdom are devDependencies of the root `package.json` (`testEnvironment: "jsdom"`), `node_modules/` is gitignored (`npm install` once after cloning)
 
 ## Config
 

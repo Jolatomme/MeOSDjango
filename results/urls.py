@@ -63,6 +63,7 @@ urlpatterns = [
     path('api/<int:cid>/class/<str:class_id>/results/', views.api_class_results, name='api_class_results'),
     path('api/<int:cid>/class/<str:class_id>/live/',     views.api_live_results,  name='api_live_results'),
     path('api/<int:cid>/course/<str:class_id>/live/',    views.api_live_results,  name='api_course_live_results'),
+    path('api/<int:cid>/index/',                         views.api_race_index,    name='api_race_index'),
 
     # ── GEC ───────────────────────────────────────────────────────────────
     path('gec/checker/',    MeosCheckerView.as_view(), name='meos_checker'),

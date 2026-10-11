@@ -2,7 +2,7 @@
 {% load meos_tags i18n %}
 {% load static %}
 {% block title %}
-  Live — {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %} — {{ competition.name }}
+  LIVE — {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %} — {{ competition.name }}
 {% endblock %}
 
 {% block page_header %}
@@ -14,13 +14,13 @@
         <li class="breadcrumb-item active">
           {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
         </li>
-        <li class="breadcrumb-item active" aria-current="page">Live</li>
+        <li class="breadcrumb-item active" aria-current="page">LIVE</li>
       </ol>
     </nav>
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
         <h1>
-          <i class="bi bi-broadcast me-2 opacity-75"></i>Live —
+          <i class="bi bi-broadcast me-2 opacity-75"></i>LIVE —
           {% if course %}{{ course.display_name }}{% else %}{{ cls.name }}{% endif %}
         </h1>
         <div class="opacity-75 small mt-1">
@@ -97,10 +97,60 @@
 </div>
 
 <div class="co-card">
-  <div class="co-card-header d-flex justify-content-between">
+  <div class="co-card-header d-flex align-items-center flex-wrap gap-2">
     <span><i class="bi bi-broadcast me-2"></i>{% translate "Classement live" %}</span>
-    <span class="badge bg-secondary" id="liveLastUpdate" title="{% translate "Dernière mise à jour" %}">—</span>
+
+    {# ── Onglets LIVE / FAVORIS / RÉSULTATS (sur le bandeau) ──────────────── #}
+    <ul class="nav nav-pills live-tabs ms-lg-3 mb-0" id="liveTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-live-tab="live" type="button">
+          <i class="bi bi-broadcast me-1"></i>{% translate "Live" %}
+          <span class="badge ms-1" id="tabCountLive">…</span>
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-live-tab="favos" type="button">
+          <i class="bi bi-star-fill me-1"></i>{% translate "Favoris" %}
+          <span class="badge ms-1" id="tabCountFav">…</span>
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-live-tab="resultats" type="button">
+          <i class="bi bi-trophy me-1"></i>{% translate "Résultats" %}
+          <span class="badge ms-1" id="tabCountRes">…</span>
+        </button>
+      </li>
+    </ul>
+
+    <span class="d-flex align-items-center gap-2 flex-wrap ms-auto">
+      <button type="button" class="btn btn-sm live-tool-btn"
+              id="liveSearchBtn" data-bs-toggle="modal" data-bs-target="#liveSearchModal"
+              title="{% translate 'Rechercher un coureur ou un club' %}">
+        <i class="bi bi-search me-1"></i><span class="d-none d-sm-inline">{% translate 'Rechercher' %}</span>
+      </button>
+      <button type="button" class="btn btn-sm live-tool-btn"
+              id="liveSettingsBtn" data-bs-toggle="modal" data-bs-target="#liveSettingsModal"
+              title="{% translate 'Réglages' %}">
+        <i class="bi bi-gear me-1"></i><span class="d-none d-sm-inline">{% translate 'Réglages' %}</span>
+      </button>
+      <button type="button" class="btn btn-sm live-tool-btn"
+              id="liveRefreshBtn" title="{% translate 'Actualiser maintenant' %}">
+        <i class="bi bi-arrow-clockwise me-1"></i><span class="d-none d-sm-inline">{% translate 'Actualiser' %}</span>
+      </button>
+      <span class="badge live-upd-badge" title="{% translate "Dernière mise à jour" %}">
+        <span class="live-fresh-dot" id="liveFreshDot"></span><span id="liveLastUpdate">—</span>
+      </span>
+      <span class="small text-white-50 d-none ms-1" id="liveRefreshHint">
+        <i class="bi bi-hand-index-thumb me-1"></i>{% translate "Actualisation manuelle — touchez ↻ pour rafraîchir." %}
+      </span>
+    </span>
   </div>
+
+  {# ── Fine ligne : attente du prochain rafraîchissement ────────────────────── #}
+  <div class="live-refresh-line d-none" id="liveRefreshLine" aria-hidden="true">
+    <span id="liveRefreshBar"></span>
+  </div>
+
   <div class="table-responsive">
     <table class="results-table" id="liveTable">
       <tbody id="liveBody">
@@ -111,6 +161,9 @@
     </table>
   </div>
 </div>
+
+{# ── Popups d'arrivée ──────────────────────────────────────────────────────── #}
+<div id="liveToasts" class="live-toasts" aria-live="polite"></div>
 
 {# ── Navigation catégories (seulement pour les vraies catégories) ───────────── #}
 {% if not course %}
@@ -145,6 +198,80 @@
 </div>
 {% endif %}
 
+{# ── Modale Réglages : fréquence d'actualisation + popups d'arrivée ────────── #}
+<div class="modal fade" id="liveSettingsModal" tabindex="-1"
+     aria-labelledby="liveSettingsLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="liveSettingsLabel">
+          <i class="bi bi-gear me-2"></i>{% translate "Réglages" %}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% translate "Fermer" %}"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <div class="fw-semibold small text-uppercase text-muted mb-2">
+            <i class="bi bi-arrow-clockwise me-1"></i>{% translate "Actualisation" %}
+          </div>
+          <div class="btn-group d-flex" role="group" aria-label="{% translate 'Actualisation' %}" id="liveRefreshGroup">
+            <input type="radio" class="btn-check" name="liveRefresh" id="liveRefreshAuto" value="auto" autocomplete="off">
+            <label class="btn btn-outline-success btn-sm" for="liveRefreshAuto">{% translate "Automatique (≈5 s)" %}</label>
+
+            <input type="radio" class="btn-check" name="liveRefresh" id="liveRefreshEco" value="eco" autocomplete="off">
+            <label class="btn btn-outline-success btn-sm" for="liveRefreshEco">{% translate "Économie (10 s)" %}</label>
+
+            <input type="radio" class="btn-check" name="liveRefresh" id="liveRefreshSlow" value="slow" autocomplete="off">
+            <label class="btn btn-outline-success btn-sm" for="liveRefreshSlow">{% translate "Lente (30 s)" %}</label>
+
+            <input type="radio" class="btn-check" name="liveRefresh" id="liveRefreshManual" value="manual" autocomplete="off">
+            <label class="btn btn-outline-success btn-sm" for="liveRefreshManual">{% translate "Manuelle" %}</label>
+          </div>
+        </div>
+        <div class="mb-0">
+          <div class="fw-semibold small text-uppercase text-muted mb-2">
+            <i class="bi bi-bell me-1"></i>{% translate "Popups d'arrivée" %}
+          </div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="liveArrivalsToggle" checked>
+            <label class="form-check-label small" for="liveArrivalsToggle">
+              {% translate "Afficher un bandeau à chaque arrivée" %}
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-success" data-bs-dismiss="modal">{% translate "Fermer" %}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Modale Recherche : coureurs et clubs sur toute la course ──────────────── #}
+<div class="modal fade" id="liveSearchModal" tabindex="-1"
+     aria-labelledby="liveSearchLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="liveSearchLabel">
+          <i class="bi bi-search me-2"></i>{% translate "Rechercher" %}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% translate "Fermer" %}"></button>
+      </div>
+      <div class="modal-body">
+        <input type="search" class="form-control mb-2" id="liveSearchInput"
+               placeholder="{% translate 'Coureur ou club…' %}"
+               aria-label="{% translate 'Coureur ou club…' %}" autocomplete="off">
+        <div id="liveSearchResults" class="list-group list-group-flush">
+          <div class="list-group-item text-muted small text-center border-0">
+            {% translate "Tapez un nom de coureur ou de club." %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -152,6 +279,8 @@
 <script>
   LiveResults.init({
     apiUrl: {% if course %}"{% url 'results:api_course_live_results' competition.cid course.hash %}"{% else %}"{% url 'results:api_live_results' competition.cid cls.name %}"{% endif %},
+    searchApiUrl: "{% url 'results:api_race_index' competition.cid %}",
+    classLiveTpl: "{% url 'results:live' competition.cid '__CLS__' %}",
     cid: {{ competition.cid }},
     isCourse: {% if course %}true{% else %}false{% endif %},
     initialRaceStart: {{ race_start_clock|default:"null" }},
@@ -198,6 +327,18 @@
       raceUpcoming: "{% translate 'Course à venir' %}",
       liveNow: "{% translate 'En direct' %}",
       offline: "{% translate 'Hors ligne' %}",
+      favEmpty: "{% translate 'Aucun favori pour cette course — touchez ★ sur un coureur pour le suivre.' %}",
+      favAriaAdd: "{% translate 'Suivre ce coureur' %}",
+      favAriaRemove: "{% translate 'Ne plus suivre ce coureur' %}",
+      behindTitle: "{% translate 'Écart sur le leader' %}",
+      arrivalTitle: "{% translate 'Arrivée de %s' %}",
+      arrivalProvisional: "{% translate 'Arrivée (provisoire) de %s' %}",
+      searchLoading: "{% translate 'Recherche…' %}",
+      searchHint: "{% translate 'Tapez un nom de coureur ou de club.' %}",
+      searchNoResult: "{% translate 'Aucun coureur ni club trouvé.' %}",
+      searchClassPrefix: "{% translate 'Voir %s en live' %}",
+      searchPickHint: "{% translate 'Cliquez sur un coureur pour le suivre (★) — plusieurs sélections possibles.' %}",
+      toastClose: "{% translate 'Fermer' %}",
       fmtDayHourMinSec: "{% translate '%s j %s h %s min %s s' %}",
       fmtHourMinSec: "{% translate '%s h %s min %s s' %}",
       fmtMinSec: "{% translate '%s min %s s' %}",

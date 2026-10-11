@@ -1234,6 +1234,105 @@ class TestCompetitorDetailView:
         seq_arg = mock_splits.call_args[0][1]
         assert [s['ctrl_id'] for s in seq_arg] == [41]
 
+    # ── Fiche v2 : rangs au poste, écart au leader, graphe ────────────────────
+
+    @patch('results.views.get_object_or_404')
+    def test_fiche_v2_rang_ecart_et_graphe(self, mock_get404):
+        """Fiche v2 : rang au cumulé à chaque poste, meilleur tronçon,
+        écart au leader et graphe d'évolution (≥ 2 postes classés)."""
+        from types import SimpleNamespace
+        def mk(id_, rt):
+            return SimpleNamespace(
+                id=id_, name=f'C{id_}', rt=rt, stat=STAT_OK, org=1, cls=10, st=100000,
+                tstat=STAT_OK, is_ok=True, status_label='OK', status_badge='success')
+        c1, c2 = mk(1, 8000), mk(2, 9000)
+        controls_seq = [
+            {'ctrl_id': 101, 'ctrl_name': '1-101'},
+            {'ctrl_id': 102, 'ctrl_name': '2-102'},
+        ]
+        radio_map = {1: {101: 3000, 102: 6000}, 2: {101: 3500, 102: 6500}}
+        mock_get404.side_effect = [make_competition(), c2]
+        with patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views.Mopteammember') as MockTM, \
+             patch('results.views.get_class_controls', return_value=(controls_seq, {})), \
+             patch('results.views.get_radio_map', return_value=radio_map), \
+             patch('results.views.Moporganization'), \
+             patch('results.views.Mopclass'), \
+             patch('results.views.render') as mock_render:
+            MockComp.objects.filter.return_value = [c1, c2]
+            MockTM.objects.filter.return_value.first.return_value = None
+            from results.views import competitor_detail
+            competitor_detail(rf_get(), cid=1, competitor_id=2)
+            _, _, ctx = mock_render.call_args[0]
+        # Rang final + écart au leader (9000 − 8000 = 1000) + total classés
+        assert ctx['competitor_rank'] == 2
+        assert ctx['gap_to_first'] == 1000
+        assert ctx['class_rank_total'] == 2
+        # Rangs au cumulé par poste (c2 toujours 2e) et meilleur tronçon de c1
+        by_name = {sp['ctrl_name']: sp for sp in ctx['splits']}
+        assert by_name['1-101']['abs_rank'] == 2
+        assert by_name['2-102']['abs_rank'] == 2
+        assert by_name['Arrivée']['abs_rank'] == 2
+        assert by_name['1-101']['is_best'] is False
+        assert ctx['rank_chart'] is True
+
+    @patch('results.views.get_object_or_404')
+    def test_fiche_v2_non_classe_sans_rang_ni_graphe(self, mock_get404):
+        """Un PM passé par l'arrivée garde son temps, mais sans classement :
+        ni rang, ni écart, ni graphique (évolution = arrivés seulement)."""
+        from types import SimpleNamespace
+        mp = SimpleNamespace(
+            id=5, name='MP', rt=9500, stat=STAT_MP, org=1, cls=10, st=100000,
+            tstat=STAT_MP, is_ok=False, status_label='PM', status_badge='warning')
+        mate = SimpleNamespace(
+            id=6, name='OK', rt=8000, stat=STAT_OK, org=1, cls=10, st=100000,
+            tstat=STAT_OK, is_ok=True, status_label='OK', status_badge='success')
+        controls_seq = [{'ctrl_id': 101, 'ctrl_name': '1-101'}]
+        radio_map = {5: {101: 3200}, 6: {101: 3000}}
+        mock_get404.side_effect = [make_competition(), mp]
+        with patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views.Mopteammember') as MockTM, \
+             patch('results.views.get_class_controls', return_value=(controls_seq, {})), \
+             patch('results.views.get_radio_map', return_value=radio_map), \
+             patch('results.views.Moporganization'), \
+             patch('results.views.Mopclass'), \
+             patch('results.views.render') as mock_render:
+            MockComp.objects.filter.return_value = [mp, mate]
+            MockTM.objects.filter.return_value.first.return_value = None
+            from results.views import competitor_detail
+            competitor_detail(rf_get(), cid=1, competitor_id=5)
+            _, _, ctx = mock_render.call_args[0]
+        assert ctx['competitor_rank'] is None
+        assert ctx['gap_to_first'] is None
+        assert ctx['class_rank_total'] == 1
+        assert ctx['rank_chart'] is False
+        # La ligne Arrivée reste affichée (temps visible pour les PM)
+        assert ctx['splits'][-1]['ctrl_name'] == 'Arrivée'
+
+    @patch('results.views.get_object_or_404')
+    def test_fiche_v2_relais_sans_rangs(self, mock_get404):
+        """Fraction relais : parcours propre à chaque coureur → aucune
+        comparaison, donc ni rang, ni écart, ni graphique."""
+        comp = make_competition()
+        c = make_competitor(1, rt=5000, cls=10)
+        mock_get404.side_effect = [comp, c]
+        with patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views.Mopteammember') as MockTM, \
+             patch('results.views.get_class_controls',
+                   return_value=([{'ctrl_id': 41, 'ctrl_name': '1-41'}], {})), \
+             patch('results.views.get_radio_map', return_value={1: {41: 1000}}), \
+             patch('results.views.Moporganization'), \
+             patch('results.views.Mopclass'), \
+             patch('results.views.render') as mock_render:
+            MockComp.objects.filter.return_value = [c]
+            MockTM.objects.filter.return_value.first.return_value = MagicMock(leg=2)
+            from results.views import competitor_detail
+            competitor_detail(rf_get(), cid=1, competitor_id=1)
+            _, _, ctx = mock_render.call_args[0]
+        assert ctx['competitor_rank'] is None
+        assert ctx['gap_to_first'] is None
+        assert ctx['rank_chart'] is False
+
     @patch('results.views.render')  # non atteint (le 404 précède)
     @patch('results.views.get_object_or_404')
     def test_invisible_leve_404(self, mock_get404, mock_render):

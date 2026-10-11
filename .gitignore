@@ -86,3 +86,6 @@ django-env/
 
 # logos d'organisateur (uploads de courses + site.*)
 org_logo/
+
+# JavaScript (jest — package.json à la racine)
+node_modules/

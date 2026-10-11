@@ -1176,18 +1176,54 @@ class TestApiLiveResults:
         r = self._runner(id=1)
         data = self._run(competitors=[r], radio_map={1: {101: 3000, 102: 6000, 150: 9000}})
         assert data['runners'][0]['radio_punches'] == [
-            {'ctrl': 101, 'time': 3000},
-            {'ctrl': 102, 'time': 6000},
+            {'ctrl': 101, 'time': 3000, 'behind': 0},
+            {'ctrl': 102, 'time': 6000, 'behind': 0},
         ]
 
     def test_radio_punches_negatifs_inclus(self):
         """Les poinçons antérieurs au départ (rt ≤ 0) sont transmis à
-        l'API pour affichage « avant départ » (plus de filtre rt > 0)."""
+        l'API pour affichage « avant départ » (plus de filtre rt > 0).
+        Sans temps positif, pas d'écart au premier (behind = None)."""
         r = self._runner(id=1)
         data = self._run(competitors=[r], radio_map={1: {101: -350, 102: 6000}})
         assert data['runners'][0]['radio_punches'] == [
-            {'ctrl': 101, 'time': -350},
-            {'ctrl': 102, 'time': 6000},
+            {'ctrl': 101, 'time': -350, 'behind': None},
+            {'ctrl': 102, 'time': 6000, 'behind': 0},
+        ]
+
+    def test_punch_behind_vs_premier_de_la_categorie(self):
+        """Chaque temps cumulé porte l'écart au premier arrivé de la
+        catégorie (même référence que « behind ») : 0 pour le leader lui-
+        même, négatif pour un coureur plus rapide à un poste."""
+        lead = self._runner(id=1, group='arrives', rank=1); lead.rt = 5000
+        second = self._runner(id=2, group='en_course', rank=1)
+        radio = {1: {101: 3000, 102: 6000}, 2: {101: 2500, 102: 7000}}
+        data = self._run(competitors=[lead, second], radio_map=radio)
+        assert [p['behind'] for p in data['runners'][0]['radio_punches']] == [0, 0]
+        assert [p['behind'] for p in data['runners'][1]['radio_punches']] \
+            == [-500, 1000]
+
+    def test_punch_behind_ref_avant_premiere_arrivee(self):
+        """Avant la première arrivée : le « premier » est le leader en
+        validation GEC (arrivée radio), sinon l'en-course de tête."""
+        gec = self._runner(id=1, group='valid_gec', rank=1)
+        run = self._runner(id=2, group='en_course', rank=1)
+        radio = {1: {101: 3000}, 2: {101: 3600}}
+        data = self._run(competitors=[run, gec], radio_map=radio)
+        # Pas d'arrives → priorité valid_gec quelle que soit l'ordre
+        assert data['runners'][0]['radio_punches'][0]['behind'] == 600   # run
+        assert data['runners'][1]['radio_punches'][0]['behind'] == 0     # gec
+
+    def test_punch_behind_indisponible_sans_poncon_ref(self):
+        """La référence n'a pas pointé ce poste : behind = None → l'infobulle
+        du temps cumulé bascule sur le nom du poste (comportement antérieur)."""
+        lead = self._runner(id=1, group='arrives', rank=1); lead.rt = 5000
+        second = self._runner(id=2, group='en_course', rank=1)
+        radio = {1: {101: 3000}, 2: {101: 3000, 102: 6500}}
+        data = self._run(competitors=[lead, second], radio_map=radio)
+        assert data['runners'][1]['radio_punches'] == [
+            {'ctrl': 101, 'time': 3000, 'behind': 0},
+            {'ctrl': 102, 'time': 6500, 'behind': None},
         ]
 
     def test_provisional_rt_arrivee_radio(self):
@@ -1210,6 +1246,84 @@ class TestApiLiveResults:
         r = self._runner(id=1, group='en_course')
         data = self._run(competitors=[r])
         assert data['runners'][0]['provisional_rt'] is None
+
+    def test_behind_leader_et_suivants(self):
+        """Écart au leader : 0 pour le premier arrivé, rt diff pour les autres."""
+        lead = self._runner(id=1, group='arrives', rank=1); lead.rt = 5000
+        second = self._runner(id=2, group='arrives', rank=2); second.rt = 6200
+        data = self._run(competitors=[lead, second])
+        assert data['runners'][0]['behind'] == 0
+        assert data['runners'][1]['behind'] == 1200
+
+    def test_behind_valide_gec_sur_temps_provisoire(self):
+        """Un coureur en validation GEC compare son temps provisoire au leader."""
+        lead = self._runner(id=1, group='arrives', rank=1); lead.rt = 5000
+        gec = self._runner(id=2, group='valid_gec', rank=1)
+        gec.arrival_rt = 4800   # arrivée radio : provisoire plus rapide
+        data = self._run(competitors=[lead, gec])
+        assert data['runners'][1]['provisional_rt'] == 4800
+        assert data['runners'][1]['behind'] == -200
+
+    def test_behind_null_sans_arrive(self):
+        """Aucun arrivé : impossible d'appliquer un écart."""
+        r = self._runner(id=1, group='en_course')
+        data = self._run(competitors=[r])
+        assert data['runners'][0]['behind'] is None
+
+    def test_behind_null_pour_groupes_sans_temps(self):
+        """Les groupes en attente / terminé n'ont pas d'écart, même avec leader."""
+        lead = self._runner(id=1, group='arrives', rank=1); lead.rt = 5000
+        waiting = self._runner(id=2, group='en_attente')
+        done = self._runner(id=3, group='termine')
+        data = self._run(competitors=[lead, waiting, done])
+        assert data['runners'][1]['behind'] is None
+        assert data['runners'][2]['behind'] is None
+
+    # ── Progression estimée (2c) ─────────────────────────────────────────────
+
+    def test_progress_est_arrive_a_1(self):
+        """Un arrivé expose la cible pleine (le client affiche ✓ à la place)."""
+        a = self._runner(id=1, group='arrives', rank=1); a.rt = 15000
+        data = self._run(competitors=[a],
+                         radio_map={1: {101: 6000, 102: 12000}},
+                         now=datetime(2025, 8, 14, 5, 48, 20))
+        assert data['runners'][0]['progress_est'] == 1.0
+
+    def test_progress_est_interpolation_entre_postes(self):
+        """Entre deux poinçons, la position est interpolée à l'allure moyenne
+        des arrivés : écoulé 9000, postes moyens 6000 → 12000, 2 postes
+        → frac 0,5 → est (1 + 0,5) / 2 = 0,75."""
+        a1 = self._runner(id=1, group='arrives', rank=1); a1.rt = 15000
+        a2 = self._runner(id=2, group='arrives', rank=2); a2.rt = 16000
+        run = self._runner(id=3, group='en_course')
+        run.progress_pos = 1
+        data = self._run(
+            competitors=[a1, a2, run],
+            radio_map={1: {101: 6000, 102: 12000},
+                       2: {101: 6000, 102: 12000},
+                       3: {101: 6000}},
+            now=datetime(2025, 8, 14, 5, 48, 20))   # st 200000 → écoulé 9000
+        assert data['runners'][2]['progress_est'] == 0.75
+
+    def test_progress_est_dernier_poste_vers_arrivee(self):
+        """Au dernier poste, la cible est l'arrivée (temps moyen des arrivés) ;
+        l'écoulé la dépasse → estimation saturée à 1."""
+        a = self._runner(id=1, group='arrives', rank=1); a.rt = 15000
+        run = self._runner(id=2, group='en_course')
+        run.progress_pos = 2                      # dernier des 2 postes
+        data = self._run(competitors=[a, run],
+                         radio_map={1: {101: 6000, 102: 12000},
+                                    2: {101: 6000, 102: 12000}},
+                         now=NOW)                 # écoulé 232000 ≫ 15000
+        assert data['runners'][1]['progress_est'] == 1.0
+
+    def test_progress_est_null_sans_arrive(self):
+        """Sans arrivé : aucune moyenne d'allure → pas d'estimation possible
+        (le client garde la barre par poinçon)."""
+        r = self._runner(id=1, group='en_course')
+        r.progress_pos = 1
+        data = self._run(competitors=[r], radio_map={1: {101: 6000}})
+        assert data['runners'][0].get('progress_est') is None
 
     def test_neg_ctrls_renvoyes(self):
         """neg_ctrls est recalculé par mark_negative_times côté vue :
@@ -1313,7 +1427,8 @@ class TestApiLiveResults:
                        raw=True, if_none_match=r1['ETag'])
         assert r2.status_code == 200
         data = json.loads(r2.content)
-        assert data['runners'][0]['radio_punches'] == [{'ctrl': 101, 'time': 3000}]
+        assert data['runners'][0]['radio_punches'] == [{'ctrl': 101, 'time': 3000,
+                                                        'behind': 0}]
 
     def test_etag_ignore_horloges_volatiles(self):
         """server_now / server_now_clock sont hors empreinte : deux polls à
@@ -1323,6 +1438,26 @@ class TestApiLiveResults:
         r2 = self._run(raw=True, now=later, if_none_match=r1['ETag'])
         assert r2.status_code == 304
 
+    def test_etag_ignore_progress_est_volatil(self):
+        """progress_est varie avec l'heure (interpolation) : exclu de
+        l'empreinte comme les horloges serveur. On vide le cache pour forcer
+        un rebuild à l'heure t2 : l'estimation change, l'empreinte non → 304."""
+        a = self._runner(id=1, group='arrives', rank=1); a.rt = 15000
+        run = self._runner(id=2, group='en_course')
+        run.progress_pos = 1
+        radio = {1: {101: 6000, 102: 12000}, 2: {101: 6000}}
+        t1 = datetime(2025, 8, 14, 5, 48, 20)     # écoulé 9000 → est 0,75
+        t2 = datetime(2025, 8, 14, 5, 49, 20)     # écoulé 9600 → est 0,80
+        r1 = self._run(competitors=[a, run], radio_map=radio, now=t1, raw=True)
+        assert json.loads(r1.content)['runners'][1]['progress_est'] == 0.75
+        cache.clear()                              # expiration du TTL
+        d2 = self._run(competitors=[a, run], radio_map=radio, now=t2)
+        assert d2['runners'][1]['progress_est'] == 0.8   # volatile : bien changé
+        cache.clear()
+        r3 = self._run(competitors=[a, run], radio_map=radio, now=t2,
+                       if_none_match=r1['ETag'], raw=True)
+        assert r3.status_code == 304
+
     def test_cache_partage_entre_spectateurs(self):
         """Deux polls < TTL de cache : le second est servi depuis le cache
         serveur (payload identique, nouveaux mocks ignorés) — la charge ne
@@ -1330,6 +1465,317 @@ class TestApiLiveResults:
         d1 = self._run()
         d2 = self._run(competitors=[self._runner(id=2)], radio_map={2: {101: 1000}})
         assert d2 == d1
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# api_live_results — favoris multi-catégories (?fav= → fav_others)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestFavorisAutresCategories:
+    """L'onglet Favoris reste peuplé quand on change de catégorie : le client
+    transmet ses ids suivis (?fav=), le serveur ajoute à la réponse les
+    favoris des AUTRES catégories (extraits « fav_others »), empreinte ETag
+    dédiée (hors progress_est volatile)."""
+
+    @pytest.fixture(autouse=True)
+    def _clear_cache(self):
+        cache.clear()
+        yield
+        cache.clear()
+
+    # ── _parse_fav_ids ──────────────────────────────────────────────────────
+
+    def test_parse_fav_ids_valide(self):
+        from results.views import _parse_fav_ids
+        assert _parse_fav_ids('12,34, 56') == {12, 34, 56}
+        assert _parse_fav_ids('7') == {7}
+        assert _parse_fav_ids('7,7,7') == {7}          # doublons écrasés
+
+    def test_parse_fav_ids_entrees_invalides_ignorees(self):
+        """Aucune entrée ne doit lever d'exception : tout ce qui n'est pas un
+        entier décimal strictement positif est écarté."""
+        from results.views import _parse_fav_ids
+        assert _parse_fav_ids(None) == set()
+        assert _parse_fav_ids('') == set()
+        assert _parse_fav_ids('abc,-5,1.5,0,²,1e9,,') == set()
+        assert _parse_fav_ids(' , 7 , ') == {7}
+
+    def test_parse_fav_ids_plafonne(self):
+        from results.views import _parse_fav_ids
+        raw = ','.join(str(i) for i in range(1, 500))
+        assert len(_parse_fav_ids(raw)) == 120
+
+    # ── _fav_others_payload ─────────────────────────────────────────────────
+
+    @staticmethod
+    def _entry(cls_name, runners, n_controls=2):
+        return {'cls_name': cls_name,
+                'controls': [{'ctrl_id': 101, 'ctrl_name': '1-101'}],
+                'n_controls': n_controls, 'runners': runners}
+
+    @staticmethod
+    def _runner(id=1):
+        r = make_runner(id=id, group='en_course', rank=1)
+        r.name = 'Alice'
+        r.st = 200000
+        r.last_time = 5000
+        r.last_punch_clock = 205000
+        r.progress_pos = 3
+        r.progress_count = 2
+        return r
+
+    def test_fav_dans_categorie_affichee_sous_requetage(self):
+        """Tous les suivis sont dans la catégorie courante : aucun ORM, []."""
+        from results.views import _fav_others_payload
+        with patch('results.views.Mopcompetitor') as MockComp:
+            out = _fav_others_payload(1, fav_ids={1, 2}, main_ids={1, 2, 3})
+        assert out == []
+        MockComp.objects.filter.assert_not_called()
+
+    def test_fav_others_groupe_filtre_et_omet_inconnus(self):
+        """Extraction par catégorie, seulement les ids suivis présents dans
+        le payload de leur catégorie (id fantôme ignoré)."""
+        from results.views import _fav_others_payload
+        pl = self._entry('D21', [{'id': 55, 'name': 'X'}, {'id': 56, 'name': 'Y'}])
+
+        def fake_cached(cid, cls_id):
+            assert cls_id == 20
+            return pl, '"etag-20"'
+
+        with patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views._live_payload_cached',
+                   side_effect=fake_cached) as mock_cached:
+            MockComp.objects.filter.return_value.values_list.return_value = \
+                [(55, 20), (999, 20)]                  # 999 absent du payload
+            out = _fav_others_payload(1, fav_ids={55, 999}, main_ids={1})
+        assert len(out) == 1
+        assert out[0]['cls_name'] == 'D21'
+        assert [r['id'] for r in out[0]['runners']] == [55]
+        assert out[0]['n_controls'] == 2
+        mock_cached.assert_called_once_with(1, 20)
+
+    def test_fav_others_omet_relais_et_categorie_disparue(self):
+        """Relais (payload None) et catégorie injoignable (exception) ne
+        cassent pas la réponse : la ligne est simplement omise."""
+        from results.views import _fav_others_payload
+        with patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views._live_payload_cached') as mock_cached:
+            MockComp.objects.filter.return_value.values_list.return_value = \
+                [(55, 20), (56, 30), (57, 40)]
+            mock_cached.side_effect = [
+                (None, None),                                        # relais
+                Exception('404'),                                    # disparue
+                (self._entry('H21', [{'id': 57}]), '"e40"'),          # ok
+            ]
+            out = _fav_others_payload(1, fav_ids={55, 56, 57}, main_ids=set())
+        assert [e['cls_name'] for e in out] == ['H21']
+
+    # ── Intégration api_live_results ────────────────────────────────────────
+
+    def _api(self, query='', fav_others=None, if_none_match=None,
+             load_ctx=None, competitors=None, mock_mopcomp_rows=None):
+        """Appel api_live_results avec la grile de mocks standard du live.
+        ``fav_others`` : valeur fixe de _fav_others_payload (None = reel)."""
+        competitors = competitors if competitors is not None else []
+        cls = SimpleNamespace(id=10, name='H21')
+        if load_ctx is None:
+            load_ctx = lambda cid, class_id: (MagicMock(), cls, competitors, None)
+        url = '/?' + query if query else '/'
+        headers = {'HTTP_IF_NONE_MATCH': if_none_match} if if_none_match else {}
+        req = rf_get(url, **headers)
+        patches = [
+            patch('results.views._load_class_context', side_effect=load_ctx),
+            patch('results.views.Mopteam'),
+            patch('results.views.get_org_map', return_value={}),
+            patch('results.views.get_radio_map', return_value={}),
+            patch('results.views._controls_for', return_value=[
+                {'ctrl_id': 101, 'ctrl_name': '1-101'},
+                {'ctrl_id': 102, 'ctrl_name': '2-102'},
+            ]),
+            patch('results.views.rank_live',
+                  side_effect=lambda comps, *a, **k: comps),
+            patch('results.views.race_start_clock', return_value=180000),
+            patch('results.views.datetime'),
+        ]
+        if fav_others is not None:
+            patches.append(
+                patch('results.views._fav_others_payload',
+                      return_value=fav_others))
+        if mock_mopcomp_rows is not None:
+            patches.append(patch('results.views.Mopcompetitor'))
+        started = [p.start() for p in patches]
+        try:
+            mock_team, mock_dt = started[1], started[7]
+            mock_team.objects.filter.return_value.exists.return_value = False
+            mock_dt.now.return_value = NOW
+            if mock_mopcomp_rows is not None:
+                started[-1].objects.filter.return_value \
+                    .values_list.return_value = mock_mopcomp_rows
+            from results.views import api_live_results
+            return api_live_results(req, cid=1, class_id='H21')
+        finally:
+            for p in reversed(patches):
+                p.stop()
+
+    def test_sans_param_fav_pas_de_cle(self):
+        resp = self._api()
+        assert resp.status_code == 200
+        assert 'fav_others' not in json.loads(resp.content)
+
+    def test_fav_categorie_courante_cle_absente_etag_stable(self):
+        """Suivre un coureur de la catégorie affichée ne change ni la réponse
+        ni l'empreinte : le poll conditionnel continue de répondre 304."""
+        runner = self._runner()
+        etag_plain = self._api(competitors=[runner]).headers['ETag']
+        resp_fav = self._api(query='fav=1', competitors=[self._runner()])
+        assert 'fav_others' not in json.loads(resp_fav.content)
+        assert resp_fav.headers['ETag'] == etag_plain
+        # Poll conditionnel avec le même etag → 304
+        r304 = self._api(query='fav=1', competitors=[self._runner()],
+                         if_none_match=etag_plain)
+        assert r304.status_code == 304
+        assert r304.content == b''
+
+    def test_fav_autre_categorie_extrait_et_casse_etag(self):
+        """Un favori d'une autre catégorie rejoint fav_others ; l'empreinte
+        intègre l'extrait (ajout/retrait → 200, pas de 304 stale)."""
+        entry = self._entry('D21', [{'id': 55, 'name': 'X', 'progress_est': 0.5}])
+        etag_base = self._api().headers['ETag']
+
+        resp = self._api(query='fav=55', fav_others=[entry])
+        data = json.loads(resp.content)
+        assert data['fav_others'][0]['cls_name'] == 'D21'
+        assert data['fav_others'][0]['runners'][0]['id'] == 55
+        etag_fav = resp.headers['ETag']
+        assert etag_fav != etag_base
+
+        # Même favori, même contenu → 304
+        r304 = self._api(query='fav=55', fav_others=[entry],
+                         if_none_match=etag_fav)
+        assert r304.status_code == 304
+
+        # Retrait du favori (extrait absent) → empreinte de base → 200
+        r_out = self._api(query='fav=55', fav_others=[],
+                          if_none_match=etag_fav)
+        assert r_out.status_code == 200
+        assert 'fav_others' not in json.loads(r_out.content)
+
+    def test_fav_others_progress_est_hors_empreinte(self):
+        """progress_est (interpolation horodatée) reste volatile dans
+        fav_others : estimation différente à l'identique → 304."""
+        e1 = self._entry('D21', [{'id': 55, 'progress_est': 0.5}])
+        e2 = self._entry('D21', [{'id': 55, 'progress_est': 0.9}])
+        r1 = self._api(query='fav=55', fav_others=[e1])
+        r2 = self._api(query='fav=55', fav_others=[e2],
+                       if_none_match=r1.headers['ETag'])
+        assert r2.status_code == 304
+
+    def test_integration_fav_reel_autre_categorie(self):
+        """Chemin complet (ORM mocké) : le coureur 55 de la catégorie 20 est
+        joint au payload de la catégorie 10, avec les postes de SON parcours,
+        tandis que le favori 1 (catégorie courante) ne l'est pas."""
+        main_runner = self._runner(id=1)
+        other_runner = self._runner(id=55)
+        cls_main = SimpleNamespace(id=10, name='H21')
+        cls_other = SimpleNamespace(id=20, name='D21')
+
+        def load_ctx(cid, class_id):
+            if class_id == 20:
+                return MagicMock(), cls_other, [other_runner], None
+            return MagicMock(), cls_main, [main_runner], None
+
+        resp = self._api(query='fav=1,55', load_ctx=load_ctx,
+                         mock_mopcomp_rows=[(55, 20)])
+        data = json.loads(resp.content)
+        assert data['cls_name'] == 'H21'                     # catégorie affichée
+        assert 'fav_others' in data
+        entry = data['fav_others'][0]
+        assert entry['cls_name'] == 'D21'
+        assert [r['id'] for r in entry['runners']] == [55]   # 1 = catégorie courante
+        assert entry['controls'] == data['controls']         # grile mockée commune
+        assert entry['n_controls'] == data['n_controls']
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# api_race_index (recherche plein écran)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _mk_comp(id, name, org=1, cls=10):
+    c = SimpleNamespace(id=id, name=name, org=org, cls=cls)
+    return c
+
+
+class TestApiRaceIndex:
+    @pytest.fixture(autouse=True)
+    def _clear_cache(self):
+        cache.clear()
+        yield
+
+    @staticmethod
+    def _call(cid=1):
+        from results.views import api_race_index
+        rf = RequestFactory()
+        return json.loads(api_race_index(rf.get('/'), cid=cid).content)
+
+    @patch('results.views.Mopteam')
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.get_org_map', return_value={1: 'COLE'})
+    @patch('results.views.competition_visible', return_value=True)
+    def test_index_nom_club_categorie(self, mock_vis, mock_org,
+                                      MockComp, MockCls, MockTeam):
+        MockComp.objects.filter.return_value = [
+            _mk_comp(1, 'Alice', cls=10), _mk_comp(2, 'Bob', cls=11)]
+        MockCls.objects.filter.return_value = [
+            SimpleNamespace(id=10, name='H21'), SimpleNamespace(id=11, name='D16')]
+        MockTeam.objects.filter.return_value.values_list.return_value = []
+        data = self._call()
+        assert data['success'] is True
+        assert data['runners'] == [
+            {'id': 1, 'name': 'Alice', 'org': 'COLE', 'cls': 'H21'},
+            {'id': 2, 'name': 'Bob',   'org': 'COLE', 'cls': 'D16'},
+        ]
+
+    @patch('results.views.Mopteam')
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.get_org_map', return_value={})
+    @patch('results.views.competition_visible', return_value=True)
+    def test_classes_relais_exclues(self, mock_vis, mock_org,
+                                    MockComp, MockCls, MockTeam):
+        MockComp.objects.filter.return_value = [
+            _mk_comp(1, 'Alice', cls=10), _mk_comp(2, 'Équipe A', cls=99)]
+        MockCls.objects.filter.return_value = [
+            SimpleNamespace(id=10, name='H21'), SimpleNamespace(id=99, name='Relais')]
+        MockTeam.objects.filter.return_value.values_list.return_value = [99]
+        data = self._call()
+        assert [r['id'] for r in data['runners']] == [1]
+
+    @patch('results.views.competition_visible', return_value=False)
+    def test_course_invisible_404(self, mock_vis):
+        from django.http import Http404
+        from results.views import api_race_index
+        rf = RequestFactory()
+        with pytest.raises(Http404):
+            api_race_index(rf.get('/'), cid=1)
+
+    @patch('results.views.Mopteam')
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.get_org_map', return_value={})
+    @patch('results.views.competition_visible', return_value=True)
+    def test_cache_60s_entre_appels(self, mock_vis, mock_org,
+                                    MockComp, MockCls, MockTeam):
+        """Le second appel est servi depuis le cache : les mocks changés
+        entre-temps sont ignorés."""
+        MockComp.objects.filter.return_value = [_mk_comp(1, 'Alice')]
+        MockCls.objects.filter.return_value = [SimpleNamespace(id=10, name='H21')]
+        MockTeam.objects.filter.return_value.values_list.return_value = []
+        d1 = self._call()
+        MockComp.objects.filter.return_value = []   # simulé : plus rien…
+        d2 = self._call()                            # …mais le cache répond
+        assert d1 == d2
+        assert len(d1['runners']) == 1
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1347,7 +1793,14 @@ class TestLiveUrls:
         assert reverse('results:api_live_results', kwargs={'cid': 1, 'class_id': 'H21'}) == '/api/1/class/H21/live/'
         assert reverse('results:api_course_live_results', kwargs={'cid': 1, 'class_id': 'abc12345'}) == '/api/1/course/abc12345/live/'
 
+    def test_reverse_api_race_index(self):
+        assert reverse('results:api_race_index', kwargs={'cid': 1}) == '/api/1/index/'
+
     def test_resolve_live(self):
         from results.views import live_results, api_live_results
         assert resolve('/competition/1/class/H21/live/').func == live_results
         assert resolve('/api/1/class/H21/live/').func == api_live_results
+
+    def test_resolve_api_race_index(self):
+        from results.views import api_race_index
+        assert resolve('/api/1/index/').func == api_race_index
