@@ -308,6 +308,28 @@ class TestCompetitionConfigStr:
         assert str(self._make(cid=42)) == '42'
 
 
+# ─── Test has_api_key de CompetitionConfig ────────────────────────────────────
+
+class TestCompetitionConfigHasApiKey:
+    """has_api_key : True si une clé API unique a été générée pour la course."""
+
+    @staticmethod
+    def _make(api_key=''):
+        obj = CompetitionConfig.__new__(CompetitionConfig)
+        obj.api_key = api_key
+        return obj
+
+    def test_sans_cle(self):
+        assert self._make('').has_api_key is False
+
+    def test_avec_cle(self):
+        assert self._make('abc-123').has_api_key is True
+
+    def test_cle_nulle(self):
+        """None (course créée avant l'ajout du champ) → pas de clé."""
+        assert self._make(None).has_api_key is False
+
+
 # ─── Champs facultatifs de mopCompetition ─────────────────────────────────────
 
 class TestMopcompetitionOptionalFields:

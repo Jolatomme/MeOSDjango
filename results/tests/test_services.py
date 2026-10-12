@@ -4,6 +4,8 @@ Tests unitaires pour services.py.
 Tous les appels DB sont mockés : les tests tournent sans base de données.
 """
 
+from datetime import date, datetime
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 import pytest
 
@@ -948,6 +950,133 @@ class TestRankSplits:
         self._call([c_ok], all_results=[c_ok, c_dnf])
         assert c_ok.splits[0]['leg_rank']  == 1
         assert c_dnf.splits[0]['leg_rank'] is None
+
+    def test_coureur_moins_avance_est_ignore(self):
+        """Guard « idx >= len(c.splits) » : un concurrent qui n'a pas encore
+        tous les tronçons du leader est ignoré sur les index manquants —
+        même situation que mark_best_splits (poste manquant côté MeOS)."""
+        c1 = self._make(1, [1000, 900], [1000, 1900])
+        c2 = self._make(2, [1000],      [1000])
+        self._call([c1], all_results=[c1, c2])
+        assert c1.splits[1]['leg_rank'] == 1
+        # c2 n'a qu'un tronçon : aucun index 1 n'est touché, pas d'IndexError
+        assert len(c2.splits) == 1
+        assert c2.splits[0]['leg_rank'] is None   # non classé (hors finishers)
+
+
+# ─── Tests has_completed ──────────────────────────────────────────────────────
+
+class TestHasCompleted:
+    """Porte par catégorie : True si au moins un concurrent/équipe a terminé."""
+
+    @staticmethod
+    def _call(entries):
+        from results.services import has_completed
+        return has_completed(entries)
+
+    def test_liste_vide(self):
+        assert self._call([]) is False
+
+    def test_arrive_is_ok(self):
+        e = SimpleNamespace(is_ok=True, rt=5000, prel=False, stat=STAT_OK)
+        assert self._call([e]) is True
+
+    def test_preliberee_arrivee_compte(self):
+        """prel (arrivée radio détectée, puce non lue) + rt>0 → terminée."""
+        e = SimpleNamespace(is_ok=False, rt=5000, prel=True, stat=STAT_MP)
+        assert self._call([e]) is True
+
+    def test_en_course_ne_compte_pas(self):
+        e = SimpleNamespace(is_ok=False, rt=0, prel=False, stat=STAT_MP)
+        assert self._call([e]) is False
+
+    # ── Robustesse rt ────────────────────────────────────────────────────────
+
+    def test_rt_non_convertible_retombe_zero(self):
+        """rt non numérique dont int() lève (mock exotique) → rt_val = 0 :
+        le coureur ne compte pas comme terminé et la vue ne plante pas."""
+        e = SimpleNamespace(is_ok=False, rt='abc', prel=True, stat=STAT_MP)
+        assert self._call([e]) is False
+
+    def test_rt_float_nan_retombe_zero(self):
+        """float('nan') est bien un int/float, mais int(nan) lève → rt_val = 0."""
+        e = SimpleNamespace(is_ok=False, rt=float('nan'), prel=True, stat=STAT_MP)
+        assert self._call([e]) is False
+
+    def test_rt_numerique_en_chaine(self):
+        """rt convertible ('5000') → prel + rt>0 compte quand même."""
+        e = SimpleNamespace(is_ok=False, rt='5000', prel=True, stat=STAT_MP)
+        assert self._call([e]) is True
+
+    # ── Équipes relais (pas d'is_ok) ─────────────────────────────────────────
+
+    def test_equipe_stat_ok_rt_positif_compte(self):
+        """MopTeam n'a pas d'is_ok : le fallback stat==OK et rt>0 fait foi."""
+        team = SimpleNamespace(stat=STAT_OK, rt=5000)
+        assert self._call([team]) is True
+
+    def test_equipe_stat_ok_rt_negatif_ne_compte_pas(self):
+        """stat OK mais rt<=0 (pas de temps) → pas encore terminée."""
+        team = SimpleNamespace(stat=STAT_OK, rt=-1)
+        assert self._call([team]) is False
+
+    def test_arret_au_premier_termine(self):
+        """Le premier terminé suffit : la liste n'est pas entièrement scannée."""
+        termine = SimpleNamespace(is_ok=True, rt=5000)
+        suivant = SimpleNamespace(is_ok=False, rt='inexploitable', prel=False,
+                                  stat=STAT_MP)
+        assert self._call([termine, suivant]) is True
+
+
+# ─── Tests _now_abs ───────────────────────────────────────────────────────────
+
+class TestNowAbs:
+    """Horloge absolue : 1/10 s depuis 00:00 du jour de la compétition.
+
+    L'offset jour permet de distinguer « En course » d'« En attente » quand
+    la compétition est dans le futur ou passe minuit.
+    """
+
+    class _SansDate:
+        """Objet lisible par clock_tenths (hour/minute/second) mais sans
+        méthode date() — reproduit un datetime exotique/mocké."""
+        hour, minute, second = 12, 0, 0
+
+    @staticmethod
+    def _call(comp_date, now):
+        from results.services import _now_abs
+        return _now_abs(comp_date, now)
+
+    def test_sans_date(self):
+        """Pas de date de compétition → simple horloge modulo jour."""
+        assert self._call(None, datetime(2025, 8, 14, 12, 0, 0)) == 432000
+
+    def test_date_non_date_retombe_horloge(self):
+        """date non exploitable (type inattendu) → idem, pas d'offset."""
+        assert self._call('14/08/2025', datetime(2025, 8, 14, 12, 0, 0)) == 432000
+
+    def test_meme_jour(self):
+        """Compétition le jour même → offset nul."""
+        assert self._call(date(2025, 8, 14), datetime(2025, 8, 14, 12, 0, 0)) == 432000
+
+    def test_jour_suivant(self):
+        """Course passée minuit : +1 jour (864 000) + l'heure locale."""
+        assert self._call(date(2025, 8, 13),
+                          datetime(2025, 8, 14, 12, 0, 0)) == 864000 + 432000
+
+    def test_plusieurs_jours(self):
+        """Épreuve de plusieurs jours (trail) : offset multiplié."""
+        assert self._call(date(2025, 8, 11),
+                          datetime(2025, 8, 14, 1, 0, 0)) == 3 * 864000 + 36000
+
+    def test_date_future(self):
+        """Compétition dans le futur → valeur négative (« En attente »)."""
+        assert self._call(date(2025, 8, 16),
+                          datetime(2025, 8, 14, 12, 0, 0)) == -2 * 864000 + 432000
+
+    def test_now_sans_date_retombe_horloge(self):
+        """now.date() qui lève → on retombe sur l'horloge, pas d'exception."""
+        assert self._call(date(2025, 8, 13), self._SansDate()) == 432000
 
 
 # ─── Tests get_class_controls ─────────────────────────────────────────────────

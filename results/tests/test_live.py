@@ -8,7 +8,7 @@ Couvre :
 """
 
 import json
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -1466,6 +1466,246 @@ class TestApiLiveResults:
         d2 = self._run(competitors=[self._runner(id=2)], radio_map={2: {101: 1000}})
         assert d2 == d1
 
+    # ── Date de compétition du payload (horloge absolue) ────────────────────
+
+    @staticmethod
+    def _payload_avec_date(comp_date_iso):
+        """api_live_results sur un payload (cache) portant une date brute."""
+        payload = {'success': True, 'runners': [], 'cls_name': 'H21',
+                   'competition_date': comp_date_iso}
+        with patch('results.views._live_payload_cached',
+                   return_value=(payload, '"etag"')), \
+             patch('results.views.datetime') as mock_dt:
+            mock_dt.now.return_value = NOW
+            from results.views import api_live_results
+            resp = api_live_results(rf_get(), cid=1, class_id='H21')
+        return json.loads(resp.content)
+
+    def test_competition_date_decale_l_horloge_absolue(self):
+        """La date du payload est lue (fromisoformat) et décale l'horloge
+        absolue : 14 août 12:00 avec compétition le 13 → +1 jour."""
+        data = self._payload_avec_date('2025-08-13')
+        assert data['server_now_abs'] == 864000 + 432000
+
+    def test_competition_date_invalide_retombe_sur_l_horloge(self):
+        """Une date illisible (payload exotique) ne casse pas le poll :
+        server_now_abs retombe sur l'heure locale seule."""
+        data = self._payload_avec_date('pas-une-date')
+        assert data['server_now_abs'] == 432000
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# _build_live_payload — branches défensives (st, last_punch_clock, date DB)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class _CoureurExotique:
+    """Coureur minimaliste dont ``st`` lève sur les N premières lectures puis
+    répond — reproduit un objet exotique (mock oublié, champ cassé) que
+    ``_build_live_payload`` doit tolérer sans renvoyer une 500. ``last_punch_clock``
+    n'est jamais convertible en entier."""
+
+    def __init__(self, nb_echecs=3, valeur_st=120000):
+        self.id = 1
+        self.name = 'Exotique'
+        self.org = 1
+        self.stat = 0
+        self.tstat = 0
+        self.prel = False
+        self.is_ok = False
+        self.status_label = 'En course'
+        self.status_badge = 'info'
+        self.live_group = 'en_course'
+        self.live_rank = 1
+        self.rt = None
+        self.neg_time = False
+        self.neg_ctrls = []
+        self.n_punches = 0
+        self.progress_pos = 0
+        self.progress_count = 0
+        self.last_ctrl = None
+        self.last_time = None
+        self.last_punch_clock = 'inexploitable'
+        self.arrival_ctrl = None
+        self.arrival_rt = None
+        self.class_obj = None
+        self._nb_echecs = nb_echecs
+        self._valeur_st = valeur_st
+        self._lectures = 0
+
+    @property
+    def st(self):
+        self._lectures += 1
+        if self._lectures <= self._nb_echecs:
+            raise AttributeError('st')
+        return self._valeur_st
+
+
+class TestLivePayloadBranchesDefensives:
+    """``_build_live_payload`` recalcule ``st_abs`` / ``last_punch_clock_abs``
+    quand les attributs du concurrent sont absents ou inexploitables : la
+    valeur est écartée au lieu de faire échouer le poll de tous les clients."""
+
+    CONTROLS = [{'ctrl_id': 101, 'ctrl_name': '1-101'},
+                {'ctrl_id': 102, 'ctrl_name': '2-102'}]
+
+    def _payload(self, competitors, *, radio_map=None, now=NOW,
+                 competition='sans_db', ctrl_seq=None, MockComp=None):
+        """Appel direct de _build_live_payload, grille de mocks minimale.
+
+        ``competition='sans_db'`` évite le fallback DB (objet sans date) ;
+        ``None`` l'active (voir test dédié)."""
+        from results.views import _build_live_payload
+        cls = SimpleNamespace(id=10, name='H21')
+        if competition == 'sans_db':
+            competition = SimpleNamespace(date=None)
+        with patch('results.views.get_org_map', return_value={}), \
+             patch('results.views.get_radio_map', return_value=radio_map or {}), \
+             patch('results.views._controls_for',
+                   return_value=self.CONTROLS if ctrl_seq is None else ctrl_seq), \
+             patch('results.views.rank_live', return_value=competitors), \
+             patch('results.views.mark_negative_times'), \
+             patch('results.views.race_start_clock', return_value=100000), \
+             patch('results.views.race_state', return_value='live'), \
+             patch('results.views.datetime') as mock_dt, \
+             patch('results.views.Mopcompetition', MockComp or MagicMock()):
+            mock_dt.now.return_value = now
+            payload, _ = _build_live_payload(1, cls, competitors, None,
+                                             competition=competition)
+        return payload
+
+    def test_st_levant_replie_sur_getattr_puis_int(self):
+        """``st`` qui lève (AttributeError) : repli sur getattr, puis int(),
+        et le payload est construit malgré tout."""
+        c = _CoureurExotique(nb_echecs=3)
+        r = self._payload([c])['runners'][0]
+        assert r['st_abs'] is None     # aucune des 3 lectures n'a donné un int
+        assert r['st'] == 120000       # la 4e lecture (payload) répond
+
+    def test_st_non_convertible_laisse_st_abs_a_none(self):
+        """``st`` lisible mais jamais convertible en int (str) : ``st_abs``
+        est écarté au lieu de lever — et la valeur brute passe au client."""
+        c = _CoureurExotique(nb_echecs=0, valeur_st='inexploitable')
+        r = self._payload([c])['runners'][0]
+        assert r['st_abs'] is None
+        assert r['st'] == 'inexploitable'
+
+    def test_last_punch_clock_non_convertible(self):
+        """``last_punch_clock`` non convertible → les deux horloges du
+        poinçon sont None côté payload (client : pas de « il y a X »)."""
+        c = _CoureurExotique(nb_echecs=0)
+        r = self._payload([c])['runners'][0]
+        assert r['last_punch_clock'] is None
+        assert r['last_punch_clock_abs'] is None
+
+    @staticmethod
+    def _arrive(id=1, rt=15000):
+        """Arrivé entièrement spécifié (pas de MagicMock résiduel : le payload
+        est sérialisé en JSON pour l'ETag)."""
+        r = MagicMock()
+        r.id = id; r.name = 'Alice'; r.org = 1; r.stat = STAT_OK
+        r.status_label = 'Arrivé'; r.status_badge = 'success'
+        r.live_group = 'arrives'; r.live_rank = 1
+        r.st = 200000; r.rt = rt
+        r.is_ok = True
+        r.n_punches = 2; r.last_ctrl = 102
+        r.last_time = 12000; r.last_punch_clock = 112000
+        r.progress_pos = 2
+        r.progress_count = 2
+        r.class_obj = None
+        r.neg_time = False; r.neg_ctrls = []
+        r.arrival_ctrl = None; r.arrival_rt = None
+        return r
+
+    def test_progress_est_replie_sur_horloge_modulo_jour(self):
+        """st_abs inexploitable → l'écoulé retombe sur l'horloge modulo jour
+        pour l'interpolation de progression estimée."""
+        arrive = self._arrive()
+        exotique = _CoureurExotique(nb_echecs=3)
+        exotique.id = 2
+        exotique.progress_pos = 1
+        r = self._payload(
+            [arrive, exotique],
+            radio_map={1: {101: 6000, 102: 12000}, 2: {101: 6000}},
+        )['runners'][1]
+        assert r['st_abs'] is None
+        # écoulé = (432000 - 120000) % 864000 = 312000 ≫ 12000 → est saturé à 1
+        assert r['progress_est'] == 1.0
+
+    # ── Date de compétition lue en DB à la volée ───────────────────────────
+
+    @staticmethod
+    def _mock_db(comp):
+        """Mopcompetition patché : .filter().first() renvoie ``comp``
+        (None si aucune ligne), ou lève si ``comp`` est une exception."""
+        MockComp = MagicMock()
+        if isinstance(comp, Exception):
+            MockComp.objects.filter.side_effect = comp
+        else:
+            MockComp.objects.filter.return_value.first.return_value = comp
+        return MockComp
+
+    def test_date_comp_lue_en_db_lors_d_appel_direct(self):
+        """Appel direct sans objet compétition (cache vide) : la date est
+        relue en DB pour porter l'horloge absolue."""
+        MockComp = self._mock_db(SimpleNamespace(date=date(2025, 8, 13)))
+        payload = self._payload([], competition=None, MockComp=MockComp)
+        assert payload['competition_date'] == '2025-08-13'
+
+    def test_db_en_erreur_laisse_la_date_a_none(self):
+        """Une erreur DB ne casse pas le payload : pas de date, horloge locale."""
+        MockComp = self._mock_db(Exception('db down'))
+        payload = self._payload([], competition=None, MockComp=MockComp)
+        assert payload['competition_date'] is None
+
+    def test_db_sans_ligne_laisse_la_date_a_none(self):
+        """Aucune ligne mopCompetition → pas de date (comp_obj None)."""
+        MockComp = self._mock_db(None)
+        payload = self._payload([], competition=None, MockComp=MockComp)
+        assert payload['competition_date'] is None
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# _ctrl_avg_from_arrivals — moyenne des arrivés par poste
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestCtrlAvgFromArrivals:
+    """Moyenne des temps cumulés par poste parmi les arrivés — sert de
+    cible à l'interpolation de « progression estimée »."""
+
+    @staticmethod
+    def _call(runners, radio_map, controls_seq):
+        from results.views import _ctrl_avg_from_arrivals
+        return _ctrl_avg_from_arrivals(runners, radio_map, controls_seq)
+
+    def test_sans_postes_renvoie_vide(self):
+        """Parcours vide (aucun contrôle connu) → pas de moyenne calculable."""
+        runners = [{'id': 1, 'group': 'arrives', 'rt': 5000}]
+        assert self._call(runners, {1: {101: 1000}}, []) == {}
+
+    def test_postes_none_renvoie_vide(self):
+        """controls_seq=None (parcours inconnu) est toléré."""
+        runners = [{'id': 1, 'group': 'arrives', 'rt': 5000}]
+        assert self._call(runners, {1: {101: 1000}}, None) == {}
+
+    def test_moyenne_par_poste_et_arrivee(self):
+        """La moyenne est calculée par poste + la clé '_finish' (arrivée)."""
+        runners = [{'id': 1, 'group': 'arrives', 'rt': 5000},
+                   {'id': 2, 'group': 'arrives', 'rt': 7000},
+                   {'id': 3, 'group': 'en_course', 'rt': 0}]
+        radio = {1: {101: 1000, 102: 3000}, 2: {101: 2000, 102: 5000}}
+        controls = [{'ctrl_id': 101}, {'ctrl_id': 102}]
+        avg = self._call(runners, radio, controls)
+        assert avg[101] == 1500
+        assert avg[102] == 4000
+        assert avg['_finish'] == 6000          # (5000 + 7000) / 2
+
+    def test_postes_hors_parcours_ignores(self):
+        """Un poinçon sur un poste hors parcours n'entre pas dans la moyenne."""
+        runners = [{'id': 1, 'group': 'arrives', 'rt': 5000}]
+        radio = {1: {101: 1000, 999: 999999}}
+        controls = [{'ctrl_id': 101}]
+        assert 999 not in self._call(runners, radio, controls)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # api_live_results — favoris multi-catégories (?fav= → fav_others)
@@ -1531,6 +1771,15 @@ class TestFavorisAutresCategories:
             out = _fav_others_payload(1, fav_ids={1, 2}, main_ids={1, 2, 3})
         assert out == []
         MockComp.objects.filter.assert_not_called()
+
+    def test_fav_others_erreur_orm_renvoie_vide(self):
+        """Une erreur DB lors de la résolution des favoris ne casse pas le
+        poll : on renvoie simplement aucune donnée de catégorie externe."""
+        from results.views import _fav_others_payload
+        with patch('results.views.Mopcompetitor') as MockComp:
+            MockComp.objects.filter.side_effect = Exception('db down')
+            out = _fav_others_payload(1, fav_ids={55}, main_ids=set())
+        assert out == []
 
     def test_fav_others_groupe_filtre_et_omet_inconnus(self):
         """Extraction par catégorie, seulement les ids suivis présents dans

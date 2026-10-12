@@ -1343,6 +1343,60 @@ class TestCompetitorDetailView:
             with pytest.raises(Http404):
                 competitor_detail(rf_get(), cid=1, competitor_id=1)
 
+    # ── Porte par catégorie : tronçons masqués tant que personne n'est arrivé
+
+    @patch('results.views.get_object_or_404')
+    def test_porte_fermee_masque_les_troncons(self, mock_get404):
+        """Tant qu'aucun coureur de la catégorie n'a terminé, la fiche est
+        affichée sans tronçon (circuit masqué)."""
+        c = make_nf(1, STAT_DNF, 'Coureur 1')
+        mock_get404.side_effect = [make_competition(), c]
+        with patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views.Mopteammember') as MockTM, \
+             patch('results.views.Moporganization'), \
+             patch('results.views.Mopclass'), \
+             patch('results.views.get_class_controls', return_value=([], {})), \
+             patch('results.views.compute_splits') as mock_splits, \
+             patch('results.views.render') as mock_render:
+            # catégorie : deux coureurs non classés (is_ok False, rt<=0)
+            MockComp.objects.filter.return_value = [c, make_nf(2, STAT_DNF, 'X')]
+            MockTM.objects.filter.return_value.first.return_value = None
+            from results.views import competitor_detail
+            competitor_detail(rf_get(), cid=1, competitor_id=1)
+            _, _, ctx = mock_render.call_args[0]
+        assert ctx['splits'] == []
+        assert ctx['competitor'].neg_time is False
+        assert ctx['can_show_splits'] is False
+        mock_splits.assert_not_called()   # porte fermée → aucun calcul
+
+    @patch('results.views.compute_splits', return_value=[])
+    @patch('results.views.get_object_or_404')
+    def test_enrichissement_en_erreur_laisse_la_fiche(self, mock_get404,
+                                                      mock_splits):
+        """rank_finishers qui lève : l'enrichissement (rangs au poste) est
+        optionnel — la fiche reste affichable sans colonnes de rang."""
+        c = make_competitor(1, rt=5000)
+        mock_get404.side_effect = [make_competition(), c]
+        with patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views.Mopteammember') as MockTM, \
+             patch('results.views.Moporganization'), \
+             patch('results.views.Mopclass'), \
+             patch('results.views.get_radio_map', return_value={}), \
+             patch('results.views.get_class_controls', return_value=([], {})), \
+             patch('results.views.rank_finishers',
+                   side_effect=Exception('db down')), \
+             patch('results.views.render') as mock_render:
+            MockComp.objects.filter.return_value = [c, make_competitor(2, rt=6000)]
+            MockTM.objects.filter.return_value.first.return_value = None
+            from results.views import competitor_detail
+            competitor_detail(rf_get(), cid=1, competitor_id=1)
+            _, template, ctx = mock_render.call_args[0]
+        assert template == 'results/competitor_detail.html'
+        assert ctx['competitor_rank'] is None
+        assert ctx['gap_to_first'] is None
+        assert ctx['class_rank_total'] == 0
+        assert ctx['rank_chart'] is False
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # api_class_results
@@ -2091,6 +2145,31 @@ class TestLoadRecapitulatifDataDirect:
         assert results == [] and controls == []
         assert all_cls == []   # 10e element = liste complete des categories
 
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.get_class_controls', return_value=([{'ctrl_id': 31}], {}))
+    @patch('results.views.get_org_map', return_value={})
+    @patch('results.views._get_adjacent_classes', return_value=(None, None, []))
+    @patch('results.views._load_class_context')
+    def test_porte_fermee_chaque_arrive_recoit_une_fiche_vide(self,
+                                                              mock_load_ctx, *_):
+        """Porte par catégorie fermée : un classé garde sa ligne mais reçoit
+        une fiche sans tronçon, plutôt qu'une valeur de splits périmée.
+
+        ``has_completed`` est forcé à False pour isoler la branche — dans la
+        vraie vie, la porte ne se ferme que si aucun concurrent n'est arrivé
+        (auquel cas ``results`` est déjà vide)."""
+        competition = make_competition(); cls_ = make_cls()
+        mock_load_ctx.return_value = (competition, cls_,
+                                      [make_competitor(1, rt=5000)], None)
+        with patch('results.views.has_completed', return_value=False), \
+             patch('results.views.compute_splits') as mock_splits:
+            from results.views import _load_recapitulatif_data
+            _, _, _, results, controls, *_ = _load_recapitulatif_data(cid=1, class_id=10)
+        assert len(results) == 1
+        assert results[0].splits == []
+        assert results[0].neg_time is False
+        mock_splits.assert_not_called()
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # recapitulatif_csv
@@ -2293,6 +2372,36 @@ class TestRelayResultsView:
         ctx, _ = self._run_splits({})
         splits = ctx['teams_data'][0]['legs'][0]['splits']
         assert [sp['ctrl_name'] for sp in splits] == ['Arrivée']
+
+    @patch('results.views.get_controls_by_leg', return_value=({}, {}))
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.get_org_map', return_value={1: 'COLE'})
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.Mopteammember')
+    @patch('results.views.Mopteam')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    def test_porte_fermee_masque_les_troncons(self, mock_get404, mock_render,
+                                              MockTeam, MockTM, MockComp, *_):
+        """Aucune équipe arrivée → les fractions sont affichées (nom, temps)
+        mais sans poinçon (circuit masqué)."""
+        mock_get404.side_effect = [make_competition(), make_cls()]
+        # Équipe non classée : is_ok/prel faux, stat non-OK, rt<=0
+        t1 = MagicMock(); t1.id = 1; t1.rt = -1; t1.stat = STAT_DNF; t1.org = 1
+        t1.is_ok = False; t1.prel = False
+        MockTeam.objects.filter.return_value = [t1]
+        m1 = MagicMock(); m1.id = 1; m1.rid = 101; m1.leg = 1; m1.ord = 0
+        MockTM.objects.filter.return_value.order_by.return_value = [m1]
+        MockComp.objects.filter.return_value = [make_competitor(101, rt=10000)]
+        with patch('results.views.compute_splits') as mock_splits:
+            from results.views import relay_results
+            relay_results(rf_get(), cid=1, class_id=10)
+        _, _, ctx = mock_render.call_args[0]
+        assert ctx['can_show_splits'] is False
+        leg = ctx['teams_data'][0]['legs'][0]
+        assert leg['splits'] == []
+        assert leg['name'] == 'Coureur 101'      # la fraction reste lisible
+        mock_splits.assert_not_called()          # porte fermée → aucun calcul
 
     def test_splits_libelles_renvoient_au_poste_circuit(self):
         """Les libellés filtrés gardent la numérotation du circuit complet
