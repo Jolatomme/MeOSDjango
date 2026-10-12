@@ -4,7 +4,8 @@ race_views.py — Création et gestion publiques de courses (sans compte).
 - ``GET/POST /creer-course/``           : formulaire de création ; génère une
   clé API MeOS unique (« Password » dans MeOS) et un lien privé de gestion.
 - ``GET/POST /gestion-course/<token>/`` : lien privé — paramètres MeOS,
-  régénération de la clé, édition des informations de la course.
+  régénération de la clé, édition des informations de course, suppression
+  définitive de la course.
 
 La course est identifiée dans MeOS par sa seule clé API : le numéro de
 compétition peut rester vide. L'authentification côté MOP est traitée par
@@ -16,6 +17,7 @@ import logging
 import time
 
 from django.conf import settings
+from django.contrib import messages
 from django.core import signing
 from django.db import IntegrityError
 from django.http import Http404
@@ -27,7 +29,7 @@ from django.views import View
 from .forms import RaceCreateForm, RaceEditForm
 from .models import CompetitionConfig, Mopcompetition
 from .services import (
-    create_race, regenerate_api_key, regenerate_manage_token,
+    create_race, delete_race, regenerate_api_key, regenerate_manage_token,
     save_org_logo, delete_org_logo,
 )
 
@@ -189,6 +191,22 @@ class RaceManageView(View):
                 'results:race_manage', kwargs={'token': new_token}
             )
             return redirect(f"{new_url}?ok=link")
+
+        if action == 'delete':
+            # Suppression totale : le lien privé meurt avec la course →
+            # on redirige vers l'accueil (message via le framework messages).
+            competition = _competition_of(config)
+            name = competition.name if competition else str(config.cid)
+            delete_race(config)
+            logger.info("race_manage: course cid=%s supprimée (%s)", config.cid, name)
+            messages.success(
+                request,
+                gettext(
+                    "Course « %(name)s » supprimée : résultats, clé API et "
+                    "lien de gestion effacés."
+                ) % {"name": name},
+            )
+            return redirect('results:home')
 
         if action == 'edit':
             form = RaceEditForm(request.POST)

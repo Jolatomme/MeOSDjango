@@ -28,6 +28,8 @@ from django.db import connection, IntegrityError, transaction
 from django.utils.translation import gettext
 from django.utils.translation import ngettext
 
+from .mop_receiver import clear_competition
+
 logger = logging.getLogger(__name__)
 
 _PREFIX_RE = re.compile(r'^\d+(\.\d+)*\.?\s+')
@@ -169,6 +171,30 @@ def regenerate_manage_token(config):
         "regenerate_manage_token: nouveau lien de gestion pour cid=%s", config.cid
     )
     return config.manage_token
+
+
+def delete_race(config):
+    """Suppression totale et irréversible d'une course.
+
+    - ``clear_competition`` efface toutes les tables mop* du CID
+      (résultats, classes, postes, organisations, compétition) ;
+    - la ligne ``CompetitionConfig`` est supprimée : la clé API MeOS et le
+      lien privé /gestion-course/<jeton>/ deviennent invalides (404) ;
+    - le fichier logo de l'organisateur est retiré du disque (lu *avant*
+      l'effacement de mopCompetition, qui porte le nom du fichier).
+
+    La course réapparaîtrait si MeOS la renvoyait avec le mot de passe
+    global MOP_PASSWORD : c'est le même comportement que la suppression
+    « Données MOP » de l'admin.
+    """
+    cid = config.cid
+    competition = Mopcompetition.objects.filter(cid=cid, id=1).first()
+    logo = (getattr(competition, 'logo', '') or '') if competition else ''
+    clear_competition(cid)
+    CompetitionConfig.objects.filter(cid=cid).delete()
+    delete_org_logo(logo)
+    logger.info("delete_race: course cid=%s supprimée (logo=%s)", cid, logo or '-')
+    return cid
 
 
 def find_race_by_key(key):

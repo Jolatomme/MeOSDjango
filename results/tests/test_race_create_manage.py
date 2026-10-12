@@ -3,7 +3,8 @@ Tests des vues publiques de création / gestion de courses (DB mockée).
 
 Couvre :
   - RaceCreateView : rendu, création, anti-spam (honeypot + jeton horodaté)
-  - RaceManageView : rendu du lien privé, régénération de clé, édition
+  - RaceManageView : rendu du lien privé, régénération de clé, édition,
+    suppression totale de la course (action=delete → accueil + message)
   - jetons horodatés (new_creation_token / _token_too_fast)
   - ENABLE_RACE_CREATION : création activée (défaut) ou désactivée (404)
 """
@@ -304,6 +305,10 @@ class TestRaceManageView:
         assert 'http://testserver/gestion-course/jeton-prive-abc/' in content
         # Bouton de révocation/regénération du lien privé
         assert 'name="action" value="regenerate_link"' in content
+        # Bouton de suppression totale, à côté de « Régénérer la clé »
+        assert 'name="action" value="regenerate_key"' in content
+        assert 'name="action" value="delete"' in content
+        assert 'Supprimer la course' in content
         assert "Site web de l'organisateur" in content
         assert 'name="livelox"' in content
         assert 'https://livelox.example/42' in content   # valeur enregistrée
@@ -364,6 +369,32 @@ class TestRaceManageView:
         assert response.status_code == 302
         assert response['Location'] == '/gestion-course/nouveau-jeton/?ok=link'
         mock_regen.assert_called_once_with(config)
+
+    @patch('results.race_views.delete_race')
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_post_supprime_la_course(self, MockConfig, MockComp, mock_delete):
+        """Suppression totale → le lien privé meurt, retour à l'accueil."""
+        from django.contrib.messages.storage.cookie import CookieStorage
+
+        config = _config()
+        MockConfig.objects.filter.return_value.first.return_value = config
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+
+        from results.race_views import RaceManageView
+        request = rf().post(
+            '/gestion-course/jeton-prive-abc/', {'action': 'delete'},
+        )
+        request._messages = CookieStorage(request)   # MessageMiddleware absent
+        response = RaceManageView.as_view()(request, token='jeton-prive-abc')
+
+        assert response.status_code == 302
+        assert response['Location'] == '/'             # results:home
+        mock_delete.assert_called_once_with(config)
+        # Message de confirmation affiché sur la page d'accueil
+        flash = ' '.join(str(m) for m in request._messages)
+        assert 'Trail de Test' in flash
+        assert 'supprimée' in flash
 
     @patch('results.race_views.Mopcompetition')
     @patch('results.race_views.CompetitionConfig')

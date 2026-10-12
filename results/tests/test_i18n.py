@@ -7,7 +7,11 @@ Couvre :
   - la négociation de langue (cookie ``co_lang`` / ``Accept-Language``) ;
   - l'invariance des URL entre les langues (pas de ``i18n_patterns``) ;
   - la langue source française et les catalogues compilés (``*.mo``) ;
-  - l'injection des chaînes traduites dans le JS partagé (``COUtils.setStrings``).
+  - les catalogues **complets** : aucun ``msgstr`` vide ni entrée floue
+    (non compilée → chaîne laissée en français, bug « Aucun favori … ») ;
+  - l'injection des chaînes traduites dans le JS partagé (``COUtils.setStrings``) ;
+  - le bouton « Supprimer la course » du lien privé traduit (une entrée créée
+    par appariement flou de ``msgmerge`` ne serait pas compilée).
 
 Les tests de contenu traduit sont ignorés quand ``compilemessages`` n'a pas été
 exécuté (``locale/*/LC_MESSAGES/django.mo`` est ignoré par git).
@@ -15,6 +19,7 @@ exécuté (``locale/*/LC_MESSAGES/django.mo`` est ignoré par git).
 
 import re
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from django.conf import settings
@@ -207,6 +212,115 @@ class TestCatalogues:
             assert translation.pgettext('mopstatus', msgid) == msgid  # …neutralisé
 
 
+# ─── Catalogues complets (aucune chaîne oubliée) ─────────────────────────────
+
+def _lire_po(path):
+    """Lit un fichier ``.po`` sans dépendance externe (polib absent).
+
+    Renvoie la liste des entrées ``{'msgid', 'msgstr', 'fuzzy'}`` : les blocs
+    d'une même entrée sont concaténés (msgids/multi-lignes et tous les
+    ``msgstr[N]``), les commentaires (#, #|) ignorés sauf le drapeau fuzzy.
+    """
+    entrees, entree, champ, fuzzy = [], None, None, False
+    for ligne in path.read_text(encoding='utf-8').splitlines():
+        if ligne.startswith('#,') and 'fuzzy' in ligne:
+            fuzzy = True
+            continue
+        if ligne.startswith('#'):
+            continue
+        if not ligne.strip():
+            if entree is not None:
+                entrees.append(entree)
+                entree = None
+            champ = None
+            continue
+        m = re.match(r'(msgid|msgid_plural|msgstr(?:\[\d+\])?)\s+"(.*)"$', ligne)
+        if m:
+            champ = m.group(1)
+            if entree is None:
+                entree = {'msgid': '', 'msgstr': '', 'fuzzy': fuzzy}
+                fuzzy = False
+            if champ.startswith('msgstr'):
+                entree['msgstr'] += m.group(2)
+            else:                                   # msgid / msgid_plural
+                entree['msgid'] += m.group(2)
+        elif ligne.startswith('"') and ligne.endswith('"') and entree is not None:
+            texte = ligne[1:-1]
+            if champ and champ.startswith('msgstr'):
+                entree['msgstr'] += texte
+            elif champ:                             # msgid / msgid_plural
+                entree['msgid'] += texte
+    if entree is not None:
+        entrees.append(entree)
+    return entrees
+
+
+class TestCataloguesComplets:
+    """Aucune chaîne ne doit rester sans ``msgstr``.
+
+    Une entrée vide (ou floue) n'est **pas** compilée dans le ``.mo`` : la
+    chaîne s'affiche alors en français quelle que soit la langue choisie —
+    c'est exactement le bug observé sur « Aucun favori pour cette course … »,
+    traduite partout sauf dans les catalogues.
+    """
+
+    @pytest.mark.parametrize('lang', ['en', 'de', 'sv'])
+    def test_aucune_chaine_non_traduite(self, lang):
+        po = LOCALE_DIR / lang / 'LC_MESSAGES' / 'django.po'
+        entrees = _lire_po(po)
+        assert len(entrees) > 100, 'catalogue illisible ou tronqué'
+
+        vides = [e['msgid'] for e in entrees if e['msgid'] and not e['msgstr']]
+        assert not vides, 'msgstr manquants : ' + ' | '.join(vides)
+
+        flous = [e['msgid'] for e in entrees if e['fuzzy']]
+        assert not flous, 'entrées floues (exclues de la compilation) : ' + ' | '.join(flous)
+
+    @pytest.mark.parametrize('lang,attendu', [
+        ('en', 'No favorites for this race'),
+        ('de', 'Keine Favoriten für diesen Wettkampf'),
+        ('sv', 'Inga favoriter för denna tävling'),
+    ])
+    def test_chaine_favoris_traduite_dans_la_page_live(self, lang, attendu):
+        """La chaîne « Aucun favori … » est injectée traduite par le template."""
+        _skip_si_non_compile(lang)
+        # Un cid + un nom de classe suffisent : les {% url %} de la page en ont besoin
+        competition = SimpleNamespace(cid=42, name='Test', date=None)
+        cls = SimpleNamespace(name='H10')
+        html = _render('results/live_results.html', lang,
+                       {'competition': competition, 'cls': cls})
+        assert attendu in html
+        assert 'Aucun favori pour cette course' not in html
+
+
+# ─── Lien privé de gestion : bouton « Supprimer la course » ──────────────────
+
+class TestBoutonSuppressionCourse:
+    """Le bouton de suppression de race_manage.html doit être traduit.
+
+    ``msgmerge`` peut rapprocher « Supprimer la course » d'un autre msgid
+    (appariement flou) : une entrée floue n'est **pas** compilée dans le
+    ``.mo`` → le bouton resterait affiché en français. Le test est ignoré
+    tant que ``compilemessages`` n'a pas été lancé.
+    """
+
+    FR_BOUTON = 'Supprimer la course'
+
+    @pytest.mark.parametrize('lang,attendu', [
+        ('en', 'Delete the race'),
+        ('de', 'Wettkampf löschen'),
+        ('sv', 'Radera tävlingen'),
+    ])
+    def test_bouton_traduit_dans_le_catalogue(self, lang, attendu):
+        _skip_si_non_compile(lang)
+        html = _render('results/race_manage.html', lang)
+        with translation.override(lang):
+            assert translation.gettext(self.FR_BOUTON) == attendu
+        assert attendu in html
+        assert 'value="delete"' in html               # action du formulaire
+        assert self.FR_BOUTON not in html
+
+
 # ─── Chaînes injectées dans le JS partagé (site.js) ──────────────────────────
 
 class TestChainesJavascript:
@@ -238,11 +352,11 @@ FR_BOUTON_FICHIER = 'Choisir un fichier'    # bouton affiché par nos soins
 FR_AUCUN_FICHIER = 'Aucun fichier choisi'   # nom de fichier par défaut
 
 
-def _render(template, lang='fr'):
+def _render(template, lang='fr', context=None):
     """Rendu d'une page complète (base.html + context processors, sans DB)."""
     request = RequestFactory().get('/')
     with translation.override(lang):
-        return get_template(template).render({}, request)
+        return get_template(template).render(context or {}, request)
 
 
 class TestChampFichierPersonnalise:

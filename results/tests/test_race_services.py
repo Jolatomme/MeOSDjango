@@ -5,10 +5,12 @@ Couvre :
   - next_cid         : max(mopCompetition, results_competitionconfig) + 1
   - create_race      : config + ligne mopCompetition pré-remplie, secrets
   - regenerate_api_key
+  - delete_race      : purge des tables mop*, de la config et du logo
   - find_race_by_key
 """
 
 import re
+from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -277,3 +279,74 @@ class TestKeyServices:
         from results.services import find_race_by_key
         MockConfig.objects.filter.side_effect = RuntimeError('db down')
         assert find_race_by_key('ma-cle') is None
+
+
+# ─── delete_race ──────────────────────────────────────────────────────────────
+
+class TestDeleteRace:
+    """Suppression totale : tables mop* + CompetitionConfig + fichier logo."""
+
+    @patch('results.services.delete_org_logo')
+    @patch('results.services.CompetitionConfig')
+    @patch('results.services.clear_competition')
+    @patch('results.services.Mopcompetition')
+    def test_purge_donnees_config_et_logo(
+        self, MockComp, mock_clear, MockConfig, mock_logo,
+    ):
+        from results.services import delete_race
+        MockComp.objects.filter.return_value.first.return_value = SimpleNamespace(
+            logo='logo-abc.png',
+        )
+
+        cid = delete_race(SimpleNamespace(cid=9))
+
+        assert cid == 9
+        MockComp.objects.filter.assert_called_once_with(cid=9, id=1)
+        mock_clear.assert_called_once_with(9)
+        MockConfig.objects.filter.assert_called_once_with(cid=9)
+        MockConfig.objects.filter.return_value.delete.assert_called_once_with()
+        mock_logo.assert_called_once_with('logo-abc.png')
+
+    @patch('results.services.delete_org_logo')
+    @patch('results.services.CompetitionConfig')
+    @patch('results.services.clear_competition')
+    @patch('results.services.Mopcompetition')
+    def test_logo_lu_avant_effacement_des_tables(
+        self, MockComp, mock_clear, MockConfig, mock_logo,
+    ):
+        """Le nom du fichier logo vit dans mopCompetition : lu avant l'effacement."""
+        vu = {}
+
+        def _lit(*args, **kwargs):
+            vu['comp'] = True
+            reponse = MagicMock()
+            reponse.first.return_value = SimpleNamespace(logo='logo-def.png')
+            return reponse
+
+        def _efface(cid):
+            assert vu.get('comp'), 'mopCompetition lu après clear_competition'
+
+        MockComp.objects.filter.side_effect = _lit
+        mock_clear.side_effect = _efface
+
+        from results.services import delete_race
+        delete_race(SimpleNamespace(cid=9))
+
+        mock_logo.assert_called_once_with('logo-def.png')
+
+    @patch('results.services.delete_org_logo')
+    @patch('results.services.CompetitionConfig')
+    @patch('results.services.clear_competition')
+    @patch('results.services.Mopcompetition')
+    def test_sans_competition_ni_logo(
+        self, MockComp, mock_clear, MockConfig, mock_logo,
+    ):
+        """Course jamais importée (aucune mopCompetition) : pas de plantage."""
+        from results.services import delete_race
+        MockComp.objects.filter.return_value.first.return_value = None
+
+        delete_race(SimpleNamespace(cid=3))
+
+        mock_clear.assert_called_once_with(3)
+        MockConfig.objects.filter.assert_called_once_with(cid=3)
+        mock_logo.assert_called_once_with('')

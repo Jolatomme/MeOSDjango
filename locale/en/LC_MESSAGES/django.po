@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-11 21:17+0200\n"
+"POT-Creation-Date: 2026-10-12 21:30+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -376,7 +376,7 @@ msgid "Organisateur / club"
 msgstr "Organizer / club"
 
 #: results/forms.py:86 results/templates/results/race_create.html:91
-#: results/templates/results/race_manage.html:199
+#: results/templates/results/race_manage.html:209
 msgid "Site web de l'organisateur"
 msgstr "Organizer website"
 
@@ -773,16 +773,24 @@ msgstr "deleted"
 msgid "masquée"
 msgstr "hidden"
 
-#: results/race_views.py:129
+#: results/race_views.py:131
 msgid "Formulaire invalide. Vérifiez les champs saisis."
 msgstr "Invalid form. Please check the entered fields."
 
-#: results/race_views.py:148
+#: results/race_views.py:150
 msgid "Conflit à la création. Réessayez une nouvelle fois."
 msgstr "Conflict during creation. Please try again."
 
-#: results/services.py:367 results/services.py:375 results/services.py:487
-#: results/services.py:504 results/templates/results/_split_detail_row.html:2
+#: results/race_views.py:205
+#, python-format
+msgid ""
+"Course « %(name)s » supprimée : résultats, clé API et lien de gestion "
+"effacés."
+msgstr ""
+"Race “%(name)s” deleted: results, API key and management link erased."
+
+#: results/services.py:393 results/services.py:401 results/services.py:513
+#: results/services.py:530 results/templates/results/_split_detail_row.html:2
 #: results/templates/results/_split_detail_row.html:35
 #: results/templates/results/competitor_detail.html:69
 #: results/templates/results/competitor_detail.html:131
@@ -795,17 +803,17 @@ msgstr "Conflict during creation. Please try again."
 msgid "Arrivée"
 msgstr "Finish"
 
-#: results/services.py:543
+#: results/services.py:569
 #, python-format
 msgid "au poste %(ctrls)s"
 msgstr "at control %(ctrls)s"
 
-#: results/services.py:545
+#: results/services.py:571
 #, python-format
 msgid "aux postes %(ctrls)s"
 msgstr "at controls %(ctrls)s"
 
-#: results/services.py:547
+#: results/services.py:573
 #, python-format
 msgid ""
 "%(n)s coureur a des temps négatifs %(postes)s : probable boîtier mal "
@@ -820,11 +828,11 @@ msgstr[1] ""
 "%(n)s runners have negative times %(postes)s: probably a poorly synchronized "
 "unit."
 
-#: results/services.py:553
+#: results/services.py:579
 msgid "Temps négatif : boîtier probablement mal synchronisé"
 msgstr "Negative time: unit probably not synchronized"
 
-#: results/services.py:557
+#: results/services.py:583
 msgid ""
 "1 coureur a un temps négatif : probable carte SI non effacée (problème "
 "d'effacement de doigts)."
@@ -832,11 +840,11 @@ msgstr ""
 "1 runner has a negative time: SI card probably not cleared (finger punch "
 "clearing problem)."
 
-#: results/services.py:560
+#: results/services.py:586
 msgid "Temps négatif : carte SI probablement non effacée"
 msgstr "Negative time: SI card probably not cleared"
 
-#: results/services.py:564
+#: results/services.py:590
 #, python-format
 msgid ""
 "%(n)s coureur a des temps négatifs sur des postes différents : probables "
@@ -851,7 +859,7 @@ msgstr[1] ""
 "%(n)s runners have negative times at different controls: SI cards probably "
 "not cleared (finger punch clearing)."
 
-#: results/services.py:570
+#: results/services.py:596
 msgid ""
 "Temps négatifs sur des postes différents : cartes SI probablement non "
 "effacées"
@@ -2263,7 +2271,7 @@ msgstr "Offline"
 #: results/templates/results/live_results.html:330
 msgid ""
 "Aucun favori pour cette course — touchez ★ sur un coureur pour le suivre."
-msgstr ""
+msgstr "No favorites for this race — tap ★ on a runner to follow them."
 
 #: results/templates/results/live_results.html:334
 #, python-format
@@ -2545,17 +2553,17 @@ msgid "Informations de la course"
 msgstr "Race information"
 
 #: results/templates/results/race_create.html:55
-#: results/templates/results/race_manage.html:166
+#: results/templates/results/race_manage.html:176
 msgid "Nom de la course *"
 msgstr "Race name *"
 
 #: results/templates/results/race_create.html:67
-#: results/templates/results/race_manage.html:177
+#: results/templates/results/race_manage.html:187
 msgid "Date *"
 msgstr "Date *"
 
 #: results/templates/results/race_create.html:79
-#: results/templates/results/race_manage.html:188
+#: results/templates/results/race_manage.html:198
 msgid "Organisateur / club *"
 msgstr "Organizer / club *"
 
@@ -2711,25 +2719,39 @@ msgstr "0 seconds"
 msgid "Format"
 msgstr "Format"
 
-#: results/templates/results/race_manage.html:145
+#: results/templates/results/race_manage.html:146
 msgid ""
 "Régénérer la clé API ? L\\'ancienne clé deviendra immédiatement invalide."
 msgstr ""
 "Regenerate the API key? The previous key will become invalid immediately."
 
-#: results/templates/results/race_manage.html:149
+#: results/templates/results/race_manage.html:150
 msgid "Régénérer la clé"
 msgstr "Regenerate key"
 
-#: results/templates/results/race_manage.html:157
+#: results/templates/results/race_manage.html:154
+msgid ""
+"Supprimer définitivement cette course ? Toutes les données seront effacées "
+"(résultats, clé API, lien de gestion) et ce lien ne fonctionnera plus. "
+"Action irréversible."
+msgstr ""
+"Delete this race permanently? All data will be erased (results, API key, "
+"management link) and this link will stop working. This action cannot be "
+"undone."
+
+#: results/templates/results/race_manage.html:158
+msgid "Supprimer la course"
+msgstr "Delete the race"
+
+#: results/templates/results/race_manage.html:167
 msgid "Modifier l'événement"
 msgstr "Edit event"
 
-#: results/templates/results/race_manage.html:224
+#: results/templates/results/race_manage.html:234
 msgid "Enregistrer les modifications"
 msgstr "Save changes"
 
-#: results/templates/results/race_manage.html:228
+#: results/templates/results/race_manage.html:238
 msgid "Créer une autre course"
 msgstr "Create another race"
 
