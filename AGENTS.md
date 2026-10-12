@@ -56,6 +56,7 @@ python manage.py compilemessages                  # *.mo ignored by git — requ
 ## Testing
 
 - Python tests run **without a database** — DB is fully mocked via `unittest.mock` (see `results/tests/conftest.py`)
+- Tests are **environment-independent**: `results/tests/conftest.py` neutralizes the prod-only settings coming from the server `.env` (`SECURE_SSL_REDIRECT` active under `DEBUG=0`, `PUBLIC_SITE_URL`) — without it, every `client.*` test fails **only on the server** (301 to `https://testserver/…`, empty body, no `co_lang` cookie) and absolute-URL assertions miss `http://testserver/…`. Reproduce server conditions with `DEBUG=0 PUBLIC_SITE_URL=… ALLOWED_HOSTS=… pytest`
 - `pytest.ini` adds `--cov=results --cov=ochecklist` (coverage)
 - `results/tests/test_i18n.py` — language selector, `set_language` cookie, URL invariance; tests asserting *translated* content skip themselves when `compilemessages` has not been run (`locale/*/LC_MESSAGES/django.mo` is gitignored)
 - JavaScript unit tests for `site.js` (COUtils): `npx jest results/tests/test_site_js.test.js` (or `npm run test:js`) — run **from the repo root**; jest + jest-environment-jsdom are devDependencies of the root `package.json` (`testEnvironment: "jsdom"`), `node_modules/` is gitignored (`npm install` once after cloning)
