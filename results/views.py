@@ -1,6 +1,7 @@
 import csv
 import hashlib
 import json
+import logging
 import re
 from collections import Counter
 from types import SimpleNamespace
@@ -8,6 +9,8 @@ from datetime import date, datetime
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import SuspiciousFileOperation
+from django.db import connection
+from django.db.utils import DatabaseError
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import Http404, HttpResponse, JsonResponse
 from django.utils.translation import gettext, ngettext
@@ -50,6 +53,30 @@ _NON_FINISHER_ORDER = {
 
 # Hash de circuit : exactement 8 caractères hexadécimaux minuscules
 _COURSE_HASH_RE = re.compile(r'^[0-9a-f]{8}$')
+
+logger = logging.getLogger(__name__)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Santé (health check) — pour les sondes de supervision / load balancer
+# ══════════════════════════════════════════════════════════════════════════════
+
+def health_check(request):
+    """Sonde de supervision : test applicatif **et** test de la base.
+
+    ``SELECT 1`` sur la connexion défaut :
+      - tout va bien → 200 ``{"status": "ok", "db": "ok"}`
+      - base inaccessible → 503 ``{"status": "error", "db": "error"}``
+        (le load balancer écarte alors l'instance)
+    """
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+            cursor.fetchone()
+    except DatabaseError as exc:
+        logger.error("health_check: base inaccessible (%s)", exc.__class__.__name__)
+        return JsonResponse({"status": "error", "db": "error"}, status=503)
+    return JsonResponse({"status": "ok", "db": "ok"})
 
 
 # ══════════════════════════════════════════════════════════════════════════════

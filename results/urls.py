@@ -11,6 +11,13 @@ from .race_views import RaceCreateView, RaceManageView
 app_name = 'results'
 
 urlpatterns = [
+    # ── Santé ──────────────────────────────────────────────────────────────
+    # Sonde de supervision (load balancer, uptime…) — test applicatif + DB.
+    # Les deux notations sont servies directement (sans 301 d'APPEND_SLASH),
+    # comme pour mop/update : certaines sondes n suivent pas les redirections.
+    path('health',  views.health_check),
+    path('health/', views.health_check, name='health_check'),
+
     # ── Accueil ────────────────────────────────────────────────────────────
     path('', HomeView.as_view(), name='home'),
 

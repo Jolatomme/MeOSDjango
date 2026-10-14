@@ -42,6 +42,7 @@ python manage.py compilemessages                  # *.mo ignored by git — requ
 - **`results/`** — MeOS tables `mop*` are NOT managed by Django (models use `managed=False`). MeOS creates and manages them directly (tables can also be created with `setup_db`). Django manages only `MeosTutorial` and `CompetitionConfig` (`db_table = results_competitionconfig`), with migrations `0001`→`0006` (some migrations are historical leftovers of former `mop*` models).
 - **`ochecklist/`** — Tables ARE managed by Django (`managed=True`), with a standard `0001_initial.py` migration.
 - **MOP endpoint**: `POST /mop/update/` (XML, from MeOS) — app `results/`
+- **Health endpoint**: `GET /health/` ou `GET /health` (mêmes deux notations que `mop/update`, sans 301 `APPEND_SLASH`) — `results.health_check`, nom `results:health_check` ; `SELECT 1` sur la DB, répond `200 {"status": "ok", "db": "ok"}` ou `503 {"status": "error", "db": "error"}`
 - **O'checklist endpoint**: `POST /ochecklist/update/` (YAML, from O'checklist Android app) — app `ochecklist/`
   - Supports `Content-Encoding: gzip` decompression
   - Verifies `Content-Digest` header (SHA-256/512, MD5)
