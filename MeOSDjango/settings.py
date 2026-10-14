@@ -232,17 +232,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MOP_PASSWORD = MEOS_PASSWORD
 
 # ─── SITE CONFIG (override in .env) ────────────────────────────────────────────
-#SITE_NAME = os.environ.get('SITE_NAME', 'Résultats CO')
 SITE_NAME = _env_flag('SITE_NAME', globals().get('SITE_NAME', True))
-#SITE_SUBTITLE = os.environ.get('SITE_SUBTITLE', 'https://github.com/Jolatomme/MeOSDjango')
 SITE_SUBTITLE = _env_flag('SITE_SUBTITLE', globals().get('SITE_SUBTITLE', True))
-#SITE_LOGO_URL = os.environ.get('SITE_LOGO_URL', '')
 SITE_LOGO_URL = _env_flag('SITE_LOGO_URL', globals().get('SITE_LOGO_URL', True))
-#CLUB_NAME = os.environ.get('CLUB_NAME', 'COCS 73')
 CLUB_NAME = _env_flag('CLUB_NAME', globals().get('CLUB_NAME', True))
-#CLUB_COLOR_PRIMARY = os.environ.get('CLUB_COLOR_PRIMARY', '#1a6b3c')   # forest green
 CLUB_COLOR_PRIMARY = _env_flag('CLUB_COLOR_PRIMARY', globals().get('CLUB_COLOR_PRIMARY', True))
-#CLUB_COLOR_ACCENT = os.environ.get('CLUB_COLOR_ACCENT', '#f0a500')     # gold
 CLUB_COLOR_ACCENT = _env_flag('CLUB_COLOR_ACCENT', globals().get('CLUB_COLOR_ACCENT', True))
 
 # URL publique canonique (ex: https://jolatomme.alwaysdata.net) affichée aux
@@ -256,9 +250,7 @@ PUBLIC_SITE_URL = os.environ.get('PUBLIC_SITE_URL', '')
 # « Créer une course » est masqué. La gestion /gestion-course/ reste active.
 # (helper _env_flag défini en tête de fichier ; la valeur peut aussi venir
 #  de dev_settings.py via globals().get ci-dessous)
-ENABLE_RACE_CREATION = _env_flag(
-    'ENABLE_RACE_CREATION', globals().get('ENABLE_RACE_CREATION', True)
-)
+ENABLE_RACE_CREATION = _env_flag('ENABLE_RACE_CREATION', globals().get('ENABLE_RACE_CREATION', True))
 
 # ─── O'checklist Configuration ───────────────────────────────────────────────
 # Optional security header authentication for O'checklist endpoint
