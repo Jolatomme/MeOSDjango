@@ -273,6 +273,9 @@ def process_organization(cid: int, elem: ET.Element):
     """
     <org id="255" nat="SWE">Länna IF</org>
     <org delete="true" id="515"></org>
+
+    nat = nationalité de l'organisation (code 3 lettres) — stockée si
+    présente, non effacée lors d'un MOPDiff sans attribut nat.
     """
     id_ = int(elem.get('id'))
 
@@ -284,9 +287,17 @@ def process_organization(cid: int, elem: ET.Element):
             )
         return
 
-    _upsert('mopOrganization', cid, id_, {
+    fields = {
         'name': (elem.text or '').strip(),
-    })
+    }
+
+    # Nationalité : seulement si l'attribut est présent, pour ne pas
+    # écraser une valeur existante lors d'un MOPDiff partiel sans nat.
+    nat_attr = elem.get('nat')
+    if nat_attr is not None:
+        fields['nat'] = nat_attr.strip().upper()[:8]
+
+    _upsert('mopOrganization', cid, id_, fields)
 
 
 def process_competitor(cid: int, elem: ET.Element):
@@ -301,6 +312,7 @@ def process_competitor(cid: int, elem: ET.Element):
     Attributs notables (stockés si présents) :
       card    : numéro de puce SI (SIAC)
       bib     : dossard (sur <base>)
+      nat     : nationalité (code 3 lettres, sur <base>)
       stat=0  : Unknown (en course)
       stat=1  : OK
       stat=15 : OCC (Out-of-competition, v3.7)
@@ -350,6 +362,12 @@ def process_competitor(cid: int, elem: ET.Element):
     if card_attr is not None:
         card_value = card_attr.strip()
         fields['card'] = '' if card_value == '0' else card_value
+
+    # Nationalité : seulement si l'attribut est présent, pour ne pas
+    # écraser une valeur existante lors d'un MOPDiff partiel sans nat.
+    nat_attr = base.get('nat')
+    if nat_attr is not None:
+        fields['nat'] = nat_attr.strip().upper()[:8]
 
     inp = _find(elem, 'input')
     if inp is not None:

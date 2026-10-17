@@ -413,6 +413,16 @@ html[data-theme="dark"] .org-logo { border-color: rgba(0, 0, 0, .25); }
 .runner-name a:hover { color: var(--co-text-accent); text-decoration: underline; }
 .club-name { color: var(--co-text-muted); font-size: .875rem; }
 
+/* Drapeau national (MOP « nat ») devant le nom du coureur */
+.nat-flag {
+  width: 20px; height: 14px;
+  object-fit: cover;
+  border-radius: 2px;
+  vertical-align: baseline;
+  margin-inline-end: .35rem;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 8%);
+}
+
 /* ─── Page Live — lignes 3 colonnes (classement | coureur + postes | temps + progression) ── */
 
 #liveTable thead { display: none; }

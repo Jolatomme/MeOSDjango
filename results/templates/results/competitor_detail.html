@@ -16,7 +16,7 @@
         <li class="breadcrumb-item active">{{ competitor.name }}</li>
       </ol>
     </nav>
-    <h1><i class="bi bi-person-circle me-2 opacity-75"></i>{{ competitor.name }}{% if competitor.neg_time %} <span class="badge neg-badge align-middle ms-1" title="{% translate "Temps négatif : boîtier mal synchronisé ou carte SI non effacée" %}">{% translate "Temps négatif" %}</span>{% endif %}</h1>
+    <h1><i class="bi bi-person-circle me-2 opacity-75"></i>{% nat_flag competitor.nat org.nat %}{{ competitor.name }}{% if competitor.neg_time %} <span class="badge neg-badge align-middle ms-1" title="{% translate "Temps négatif : boîtier mal synchronisé ou carte SI non effacée" %}">{% translate "Temps négatif" %}</span>{% endif %}</h1>
     <div class="mt-2 d-flex flex-wrap gap-2">
       {% if can_show_splits %}
       {# ★ partagé avec l'onglet Favoris du LIVE (COUtils.favs, clé co-live-favs) #}
@@ -59,6 +59,11 @@
             {% if org %}<a href="{% url 'results:org_results' competition.cid competitor.org %}">{{ org.name }}</a>
             {% else %}—{% endif %}
           </dd>
+
+          {% if nat_code %}
+          <dt class="col-5 text-muted">{% translate "Nationalité" %}</dt>
+          <dd class="col-7">{% nat_flag competitor.nat org.nat %}{{ nat_code|upper }}</dd>
+          {% endif %}
 
           {% if competitor.st > 0 %}
           <dt class="col-5 text-muted">{% translate "Départ" %}</dt>
@@ -131,7 +136,7 @@
             {% translate "Arrivée" as FIN %}
             {% for sp in splits %}
             {% if sp.ctrl_name != FIN %}
-            <tr class="split-row" data-ctrl="{{ sp.ctrl_name }}" data-abs="{{ sp.abs_time }}" data-leg="{{ sp.leg_time }}"{% if sp.abs_rank %} data-rank="{{ sp.abs_rank }}"{% endif %}>
+            <tr class="split-row" data-ctrl="{{ sp.ctrl_name }}" data-abs="{{ sp.abs_time }}" data-leg="{{ sp.leg_time }}"{% if sp.abs_rank %} data-rank="{{ sp.abs_rank }}"{% endif %}{% if sp.leg_rank %} data-leg-rank="{{ sp.leg_rank }}"{% endif %}>
               <td>{{ sp.ctrl_name }}</td>
               <td class="text-end split-abs">{{ sp.abs_time }}</td>
               <td class="text-end split-leg{% if sp.neg_leg %} split-neg{% endif %}"{% if sp.neg_leg %} title="{{ neg_time_warning.tooltip|default:'Temps négatif' }}"{% endif %}>{{ sp.leg_time }}{% if sp.is_best %} <span class="split-best" title="{% translate "Meilleur tronçon" %}">★</span>{% endif %}{% if sp.neg_leg %} <span class="split-mark-warn">(!)</span>{% endif %}</td>
@@ -142,7 +147,7 @@
             {% with last=splits|last %}
             {% if last.ctrl_name == FIN %}
             {# Ligne affichée pour tout coureur ayant franchi la ligne (rt > 0), y compris non classés (PM…) #}
-            <tr class="split-row" style="border-top:2px solid var(--co-green)" data-ctrl="{{ FIN }}" data-abs="{{ last.abs_time }}" data-leg="{{ last.leg_time }}"{% if last.abs_rank %} data-rank="{{ last.abs_rank }}"{% endif %}>
+            <tr class="split-row" style="border-top:2px solid var(--co-green)" data-ctrl="{{ FIN }}" data-abs="{{ last.abs_time }}" data-leg="{{ last.leg_time }}"{% if last.abs_rank %} data-rank="{{ last.abs_rank }}"{% endif %}{% if last.leg_rank %} data-leg-rank="{{ last.leg_rank }}"{% endif %}>
               <td><i class="bi bi-flag-fill text-danger"></i> {% translate "Arrivée" %}</td>
               <td class="text-end split-abs fw-bold" style="color:var(--co-green)">{{ last.abs_time }}</td>
               <td class="text-end split-leg{% if last.neg_leg %} split-neg{% endif %}"{% if last.neg_leg %} title="{{ neg_time_warning.tooltip|default:'Temps négatif' }}"{% endif %}>{{ last.leg_time }}{% if last.neg_leg %} <span class="split-mark-warn">(!)</span>{% endif %}</td>
@@ -174,6 +179,8 @@
         <div id="ficheRankChart" class="fiche-rank-chart"
              data-title="{% translate "Évolution du classement" %}"
              data-lbl-rank="{% translate "Rang" %}"
+             data-lbl-abs-rank="{% translate "Rang cumulé" %}"
+             data-lbl-leg-rank="{% translate "Rang tronçon" %}"
              data-lbl-abs="{% translate "Cumulé" %}"
              data-lbl-leg="{% translate "Tronçon" %}"></div>
       </div>

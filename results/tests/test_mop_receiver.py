@@ -379,6 +379,43 @@ class TestProcessCompetitor:
         fields = mock_upsert.call_args[0][3]
         assert fields['card'] == ''
 
+    # ── Nationalité (attribut nat sur <base>) ────────────────────────────────
+
+    @patch('results.mop_receiver.connection')
+    @patch('results.mop_receiver._upsert')
+    def test_attribut_nat_stocke(self, mock_upsert, mock_conn):
+        """<base nat="SWE"> → la nationalité est enregistrée (majorée)."""
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
+
+        el = elem('cmp', {'id': '5490'}, children=[
+            ('base', {'org': '515', 'cls': '1', 'stat': '1',
+                      'st': '370800', 'rt': '71480', 'nat': ' swe '},
+             'Jonas Svensson'),
+        ])
+        process_competitor(1, el)
+
+        fields = mock_upsert.call_args[0][3]
+        assert fields['nat'] == 'SWE'
+
+    @patch('results.mop_receiver.connection')
+    @patch('results.mop_receiver._upsert')
+    def test_sans_attribut_nat_ne_lecrase_pas(self, mock_upsert, mock_conn):
+        """MOPDiff partiel sans nat → pas de champ nat (pas d'écrasement)."""
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__  = MagicMock(return_value=False)
+
+        el = elem('cmp', {'id': '1'}, children=[
+            ('base', {'org': '1', 'cls': '1', 'stat': '5',
+                      'st': '0', 'rt': '0'}, 'Alice'),
+        ])
+        process_competitor(1, el)
+
+        fields = mock_upsert.call_args[0][3]
+        assert 'nat' not in fields
+
     @patch('results.mop_receiver.connection')
     @patch('results.mop_receiver._upsert')
     def test_radio_parse(self, mock_upsert, mock_conn):
@@ -897,6 +934,25 @@ class TestProcessOrganization:
         process_organization(1, el)
         fields = mock_upsert.call_args[0][3]
         assert fields['name'] == 'Länna IF'
+
+    @patch('results.mop_receiver._upsert')
+    def test_attribut_nat_stocke(self, mock_upsert):
+        """<org nat="SWE"> → la nationalité du club est enregistrée."""
+        from results.mop_receiver import process_organization
+        el = elem('org', {'id': '255', 'nat': 'swe'}, text='Länna IF')
+        process_organization(1, el)
+        fields = mock_upsert.call_args[0][3]
+        assert fields['name'] == 'Länna IF'
+        assert fields['nat'] == 'SWE'
+
+    @patch('results.mop_receiver._upsert')
+    def test_sans_attribut_nat_ne_lecrase_pas(self, mock_upsert):
+        """MOPDiff partiel sans nat → pas de champ nat (pas d'écrasement)."""
+        from results.mop_receiver import process_organization
+        el = elem('org', {'id': '255'}, text='Länna IF')
+        process_organization(1, el)
+        fields = mock_upsert.call_args[0][3]
+        assert 'nat' not in fields
 
 
 class TestProcessCompetitorComplement:

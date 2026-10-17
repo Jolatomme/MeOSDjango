@@ -40,6 +40,27 @@ from .services import (
     race_in_progress, mark_negative_times, clock_tenths, _now_abs,
     LIVE_GROUPS, has_completed,
 )
+from .nat_flags import nat_display_code, nat_flag_url
+
+
+def _org_maps(cid):
+    """``(org_noms, org_nats)`` — deux dict org_id → nom / code nat (MOP).
+
+    Lecture unique des organisations (objs) dérivée en deux maps pour les
+    payloads JSON (Live, index de recherche, relais). Tolère les mocks de
+    tests qui font déjà renvoyer des noms (``str``) par ``get_org_map`` :
+    ces valeurs n'ont alors pas de nationalité.
+    """
+    objs  = get_org_map(cid, as_objects=True)
+    names = {}
+    nats  = {}
+    for oid, o in objs.items():
+        if isinstance(o, str):
+            names[oid] = o
+        else:
+            names[oid] = getattr(o, 'name', '')
+            nats[oid]  = getattr(o, 'nat', '')
+    return names, nats
 
 
 # ─── Ordre de tri des non-classés ─────────────────────────────────────────────
@@ -410,6 +431,9 @@ def competitor_detail(request, cid, competitor_id):
         competitor.neg_time = False
     # Graphique d'évolution du rang : au moins 2 postes classés requis.
     rank_chart = sum(1 for sp in splits if isinstance(sp, dict) and sp.get('abs_rank')) >= 2
+    # Nationalité affichée : coureur d'abord, club ensuite (MOP « nat »).
+    nat_code = nat_display_code(getattr(competitor, 'nat', ''),
+                                 getattr(org, 'nat', ''))
     return render(request, 'results/competitor_detail.html', {
         'competition': competition, 'competitor': competitor,
         'org': org, 'cls': cls, 'splits': splits,
@@ -418,6 +442,7 @@ def competitor_detail(request, cid, competitor_id):
         'gap_to_first': gap_to_first,
         'class_rank_total': class_rank_total,
         'rank_chart': rank_chart,
+        'nat_code': nat_code,
         'neg_time_warning': get_negative_time_stats(cid),
         'total_time': format_time(competitor.rt) if competitor.is_ok else competitor.status_label,
     })
@@ -643,7 +668,7 @@ def _etag_view(payload):
 def _build_live_payload(cid, cls, competitors, course, competition=None):
     """Construit le payload live complet (hors champs volatils d'horloge,
     réinjectés à chaque réponse) et son empreinte ETag."""
-    org_map      = get_org_map(cid)
+    org_map, org_nats = _org_maps(cid)
     controls_seq = _controls_for(cid, cls, course)
     radio_map    = get_radio_map(cid, [c.id for c in competitors])
     now          = datetime.now()
@@ -704,6 +729,10 @@ def _build_live_payload(cid, cls, competitors, course, competition=None):
             'id':                c.id,
             'name':              c.name,
             'org':               org_map.get(c.org, ''),
+            # Drapeau national (MOP « nat ») : coureur d'abord, club ensuite.
+            # URL résolue côté serveur — stable dans le temps (ETag inchangé).
+            'flag':              nat_flag_url(getattr(c, 'nat', ''),
+                                              org_nats.get(c.org, '')),
             'class_name':        c.class_obj.name if course and getattr(c, 'class_obj', None) else cls.name,
             'stat':              c.stat,
             'stat_label':        c.status_label,
@@ -1014,13 +1043,15 @@ def api_race_index(request, cid):
     cache_key = f'raceindex:{cid}'
     data = cache.get(cache_key)
     if data is None:
-        org_map = get_org_map(cid)
+        org_map, org_nats = _org_maps(cid)
         cls_map = {c.id: c.name for c in Mopclass.objects.filter(cid=cid)}
         relay_cls = set(
             Mopteam.objects.filter(cid=cid).values_list('cls', flat=True))
         runners = [
             {'id': c.id, 'name': c.name,
              'org': org_map.get(c.org, ''),
+             'flag': nat_flag_url(getattr(c, 'nat', ''),
+                                  org_nats.get(c.org, '')),
              'cls': cls_map.get(c.cls, '')}
             for c in Mopcompetitor.objects.filter(cid=cid)
             if c.cls not in relay_cls
@@ -1613,7 +1644,7 @@ def relay_results(request, cid, class_id):
     class_id    = _resolve_class_id(cid, class_id)
     cls         = get_object_or_404(Mopclass, cid=cid, id=class_id)
     teams_qs    = list(Mopteam.objects.filter(cid=cid, cls=class_id))
-    org_map     = get_org_map(cid)
+    org_map, org_nats = _org_maps(cid)
     finishers, non_finishers, leader_time = rank_finishers(
         teams_qs, ok_predicate=lambda t: t.stat == STAT_OK and t.rt > 0,
     )
@@ -1684,6 +1715,9 @@ def relay_results(request, cid, class_id):
                     splits = []
                 legs_data.append({
                     'leg': leg_num, 'runner_id': runner.id, 'name': runner.name,
+                    # Drapeau national (MOP « nat ») : coureur d'abord, club ensuite
+                    'flag': nat_flag_url(getattr(runner, 'nat', ''),
+                                         org_nats.get(runner.org, '')),
                     'leg_time': format_time(leg_time_raw) if leg_time_raw else '-',
                     'leg_time_raw': leg_time_raw,
                     'cum_time': format_time(cum_time_raw) if cum_time_raw else '-',
@@ -1695,6 +1729,7 @@ def relay_results(request, cid, class_id):
             else:
                 legs_data.append({
                     'leg': leg_num, 'runner_id': None, 'name': '—',
+                    'flag': '',
                     'leg_time': '-', 'leg_time_raw': None,
                     'cum_time': '-', 'cum_time_raw': None,
                     'stat': 0, 'stat_label': '-', 'stat_badge': 'secondary',

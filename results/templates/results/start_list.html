@@ -168,19 +168,22 @@
   // comme un lien cliquable qui bascule sur la vue « Par catégorie ».
   const COLUMNS = {
     category: [
-      { label: "{% translate 'Nom / Prénom' %}", value: row => row.full_name },
+      { label: "{% translate 'Nom / Prénom' %}", isHtml: true,
+        value: row => (row.flag ? `<img class="nat-flag" src="${escapeHtml(row.flag)}" alt="" loading="lazy" width="20" height="14">` : '') + escapeHtml(row.full_name) },
       { label: "{% translate 'Club' %}", value: row => row.club_display },
       { label: "{% translate 'Puce' %}", value: row => row.control_card },
       { label: "{% translate 'Heure de départ' %}", value: row => row.start_time },
     ],
     club: [
-      { label: "{% translate 'Nom / Prénom' %}", value: row => row.full_name },
+      { label: "{% translate 'Nom / Prénom' %}", isHtml: true,
+        value: row => (row.flag ? `<img class="nat-flag" src="${escapeHtml(row.flag)}" alt="" loading="lazy" width="20" height="14">` : '') + escapeHtml(row.full_name) },
       { label: "{% translate 'Catégorie' %}", value: row => row.category, categoryLink: true },
       { label: "{% translate 'Puce' %}", value: row => row.control_card },
       { label: "{% translate 'Heure de départ' %}", value: row => row.start_time },
     ],
     start_time: [
-      { label: "{% translate 'Nom / Prénom' %}", value: row => row.full_name },
+      { label: "{% translate 'Nom / Prénom' %}", isHtml: true,
+        value: row => (row.flag ? `<img class="nat-flag" src="${escapeHtml(row.flag)}" alt="" loading="lazy" width="20" height="14">` : '') + escapeHtml(row.full_name) },
       { label: "{% translate 'Club' %}", value: row => row.club_display },
       { label: "{% translate 'Catégorie' %}", value: row => row.category, categoryLink: true },
       { label: "{% translate 'Puce' %}", value: row => row.control_card },
@@ -209,6 +212,9 @@
 
       const headers = `<tr>${columns.map(c => `<th>${escapeHtml(c.label)}</th>`).join('')}</tr>`;
       const rowsHtml = rows.map(row => `<tr>${columns.map(c => {
+        if (c.isHtml) {
+          return td(c.label, c.value(row));
+        }
         const value = String(c.value(row) || '');
         if (c.categoryLink) {
           return td(c.label, `<span class="clickable-link" data-switch-view="category" data-target-slug="${slugify(value)}">${escapeHtml(value)}</span>`);

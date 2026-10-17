@@ -465,7 +465,7 @@ const LiveResults = (() => {
                   data-fav-id="${r.id}" aria-pressed="${fav}"
                   title="${esc(fav ? T.favAriaRemove : T.favAriaAdd)}"
                   aria-label="${esc(fav ? T.favAriaRemove : T.favAriaAdd)}">★</button>
-          <a href="/competition/${cfg.cid}/competitor/${r.id}/">${esc(r.name)}</a>
+          <a href="/competition/${cfg.cid}/competitor/${r.id}/">${r.flag ? `<img class="nat-flag" src="${esc(r.flag)}" alt="" loading="lazy" width="20" height="14">` : ''}${esc(r.name)}</a>
           ${r.org ? `<span class="club-name">(${esc(r.org)})</span>` : ''}
           ${r.class_name && (cfg.isCourse || r._ctx) ? `<span class="badge bg-light text-dark border club-class">${esc(r.class_name)}</span>` : ''}
           ${r.neg_time ? negBadge(r) : ''}
@@ -968,7 +968,7 @@ const LiveResults = (() => {
                   title="${esc(fav ? T.favAriaRemove : T.favAriaAdd)}"
                   aria-label="${esc(fav ? T.favAriaRemove : T.favAriaAdd)}">★</button>
           <span class="search-hit-name">
-            <span class="fw-semibold">${esc(r.name)}</span>
+            ${r.flag ? `<img class="nat-flag" src="${esc(r.flag)}" alt="" loading="lazy" width="20" height="14">` : ''}<span class="fw-semibold">${esc(r.name)}</span>
             ${r.org ? `<span class="text-muted small ms-1">${esc(r.org)}</span>` : ''}
           </span>
           <a class="search-jump" href="${esc(cfg.classLiveTpl.replace('__CLS__', encodeURIComponent(r.cls)) + `?hl=${r.id}`)}"

@@ -18,6 +18,7 @@ from .services import (
     get_org_map, get_class_controls, get_courses_map,
     get_negative_time_stats, slugify_no_prefix, competition_visible,
 )
+from .nat_flags import nat_flag_url
 
 from .meos_checker import check_meos_file
 from .verifie_moi import generate_verifie_moi_csv
@@ -285,6 +286,9 @@ class StartListView(RenderShortcutMixin, TemplateView):
                 'start_time_sort': start_time_sort,
                 'control_card': comp.card or '',
                 'bib': comp.bib or '',
+                # Drapeau national (MOP « nat ») : coureur d'abord, club ensuite
+                'flag': nat_flag_url(getattr(comp, 'nat', ''),
+                                     getattr(org_obj, 'nat', '')),
             })
 
         rows.sort(key=lambda r: r['start_time_sort'])

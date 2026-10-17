@@ -97,6 +97,11 @@ class Moporganization(models.Model):
     cid  = models.IntegerField(primary_key=True)
     id   = models.IntegerField()
     name = models.CharField(max_length=64)
+    nat  = models.CharField(
+        max_length=8, blank=True, default='',
+        verbose_name=gettext_lazy("nationalité"),
+        help_text="Code nationalité MOP de l'organisation (ex. SWE)",
+    )
 
     class Meta:
         managed         = False
@@ -131,6 +136,11 @@ class Mopcompetitor(models.Model):
     prel  = models.BooleanField(
         default=False,
         help_text="Résultat préliminaire MOP (arrivé, carte pas encore lue à la GEC)",
+    )
+    nat   = models.CharField(
+        max_length=8, blank=True, default='',
+        verbose_name=gettext_lazy("nationalité"),
+        help_text="Code nationalité MOP transmis par MeOS (ex. SWE)",
     )
 
     class Meta:

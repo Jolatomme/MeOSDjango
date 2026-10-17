@@ -8,6 +8,7 @@ from django.utils.html import escape
 from django.utils.safestring import mark_safe
 from django.utils.translation import pgettext
 from results.models import format_time, STATUS_LABELS
+from results.nat_flags import nat_flag_html
 
 register = template.Library()
 
@@ -99,6 +100,17 @@ def lang_flag(lang_code):
     Les fichiers vivent dans ``static/results/img/flags/<code>.svg``.
     """
     return {'en': 'gb', 'sv': 'se'}.get(lang_code, lang_code)
+
+
+@register.simple_tag
+def nat_flag(*nats):
+    """Drapeau national (MOP « nat ») — premier code avec SVG connu, sinon ''.
+
+    Cascade : coureur d'abord, club ensuite — ``{% nat_flag comp.nat comp.org_obj.nat %}``.
+    Un argument absent/None (attribut non résolu par le template) est
+    simplement ignoré. Voir ``results.nat_flags``.
+    """
+    return nat_flag_html(*nats)
 
 
 @register.simple_tag

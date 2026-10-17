@@ -135,7 +135,7 @@ class MopclassAdmin(admin.ModelAdmin):
 
 @admin.register(Mopcompetitor)
 class MopcompetitorAdmin(admin.ModelAdmin):
-    list_display  = ('cid', 'id', 'name', 'org', 'cls', 'stat', 'rt')
+    list_display  = ('cid', 'id', 'name', 'org', 'cls', 'stat', 'rt', 'nat')
     list_filter   = ('cid', 'stat')
     search_fields = ('name',)
 

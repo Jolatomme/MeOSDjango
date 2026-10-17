@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 21:30+0200\n"
+"POT-Creation-Date: 2026-10-17 15:38+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -120,9 +120,9 @@ msgstr "Status"
 #: ochecklist/templates/ochecklist/report_detail.html:74
 #: ochecklist/templates/ochecklist/report_detail.html:87
 #: ochecklist/templates/ochecklist/runner_detail.html:18
-#: results/templates/results/start_list.html:173
-#: results/templates/results/start_list.html:179
-#: results/templates/results/start_list.html:186
+#: results/templates/results/start_list.html:174
+#: results/templates/results/start_list.html:181
+#: results/templates/results/start_list.html:189
 #: results/templates/results/verifie_moi.html:140
 msgid "Puce"
 msgstr "SI card"
@@ -136,7 +136,7 @@ msgstr "Name"
 
 #: ochecklist/templates/ochecklist/report_detail.html:84
 #: ochecklist/templates/ochecklist/runner_detail.html:14
-#: results/templates/results/start_list.html:190
+#: results/templates/results/start_list.html:193
 msgid "Dossard"
 msgstr "Bib"
 
@@ -149,8 +149,8 @@ msgstr "Bib"
 #: results/templates/results/org_results.html:36
 #: results/templates/results/recapitulatif.html:106
 #: results/templates/results/start_list.html:44
-#: results/templates/results/start_list.html:178
-#: results/templates/results/start_list.html:185
+#: results/templates/results/start_list.html:180
+#: results/templates/results/start_list.html:188
 #: results/templates/results/verifie_moi.html:139
 msgid "Catégorie"
 msgstr "Category"
@@ -167,8 +167,8 @@ msgstr "Category"
 #: results/templates/results/regularity.html:129
 #: results/templates/results/relay_results.html:69
 #: results/templates/results/start_list.html:45
-#: results/templates/results/start_list.html:172
-#: results/templates/results/start_list.html:184
+#: results/templates/results/start_list.html:173
+#: results/templates/results/start_list.html:187
 #: results/templates/results/superman.html:92
 #: results/templates/results/verifie_moi.html:138
 msgid "Club"
@@ -183,12 +183,12 @@ msgstr "New SI card"
 #: ochecklist/templates/ochecklist/report_detail.html:89
 #: ochecklist/templates/ochecklist/runner_detail.html:19
 #: results/templates/results/_split_detail_row.html:11
-#: results/templates/results/competitor_detail.html:64
-#: results/templates/results/competitor_detail.html:126
+#: results/templates/results/competitor_detail.html:69
+#: results/templates/results/competitor_detail.html:131
 #: results/templates/results/grouping.html:57
 #: results/templates/results/grouping.html:60
-#: results/templates/results/relay_results.html:152 results/views.py:1077
-#: results/views.py:1268
+#: results/templates/results/relay_results.html:152 results/views.py:1135
+#: results/views.py:1326
 msgid "Départ"
 msgstr "Start"
 
@@ -299,7 +299,7 @@ msgstr "MOP data deleted for cid=%(cid)s (%(name)s)."
 #: results/templates/results/course_results.html:13
 #: results/templates/results/course_results.html:18
 #: results/templates/results/live_results.html:119
-#: results/tests/test_i18n.py:313
+#: results/tests/test_i18n.py:427
 msgid "Résultats"
 msgstr "Results"
 
@@ -708,68 +708,72 @@ msgstr "Organizer"
 msgid "page d'accueil"
 msgstr "homepage"
 
-#: results/models.py:73 results/tests/test_i18n.py:301
+#: results/models.py:73 results/tests/test_i18n.py:415
 msgid "compétitions"
 msgstr "Competitions"
 
-#: results/models.py:249 results/models.py:299
+#: results/models.py:102 results/models.py:142
+msgid "nationalité"
+msgstr "nationality"
+
+#: results/models.py:259 results/models.py:309
 msgid "gelée"
 msgstr "frozen"
 
-#: results/models.py:250
+#: results/models.py:260
 msgid "Bloque l'écrasement des données MOP (MOPComplete/UPDATE refusés)"
 msgstr "Blocks overwriting of MOP data (MOPComplete/UPDATE rejected)"
 
-#: results/models.py:254
+#: results/models.py:264
 msgid "visible"
 msgstr "visible"
 
-#: results/models.py:255
+#: results/models.py:265
 msgid "Afficher cette compétition dans la liste publique"
 msgstr "Show this competition in the public list"
 
-#: results/models.py:259
+#: results/models.py:269
 msgid "à effacer"
 msgstr "To delete"
 
-#: results/models.py:260
+#: results/models.py:270
 msgid "Marquer comme supprimée (masquée de la liste publique)"
 msgstr "Mark as deleted (hidden from the public list)"
 
-#: results/models.py:267
+#: results/models.py:277
 msgid "clé API MeOS"
 msgstr "MeOS API key"
 
-#: results/models.py:268
+#: results/models.py:278
 msgid ""
 "« Password » MeOS unique à cette compétition (NULL = mot de passe global)"
 msgstr "Unique MeOS «Password» for this competition (NULL = global password)"
 
-#: results/models.py:275
+#: results/models.py:285
 msgid "jeton de gestion"
 msgstr "management token"
 
-#: results/models.py:276
+#: results/models.py:286
 msgid "Secret du lien privé de gestion de la course"
 msgstr "Secret of the private race management link"
 
-#: results/models.py:282
+#: results/models.py:292
 msgid "créée le"
 msgstr "created on"
 
-#: results/models.py:288
+#: results/models.py:298
 msgid "configuration compétition"
 msgstr "competition configuration"
 
-#: results/models.py:289 results/tests/test_i18n.py:302
+#: results/models.py:299 results/tests/test_i18n.py:416
 msgid "configurations compétitions"
 msgstr "competition configurations"
 
-#: results/models.py:301
+#: results/models.py:311
 msgid "supprimée"
 msgstr "deleted"
 
-#: results/models.py:303
+#: results/models.py:313
 msgid "masquée"
 msgstr "hidden"
 
@@ -786,20 +790,19 @@ msgstr "Conflict during creation. Please try again."
 msgid ""
 "Course « %(name)s » supprimée : résultats, clé API et lien de gestion "
 "effacés."
-msgstr ""
-"Race “%(name)s” deleted: results, API key and management link erased."
+msgstr "Race “%(name)s” deleted: results, API key and management link erased."
 
 #: results/services.py:393 results/services.py:401 results/services.py:513
 #: results/services.py:530 results/templates/results/_split_detail_row.html:2
 #: results/templates/results/_split_detail_row.html:35
-#: results/templates/results/competitor_detail.html:69
-#: results/templates/results/competitor_detail.html:131
-#: results/templates/results/competitor_detail.html:146
+#: results/templates/results/competitor_detail.html:74
+#: results/templates/results/competitor_detail.html:136
+#: results/templates/results/competitor_detail.html:151
 #: results/templates/results/grouping.html:58
 #: results/templates/results/grouping.html:61
-#: results/templates/results/relay_results.html:156 results/views.py:1077
-#: results/views.py:1103 results/views.py:1145 results/views.py:1206
-#: results/views.py:1268
+#: results/templates/results/relay_results.html:156 results/views.py:1135
+#: results/views.py:1161 results/views.py:1203 results/views.py:1264
+#: results/views.py:1326
 msgid "Arrivée"
 msgstr "Finish"
 
@@ -1572,73 +1575,85 @@ msgstr "Share"
 msgid "Fiche concurrent"
 msgstr "Competitor details"
 
-#: results/templates/results/competitor_detail.html:78
+#: results/templates/results/competitor_detail.html:64
+msgid "Nationalité"
+msgstr "Nationality"
+
+#: results/templates/results/competitor_detail.html:83
 msgid "Résultat"
 msgstr "Result"
 
-#: results/templates/results/competitor_detail.html:87
+#: results/templates/results/competitor_detail.html:92
 #, python-format
 msgid "Rang %(rank)s sur %(total)s"
 msgstr "Rank %(rank)s of %(total)s"
 
-#: results/templates/results/competitor_detail.html:90
+#: results/templates/results/competitor_detail.html:95
 #: results/templates/results/live_results.html:333
 msgid "Écart sur le leader"
 msgstr "Gap to the leader"
 
-#: results/templates/results/competitor_detail.html:112
+#: results/templates/results/competitor_detail.html:117
 #: results/templates/results/recapitulatif.html:76
 msgid "Temps intermédiaires"
 msgstr "Splits"
 
-#: results/templates/results/competitor_detail.html:118
+#: results/templates/results/competitor_detail.html:123
 msgid "Balise"
 msgstr "Punch"
 
-#: results/templates/results/competitor_detail.html:119
-#: results/templates/results/competitor_detail.html:177
+#: results/templates/results/competitor_detail.html:124
+#: results/templates/results/competitor_detail.html:184
 #: results/templates/results/duel.html:166
 msgid "Cumulé"
 msgstr "Cumulative"
 
-#: results/templates/results/competitor_detail.html:120
-#: results/templates/results/competitor_detail.html:178
+#: results/templates/results/competitor_detail.html:125
+#: results/templates/results/competitor_detail.html:185
 #: results/templates/results/duel.html:164
 #: results/templates/results/duel.html:175
 #: results/templates/results/superman.html:66
 msgid "Tronçon"
 msgstr "Leg"
 
-#: results/templates/results/competitor_detail.html:121
+#: results/templates/results/competitor_detail.html:126
 msgid "Rang au cumulé dans la catégorie (arrivés seulement)"
 msgstr "Cumulative rank in the category (finishers only)"
 
-#: results/templates/results/competitor_detail.html:121
-#: results/templates/results/competitor_detail.html:176
+#: results/templates/results/competitor_detail.html:126
+#: results/templates/results/competitor_detail.html:181
 msgid "Rang"
 msgstr "Rank"
 
-#: results/templates/results/competitor_detail.html:137
+#: results/templates/results/competitor_detail.html:142
 msgid "Meilleur tronçon"
 msgstr "Best leg"
 
-#: results/templates/results/competitor_detail.html:159
+#: results/templates/results/competitor_detail.html:164
 msgid ""
 "Temps intermédiaires masqués tant qu’aucun coureur n’a terminé le circuit "
 "dans cette catégorie."
 msgstr "Splits hidden until a runner has finished the course in this category."
 
-#: results/templates/results/competitor_detail.html:164
+#: results/templates/results/competitor_detail.html:169
 msgid ""
 "Aucun temps intermédiaire disponible (table <code>mopRadio</code> vide pour "
 "ce concurrent)."
 msgstr ""
 "No split available (<code>mopRadio</code> table empty for this competitor)."
 
-#: results/templates/results/competitor_detail.html:172
-#: results/templates/results/competitor_detail.html:175
+#: results/templates/results/competitor_detail.html:177
+#: results/templates/results/competitor_detail.html:180
 msgid "Évolution du classement"
 msgstr "Ranking progression"
+
+#: results/templates/results/competitor_detail.html:182
+msgid "Rang cumulé"
+msgstr "Cumulative rank"
+
+#: results/templates/results/competitor_detail.html:183
+msgid "Rang tronçon"
+msgstr "Leg rank"
 
 #: results/templates/results/course_results.html:53
 #, python-format
@@ -2235,8 +2250,8 @@ msgid "Temps de course depuis le départ"
 msgstr "Race time since the start"
 
 #: results/templates/results/live_results.html:320
-#: results/templates/results/start_list.html:174
-#: results/templates/results/start_list.html:180
+#: results/templates/results/start_list.html:175
+#: results/templates/results/start_list.html:182
 msgid "Heure de départ"
 msgstr "Start time"
 
@@ -2759,7 +2774,7 @@ msgstr "Create another race"
 msgid "Télécharger en CSV"
 msgstr "Download CSV"
 
-#: results/templates/results/recapitulatif.html:112 results/views.py:1326
+#: results/templates/results/recapitulatif.html:112 results/views.py:1384
 msgid "Arr."
 msgstr "Finish"
 
@@ -2996,24 +3011,24 @@ msgid "clubs"
 msgstr "clubs"
 
 #: results/templates/results/start_list.html:171
-#: results/templates/results/start_list.html:177
-#: results/templates/results/start_list.html:183
+#: results/templates/results/start_list.html:178
+#: results/templates/results/start_list.html:185
 msgid "Nom / Prénom"
 msgstr "Name / First name"
 
-#: results/templates/results/start_list.html:224
+#: results/templates/results/start_list.html:230
 msgid "Copier le lien vers ce regroupement"
 msgstr "Copy link to this grouping"
 
-#: results/templates/results/start_list.html:228
+#: results/templates/results/start_list.html:234
 msgid "Merci de signaler tout changement de puce."
 msgstr "Please report any SI card change."
 
-#: results/templates/results/start_list.html:240
+#: results/templates/results/start_list.html:246
 msgid "Aucun résultat pour cette recherche."
 msgstr "No result for this search."
 
-#: results/templates/results/start_list.html:241
+#: results/templates/results/start_list.html:247
 msgid ""
 "${totalRowsVisible} partants affichés dans ${totalGroupsVisible} $"
 "{getGroupLabelPlural()}."
@@ -3213,11 +3228,11 @@ msgstr ""
 msgid "Génération…"
 msgstr "Generating…"
 
-#: results/views.py:121
+#: results/views.py:169
 msgid "Circuit non trouvé"
 msgstr "Course not found"
 
-#: results/views.py:1326
+#: results/views.py:1384
 msgid "Dép."
 msgstr "Start"
 

@@ -45,3 +45,25 @@ class TestLogoColumn:
     def test_livelox_et_logo_presents(self):
         assert 'livelox' in MISSING_COLUMN_ALTERS['mopCompetition']
         assert 'logo' in MISSING_COLUMN_ALTERS['mopCompetition']
+
+
+class TestNatColumn:
+    """Colonnes nat (nationalité MOP « nat ») — coureur ET organisation."""
+
+    def test_competitor_nat_dans_le_create_table(self):
+        sql = CREATE_TABLES['mopCompetitor']
+        assert "`nat` VARCHAR(8) NOT NULL DEFAULT ''" in sql
+
+    def test_organization_nat_dans_le_create_table(self):
+        sql = CREATE_TABLES['mopOrganization']
+        assert "`nat` VARCHAR(8) NOT NULL DEFAULT ''" in sql
+
+    def test_alter_competitor_pour_les_bases_existantes(self):
+        sql = MISSING_COLUMN_ALTERS['mopCompetitor']['nat']
+        assert sql.startswith('ALTER TABLE `mopCompetitor`')
+        assert 'ADD COLUMN `nat` VARCHAR(8)' in sql
+
+    def test_alter_organization_pour_les_bases_existantes(self):
+        sql = MISSING_COLUMN_ALTERS['mopOrganization']['nat']
+        assert sql.startswith('ALTER TABLE `mopOrganization`')
+        assert 'ADD COLUMN `nat` VARCHAR(8)' in sql

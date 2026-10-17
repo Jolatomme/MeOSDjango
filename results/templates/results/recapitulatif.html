@@ -120,7 +120,7 @@
             <tr class="runner-row leg-row">
               <td class="rank-col" rowspan="2" data-sticky="0">{{ comp.rank }}</td>
               <td rowspan="2" class="runner-name" data-sticky="1">
-                <a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a>
+                {% nat_flag comp.nat comp.org_obj.nat %}<a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a>
                 {% if comp.neg_time %}<span class="badge neg-badge ms-1" title="{% translate 'Temps négatif : boîtier mal synchronisé ou carte SI non effacée' %}">{% translate "Temps négatif" %}</span>{% endif %}
               </td>
               {% if course %}
@@ -157,14 +157,14 @@
             {% elif comp.is_ok and not has_splits or comp.is_ok and has_splits and not can_show_splits %}
             <tr class="runner-row">
               <td class="rank-col" data-sticky="0">{{ comp.rank }}</td>
-              <td class="runner-name" data-sticky="1"><a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a></td>
+              <td class="runner-name" data-sticky="1">{% nat_flag comp.nat comp.org_obj.nat %}<a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a></td>
               {% if course %}<td data-sticky="2" class="col-category">{% if comp.class_obj %}{{ comp.class_obj.name }}{% else %}—{% endif %}</td>{% endif %}
               <td class="club-name col-club" data-sticky="{% if course %}3{% else %}2{% endif %}">{% if comp.org_obj %}{{ comp.org_obj.name }}{% else %}—{% endif %}</td>
             </tr>
             {% else %}
             <tr class="runner-row non-finisher">
               <td class="rank-col" data-sticky="0">{% if comp.rank %}{{ comp.rank }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
-              <td class="runner-name" data-sticky="1"><a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a>{% if comp.neg_time %} <span class="badge neg-badge ms-1" title="{% translate 'Temps négatif : boîtier mal synchronisé ou carte SI non effacée' %}">{% translate "Temps négatif" %}</span>{% endif %}</td>
+              <td class="runner-name" data-sticky="1">{% nat_flag comp.nat comp.org_obj.nat %}<a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name|display_name }}</a>{% if comp.neg_time %} <span class="badge neg-badge ms-1" title="{% translate 'Temps négatif : boîtier mal synchronisé ou carte SI non effacée' %}">{% translate "Temps négatif" %}</span>{% endif %}</td>
               {% if course %}<td data-sticky="2" class="col-category">{% if comp.class_obj %}{{ comp.class_obj.name }}{% else %}—{% endif %}</td>{% endif %}
               <td class="club-name col-club" data-sticky="{% if course %}3{% else %}2{% endif %}">{% if comp.org_obj %}{{ comp.org_obj.name }}{% else %}—{% endif %}</td>
               {% if has_splits and can_show_splits %}

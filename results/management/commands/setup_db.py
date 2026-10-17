@@ -35,7 +35,8 @@ CREATE_TABLES = {
         `cid` INT NOT NULL,
         `id` INT NOT NULL,
         PRIMARY KEY (`cid`, `id`),
-        `name` VARCHAR(64) NOT NULL DEFAULT ''
+        `name` VARCHAR(64) NOT NULL DEFAULT '',
+        `nat` VARCHAR(8) NOT NULL DEFAULT ''
     ) ENGINE = InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""",
 
     "mopCompetitor": """CREATE TABLE IF NOT EXISTS `mopCompetitor` (
@@ -56,7 +57,8 @@ CREATE_TABLES = {
         INDEX(`st`),
         `tstat` TINYINT NOT NULL DEFAULT 0,
         `it` INT NOT NULL DEFAULT 0,
-        `prel` TINYINT NOT NULL DEFAULT 0
+        `prel` TINYINT NOT NULL DEFAULT 0,
+        `nat` VARCHAR(8) NOT NULL DEFAULT ''
     ) ENGINE = InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""",
 
     "mopTeam": """CREATE TABLE IF NOT EXISTS `mopTeam` (
@@ -130,6 +132,12 @@ MISSING_COLUMN_ALTERS = {
                "ADD COLUMN `bib` VARCHAR(32) NOT NULL DEFAULT ''",
         "prel": "ALTER TABLE `mopCompetitor` "
                 "ADD COLUMN `prel` TINYINT NOT NULL DEFAULT 0",
+        "nat": "ALTER TABLE `mopCompetitor` "
+               "ADD COLUMN `nat` VARCHAR(8) NOT NULL DEFAULT ''",
+    },
+    "mopOrganization": {
+        "nat": "ALTER TABLE `mopOrganization` "
+               "ADD COLUMN `nat` VARCHAR(8) NOT NULL DEFAULT ''",
     },
     "mopTeam": {
         "prel": "ALTER TABLE `mopTeam` "

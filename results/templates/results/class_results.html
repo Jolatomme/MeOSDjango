@@ -118,7 +118,7 @@
           </td>
 
           <td class="runner-name">
-            <a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name }}</a>
+            {% nat_flag comp.nat comp.org_obj.nat %}<a href="{% url 'results:competitor_detail' competition.cid comp.id %}">{{ comp.name }}</a>
             {% if comp.neg_time %}<span class="badge neg-badge ms-1" title="{% translate "Temps négatif : boîtier mal synchronisé ou carte SI non effacée" %}">{% translate "Temps négatif" %}</span>{% endif %}
           </td>
 

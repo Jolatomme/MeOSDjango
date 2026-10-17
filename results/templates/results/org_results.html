@@ -57,7 +57,7 @@
 
           {# ── Nom avec lien vers la fiche individuelle ── #}
           <td class="runner-name">
-            <a href="{% url 'results:competitor_detail' competition.cid comp.id %}">
+            {% nat_flag comp.nat organization.nat %}<a href="{% url 'results:competitor_detail' competition.cid comp.id %}">
               {{ comp.name }}
             </a>
           </td>

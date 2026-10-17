@@ -1273,6 +1273,11 @@ class TestCompetitorDetailView:
         assert by_name['1-101']['abs_rank'] == 2
         assert by_name['2-102']['abs_rank'] == 2
         assert by_name['Arrivée']['abs_rank'] == 2
+        # Rangs par tronçon (courbe « Rang tronçon » du graphe) : ex-æquo 3000
+        # au 2e poste → rang 1 partagé
+        assert by_name['1-101']['leg_rank'] == 2
+        assert by_name['2-102']['leg_rank'] == 1
+        assert by_name['Arrivée']['leg_rank'] == 2
         assert by_name['1-101']['is_best'] is False
         assert ctx['rank_chart'] is True
 
@@ -2318,6 +2323,34 @@ class TestRelayResultsView:
         team2 = ctx['teams_data'][1]
         assert team2['legs'][0]['name'] == '—'       # étape 1 sans coureur
 
+    @patch('results.views.get_controls_by_leg', return_value=({}, {}))
+    @patch('results.views.get_radio_map', return_value={})
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.Mopteammember')
+    @patch('results.views.Mopteam')
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    def test_flag_nationalite_par_etape(self, mock_get404, mock_render, MockTeam,
+                                        MockTM, MockComp, *_):
+        """Chaque étape porte ``flag`` : nat du coureur, repli sur le club."""
+        mock_get404.side_effect = [make_competition(), make_cls()]
+        t1 = MagicMock(); t1.id = 1; t1.rt = 10000; t1.stat = STAT_OK; t1.org = 1
+        MockTeam.objects.filter.return_value = [t1]
+        m1 = MagicMock(); m1.id = 1; m1.rid = 101; m1.leg = 1; m1.ord = 1
+        m2 = MagicMock(); m2.id = 1; m2.rid = 102; m2.leg = 2; m2.ord = 1
+        MockTM.objects.filter.return_value.order_by.return_value = [m1, m2]
+        c1 = make_competitor(101, rt=5000); c1.nat = 'SWE'
+        c2 = make_competitor(102, rt=5000); c2.nat = ''
+        MockComp.objects.filter.return_value = [c1, c2]
+        org = SimpleNamespace(name='COLE', nat='NOR')
+        with patch('results.views.get_org_map', return_value={1: org}):
+            from results.views import relay_results
+            relay_results(rf_get(), cid=1, class_id=10)
+        _, _, ctx = mock_render.call_args[0]
+        legs = ctx['teams_data'][0]['legs']
+        assert legs[0]['flag'].endswith('/swe.svg')   # nat du coureur
+        assert legs[1]['flag'].endswith('/nor.svg')   # repli club
+
     def _run_splits(self, radio_map, controls_by_leg=None):
         """Exécute relay_results avec contrôles/radio mockés, rendu capturé.
 
@@ -2558,17 +2591,17 @@ class TestSlugifyNoPrefix:
 
 class TestStartListView:
 
-    def _mk_competitor(self, id=1, st=100000, name='Martin Luc', org=1, cls=10, card='', bib=''):
+    def _mk_competitor(self, id=1, st=100000, name='Martin Luc', org=1, cls=10, card='', bib='', nat=''):
         c = MagicMock()
         c.id = id; c.st = st; c.name = name; c.org = org; c.cls = cls
-        c.card = card; c.bib = bib
+        c.card = card; c.bib = bib; c.nat = nat
         return c
 
     def _mk_cls(self, id=10, name='H21'):
         c = MagicMock(); c.id = id; c.name = name; return c
 
-    def _mk_org(self, id=1, name='COLE'):
-        c = MagicMock(); c.id = id; c.name = name; return c
+    def _mk_org(self, id=1, name='COLE', nat=''):
+        c = MagicMock(); c.id = id; c.name = name; c.nat = nat; return c
 
     def _run(self, competitors=None, classes=None, orgs=None):
         competition = make_competition()
@@ -2673,6 +2706,35 @@ class TestStartListView:
         data = json.loads(ctx['start_list_data'])
         row = data['groups']['category'][0]['rows'][0]
         assert row['bib'] == ''
+
+    def test_flag_nationalite_du_coureur(self):
+        """Le champ flag porte l'URL du drapeau (MOP nat) du coureur."""
+        c = self._mk_competitor(id=1, st=36000, name='Martin Luc', nat='SWE')
+        cls = self._mk_cls(10, 'H21')
+        org = self._mk_org(1, 'COLE', nat='NOR')
+        _, ctx = self._run(competitors=[c], classes=[cls], orgs=[org])
+        data = json.loads(ctx['start_list_data'])
+        row = data['groups']['category'][0]['rows'][0]
+        assert row['flag'].endswith('/swe.svg')     # nat coureur prioritaire
+
+    def test_flag_repli_sur_nat_du_club(self):
+        """Sans nat coureur, repli sur la nationalité du club."""
+        c = self._mk_competitor(id=1, st=36000, name='Martin Luc')
+        cls = self._mk_cls(10, 'H21')
+        org = self._mk_org(1, 'COLE', nat='NOR')
+        _, ctx = self._run(competitors=[c], classes=[cls], orgs=[org])
+        data = json.loads(ctx['start_list_data'])
+        row = data['groups']['category'][0]['rows'][0]
+        assert row['flag'].endswith('/nor.svg')
+
+    def test_flag_vide_si_aucune_nationalite(self):
+        c = self._mk_competitor(id=1, st=36000, name='Martin Luc')
+        cls = self._mk_cls(10, 'H21')
+        org = self._mk_org(1, 'COLE')
+        _, ctx = self._run(competitors=[c], classes=[cls], orgs=[org])
+        data = json.loads(ctx['start_list_data'])
+        row = data['groups']['category'][0]['rows'][0]
+        assert row['flag'] == ''
 
     def test_meta_has_bib_vrai_si_au_moins_un_bib(self):
         """Dès qu'un dossard existe, la colonne s'affichera pour tous."""
@@ -2967,3 +3029,84 @@ class TestCompetitionDetailBanner:
         header = self._header(self._render('', homepage=None))
         assert 'COCS 7309AURA' in header
         assert 'org-site-link' not in header
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Drapeau national (MOP « nat ») — pages de résultats
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestDrapeauNationalPages:
+    """Le drapeau (results.nat_flags) accompagne le nom du coureur :
+    nat du coureur d'abord, repli sur nat du club, rien sinon."""
+
+    @staticmethod
+    def _render_class_results(nat='', org_nat=''):
+        from django.template.loader import render_to_string
+        org = SimpleNamespace(name='OK Linné', nat=org_nat) if org_nat else None
+        runner = SimpleNamespace(
+            id=5490, name='Jonas Svensson', nat=nat, org=515, cls=10,
+            rank=1, stat=1, rt=71480, is_ok=True, neg_time=False,
+            time_behind=0, org_obj=org, class_obj=None, splits=[],
+        )
+        return render_to_string('results/class_results.html', {
+            'competition': SimpleNamespace(cid=1, name='Linnéklassikern',
+                                           date=None),
+            'cls': SimpleNamespace(id=10, name='H21'),
+            'results': [runner], 'course': None, 'has_splits': False,
+            'leader_time': '1:59:08', 'prev_cls': None, 'next_cls': None,
+            'neg_time_warning': None,
+        })
+
+    def test_classement_drapeau_du_coureur(self):
+        html = self._render_class_results(nat='SWE')
+        assert 'results/img/flags/nat/swe.svg' in html
+
+    def test_classement_repli_sur_le_club(self):
+        """Pas de nat coureur → drapeau de la nationalité du club."""
+        html = self._render_class_results(nat='', org_nat='NOR')
+        assert 'results/img/flags/nat/nor.svg' in html
+
+    def test_classement_nat_coureur_prioritaire(self):
+        html = self._render_class_results(nat='FRA', org_nat='NOR')
+        assert 'results/img/flags/nat/fra.svg' in html
+        assert 'results/img/flags/nat/nor.svg' not in html
+
+    def test_classement_sans_nat_aucun_drapeau(self):
+        html = self._render_class_results(nat='', org_nat='')
+        assert 'results/img/flags/nat/' not in html
+
+
+class TestNationaliteFicheCoureur:
+    """Contexte nat_code de competitor_detail (ligne « Nationalité »)."""
+
+    def _call(self, comp_nat, org_nat):
+        competitor = make_competitor(1)
+        competitor.nat = comp_nat
+        org = SimpleNamespace(name='OK Linné', nat=org_nat)
+        with patch('results.views.compute_splits', return_value=[]), \
+             patch('results.views.get_radio_map', return_value={}), \
+             patch('results.views.get_class_controls', return_value=([], {})), \
+             patch('results.views.Mopteammember') as MockTM, \
+             patch('results.views.Mopclass') as MockClass, \
+             patch('results.views.Moporganization') as MockOrg, \
+             patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views.render') as mock_render, \
+             patch('results.views.get_object_or_404',
+                   side_effect=[make_competition(), competitor]):
+            MockTM.objects.filter.return_value.first.return_value = None
+            MockComp.objects.filter.return_value = []
+            MockOrg.objects.filter.return_value.first.return_value = org
+            MockClass.objects.filter.return_value.first.return_value = None
+            from results.views import competitor_detail
+            competitor_detail(rf_get(), cid=1, competitor_id=1)
+            _, _, ctx = mock_render.call_args[0]
+            return ctx
+
+    def test_nat_du_coureur(self):
+        assert self._call('SWE', 'NOR')['nat_code'] == 'swe'
+
+    def test_repli_sur_la_nationalite_du_club(self):
+        assert self._call('', 'NOR')['nat_code'] == 'nor'
+
+    def test_aucune_nationalite(self):
+        assert self._call('', '')['nat_code'] == ''

@@ -121,7 +121,7 @@
                   <span class="leg-number">{{ leg.leg }}</span>
                 </div>
                 <div class="lg-name">
-                  <span class="leg-runner-name">{{ leg.name }}</span>
+                  {% if leg.flag %}<img class="nat-flag" src="{{ leg.flag }}" alt="" loading="lazy" width="20" height="14">{% endif %}<span class="leg-runner-name">{{ leg.name }}</span>
                 </div>
                 <div class="lg-leg">
                   {% if leg.stat == 1 and leg.leg_time_raw %}

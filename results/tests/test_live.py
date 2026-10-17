@@ -1549,7 +1549,8 @@ class TestLivePayloadBranchesDefensives:
                 {'ctrl_id': 102, 'ctrl_name': '2-102'}]
 
     def _payload(self, competitors, *, radio_map=None, now=NOW,
-                 competition='sans_db', ctrl_seq=None, MockComp=None):
+                 competition='sans_db', ctrl_seq=None, MockComp=None,
+                 org_map=None):
         """Appel direct de _build_live_payload, grille de mocks minimale.
 
         ``competition='sans_db'`` évite le fallback DB (objet sans date) ;
@@ -1558,7 +1559,7 @@ class TestLivePayloadBranchesDefensives:
         cls = SimpleNamespace(id=10, name='H21')
         if competition == 'sans_db':
             competition = SimpleNamespace(date=None)
-        with patch('results.views.get_org_map', return_value={}), \
+        with patch('results.views.get_org_map', return_value=org_map or {}), \
              patch('results.views.get_radio_map', return_value=radio_map or {}), \
              patch('results.views._controls_for',
                    return_value=self.CONTROLS if ctrl_seq is None else ctrl_seq), \
@@ -1596,6 +1597,25 @@ class TestLivePayloadBranchesDefensives:
         r = self._payload([c])['runners'][0]
         assert r['last_punch_clock'] is None
         assert r['last_punch_clock_abs'] is None
+
+    # ── Drapeau national (MOP « nat ») ──────────────────────────────────────
+
+    def test_flag_nationalite_coureur(self):
+        """Le payload live expose ``flag`` : URL du drapeau du coureur."""
+        arrive = self._arrive()
+        arrive.nat = 'swe'
+        r = self._payload([arrive])['runners'][0]
+        assert r['flag'].endswith('/swe.svg')
+
+    def test_flag_repli_sur_nationalite_du_club(self):
+        """Sans nat coureur, ``flag`` retombe sur la nationalité du club
+        (objet organisation renvoyé par get_org_map)."""
+        arrive = self._arrive()
+        arrive.nat = ''
+        org = SimpleNamespace(name='OK Linné', nat='NOR')
+        r = self._payload([arrive], org_map={1: org})['runners'][0]
+        assert r['org'] == 'OK Linné'
+        assert r['flag'].endswith('/nor.svg')
 
     @staticmethod
     def _arrive(id=1, rt=15000):
@@ -1949,8 +1969,8 @@ class TestFavorisAutresCategories:
 # api_race_index (recherche plein écran)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _mk_comp(id, name, org=1, cls=10):
-    c = SimpleNamespace(id=id, name=name, org=org, cls=cls)
+def _mk_comp(id, name, org=1, cls=10, nat=''):
+    c = SimpleNamespace(id=id, name=name, org=org, cls=cls, nat=nat)
     return c
 
 
@@ -1981,9 +2001,29 @@ class TestApiRaceIndex:
         data = self._call()
         assert data['success'] is True
         assert data['runners'] == [
-            {'id': 1, 'name': 'Alice', 'org': 'COLE', 'cls': 'H21'},
-            {'id': 2, 'name': 'Bob',   'org': 'COLE', 'cls': 'D16'},
+            {'id': 1, 'name': 'Alice', 'org': 'COLE', 'flag': '', 'cls': 'H21'},
+            {'id': 2, 'name': 'Bob',   'org': 'COLE', 'flag': '', 'cls': 'D16'},
         ]
+
+    @patch('results.views.Mopteam')
+    @patch('results.views.Mopclass')
+    @patch('results.views.Mopcompetitor')
+    @patch('results.views.competition_visible', return_value=True)
+    def test_index_flag_nationalite(self, mock_vis, MockComp, MockCls, MockTeam):
+        """Le champ flag porte le drapeau du coureur (MOP nat), avec repli
+        sur la nationalité du club quand le coureur n'en a pas."""
+        MockComp.objects.filter.return_value = [
+            _mk_comp(1, 'Alice', cls=10, nat='swe'),
+            _mk_comp(2, 'Bob',   cls=11),
+        ]
+        MockCls.objects.filter.return_value = [
+            SimpleNamespace(id=10, name='H21'), SimpleNamespace(id=11, name='D16')]
+        MockTeam.objects.filter.return_value.values_list.return_value = []
+        org = SimpleNamespace(name='OK Linné', nat='NOR')
+        with patch('results.views.get_org_map', return_value={1: org}):
+            data = self._call()
+        assert data['runners'][0]['flag'].endswith('/swe.svg')   # nat coureur
+        assert data['runners'][1]['flag'].endswith('/nor.svg')   # repli club
 
     @patch('results.views.Mopteam')
     @patch('results.views.Mopclass')
