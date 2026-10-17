@@ -169,21 +169,21 @@
   const COLUMNS = {
     category: [
       { label: "{% translate 'Nom / Prénom' %}", isHtml: true,
-        value: row => (row.flag ? `<img class="nat-flag" src="${escapeHtml(row.flag)}" alt="" loading="lazy" width="20" height="14">` : '') + escapeHtml(row.full_name) },
+        value: row => (row.flag ? `<img class="nat-flag" src="${escapeHtml(row.flag)}" alt="" loading="lazy" width="20" height="14"> ` : '') + escapeHtml(row.full_name) },
       { label: "{% translate 'Club' %}", value: row => row.club_display },
       { label: "{% translate 'Puce' %}", value: row => row.control_card },
       { label: "{% translate 'Heure de départ' %}", value: row => row.start_time },
     ],
     club: [
       { label: "{% translate 'Nom / Prénom' %}", isHtml: true,
-        value: row => (row.flag ? `<img class="nat-flag" src="${escapeHtml(row.flag)}" alt="" loading="lazy" width="20" height="14">` : '') + escapeHtml(row.full_name) },
+        value: row => (row.flag ? `<img class="nat-flag" src="${escapeHtml(row.flag)}" alt="" loading="lazy" width="20" height="14"> ` : '') + escapeHtml(row.full_name) },
       { label: "{% translate 'Catégorie' %}", value: row => row.category, categoryLink: true },
       { label: "{% translate 'Puce' %}", value: row => row.control_card },
       { label: "{% translate 'Heure de départ' %}", value: row => row.start_time },
     ],
     start_time: [
       { label: "{% translate 'Nom / Prénom' %}", isHtml: true,
-        value: row => (row.flag ? `<img class="nat-flag" src="${escapeHtml(row.flag)}" alt="" loading="lazy" width="20" height="14">` : '') + escapeHtml(row.full_name) },
+        value: row => (row.flag ? `<img class="nat-flag" src="${escapeHtml(row.flag)}" alt="" loading="lazy" width="20" height="14"> ` : '') + escapeHtml(row.full_name) },
       { label: "{% translate 'Club' %}", value: row => row.club_display },
       { label: "{% translate 'Catégorie' %}", value: row => row.category, categoryLink: true },
       { label: "{% translate 'Puce' %}", value: row => row.control_card },

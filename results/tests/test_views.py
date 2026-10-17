@@ -3075,6 +3075,11 @@ class TestDrapeauNationalPages:
         html = self._render_class_results(nat='', org_nat='')
         assert 'results/img/flags/nat/' not in html
 
+    def test_classement_espace_entre_drapeau_et_nom(self):
+        """L'espace drapeau → nom est dans le HTML rendu (pas en CSS)."""
+        html = self._render_class_results(nat='SWE')
+        assert 'height="14"> <a href=' in html
+
 
 class TestNationaliteFicheCoureur:
     """Contexte nat_code de competitor_detail (ligne « Nationalité »)."""

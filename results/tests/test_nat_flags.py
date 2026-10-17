@@ -7,6 +7,7 @@ Le protocole MOP transmet la nationalité en code 3 lettres sur <org> et
 ``NAT_ALIASES``. Un code inconnu ne rend rien (jamais d'image cassée).
 """
 
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -87,6 +88,25 @@ class TestNatFlagHtml:
         from django.utils.safestring import SafeString
         assert isinstance(nat_flag_html('swe'), SafeString)
 
+    def test_espace_explicite_apres_l_image(self):
+        """L'image est terminée par une espace : jamais collée au nom.
+
+        L'écart drapeau/nom est porté par le HTML, pas par le CSS — il
+        survit à un ``site.css`` périmé ou caché côté client.
+        """
+        assert nat_flag_html('swe').endswith('height="14"> ')
+        assert nat_flag_html('swe', decorative=True).endswith('height="14"> ')
+        assert nat_flag_html('XXX') == ''
+
+    def test_surcharge_css_marge_supprimee(self):
+        """Plus de ``margin-inline-end`` sur ``.nat-flag`` : sinon
+        l'espace HTML et la marge s'additionneraient (et la marge seule
+        disparaîtrait avec un CSS périmé — un seul écart, dans le HTML)."""
+        css = (Path(__file__).resolve().parents[1]
+               / 'static' / 'results' / 'css' / 'site.css').read_text(encoding='utf-8')
+        bloc = css.split('.nat-flag {', 1)[1].split('}', 1)[0]
+        assert 'margin' not in bloc
+
 
 class TestNatDisplayCode:
     def test_premier_code_non_vide(self):
@@ -137,6 +157,28 @@ class TestTagTemplate:
             '{% load meos_tags %}{% nat_flag comp.nat comp.org_obj.nat %}'
         ).render(Context({'comp': self._comp()}))
         assert html == ''
+
+
+class TestEspaceApresLeDrapeau:
+    """Les constructions **manuelles** d'``<img class="nat-flag">``
+    (templates + JS, là où le tag ``{% nat_flag %}`` ne suffit pas)
+    terminent par une espace : le drapeau n'est jamais collé au nom, même
+    si ``site.css`` n'est pas déployé ou est resté en cache."""
+
+    FICHIERS = (
+        'templates/results/start_list.html',
+        'templates/results/relay_results.html',
+        'static/results/js/live.js',
+    )
+
+    @pytest.mark.parametrize('rel', FICHIERS)
+    def test_chaque_image_est_suivie_d_une_espace(self, rel):
+        contenu = (Path(__file__).resolve().parents[1] / rel).read_text(
+            encoding='utf-8')
+        total = contenu.count('height="14">')
+        assert total > 0, f'{rel} : aucune construction de drapeau trouvée'
+        assert contenu.count('height="14"> ') == total, (
+            f'{rel} : une construction drapeau sans espace avant la suite')
 
 
 class TestAlias:

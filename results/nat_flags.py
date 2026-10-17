@@ -100,6 +100,13 @@ def nat_flag_html(*nats, decorative=False):
     déjà explicite à côté). Tout le HTML interpolé est échappé — la valeur
     provient d'un XML distant (MOP), même si le code est borné par la
     vérification d'existence du fichier.
+
+    L'image est **suivie d'une espace** : le drapeau reste détaché du nom
+    qui le suit même si ``site.css`` n'est pas à jour côté client
+    (``collectstatic`` non relancé, cache du navigateur) — l'écart
+    drapeau/nom ne dépend d'aucune règle CSS. Les constructions manuelles
+    de la balise (templates + JS) doivent en faire autant, contrôlé par
+    ``test_nat_flags.TestEspaceApresLeDrapeau``.
     """
     code = _resolve(*nats)
     if not code:
@@ -107,7 +114,6 @@ def nat_flag_html(*nats, decorative=False):
     url = static(f'results/img/flags/nat/{code}.svg')
     label = escape(code.upper())
     alt_attr = '' if decorative else f' alt="{label}" title="{label}"'
-    return mark_safe(
-        f'<img class="nat-flag" src="{escape(url)}"{alt_attr}'
-        f' loading="lazy" width="20" height="14">'
-    )
+    img = (f'<img class="nat-flag" src="{escape(url)}"{alt_attr}'
+           f' loading="lazy" width="20" height="14">')
+    return mark_safe(img + ' ')
