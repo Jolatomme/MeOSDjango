@@ -97,28 +97,26 @@ PRESERVED_COMPETITION_FIELDS = ('livelox', 'logo')
 
 
 def _get_preserved_competition_fields(cid: int) -> dict:
-    """Lit les champs à préserver avant clear_competition (MOPComplete)."""
+    """Lit les champs à préserver avant clear_competition (MOPComplete).
+
+    Lève l'exception si la lecture échoue : un schéma incomplet (colonne
+    ``livelox``/``logo`` absente) doit faire échouer tout le document MOP,
+    jamais produire un ``OK`` après un import partiel.
+    """
     cols = ", ".join(f"`{c}`" for c in PRESERVED_COMPETITION_FIELDS)
-    try:
-        with connection.cursor() as cur:
-            cur.execute(
-                f"SELECT {cols} FROM `mopCompetition` WHERE cid=%s AND id=1",
-                [cid],
-            )
-            row = cur.fetchone()
-        if not row:
-            return {}
-        return {
-            col: value
-            for col, value in zip(PRESERVED_COMPETITION_FIELDS, row)
-            if value
-        }
-    except Exception as exc:
-        logger.warning(
-            "mop_receiver: lecture des champs préservés impossible "
-            "(colonne absente ? lancez `python manage.py setup_db`) — %s", exc,
+    with connection.cursor() as cur:
+        cur.execute(
+            f"SELECT {cols} FROM `mopCompetition` WHERE cid=%s AND id=1",
+            [cid],
         )
+        row = cur.fetchone()
+    if not row:
         return {}
+    return {
+        col: value
+        for col, value in zip(PRESERVED_COMPETITION_FIELDS, row)
+        if value
+    }
 
 
 def _restore_preserved_competition_fields(cid: int, fields: dict):
@@ -126,15 +124,10 @@ def _restore_preserved_competition_fields(cid: int, fields: dict):
     if not fields:
         return
     set_clause = ", ".join(f"`{k}`=%s" for k in fields)
-    try:
-        with connection.cursor() as cur:
-            cur.execute(
-                f"UPDATE `mopCompetition` SET {set_clause} WHERE cid=%s AND id=1",
-                list(fields.values()) + [cid],
-            )
-    except Exception as exc:
-        logger.warning(
-            "mop_receiver: restauration des champs préservés impossible — %s", exc,
+    with connection.cursor() as cur:
+        cur.execute(
+            f"UPDATE `mopCompetition` SET {set_clause} WHERE cid=%s AND id=1",
+            list(fields.values()) + [cid],
         )
 
 
@@ -336,8 +329,7 @@ def process_competitor(cid: int, elem: ET.Element):
 
     base = _find(elem, 'base')
     if base is None:
-        logger.warning("process_competitor: <base> manquant pour id=%s", id_)
-        return
+        raise ValueError(f"process_competitor: <base> manquant pour id={id_}")
 
     fields = {
         'name':  (base.text or '').strip(),
@@ -429,8 +421,7 @@ def process_team(cid: int, elem: ET.Element):
 
     base = _find(elem, 'base')
     if base is None:
-        logger.warning("process_team: <base> manquant pour id=%s", id_)
-        return
+        raise ValueError(f"process_team: <base> manquant pour id={id_}")
 
     fields = {
         'name': (base.text or '').strip(),
@@ -461,6 +452,16 @@ PROCESSORS = {
 }
 
 
+def _competition_is_frozen(cid: int) -> bool:
+    """True si la compétition est gelée."""
+    with connection.cursor() as cur:
+        cur.execute(
+            "SELECT 1 FROM results_competitionconfig WHERE cid=%s AND frozen=1",
+            [cid],
+        )
+        return cur.fetchone() is not None
+
+
 def process_mop_xml(cid: int, xml_data: bytes) -> str:
     """Parse et traite un document MOP (MOPComplete ou MOPDiff).
 
@@ -468,20 +469,27 @@ def process_mop_xml(cid: int, xml_data: bytes) -> str:
     ElementTree préfixe les tags avec {http://www.melin.nu/mop},
     on les strip avant de les dispatcher.
 
+    Le document est traité dans une transaction unique lorsque le moteur
+    des tables le permet (InnoDB, créé par ``setup_db``) : toute erreur sur
+    un élément connu annule alors l'ensemble et retourne ``ERROR``. Un
+    ``ERROR`` est toujours renvoyé après une exception ; ``OK`` n'est jamais
+    émis après un échec, conformément au protocole MOP (« Request processed
+    successfully »).
+
     Returns:
-        Statut MeOS : 'OK', 'BADXML', 'FROZEN', etc.
+        Statut interne : 'OK', 'FROZEN', 'BADXML' ou 'ERROR'.
     """
     try:
-        with connection.cursor() as cur:
-            cur.execute(
-                "SELECT 1 FROM results_competitionconfig WHERE cid=%s AND frozen=1",
-                [cid],
-            )
-            if cur.fetchone():
-                logger.warning("process_mop_xml: cid=%s gelée — écriture refusée", cid)
-                return 'FROZEN'
+        frozen = _competition_is_frozen(cid)
     except Exception:
-        pass
+        logger.exception(
+            "process_mop_xml: cid=%s — vérification du gel impossible", cid,
+        )
+        return 'ERROR'
+
+    if frozen:
+        logger.warning("process_mop_xml: cid=%s gelée — écriture refusée", cid)
+        return 'FROZEN'
 
     try:
         root = ET.fromstring(xml_data)
@@ -498,29 +506,29 @@ def process_mop_xml(cid: int, xml_data: bytes) -> str:
 
     count = 0
     preserved = {}
-    with transaction.atomic():
-        if root_name == 'MOPComplete':
-            preserved = _get_preserved_competition_fields(cid)
-            clear_competition(cid)
+    try:
+        with transaction.atomic():
+            if root_name == 'MOPComplete':
+                preserved = _get_preserved_competition_fields(cid)
+                clear_competition(cid)
 
-        for child in root:
-            tag       = _strip_ns(child.tag)
-            processor = PROCESSORS.get(tag)
-            count    += 1
-            if processor:
-                try:
+            for child in root:
+                tag       = _strip_ns(child.tag)
+                processor = PROCESSORS.get(tag)
+                count    += 1
+                if processor:
                     processor(cid, child)
-                except Exception as exc:
-                    logger.exception(
-                        "process_mop_xml: erreur sur <%s> id=%s — %s",
-                        tag, child.get('id', '?'), exc,
-                    )
-                    # On continue : une erreur sur un élément ne bloque pas les autres
-            else:
-                logger.debug("process_mop_xml: tag ignoré <%s>", tag)
+                else:
+                    logger.debug("process_mop_xml: tag ignoré <%s>", tag)
 
-        if root_name == 'MOPComplete':
-            _restore_preserved_competition_fields(cid, preserved)
+            if root_name == 'MOPComplete':
+                _restore_preserved_competition_fields(cid, preserved)
+    except Exception:
+        logger.exception(
+            "process_mop_xml: cid=%s %s — échec, transaction annulée",
+            cid, root_name,
+        )
+        return 'ERROR'
 
     logger.info("process_mop_xml: cid=%s %s traité (%d éléments)",
                 cid, root_name, count)

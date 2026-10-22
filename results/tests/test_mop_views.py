@@ -198,8 +198,8 @@ class TestMopUpdateSuccess:
         mock_process.assert_called_once_with(1, b'<MeOS><Competition>1</Competition></MeOS>')
 
     @patch('results.mop_views.process_mop_xml')
-    def test_process_autre_status(self, mock_process, factory, mock_settings):
-        """Status non-OK retourne 422."""
+    def test_process_error_retourne_503(self, mock_process, factory, mock_settings):
+        """ERROR (échec serveur/DB) retourne 503 et le statut MOP standard."""
         mock_process.return_value = 'ERROR'
         request = factory.post(
             '/mop/update/',
@@ -209,7 +209,54 @@ class TestMopUpdateSuccess:
             HTTP_PWD='testpassword',
         )
         response = mop_update(request)
+        assert response.status_code == 503
+        assert 'status="ERROR"' in response.content.decode()
+
+    @patch('results.mop_views.process_mop_xml')
+    def test_process_frozen_retourne_error_et_423(self, mock_process, factory, mock_settings):
+        """FROZEN interne → corps MOP standard ERROR, HTTP 423."""
+        mock_process.return_value = 'FROZEN'
+        request = factory.post(
+            '/mop/update/',
+            data=b'<MeOS><Competition>1</Competition></MeOS>',
+            content_type='application/xml',
+            HTTP_COMPETITION='1',
+            HTTP_PWD='testpassword',
+        )
+        response = mop_update(request)
+        assert response.status_code == 423
+        assert 'status="ERROR"' in response.content.decode()
+        assert 'FROZEN' not in response.content.decode()
+
+    @patch('results.mop_views.process_mop_xml')
+    def test_process_badxml_retourne_error_et_422(self, mock_process, factory, mock_settings):
+        """BADXML interne → corps MOP standard ERROR, HTTP 422."""
+        mock_process.return_value = 'BADXML'
+        request = factory.post(
+            '/mop/update/',
+            data=b'<MeOS><Competition>1</Competition></MeOS>',
+            content_type='application/xml',
+            HTTP_COMPETITION='1',
+            HTTP_PWD='testpassword',
+        )
+        response = mop_update(request)
         assert response.status_code == 422
+        assert 'status="ERROR"' in response.content.decode()
+
+    @patch('results.mop_views.process_mop_xml', side_effect=RuntimeError('boom'))
+    def test_exception_inattendue_retourne_xml_error(self, mock_process, factory, mock_settings):
+        """Une exception non prévue ne doit jamais produire une page HTML 500."""
+        request = factory.post(
+            '/mop/update/',
+            data=b'<MeOS><Competition>1</Competition></MeOS>',
+            content_type='application/xml',
+            HTTP_COMPETITION='1',
+            HTTP_PWD='testpassword',
+        )
+        response = mop_update(request)
+        assert response.status_code == 503
+        assert response['Content-Type'] == 'text/xml'
+        assert 'status="ERROR"' in response.content.decode()
 
 
 # ─── Clé API par course ────────────────────────────────────────────────────────

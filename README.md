@@ -1,7 +1,7 @@
 # MeOS Live Results
 
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue?logo=python)
-![Django](https://img.shields.io/badge/django-5.1%2B-092E20?logo=django)
+![Django](https://img.shields.io/badge/django-5.2%2B-092E20?logo=django)
 ![MySQL](https://img.shields.io/badge/MySQL-8%2B-4479A1?logo=mysql)
 ![Licence](https://img.shields.io/badge/licence-GPL--3.0-green)
 [![Wiki](https://img.shields.io/badge/docs-wiki-ff69b4)](https://github.com/Jolatomme/MeOSDjango/wiki)
@@ -36,7 +36,7 @@ Interface web de résultats en temps réel pour les compétitions de **course d'
 
 ## Stack
 
-**Back-end** : Django 5.1+ (Python 3.11+) · **Base de données** : MySQL 8+ / MariaDB 10.6+ · **Front-end** : Bootstrap 5, Chart.js, Vanilla JS · **Tests** : pytest, Jest
+**Back-end** : Django 5.2+ (Python 3.11+) · **Base de données** : MySQL 8+ / MariaDB 10.6+ · **Front-end** : Bootstrap 5, Chart.js, Vanilla JS · **Tests** : pytest, Jest
 
 ## Démarrage rapide
 

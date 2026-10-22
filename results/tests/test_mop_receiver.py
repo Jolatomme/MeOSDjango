@@ -90,6 +90,12 @@ class TestMopResponse:
 class TestProcessMopXmlNamespace:
     """Vérifie que le namespace MeOS est correctement géré."""
 
+    @pytest.fixture(autouse=True)
+    def _not_frozen(self):
+        with patch('results.mop_receiver._competition_is_frozen', return_value=False), \
+             patch('results.mop_receiver._get_preserved_competition_fields', return_value={}):
+            yield
+
     @patch('results.mop_receiver.transaction')
     @patch('results.mop_receiver.clear_competition')
     def test_namespace_mop_complete(self, mock_clear, mock_tx):
@@ -779,7 +785,8 @@ class TestPreserveLivelox:
     def _run(self, root, get_returns=None, calls=None):
         """Exécute process_mop_xml avec clear + champs préservés mockés."""
         calls = calls if calls is not None else []
-        with patch('results.mop_receiver.transaction') as mock_tx, \
+        with patch('results.mop_receiver._competition_is_frozen', return_value=False), \
+             patch('results.mop_receiver.transaction') as mock_tx, \
              patch('results.mop_receiver.clear_competition') as mock_clear, \
              patch('results.mop_receiver._get_preserved_competition_fields') as mock_get, \
              patch('results.mop_receiver._restore_preserved_competition_fields') as mock_restore:
@@ -873,11 +880,12 @@ class TestPreservedFieldsHelpers:
         assert _get_preserved_competition_fields(3) == {}
 
     @patch('results.mop_receiver.connection')
-    def test_get_erreur_db_renvoie_vide_sans_propager(self, mock_conn):
-        """Colonne absente (setup_db non lancé) : n'interrompt pas l'import."""
+    def test_get_erreur_db_propage(self, mock_conn):
+        """Colonne absente (setup_db non lancé) : l'import doit échouer."""
         from results.mop_receiver import _get_preserved_competition_fields
         mock_conn.cursor.side_effect = RuntimeError("Unknown column 'livelox'")
-        assert _get_preserved_competition_fields(3) == {}
+        with pytest.raises(RuntimeError, match="Unknown column"):
+            _get_preserved_competition_fields(3)
 
     @patch('results.mop_receiver.connection')
     def test_restore_execute_update(self, mock_conn):
@@ -897,11 +905,12 @@ class TestPreservedFieldsHelpers:
         mock_conn.cursor.assert_not_called()
 
     @patch('results.mop_receiver.connection')
-    def test_restore_erreur_db_ne_propage_pas(self, mock_conn):
-        """La restauration ne doit jamais casser l'import MOP en cours."""
+    def test_restore_erreur_db_propage(self, mock_conn):
+        """Une restauration ratée doit annuler le document MOP."""
         from results.mop_receiver import _restore_preserved_competition_fields
         mock_conn.cursor.side_effect = RuntimeError('db down')
-        _restore_preserved_competition_fields(3, {'logo': 'logo-abc.svg'})
+        with pytest.raises(RuntimeError, match='db down'):
+            _restore_preserved_competition_fields(3, {'logo': 'logo-abc.svg'})
 
 
 class TestProcessControl:
@@ -959,11 +968,12 @@ class TestProcessCompetitorComplement:
 
     @patch('results.mop_receiver._upsert')
     @patch('results.mop_receiver.connection')
-    def test_base_manquant_ignore(self, mock_conn, mock_upsert):
-        """<cmp> sans <base> → warning et retour sans upsert."""
+    def test_base_manquant_echoue(self, mock_conn, mock_upsert):
+        """<cmp> sans <base> → erreur, pas un succès silencieux."""
         from results.mop_receiver import process_competitor
         el = elem('cmp', {'id': '5'})
-        process_competitor(1, el)
+        with pytest.raises(ValueError, match='<base> manquant'):
+            process_competitor(1, el)
         mock_upsert.assert_not_called()
 
     @patch('results.mop_receiver._upsert')
@@ -1040,11 +1050,12 @@ class TestProcessTeamComplement:
 
     @patch('results.mop_receiver._upsert')
     @patch('results.mop_receiver.connection')
-    def test_base_manquant_ignore(self, mock_conn, mock_upsert):
-        """<tm> sans <base> → warning sans insert."""
+    def test_base_manquant_echoue(self, mock_conn, mock_upsert):
+        """<tm> sans <base> → erreur, pas un succès silencieux."""
         from results.mop_receiver import process_team
         el = elem('tm', {'id': '100'})
-        process_team(1, el)
+        with pytest.raises(ValueError, match='<base> manquant'):
+            process_team(1, el)
         mock_upsert.assert_not_called()
 
     @patch('results.mop_receiver._upsert')
@@ -1077,32 +1088,46 @@ class TestProcessMopXmlFrozen:
             assert process_mop_xml(1, b'<MOPDiff></MOPDiff>') == 'FROZEN'
         mock_tx.atomic.assert_not_called()
 
-    def test_erreur_db_ignoree_puis_traitement(self):
-        """Une exception sur la vérification frozen ne bloque pas le traitement."""
+    def test_erreur_db_verification_gel_retourne_error(self):
+        """Une base indisponible ne doit jamais produire un OK (fail-closed)."""
         with patch('results.mop_receiver.connection') as mock_conn, \
              patch('results.mop_receiver.transaction') as mock_tx, \
              patch('results.mop_receiver.clear_competition') as mock_clear:
             mock_conn.cursor.side_effect = RuntimeError('db down')
-            mock_tx.atomic.return_value.__enter__ = lambda s: s
-            mock_tx.atomic.return_value.__exit__  = MagicMock(return_value=False)
             from results.mop_receiver import process_mop_xml
             status = process_mop_xml(1, b'<MOPComplete></MOPComplete>')
-            assert status == 'OK'
-            mock_clear.assert_called_once_with(1)
+            assert status == 'ERROR'
+            mock_tx.atomic.assert_not_called()
+            mock_clear.assert_not_called()
 
     @patch('results.mop_receiver.transaction')
-    def test_exception_processeur_ne_bloque_pas_les_autres(self, mock_tx):
-        """Une exception sur <cmp> n'empêche pas le traitement des autres éléments."""
+    def test_exception_processeur_annule_tout(self, mock_tx):
+        """Une exception sur <cmp> annule le document entier (pas de OK partiel)."""
         mock_tx.atomic.return_value.__enter__ = lambda s: s
         mock_tx.atomic.return_value.__exit__  = MagicMock(return_value=False)
         xml = '<MOPDiff><cmp id="1"><base name="x"/></cmp><ctrl id="1"/></MOPDiff>'.encode()
         boom = MagicMock(side_effect=RuntimeError('sur <cmp>'))
         ok = MagicMock(return_value=None)
-        with patch.dict('results.mop_receiver.PROCESSORS', {'cmp': boom, 'ctrl': ok}):
+        with patch('results.mop_receiver._competition_is_frozen', return_value=False), \
+             patch.dict('results.mop_receiver.PROCESSORS', {'cmp': boom, 'ctrl': ok}):
             from results.mop_receiver import process_mop_xml
             status = process_mop_xml(1, xml)
-        assert status == 'OK'
-        ok.assert_called_once()
+        assert status == 'ERROR'
+        ok.assert_not_called()
+
+    @patch('results.mop_receiver.transaction')
+    def test_date_invalide_annule_tout(self, mock_tx):
+        """Une date refusée par la base fait échouer le document (pas de OK)."""
+        from django.db import DataError
+        mock_tx.atomic.return_value.__enter__ = lambda s: s
+        mock_tx.atomic.return_value.__exit__  = MagicMock(return_value=False)
+        xml = b'<MOPDiff><competition date="pas-une-date">X</competition></MOPDiff>'
+        with patch('results.mop_receiver._competition_is_frozen', return_value=False), \
+             patch('results.mop_receiver._upsert',
+                   side_effect=DataError('Incorrect date value')):
+            from results.mop_receiver import process_mop_xml
+            status = process_mop_xml(1, xml)
+        assert status == 'ERROR'
 
     @patch('results.mop_receiver.transaction')
     def test_tag_inconnu_ignore_sans_exception(self, mock_tx):
@@ -1110,5 +1135,35 @@ class TestProcessMopXmlFrozen:
         mock_tx.atomic.return_value.__enter__ = lambda s: s
         mock_tx.atomic.return_value.__exit__  = MagicMock(return_value=False)
         xml = '<MOPDiff><tagInconnu id="42"/></MOPDiff>'.encode()
-        from results.mop_receiver import process_mop_xml
-        assert process_mop_xml(1, xml) == 'OK'
+        with patch('results.mop_receiver._competition_is_frozen', return_value=False):
+            from results.mop_receiver import process_mop_xml
+            assert process_mop_xml(1, xml) == 'OK'
+
+    @patch('results.mop_receiver.transaction')
+    def test_colonne_preservee_absente_annule_tout(self, mock_tx):
+        """Un schéma incomplet fait échouer le document avant le clear."""
+        mock_tx.atomic.return_value.__enter__ = lambda s: s
+        mock_tx.atomic.return_value.__exit__  = MagicMock(return_value=False)
+        with patch('results.mop_receiver._competition_is_frozen', return_value=False), \
+             patch('results.mop_receiver._get_preserved_competition_fields',
+                   side_effect=RuntimeError("Unknown column 'livelox'")), \
+             patch('results.mop_receiver.clear_competition') as mock_clear:
+            from results.mop_receiver import process_mop_xml
+            status = process_mop_xml(1, b'<MOPComplete></MOPComplete>')
+        assert status == 'ERROR'
+        mock_clear.assert_not_called()
+
+    @patch('results.mop_receiver.transaction')
+    def test_restauration_preservee_echouee_annule_tout(self, mock_tx):
+        """Une restauration ratée annule aussi le document (jamais de OK)."""
+        mock_tx.atomic.return_value.__enter__ = lambda s: s
+        mock_tx.atomic.return_value.__exit__  = MagicMock(return_value=False)
+        with patch('results.mop_receiver._competition_is_frozen', return_value=False), \
+             patch('results.mop_receiver._get_preserved_competition_fields',
+                   return_value={'logo': 'logo-abc.svg'}), \
+             patch('results.mop_receiver.clear_competition'), \
+             patch('results.mop_receiver._restore_preserved_competition_fields',
+                   side_effect=RuntimeError('db down')):
+            from results.mop_receiver import process_mop_xml
+            status = process_mop_xml(1, b'<MOPComplete></MOPComplete>')
+        assert status == 'ERROR'

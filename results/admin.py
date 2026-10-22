@@ -4,11 +4,7 @@ from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils.translation import gettext, gettext_lazy
 
-from .models import (
-    Mopclass, Mopclasscontrol, Mopcompetition, Mopcompetitor,
-    Mopcontrol, Moporganization, Mopradio, Mopteam, Mopteammember,
-    MeosTutorial, CompetitionConfig,
-)
+from .models import CompetitionConfig, MeosTutorial
 
 MEOS_TABLES = [
     'mopRadio', 'mopClassControl', 'mopTeamMember',
@@ -114,42 +110,9 @@ class CompetitionConfigAdmin(admin.ModelAdmin):
         return super().changeform_view(request, object_id, form_url, extra_context)
 
 
-# ─── Mopcompetition — colonnes utiles ────────────────────────────────────────
+# ─── Modèles Mop* ────────────────────────────────────────────────────────────
+# Non enregistrés dans l'admin Django : leurs tables ont une clé primaire
+# composite (cid, id) — non supportée par l'admin Django 5.2–6.1. Les données
+# MOP restent consultables via les pages publiques de résultats.
 
-@admin.register(Mopcompetition)
-class MopcompetitionAdmin(admin.ModelAdmin):
-    list_display  = ('cid', 'name', 'date', 'organizer')
-    list_filter   = ('date',)
-    search_fields = ('name', 'organizer')
-    ordering      = ['-date']
-
-
-# ─── Inscriptions rapides pour les autres modèles ─────────────────────────────
-
-@admin.register(Mopclass)
-class MopclassAdmin(admin.ModelAdmin):
-    list_display  = ('cid', 'id', 'name', 'ord')
-    list_filter   = ('cid',)
-    search_fields = ('name',)
-
-
-@admin.register(Mopcompetitor)
-class MopcompetitorAdmin(admin.ModelAdmin):
-    list_display  = ('cid', 'id', 'name', 'org', 'cls', 'stat', 'rt', 'nat')
-    list_filter   = ('cid', 'stat')
-    search_fields = ('name',)
-
-
-@admin.register(Moporganization)
-class MoporganizationAdmin(admin.ModelAdmin):
-    list_display  = ('cid', 'id', 'name')
-    list_filter   = ('cid',)
-    search_fields = ('name',)
-
-
-admin.site.register(Mopclasscontrol)
-admin.site.register(Mopcontrol)
-admin.site.register(Mopradio)
-admin.site.register(Mopteam)
-admin.site.register(Mopteammember)
 admin.site.register(MeosTutorial)

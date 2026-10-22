@@ -172,7 +172,7 @@ class CompetitionDetailView(RenderShortcutMixin, DetailView):
     pk_url_kwarg = "cid"
 
     def get_object(self, queryset=None):
-        obj = get_object_or_404(Mopcompetition, cid=self.kwargs['cid'])
+        obj = get_object_or_404(Mopcompetition, cid=self.kwargs['cid'], id=1)
         if not competition_visible(obj.cid):
             raise Http404
         return obj
@@ -246,7 +246,7 @@ class StartListView(RenderShortcutMixin, TemplateView):
         """Build the grouped start list data structure and add it to context."""
         context = super().get_context_data(**kwargs)
         cid = self.kwargs['cid']
-        competition = get_object_or_404(Mopcompetition, cid=cid)
+        competition = get_object_or_404(Mopcompetition, cid=cid, id=1)
         if not competition_visible(cid):
             raise Http404
 
@@ -358,7 +358,7 @@ class StatisticsView(RenderShortcutMixin, TemplateView):
         """Query aggregate stats (total, finished, top orgs) and add to context."""
         context = super().get_context_data(**kwargs)
         cid = self.kwargs['cid']
-        competition = get_object_or_404(Mopcompetition, cid=cid)
+        competition = get_object_or_404(Mopcompetition, cid=cid, id=1)
         if not competition_visible(cid):
             raise Http404
 

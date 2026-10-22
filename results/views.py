@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from datetime import date, datetime
 from django.conf import settings
 from django.core.cache import cache
-from django.core.exceptions import SuspiciousFileOperation
+from django.core.exceptions import MultipleObjectsReturned, SuspiciousFileOperation
 from django.db import connection
 from django.db.utils import DatabaseError
 from django.shortcuts import render, get_object_or_404, redirect
@@ -138,7 +138,21 @@ def _resolve_class_id(cid, class_id):
     When given a class name, performs a DB lookup to resolve it.
     """
     if isinstance(class_id, str) and not class_id.isdigit():
-        cls = get_object_or_404(Mopclass, cid=cid, name=class_id)
+        # Un nom de catégorie n'est pas unique par construction. En cas
+        # d'homonymes, choisir explicitement la première classe (id croissant)
+        # évite un MultipleObjectsReturned ; get_object_or_404 reste utilisé
+        # pour le chemin normal (et lève Http404 si rien ne correspond).
+        try:
+            cls = get_object_or_404(Mopclass, cid=cid, name=class_id)
+        except MultipleObjectsReturned:
+            cls = (
+                Mopclass.objects
+                .filter(cid=cid, name=class_id)
+                .order_by('id')
+                .first()
+            )
+            if cls is None:
+                raise Http404
         return cls.id
     return int(class_id) if isinstance(class_id, str) else class_id
 
@@ -159,7 +173,7 @@ def _load_class_context(cid, class_id):
           display_name) pour un circuit (``name`` = hash, utilisé dans les
           URLs).
     """
-    competition = get_object_or_404(Mopcompetition, cid=cid)
+    competition = get_object_or_404(Mopcompetition, cid=cid, id=1)
     if not competition_visible(cid):
         raise Http404
     if isinstance(class_id, str) and _COURSE_HASH_RE.match(class_id):
@@ -350,7 +364,7 @@ def class_results(request, cid, class_id):
 
 def competitor_detail(request, cid, competitor_id):
     """Individual competitor detail page with split times."""
-    competition = get_object_or_404(Mopcompetition, cid=cid)
+    competition = get_object_or_404(Mopcompetition, cid=cid, id=1)
     if not competition_visible(cid):
         raise Http404
     competitor  = get_object_or_404(Mopcompetitor, cid=cid, id=competitor_id)
@@ -450,7 +464,7 @@ def competitor_detail(request, cid, competitor_id):
 
 def org_results(request, cid, org_id):
     """Results page for a single organisation — all runners grouped by class."""
-    competition  = get_object_or_404(Mopcompetition, cid=cid)
+    competition  = get_object_or_404(Mopcompetition, cid=cid, id=1)
     if not competition_visible(cid):
         raise Http404
     organization = get_object_or_404(Moporganization, cid=cid, id=org_id)
@@ -679,7 +693,7 @@ def _build_live_payload(cid, cls, competitors, course, competition=None):
     if comp_date is None and competition is None:
         # Fallback DB uniquement si aucun objet compétition fourni (ex. appel direct)
         try:
-            comp_obj = Mopcompetition.objects.filter(cid=cid).first()
+            comp_obj = Mopcompetition.objects.filter(cid=cid, id=1).first()
             comp_date = getattr(comp_obj, 'date', None) if comp_obj else None
             if not isinstance(comp_date, date):
                 comp_date = None
@@ -1637,7 +1651,7 @@ def relay_results(request, cid, class_id):
     Renders teams ranked by total time, with per-leg cumulative splits,
     leg ranks, and cumulative ranks.
     """
-    competition = get_object_or_404(Mopcompetition, cid=cid)
+    competition = get_object_or_404(Mopcompetition, cid=cid, id=1)
     if not competition_visible(cid):
         raise Http404
     class_id    = _resolve_class_id(cid, class_id)

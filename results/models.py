@@ -1,5 +1,9 @@
 # Modèles Django mappés sur la base de données MeOS (tables mop*)
 # managed = False : Django ne touche pas au schéma, MeOS en reste propriétaire.
+# Les tables ont des clés primaires composites (cid, id) — voire
+# (cid, id, leg, ord) pour les tables de liaison — représentées par
+# models.CompositePrimaryKey (Django 5.2+). L'admin Django ne supportant
+# pas les PK composites, ces modèles ne sont pas enregistrés (voir admin.py).
 
 from django.db import models
 from django.utils.translation import gettext, gettext_lazy, pgettext, pgettext_lazy
@@ -56,7 +60,8 @@ _STATUS_LABEL_MSGIDS = (
 
 
 class Mopcompetition(models.Model):
-    cid       = models.IntegerField(primary_key=True)
+    pk = models.CompositePrimaryKey('cid', 'id')
+    cid       = models.IntegerField()
     id        = models.IntegerField()
     name      = models.CharField(verbose_name=gettext_lazy("compétition"), max_length=64)
     date      = models.DateField(verbose_name=gettext_lazy("Date"))
@@ -68,7 +73,6 @@ class Mopcompetition(models.Model):
     class Meta:
         managed         = False
         db_table        = 'mopCompetition'
-        unique_together = (('cid', 'id'),)
         verbose_name        = gettext_lazy("compétition")
         verbose_name_plural = gettext_lazy("compétitions")
         ordering = ['-date']
@@ -78,7 +82,8 @@ class Mopcompetition(models.Model):
 
 
 class Mopclass(models.Model):
-    cid  = models.IntegerField(primary_key=True)
+    pk = models.CompositePrimaryKey('cid', 'id')
+    cid  = models.IntegerField()
     id   = models.IntegerField()
     name = models.CharField(verbose_name='category', max_length=64)
     ord  = models.IntegerField()
@@ -86,7 +91,6 @@ class Mopclass(models.Model):
     class Meta:
         managed         = False
         db_table        = 'mopClass'
-        unique_together = (('cid', 'id'),)
         ordering = ['ord', 'name']
 
     def __str__(self):
@@ -94,7 +98,8 @@ class Mopclass(models.Model):
 
 
 class Moporganization(models.Model):
-    cid  = models.IntegerField(primary_key=True)
+    pk = models.CompositePrimaryKey('cid', 'id')
+    cid  = models.IntegerField()
     id   = models.IntegerField()
     name = models.CharField(max_length=64)
     nat  = models.CharField(
@@ -106,7 +111,6 @@ class Moporganization(models.Model):
     class Meta:
         managed         = False
         db_table        = 'mopOrganization'
-        unique_together = (('cid', 'id'),)
         ordering = ['name']
 
     def __str__(self):
@@ -121,7 +125,8 @@ class Mopcompetitor(models.Model):
     org = id mopOrganization
     cls = id mopClass
     """
-    cid   = models.IntegerField(primary_key=True)
+    pk = models.CompositePrimaryKey('cid', 'id')
+    cid   = models.IntegerField()
     id    = models.IntegerField()
     name  = models.CharField(max_length=64)
     card  = models.CharField(max_length=32, blank=True, default='')
@@ -146,7 +151,6 @@ class Mopcompetitor(models.Model):
     class Meta:
         managed         = False
         db_table        = 'mopCompetitor'
-        unique_together = (('cid', 'id'),)
 
     def __str__(self):
         return self.name
@@ -167,21 +171,22 @@ class Mopcompetitor(models.Model):
 
 
 class Mopcontrol(models.Model):
-    cid  = models.IntegerField(primary_key=True)
+    pk = models.CompositePrimaryKey('cid', 'id')
+    cid  = models.IntegerField()
     id   = models.IntegerField()
     name = models.CharField(max_length=64)
 
     class Meta:
         managed         = False
         db_table        = 'mopControl'
-        unique_together = (('cid', 'id'),)
 
     def __str__(self):
         return self.name
 
 
 class Mopclasscontrol(models.Model):
-    cid  = models.IntegerField(primary_key=True)
+    pk = models.CompositePrimaryKey('cid', 'id', 'leg', 'ord')
+    cid  = models.IntegerField()
     id   = models.IntegerField()
     leg  = models.IntegerField()
     ord  = models.IntegerField()
@@ -190,12 +195,12 @@ class Mopclasscontrol(models.Model):
     class Meta:
         managed         = False
         db_table        = 'mopClassControl'
-        unique_together = (('cid', 'id', 'leg', 'ord'),)
         ordering        = ['ord']
 
 
 class Mopradio(models.Model):
-    cid  = models.IntegerField(primary_key=True)
+    pk = models.CompositePrimaryKey('cid', 'id', 'ctrl')
+    cid  = models.IntegerField()
     id   = models.IntegerField()
     ctrl = models.IntegerField()
     rt   = models.IntegerField()
@@ -203,12 +208,12 @@ class Mopradio(models.Model):
     class Meta:
         managed         = False
         db_table        = 'mopRadio'
-        unique_together = (('cid', 'id', 'ctrl'),)
         ordering        = ['id', 'rt']
 
 
 class Mopteam(models.Model):
-    cid  = models.IntegerField(primary_key=True)
+    pk = models.CompositePrimaryKey('cid', 'id')
+    cid  = models.IntegerField()
     id   = models.IntegerField()
     name = models.CharField(max_length=64)
     org  = models.IntegerField()
@@ -224,11 +229,11 @@ class Mopteam(models.Model):
     class Meta:
         managed         = False
         db_table        = 'mopTeam'
-        unique_together = (('cid', 'id'),)
 
 
 class Mopteammember(models.Model):
-    cid = models.IntegerField(primary_key=True)
+    pk = models.CompositePrimaryKey('cid', 'id', 'leg', 'ord')
+    cid = models.IntegerField()
     id  = models.IntegerField()
     leg = models.IntegerField()
     ord = models.IntegerField()
@@ -237,7 +242,6 @@ class Mopteammember(models.Model):
     class Meta:
         managed         = False
         db_table        = 'mopTeamMember'
-        unique_together = (('cid', 'id', 'leg', 'ord'),)
 
 
 class CompetitionConfig(models.Model):

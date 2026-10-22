@@ -46,6 +46,31 @@ def _password_equals(given, expected):
     )
 
 
+# Statuts internes → statut standard du protocole MOP + code HTTP.
+# Le protocole ne définit que OK, BADCMP, NOZIP, BADPWD et ERROR : les
+# statuts internes BADXML/FROZEN/NODATA ne sont jamais envoyés tels quels.
+# Les codes HTTP sont une convention locale ; MeOS lit le corps MOPStatus.
+_MOP_STATUS_MAP = {
+    'OK':     ('OK',    200),
+    'FROZEN': ('ERROR', 423),
+    'BADXML': ('ERROR', 422),
+    'NODATA': ('ERROR', 400),
+    'ERROR':  ('ERROR', 503),
+}
+
+
+def _mop_http_response(status):
+    """Construit une réponse MOP XML avec un statut protocole standard."""
+    protocol_status, http_status = _MOP_STATUS_MAP.get(
+        status, ('ERROR', 503),
+    )
+    return HttpResponse(
+        mop_response(protocol_status),
+        content_type='text/xml',
+        status=http_status,
+    )
+
+
 @csrf_exempt
 @require_POST
 def mop_update(request):
@@ -114,11 +139,7 @@ def mop_update(request):
     # ── Lecture et validation du corps ────────────────────────────────────────
     xml_data = request.body
     if not xml_data:
-        return HttpResponse(
-            mop_response('NODATA'),
-            content_type='text/xml',
-            status=400,
-        )
+        return _mop_http_response('NODATA')
 
     # MeOS peut envoyer des archives ZIP dans des formats anciens
     if xml_data[:2] == b'PK':
@@ -130,12 +151,12 @@ def mop_update(request):
         )
 
     # ── Traitement ────────────────────────────────────────────────────────────
-    status = process_mop_xml(cid, xml_data)
+    try:
+        status = process_mop_xml(cid, xml_data)
+    except Exception:
+        # Filet de sécurité : même une erreur inattendue doit renvoyer un
+        # MOPStatus XML, jamais une page HTML 500 illisible par MeOS.
+        logger.exception("mop_update: erreur inattendue pour cid=%s", cid)
+        status = 'ERROR'
 
-    http_status_map = {'OK': 200, 'FROZEN': 423}
-    http_status = http_status_map.get(status, 422)
-    return HttpResponse(
-        mop_response(status),
-        content_type='text/xml',
-        status=http_status,
-    )
+    return _mop_http_response(status)
