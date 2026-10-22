@@ -212,8 +212,8 @@ class TestPerformanceAnalysisView:
         assert context['no_data'] is False
         assert context['n_finishers'] == 2
         assert context['n_legs'] == 2       # 1 contrôle + arrivée
-        assert 'series_json' in context
-        assert 'leg_info_json' in context
+        assert 'series' in context
+        assert 'leg_info' in context
 
     @patch('results.views.get_org_map',         return_value={1: 'COLE'})
     @patch('results.views.get_class_controls',  return_value=(
@@ -242,7 +242,7 @@ class TestPerformanceAnalysisView:
         performance_analysis(self._get(), cid=1, class_id=10)
 
         _, _, context = mock_render.call_args[0]
-        series = json.loads(context['series_json'])
+        series = context['series']
 
         assert len(series) == 2
         for s in series:
@@ -289,7 +289,7 @@ class TestPerformanceAnalysisView:
         performance_analysis(self._get(), cid=1, class_id=10)
 
         _, _, context = mock_render.call_args[0]
-        series = json.loads(context['series_json'])
+        series = context['series']
 
         # Le 1er coureur (Alice, P31=1100) doit avoir IP[0] ≈ 1.0
         # car ref = top 25% = meilleur = 1100, et son temps = 1100
@@ -327,6 +327,6 @@ class TestPerformanceAnalysisView:
         assert context['no_data'] is False
         assert context['n_legs'] == 1
 
-        series = json.loads(context['series_json'])
+        series = context['series']
         # Un seul tronçon (arrivée), le 1er doit avoir IP ≈ 1.0
         assert series[0]['indices'][0] == pytest.approx(1.0, abs=1e-4)

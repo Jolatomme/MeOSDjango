@@ -418,8 +418,8 @@ class TestRegularityAnalysisView:
         assert 'regularity' in template
         assert ctx['no_data'] is False
         assert ctx['n_finishers'] == 2
-        assert 'series_json'   in ctx
-        assert 'leg_info_json' in ctx
+        assert 'series'   in ctx
+        assert 'leg_info' in ctx
         assert 'n_legs'        in ctx
         assert 'current_analysis' in ctx
         assert ctx['current_analysis'] == 'regularity'
@@ -470,7 +470,7 @@ class TestRegularityAnalysisView:
         regularity_analysis(self._get(), cid=1, class_id=10)
 
         _, _, ctx = mock_render.call_args[0]
-        series = json.loads(ctx['series_json'])
+        series = ctx['series']
         assert len(series) == 2
         for s in series:
             for key in ('id', 'name', 'org', 'rank', 'time', 'weighted_std', 'mean_pi',
@@ -496,7 +496,7 @@ class TestRegularityAnalysisView:
         regularity_analysis(self._get(), cid=1, class_id=10)
 
         _, _, ctx = mock_render.call_args[0]
-        series = json.loads(ctx['series_json'])
+        series = ctx['series']
         assert series[0]['name'] == 'Bob'    # plus rapide
         assert series[1]['name'] == 'Alice'
         assert series[0]['rank'] == 1
@@ -522,7 +522,7 @@ class TestRegularityAnalysisView:
 
         _, _, ctx = mock_render.call_args[0]
         # Ne doit pas lever d'exception
-        parsed = json.loads(ctx['series_json'])
+        parsed = ctx['series']
         assert isinstance(parsed, list)
 
     # ── leg_info_json ─────────────────────────────────────────────────────────
@@ -550,7 +550,7 @@ class TestRegularityAnalysisView:
         regularity_analysis(self._get(), cid=1, class_id=10)
 
         _, _, ctx = mock_render.call_args[0]
-        leg_info = json.loads(ctx['leg_info_json'])
+        leg_info = ctx['leg_info']
         labels = [l['label'] for l in leg_info]
         assert 'Crête' in labels
         assert 'Arrivée' in labels
@@ -574,7 +574,7 @@ class TestRegularityAnalysisView:
         regularity_analysis(self._get(), cid=1, class_id=10)
 
         _, _, ctx = mock_render.call_args[0]
-        leg_info = json.loads(ctx['leg_info_json'])
+        leg_info = ctx['leg_info']
         for info in leg_info:
             assert 'label'   in info
             assert 'ref'     in info
@@ -669,7 +669,7 @@ class TestRegularityAnalysisView:
         regularity_analysis(self._get(), cid=1, class_id=10)
 
         _, _, ctx = mock_render.call_args[0]
-        series = json.loads(ctx['series_json'])
+        series = ctx['series']
         for s in series:
             if s['weighted_std'] is not None:
                 # Vérifier que l'arrondi ne dépasse pas 4 décimales
@@ -717,7 +717,7 @@ class TestRegularityIntegration:
         assert ctx['n_finishers'] == 3
         assert ctx['n_legs'] == 2   # 1 contrôle + arrivée
 
-        series = json.loads(ctx['series_json'])
+        series = ctx['series']
         assert len(series) == 3
 
         # Alice est la plus rapide → rank=1
@@ -728,7 +728,7 @@ class TestRegularityIntegration:
         for s in series:
             assert len(s['leg_pis']) == 2
 
-        leg_info = json.loads(ctx['leg_info_json'])
+        leg_info = ctx['leg_info']
         assert len(leg_info) == 2
         labels = [l['label'] for l in leg_info]
         assert 'P31' in labels

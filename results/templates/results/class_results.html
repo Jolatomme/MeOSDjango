@@ -226,10 +226,13 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if has_splits and can_show_splits %}<script src="{% static 'results/js/chart.umd.min.js' %}"></script>{% endif %}
+{% if has_splits and can_show_splits %}
+{{ leg_error_data|json_script:"leg-error-data" }}
+<script src="{% static 'results/js/chart.umd.min.js' %}"></script>
+{% endif %}
 <script src="{% static 'results/js/results-splits.js' %}"></script>
 <script>
-  {% if has_splits and can_show_splits %}COResultsSplits.init({{ leg_error_data_json|default:"[]"|safe }}, {
+  {% if has_splits and can_show_splits %}COResultsSplits.init(COUtils.readJSONScript('leg-error-data') || [], {
       rateLabel: "{% translate 'Coureurs en erreur (%)' %}",
       avgLabel: "{% translate 'Erreur moyenne (s)' %}",
       avgAxis: "{% translate 'Erreur moy. (s)' %}",

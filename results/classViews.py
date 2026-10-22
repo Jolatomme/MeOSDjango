@@ -1,4 +1,3 @@
-import json
 import re
 import markdown
 from collections import defaultdict
@@ -238,8 +237,8 @@ class CompetitionDetailView(RenderShortcutMixin, DetailView):
 class StartListView(RenderShortcutMixin, TemplateView):
     """Start list page — groups competitors by category, club, and start time.
 
-    Renders a JSON blob (``start_list_data``) consumed by the DataTables-based
-    template to provide searchable/sortable grouped tables.
+    Exposes ``start_list_data`` as a Python object, serialized by the template
+    with Django's ``json_script`` filter for the DataTables-based page.
     """
     template_name = "results/start_list.html"
 
@@ -342,7 +341,7 @@ class StartListView(RenderShortcutMixin, TemplateView):
 
         context.update({
             'competition': competition,
-            'start_list_data': json.dumps(data),
+            'start_list_data': data,
         })
         return context
 
@@ -496,8 +495,8 @@ class VerifieMoiView(RenderShortcutMixin, FormView):
         context = super().get_context_data(**kwargs)
         context.setdefault('parse_error', None)
         context.setdefault('result', None)
-        context.setdefault('csv_content_json', None)
-        context.setdefault('filename_json', None)
+        context.setdefault('csv_content', None)
+        context.setdefault('csv_filename', None)
         return context
 
     def form_valid(self, form):
@@ -505,15 +504,13 @@ class VerifieMoiView(RenderShortcutMixin, FormView):
         xml_bytes = form.cleaned_data['meosfile'].read()
         try:
             result = generate_verifie_moi_csv(xml_bytes)
-            csv_content_json = json.dumps(result.csv_content)
             safe_name = re.sub(r'[^\w\-\.\s]', '_', result.competition_name).strip() or 'verifie_moi'
-            filename_json = json.dumps(safe_name + '.csv')
         except ValueError as exc:
             return self.form_invalid(form, parse_error=str(exc))
         return self.render_to_response(self.get_context_data(
             form=form, result=result,
-            csv_content_json=csv_content_json,
-            filename_json=filename_json
+            csv_content=result.csv_content,
+            csv_filename=safe_name + '.csv',
         ))
 
     def form_invalid(self, form, parse_error=None):

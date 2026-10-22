@@ -654,7 +654,7 @@ class TestClassResultsTemplateSelection:
             from results.views import class_results
             class_results(rf_get(), cid=1, class_id='abc12345')
             _, _, ctx = mock_render.call_args[0]
-        leg_data = json.loads(ctx['leg_error_data_json'])
+        leg_data = ctx['leg_error_data']
         assert len(leg_data) == 1
         assert leg_data[0]['ctrl_name'] == 'P31'
 

@@ -165,10 +165,12 @@
 
 {% block extra_js %}
 {% if not no_data %}
+{{ results_data|json_script:"grouping-index-results" }}
+{{ leg_labels|json_script:"grouping-index-leg-labels" }}
 <script>
 // ── Données injectées ─────────────────────────────────────────────────────
-const GI_DATA    = {{ results_json|safe }};
-const LEG_LABELS = {{ leg_labels_json|safe }};
+const GI_DATA    = COUtils.readJSONScript('grouping-index-results');
+const LEG_LABELS = COUtils.readJSONScript('grouping-index-leg-labels');
 let   T1_INIT    = {{ t1 }};
 let   T2_INIT    = {{ t2 }};
 
@@ -225,7 +227,8 @@ function buildHeatmap() {
   let thRow = '<tr>';
   thRow += '<th class="gi-th-runner">{% translate "Coureur" %}</th>';
   LEG_LABELS.forEach(lbl => {
-    thRow += `<th title="${lbl}">${lbl}</th>`;
+    const safeLabel = COUtils.escapeHtml(lbl);
+    thRow += `<th title="${safeLabel}">${safeLabel}</th>`;
   });
   thRow += '<th class="gi-th-global" title="{% translate 'Indice global pondéré' %}">{% translate "Global" %}</th>';
   thRow += '</tr>';
@@ -236,18 +239,19 @@ function buildHeatmap() {
   body.innerHTML = GI_DATA.map((r, i) => {
     const rankDisp = r.rank ? `${r.rank}.` : '—';
     let row = `<tr>`;
-    row += `<td class="gi-td-runner">${COUtils.renderRunnerDot(
-      `hsl(${(i * 47) % 360},55%,45%)`, `<span class="text-muted me-1">${rankDisp}</span>${r.name}`
+    row += `<td class="gi-td-runner"><span class="text-muted me-1">${rankDisp}</span>${COUtils.renderRunnerDot(
+      `hsl(${(i * 47) % 360},55%,45%)`, r.name
     )}</td>`;
     r.leg_indices.forEach((v, j) => {
       const bg      = indexColor(v);
       const col     = textColor(v);
       const ref     = r.leg_ref_names ? r.leg_ref_names[j] : null;
-      const refHtml = ref
-        ? `<span class="gi-ref-name">${ref}</span>`
+      const safeRef = ref ? COUtils.escapeHtml(ref) : '';
+      const refHtml = safeRef
+        ? `<span class="gi-ref-name">${safeRef}</span>`
         : '';
       row += `<td class="gi-td-val" style="background:${bg};color:${col}"
-                  title="${fmtIndex(v)}${ref ? ' — ' + ref : ''}">${fmtIndex(v)}${refHtml}</td>`;
+                  title="${fmtIndex(v)}${safeRef ? ' — ' + safeRef : ''}">${fmtIndex(v)}${refHtml}</td>`;
     });
     const gbg  = indexColor(r.global_index);
     const gcol = textColor(r.global_index);
@@ -281,7 +285,7 @@ function buildSummary() {
     return `<tr>
       <td>${COUtils.renderMedal(r.rank)}</td>
       <td class="runner-name fw-bold">${COUtils.renderRunnerDot(color, r.name)}</td>
-      <td class="club-name text-muted">${r.org || '—'}</td>
+      <td class="club-name text-muted">${r.org ? COUtils.escapeHtml(r.org) : '—'}</td>
       <td class="gi-cell-profil">
         <div class="gi-profil-pct fw-bold" style="color:${textCol}">${fmtIndex(gv)}</div>
         <div class="gi-bar-wrap">

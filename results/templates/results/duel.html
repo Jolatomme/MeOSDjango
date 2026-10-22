@@ -202,9 +202,10 @@
 
 {% block extra_js %}
 {% if not no_data %}
+{{ runners|json_script:"duel-runners" }}
 <script src="{% static 'results/js/chart.umd.min.js' %}"></script>
 <script>
-const RUNNERS = {{ runners_json|safe }};
+const RUNNERS = COUtils.readJSONScript('duel-runners');
 
 // ── Constantes graphique ────────────────────────────────────────────────────
 const COLOR_A   = '#4363d8';   // coureur A (bleu)
@@ -363,7 +364,7 @@ function buildDuel(rA, rB) {
           <span class="duel-leg-time ${clsA}">${valA !== null && valA > 0 ? fmtA : '<span class="duel-missing">—</span>'}</span>
           ${secFmtA ? `<span class="duel-abs-time">${secFmtA}</span>` : ''}
         </td>
-        <td class="duel-cell-ctrl">${nameCtrl}</td>
+        <td class="duel-cell-ctrl">${COUtils.escapeHtml(nameCtrl)}</td>
         <td class="duel-cell-delta">${deltaHtml}</td>
         <td class="duel-cell-b">
           <span class="duel-leg-time ${clsB}">${valB !== null && valB > 0 ? fmtB : '<span class="duel-missing">—</span>'}</span>

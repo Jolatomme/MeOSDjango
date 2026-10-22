@@ -462,7 +462,7 @@ class TestVerifieMoiView:
         _, _, ctx = mock_render.call_args[0]
         assert ctx['parse_error']      is None
         assert ctx['result']           is None
-        assert ctx['csv_content_json'] is None
+        assert ctx['csv_content'] is None
 
     @patch('results.classViews.render')
     def test_post_valide_result_present(self, mock_render):
@@ -473,30 +473,27 @@ class TestVerifieMoiView:
         assert ctx['result'].n_runners == 1
 
     @patch('results.classViews.render')
-    def test_post_valide_csv_content_json_present(self, mock_render):
-        import json
+    def test_post_valide_csv_content_present(self, mock_render):
         from results.classViews import VerifieMoiView
         VerifieMoiView.as_view()(self._post(_xml(_minimal_body())))
         _, _, ctx = mock_render.call_args[0]
-        content = json.loads(ctx['csv_content_json'])
+        content = ctx['csv_content']
         assert 'Alice Martin' in content
 
     @patch('results.classViews.render')
-    def test_post_valide_filename_json_present(self, mock_render):
-        """filename_json doit être du JSON valide contenant le nom de compétition."""
-        import json
+    def test_post_valide_filename_present(self, mock_render):
+        """Le nom de fichier contient le nom de la compétition."""
         from results.classViews import VerifieMoiView
         VerifieMoiView.as_view()(self._post(_xml(_minimal_body(), name='Savoie 2026')))
         _, _, ctx = mock_render.call_args[0]
-        assert ctx['filename_json'] is not None
-        filename = json.loads(ctx['filename_json'])
+        assert ctx['csv_filename'] is not None
+        filename = ctx['csv_filename']
         assert 'Savoie 2026' in filename
         assert filename.endswith('.csv')
 
     @patch('results.classViews.render')
-    def test_post_valide_filename_json_fallback_si_nom_vide(self, mock_render):
+    def test_post_valide_filename_fallback_si_nom_vide(self, mock_render):
         """Si le nom de compétition est vide, le nom de fichier est 'verifie_moi.csv'."""
-        import json
         from results.classViews import VerifieMoiView
         xml = (
             b'<?xml version="1.0" encoding="UTF-8"?>'
@@ -507,13 +504,12 @@ class TestVerifieMoiView:
         )
         VerifieMoiView.as_view()(self._post(xml))
         _, _, ctx = mock_render.call_args[0]
-        filename = json.loads(ctx['filename_json'])
+        filename = ctx['csv_filename']
         assert filename == 'verifie_moi.csv'
 
     @patch('results.classViews.render')
     def test_post_coureur_sans_heure_exclu(self, mock_render):
         """La vue doit transmettre un résultat avec n_skipped > 0."""
-        import json
         body = _minimal_body(runners=_runner_list(
             ('1', 'Alice', 3600, '10', '100', '1'),
             ('2', 'Bob',   None, '10', '100', '2'),
@@ -523,7 +519,7 @@ class TestVerifieMoiView:
         _, _, ctx = mock_render.call_args[0]
         assert ctx['result'].n_runners == 1
         assert ctx['result'].n_skipped == 1
-        content = json.loads(ctx['csv_content_json'])
+        content = ctx['csv_content']
         assert 'Alice' in content
         assert 'Bob' not in content
 

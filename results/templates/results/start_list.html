@@ -56,9 +56,12 @@
 </div>
 
   <div class="toast" id="toast"></div>
+{% endblock %}
 
+{% block extra_js %}
+{{ start_list_data|json_script:"start-list-data" }}
 <script>
-  const DATA = {{ start_list_data|safe }};
+  const DATA = COUtils.readJSONScript('start-list-data');
   const state = { view: 'category', search: '' };
   const groupsContainer = document.getElementById('groupsContainer');
   const summaryBar = document.getElementById('summaryBar');
@@ -101,14 +104,7 @@
     showToast._t = window.setTimeout(() => toast.classList.remove('show'), 1800);
   }
 
-  function escapeHtml(value) {
-    return String(value ?? '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
-  }
+  const escapeHtml = COUtils.escapeHtml;
 
   function slugify(value) {
     return (value || '')

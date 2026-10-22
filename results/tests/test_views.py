@@ -941,13 +941,13 @@ class TestClassResultsErrorMap:
     def test_leg_error_data_json_rempli(self):
         cs = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
         ctx = self._run_with_controls([make_competitor(1, rt=5000)], cs, {1: {31: 1200}})
-        leg_data = json.loads(ctx['leg_error_data_json'])
+        leg_data = ctx['leg_error_data']
         assert len(leg_data) == 1
         assert leg_data[0]['ctrl_name'] == 'P31'
 
     def test_leg_error_data_vide_sans_controles(self):
         ctx = self._run_with_controls([make_competitor(1, rt=5000)], [], {})
-        assert json.loads(ctx['leg_error_data_json']) == []
+        assert ctx['leg_error_data'] == []
 
     def test_error_time_injecte_dans_splits(self):
         cs = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
@@ -1488,7 +1488,7 @@ class TestSupermanAnalysis:
         from results.views import superman_analysis
         superman_analysis(rf_get(), cid=1, class_id=10)
         _, _, ctx = mock_render.call_args[0]
-        series = json.loads(ctx['series_json'])
+        series = ctx['series']
         # P31 radio absent → valid=False → points[1:] = None
         assert series[0]['points'][1] is None
 
@@ -1506,7 +1506,7 @@ class TestSupermanAnalysis:
         from results.views import superman_analysis
         superman_analysis(rf_get(), cid=1, class_id=10)
         _, _, ctx = mock_render.call_args[0]
-        series = json.loads(ctx['series_json'])
+        series = ctx['series']
         # P31=1200 (cum=1200) → loss 0 ; totale=5000-5000 → 0
         assert series[0]['points'] == [0, 0, 0]
         assert len(series[0]['labels']) == 3
@@ -1525,7 +1525,7 @@ class TestSupermanAnalysis:
         from results.views import superman_analysis
         superman_analysis(rf_get(), cid=1, class_id=10)
         _, _, ctx = mock_render.call_args[0]
-        series = json.loads(ctx['series_json'])
+        series = ctx['series']
         assert series[0]['name'] == 'Bob'; assert series[0]['rank'] == 1
 
 
@@ -1562,7 +1562,7 @@ class TestPerformanceAnalysis:
         from results.views import performance_analysis
         performance_analysis(rf_get(), cid=1, class_id=10)
         _, _, ctx = mock_render.call_args[0]
-        series = json.loads(ctx['series_json'])
+        series = ctx['series']
         # Avec 1 coureur sans contrôles, il y a 1 tronçon et IP = 1.0
         assert series[0]['mean_pi'] is not None  # 1.0
 
@@ -1596,7 +1596,7 @@ class TestPerformanceAnalysis:
         from results.views import performance_analysis
         performance_analysis(rf_get(), cid=1, class_id=10)
         _, _, ctx = mock_render.call_args[0]
-        series = json.loads(ctx['series_json'])
+        series = ctx['series']
         assert series[0]['indices'] == [None, None]   # P31 + Arrivée
         assert series[0]['mean_pi'] is None
         assert series[0]['std_pi'] is None
@@ -1683,7 +1683,7 @@ class TestGroupingAnalysis:
         from results.views import grouping_analysis
         grouping_analysis(rf_get(), cid=1, class_id=10)
         _, _, ctx = mock_render.call_args[0]
-        series = json.loads(ctx['series_json'])
+        series = ctx['series']
         for s in series:
             assert 'stat' in s
             assert 'rank' in s
@@ -1736,7 +1736,7 @@ class TestGroupingIndexAnalysis:
         from results.views import grouping_index_analysis
         grouping_index_analysis(rf_get(), cid=1, class_id=10)
         _, _, ctx = mock_render.call_args[0]
-        raw = json.loads(ctx['results_json'])
+        raw = ctx['results_data']
         for r in raw:
             assert 'leg_ref_names' in r
             # leg_ref_ids doit être supprimé
@@ -1820,7 +1820,7 @@ class TestDuelAnalysis:
         from results.views import duel_analysis
         duel_analysis(rf_get(), cid=1, class_id=10)
         _, _, ctx = mock_render.call_args[0]
-        runners = json.loads(ctx['runners_json'])
+        runners = ctx['runners']
         assert len(runners[0]['splits']) == 1
         assert runners[0]['splits'][0]['ctrl_name'] == 'P31'
 
@@ -1856,7 +1856,7 @@ class TestDuelChart:
             'current_analysis': 'duel',
             'no_data':     no_data,
             'n_runners':   3,
-            'runners_json': '[]',
+            'runners': [],
             'partial_analysis': False,
         })
 
@@ -2630,13 +2630,13 @@ class TestStartListView:
 
     def test_start_list_data_json_present(self):
         _, ctx = self._run()
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         assert 'meta' in data
         assert 'groups' in data
 
     def test_sans_concurrent_listes_vides(self):
         _, ctx = self._run()
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         assert data['groups']['category'] == []
         assert data['groups']['club'] == []
         assert data['groups']['start_time'] == []
@@ -2646,7 +2646,7 @@ class TestStartListView:
         cls = self._mk_cls(10, 'H21')
         org = self._mk_org(1, 'COLE')
         _, ctx = self._run(competitors=[c], classes=[cls], orgs=[org])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         assert len(data['groups']['category']) == 1
         assert data['groups']['category'][0]['name'] == 'H21'
         assert len(data['groups']['category'][0]['rows']) == 1
@@ -2661,7 +2661,7 @@ class TestStartListView:
         c = self._mk_competitor(id=1, st=36000)
         cls = self._mk_cls(10, 'H21')
         _, ctx = self._run(competitors=[c], classes=[cls])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         row = data['groups']['category'][0]['rows'][0]
         assert row['start_time'] == '01:00'
 
@@ -2669,7 +2669,7 @@ class TestStartListView:
         c = self._mk_competitor(id=1, st=0)
         cls = self._mk_cls(10, 'H21')
         _, ctx = self._run(competitors=[c], classes=[cls])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         row = data['groups']['category'][0]['rows'][0]
         assert row['start_time'] == ''
 
@@ -2678,7 +2678,7 @@ class TestStartListView:
         c = self._mk_competitor(id=1, st=36000, name='Martin Luc', card='12345')
         cls = self._mk_cls(10, 'H21')
         _, ctx = self._run(competitors=[c], classes=[cls])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         row = data['groups']['category'][0]['rows'][0]
         assert row['control_card'] == '12345'
 
@@ -2686,7 +2686,7 @@ class TestStartListView:
         c = self._mk_competitor(id=1, st=36000, name='Martin Luc')
         cls = self._mk_cls(10, 'H21')
         _, ctx = self._run(competitors=[c], classes=[cls])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         row = data['groups']['category'][0]['rows'][0]
         assert row['control_card'] == ''
 
@@ -2695,7 +2695,7 @@ class TestStartListView:
         c = self._mk_competitor(id=1, st=36000, name='Martin Luc', bib='218')
         cls = self._mk_cls(10, 'H21')
         _, ctx = self._run(competitors=[c], classes=[cls])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         row = data['groups']['category'][0]['rows'][0]
         assert row['bib'] == '218'
 
@@ -2703,7 +2703,7 @@ class TestStartListView:
         c = self._mk_competitor(id=1, st=36000, name='Martin Luc')
         cls = self._mk_cls(10, 'H21')
         _, ctx = self._run(competitors=[c], classes=[cls])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         row = data['groups']['category'][0]['rows'][0]
         assert row['bib'] == ''
 
@@ -2713,7 +2713,7 @@ class TestStartListView:
         cls = self._mk_cls(10, 'H21')
         org = self._mk_org(1, 'COLE', nat='NOR')
         _, ctx = self._run(competitors=[c], classes=[cls], orgs=[org])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         row = data['groups']['category'][0]['rows'][0]
         assert row['flag'].endswith('/swe.svg')     # nat coureur prioritaire
 
@@ -2723,7 +2723,7 @@ class TestStartListView:
         cls = self._mk_cls(10, 'H21')
         org = self._mk_org(1, 'COLE', nat='NOR')
         _, ctx = self._run(competitors=[c], classes=[cls], orgs=[org])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         row = data['groups']['category'][0]['rows'][0]
         assert row['flag'].endswith('/nor.svg')
 
@@ -2732,7 +2732,7 @@ class TestStartListView:
         cls = self._mk_cls(10, 'H21')
         org = self._mk_org(1, 'COLE')
         _, ctx = self._run(competitors=[c], classes=[cls], orgs=[org])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         row = data['groups']['category'][0]['rows'][0]
         assert row['flag'] == ''
 
@@ -2742,18 +2742,18 @@ class TestStartListView:
         c2 = self._mk_competitor(id=2, st=37000, name='Avec Bib', bib='218')
         cls = self._mk_cls(10, 'H21')
         _, ctx = self._run(competitors=[c1, c2], classes=[cls])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         assert data['meta']['has_bib'] is True
 
     def test_meta_has_bib_faux_sans_bib(self):
         cls = self._mk_cls(10, 'H21')
         _, ctx = self._run(competitors=[self._mk_competitor()], classes=[cls])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         assert data['meta']['has_bib'] is False
 
     def test_meta_has_bib_faux_sans_concurrent(self):
         _, ctx = self._run()
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         assert data['meta']['has_bib'] is False
 
     def test_tri_par_heure_depart(self):
@@ -2762,7 +2762,7 @@ class TestStartListView:
         c2 = self._mk_competitor(id=2, st=36000, name='Rapide')
         cls = self._mk_cls(10, 'H21')
         _, ctx = self._run(competitors=[c1, c2], classes=[cls])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         groups = data['groups']['start_time']
         assert [g['name'] for g in groups] == ['01:00', '02:00']
 
@@ -2772,7 +2772,7 @@ class TestStartListView:
         cls1 = self._mk_cls(10, 'H21')
         cls2 = self._mk_cls(11, 'D21')
         _, ctx = self._run(competitors=[c1, c2], classes=[cls1, cls2])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         cats = [g['name'] for g in data['groups']['category']]
         assert 'H21' in cats
         assert 'D21' in cats
@@ -2783,7 +2783,7 @@ class TestStartListView:
         c2 = self._mk_competitor(id=2, st=37000, name='martin Luc', cls=10)
         cls1 = self._mk_cls(10, 'H21')
         _, ctx = self._run(competitors=[c1, c2], classes=[cls1])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         rows = data['groups']['category'][0]['rows']
         assert [r['full_name'] for r in rows] == ['martin Luc', 'Zebre anne']
 
@@ -2793,7 +2793,7 @@ class TestStartListView:
         org1 = self._mk_org(1, 'COLE')
         org2 = self._mk_org(2, 'NOSE')
         _, ctx = self._run(competitors=[c1, c2], orgs=[org1, org2])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         clubs = [g['name'] for g in data['groups']['club']]
         assert any('COLE' in c for c in clubs)
         assert any('NOSE' in c for c in clubs)
@@ -2804,7 +2804,7 @@ class TestStartListView:
         c2 = self._mk_competitor(id=2, st=37000, name='martin Luc', org=1)
         org1 = self._mk_org(1, 'COLE')
         _, ctx = self._run(competitors=[c1, c2], orgs=[org1])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         rows = data['groups']['club'][0]['rows']
         assert [r['full_name'] for r in rows] == ['martin Luc', 'Zebre anne']
 
@@ -2815,7 +2815,7 @@ class TestStartListView:
         org1 = self._mk_org(1, 'COLE')
         org2 = self._mk_org(2, 'NOSE')
         _, ctx = self._run(competitors=[c1, c2], orgs=[org1, org2])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         groups = data['groups']['club']
         assert [g['name'] for g in groups] == ['0001 - COLE', '0002 - NOSE']
 
@@ -2825,7 +2825,7 @@ class TestStartListView:
         c2 = self._mk_competitor(id=2, st=37000, org=None)
         org1 = self._mk_org(1, 'COLE')
         _, ctx = self._run(competitors=[c1, c2], orgs=[org1])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         groups = data['groups']['club']
         assert [g['name'] for g in groups] == ['0001 - COLE', 'Sans club']
 
@@ -2833,7 +2833,7 @@ class TestStartListView:
         c1 = self._mk_competitor(id=1, st=36000, name='A')
         c2 = self._mk_competitor(id=2, st=36000, name='B')
         _, ctx = self._run(competitors=[c1, c2])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         assert len(data['groups']['start_time']) == 1
 
     def test_tri_alpha_dans_heure_depart(self):
@@ -2841,7 +2841,7 @@ class TestStartListView:
         c1 = self._mk_competitor(id=1, st=36000, name='Zebre anne')
         c2 = self._mk_competitor(id=2, st=36000, name='martin Luc')
         _, ctx = self._run(competitors=[c1, c2])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         rows = data['groups']['start_time'][0]['rows']
         assert [r['full_name'] for r in rows] == ['martin Luc', 'Zebre anne']
 
@@ -2849,21 +2849,21 @@ class TestStartListView:
         c = self._mk_competitor(id=1, st=36000)
         cls = self._mk_cls(10, 'H21 DÉBUTANT')
         _, ctx = self._run(competitors=[c], classes=[cls])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         assert data['groups']['category'][0]['slug'] == 'h21-d-butant'
 
     def test_concurrent_sans_org(self):
         c = self._mk_competitor(id=1, st=36000, org=None)
         cls = self._mk_cls(10, 'H21')
         _, ctx = self._run(competitors=[c], classes=[cls])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         row = data['groups']['category'][0]['rows'][0]
         assert row['club_display'] == 'Sans club'
 
     def test_concurrent_sans_categorie(self):
         c = self._mk_competitor(id=1, st=36000, cls=99)
         _, ctx = self._run(competitors=[c])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         # cls 99 n'est pas dans classes=[] → category=''
         # Les groupes de catégorie vide sont ignorés, mais le groupe start_time contient le coureur
         assert data['groups']['category'] == []
@@ -2871,19 +2871,19 @@ class TestStartListView:
 
     def test_meta_contient_event_name(self):
         _, ctx = self._run()
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         assert data['meta']['event_name'] == 'Test'
 
     def test_meta_date_vide_sans_date(self):
         _, ctx = self._run()
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         assert data['meta']['event_date'] == ''
 
     def test_club_short_format(self):
         c = self._mk_competitor(id=1, st=36000, org=5)
         cls = self._mk_cls(10, 'H21')
         _, ctx = self._run(competitors=[c], classes=[cls])
-        data = json.loads(ctx['start_list_data'])
+        data = ctx['start_list_data']
         row = data['groups']['category'][0]['rows'][0]
         assert row['club_short'] == '0005'
 

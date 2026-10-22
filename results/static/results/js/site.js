@@ -9,6 +9,38 @@
 const COUtils = (() => {
   'use strict';
 
+  // ── Sécurité / données injectées ───────────────────────────────────────────
+
+  /**
+   * Échappe une valeur pour une insertion dans du HTML (texte ou attribut).
+   * @param {*} value
+   * @returns {string}
+   */
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  /**
+   * Lit un bloc JSON injecté par le filtre Django `json_script`.
+   * @param {string} id - id du <script type="application/json">
+   * @returns {*} valeur parsée, ou null si absente/invalide
+   */
+  function readJSONScript(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    try {
+      return JSON.parse(el.textContent);
+    } catch (e) {
+      console.error(`Invalid JSON in #${id}`, e);
+      return null;
+    }
+  }
+
   // ── Médailles ──────────────────────────────────────────────────────────────
 
   function _medalUrls() {
@@ -60,7 +92,7 @@ const COUtils = (() => {
    */
   function renderRunnerDot(color, name) {
     return `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;` +
-           `background:${color};margin-right:5px"></span>${name}`;
+           `background:${color};margin-right:5px"></span>${escapeHtml(name)}`;
   }
 
   // ── Toggle non-classés ────────────────────────────────────────────────────
@@ -375,6 +407,8 @@ const COUtils = (() => {
   // ── API publique ──────────────────────────────────────────────────────────
   return {
     setStrings,
+    escapeHtml,
+    readJSONScript,
     renderMedal,
     renderRunnerDot,
     makeNonFinisherToggle,

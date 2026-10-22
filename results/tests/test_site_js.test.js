@@ -87,6 +87,53 @@ describe('COUtils.renderMedal', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// escapeHtml / readJSONScript
+// ─────────────────────────────────────────────────────────────────────────────
+describe('COUtils.escapeHtml', () => {
+  test('échappe les caractères HTML dangereux', () => {
+    expect(COUtils.escapeHtml(`<img src=x onerror="alert('x')"> &`))
+      .toBe('&lt;img src=x onerror=&quot;alert(&#39;x&#39;)&quot;&gt; &amp;');
+  });
+
+  test('null et undefined → chaîne vide', () => {
+    expect(COUtils.escapeHtml(null)).toBe('');
+    expect(COUtils.escapeHtml(undefined)).toBe('');
+  });
+});
+
+describe('COUtils.readJSONScript', () => {
+  test('lit le JSON d\'un bloc json_script', () => {
+    const el = document.createElement('script');
+    el.type = 'application/json';
+    el.id = 'test-data';
+    el.textContent = JSON.stringify({ name: '</script><img onerror=alert(1)>', n: 2 });
+    document.body.appendChild(el);
+
+    expect(COUtils.readJSONScript('test-data')).toEqual({
+      name: '</script><img onerror=alert(1)>',
+      n: 2,
+    });
+  });
+
+  test('renvoie null si le bloc est absent', () => {
+    expect(COUtils.readJSONScript('absent')).toBeNull();
+  });
+
+  test('renvoie null et journalise si le JSON est invalide', () => {
+    const el = document.createElement('script');
+    el.type = 'application/json';
+    el.id = 'bad-data';
+    el.textContent = '{not json';
+    document.body.appendChild(el);
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(COUtils.readJSONScript('bad-data')).toBeNull();
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // renderRunnerDot
 // ─────────────────────────────────────────────────────────────────────────────
 describe('COUtils.renderRunnerDot', () => {
@@ -105,9 +152,15 @@ describe('COUtils.renderRunnerDot', () => {
     expect(html).toContain('border-radius:50%');
   });
 
-  test('fonctionne avec des caractères spéciaux dans le nom', () => {
+  test('échappe les caractères spéciaux dans le nom', () => {
     const html = COUtils.renderRunnerDot('#000', 'Ève O\'Brien');
-    expect(html).toContain("Ève O'Brien");
+    expect(html).toContain('Ève O&#39;Brien');
+  });
+
+  test('n\'interprète pas un nom comme du HTML', () => {
+    const html = COUtils.renderRunnerDot('#000', '<img src=x onerror=alert(1)>');
+    expect(html).not.toContain('<img');
+    expect(html).toContain('&lt;img');
   });
 });
 

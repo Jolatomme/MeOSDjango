@@ -66,9 +66,14 @@
 
 {% block extra_css %}{% endblock %}
 
+{% block analysis_data %}
+{{ series|json_script:"grouping-series" }}
+{{ x_labels|json_script:"grouping-x-labels" }}
+{% endblock %}
+
 {% block chart_init_js %}
-const SERIES   = {{ series_json|safe }};
-const X_LABELS = {{ x_labels_json|safe }};
+const SERIES   = COUtils.readJSONScript('grouping-series');
+const X_LABELS = COUtils.readJSONScript('grouping-x-labels');
 const STAT_OK  = 1;
 
 function fmtAbsTime(v) {
@@ -120,7 +125,7 @@ function buildTable() {
       <tr style="${opacity}">
         <td>${rankCell}</td>
         <td class="runner-name fw-bold">${COUtils.renderRunnerDot(color, s.name)}</td>
-        <td class="club-name text-muted">${s.org}</td>
+        <td class="club-name text-muted">${COUtils.escapeHtml(s.org)}</td>
         <td class="text-end font-monospace d-none d-md-table-cell">${startAbs}</td>
         <td class="text-end font-monospace d-none d-md-table-cell">${finishAbs}</td>
         <td class="text-end font-monospace d-md-none dep-arr">
@@ -145,10 +150,11 @@ function getLegendItemClass(ds, i) {
     + (ds._isFinished ? '' : ' dnf');
 }
 function getLegendItemInnerHTML(ds) {
+  const color = COUtils.escapeHtml(ds.borderColor);
   const colorStyle = ds._isFinished
-    ? `background:${ds.borderColor}`
-    : `background:repeating-linear-gradient(90deg,${ds.borderColor} 0px,${ds.borderColor} 6px,transparent 6px,transparent 10px)`;
-  return `<div class="legend-color" style="${colorStyle}"></div><span>${ds.label}</span>`;
+    ? `background:${color}`
+    : `background:repeating-linear-gradient(90deg,${color} 0px,${color} 6px,transparent 6px,transparent 10px)`;
+  return `<div class="legend-color" style="${colorStyle}"></div><span>${COUtils.escapeHtml(ds.label)}</span>`;
 }
 
 function initChart() {

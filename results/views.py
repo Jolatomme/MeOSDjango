@@ -335,7 +335,7 @@ def class_results(request, cid, class_id):
         'has_splits':          bool(controls_seq),
         'can_show_splits':     can_show_splits,
         'current_analysis':    'results',
-        'leg_error_data_json': json.dumps(leg_error_data),
+        'leg_error_data':       leg_error_data,
         'prev_cls':            prev_cls,
         'next_cls':            next_cls,
         'all_classes':         all_classes,
@@ -1167,8 +1167,8 @@ def superman_analysis(request, cid, class_id):
     ]
     return render(request, 'results/superman.html', {
         'competition': competition, 'cls': cls, 'course': course,
-        'series': series, 'series_json': json.dumps(series),
-        'x_labels_json': json.dumps(x_labels),
+        'series': series,
+        'x_labels': x_labels,
         'superman_total': format_time(superman_total),
         'superman_leg_data': superman_leg_data,
         'controls_labels': controls_labels,
@@ -1233,7 +1233,7 @@ def performance_analysis(request, cid, class_id):
     ]
     return render(request, 'results/performance.html', {
         'competition': competition, 'cls': cls, 'course': course,
-        'series_json': json.dumps(series), 'leg_info_json': json.dumps(leg_info),
+        'series': series, 'leg_info': leg_info,
         'n_legs': n_legs, 'n_controls': len(controls_seq),
         'n_finishers': len(finishers),
         'no_data': False, 'current_analysis': 'performance',
@@ -1283,7 +1283,7 @@ def regularity_analysis(request, cid, class_id):
     cat_reg = reg_data['category_regularity']
     return render(request, 'results/regularity.html', {
         'competition': competition, 'cls': cls, 'course': course,
-        'series_json': json.dumps(series), 'leg_info_json': json.dumps(leg_info),
+        'series': series, 'leg_info': leg_info,
         'category_regularity': round(cat_reg, 4) if cat_reg is not None else None,
         'n_legs': reg_data['n_legs'], 'n_controls': len(controls_seq),
         'n_finishers': len(finishers),
@@ -1326,7 +1326,7 @@ def grouping_analysis(request, cid, class_id):
     x_labels = [gettext('Départ')] + controls_labels + [gettext('Arrivée')]
     return render(request, 'results/grouping.html', {
         'competition': competition, 'cls': cls, 'course': course,
-        'series_json': json.dumps(series), 'x_labels_json': json.dumps(x_labels),
+        'series': series, 'x_labels': x_labels,
         'n_runners': len(series), 'n_controls': len(controls_seq),
         'no_data': False, 'current_analysis': 'grouping',
         'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
@@ -1386,7 +1386,7 @@ def grouping_index_analysis(request, cid, class_id):
 
     return render(request, 'results/grouping_index.html', {
         'competition': competition, 'cls': cls, 'course': course,
-        'results_json': json.dumps(raw), 'leg_labels_json': json.dumps(leg_labels),
+        'results_data': raw, 'leg_labels': leg_labels,
         'n_runners': len(raw), 'n_legs': len(leg_labels),
         'n_controls': len(controls_seq),
         't1': t1, 't2': t2, 'no_data': False, 'current_analysis': 'grouping_index',
@@ -1437,7 +1437,7 @@ def duel_analysis(request, cid, class_id):
         'competition': competition, 'cls': cls, 'course': course,
         'no_data': False, 'current_analysis': 'duel',
         'neg_time_warning': get_negative_time_stats(cid),
-        'runners_json': json.dumps(runners_data), 'n_runners': len(runners_data),
+        'runners': runners_data, 'n_runners': len(runners_data),
         'n_controls': len(controls_seq),
         'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
     })
@@ -1563,7 +1563,6 @@ def recapitulatif_analysis(request, cid, class_id):
         'next_cls':            next_cls,
         'all_classes':         all_classes,
         'neg_time_warning':    get_negative_time_stats(cid),
-        'leg_error_data_json': json.dumps(leg_error_data),
         'partial_analysis':    partial, 'n_ok': n_ok, 'n_total': n_total,
     })
 

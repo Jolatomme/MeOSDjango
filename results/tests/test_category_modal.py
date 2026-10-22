@@ -89,7 +89,7 @@ PAGE_CTX = {
     'neg_time_warning':  '',
     'groups':            {},
     'race_state':        'finished',
-    'leg_error_data_json': '[]',
+    'leg_error_data': [],
     'partial_analysis':  False,
     'n_ok': 0, 'n_total': 0,
 }

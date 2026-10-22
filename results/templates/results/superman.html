@@ -96,9 +96,14 @@
 
 {% block extra_css %}{% endblock %}
 
+{% block analysis_data %}
+{{ series|json_script:"superman-series" }}
+{{ x_labels|json_script:"superman-x-labels" }}
+{% endblock %}
+
 {% block chart_init_js %}
-const X_LABELS = {{ x_labels_json|safe }};
-const SERIES   = {{ series_json|safe }};
+const X_LABELS = COUtils.readJSONScript('superman-x-labels');
+const SERIES   = COUtils.readJSONScript('superman-series');
 let yMode = 'mmss';
 
 function fmtSeconds(v) {
@@ -142,7 +147,7 @@ function buildTable() {
       <tr>
         <td>${COUtils.renderMedal(s.rank)}</td>
         <td class="runner-name fw-bold">${COUtils.renderRunnerDot(color, s.name)}</td>
-        <td class="club-name text-muted">${s.org}</td>
+        <td class="club-name text-muted">${COUtils.escapeHtml(s.org)}</td>
         <td class="text-end time-col">${s.total}${lossHtml ? '<br>' + lossHtml : ''}</td>
       </tr>`;
   }).join('');

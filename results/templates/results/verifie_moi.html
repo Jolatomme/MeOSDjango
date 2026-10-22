@@ -192,9 +192,11 @@ Lina Simon,Pas de club,D21E,,10:01:00,,</pre>
 
 {% block extra_js %}
 {% if result %}
+{{ csv_content|json_script:"verifie-moi-csv" }}
+{{ csv_filename|json_script:"verifie-moi-filename" }}
 <script>
-  const CSV_CONTENT = {{ csv_content_json|safe }};
-  const CSV_FILENAME = {{ filename_json|safe }};
+  const CSV_CONTENT = COUtils.readJSONScript('verifie-moi-csv');
+  const CSV_FILENAME = COUtils.readJSONScript('verifie-moi-filename');
 
   function downloadCsv() {
     const bom  = '\uFEFF';   // BOM UTF-8 pour compatibilité Excel/Android

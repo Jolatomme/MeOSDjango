@@ -161,11 +161,13 @@
 
 {% block extra_js %}
 {% if not no_data %}
+{{ series|json_script:"regularity-series" }}
+{{ leg_info|json_script:"regularity-leg-info" }}
 <script src="{% static 'results/js/chart.umd.min.js' %}"></script>
 <script>
 // ── Données injectées ─────────────────────────────────────────────────────
-const SERIES   = {{ series_json|safe }};
-const LEG_INFO = {{ leg_info_json|safe }};
+const SERIES   = COUtils.readJSONScript('regularity-series');
+const LEG_INFO = COUtils.readJSONScript('regularity-leg-info');
 
 // ── Couleur interpolée vert → orange → rouge selon le niveau de σ ─────────
 // v ∈ [0, maxVal] :  0 = vert (régulier), maxVal = rouge (irrégulier)
@@ -332,7 +334,7 @@ function buildTable() {
         <td class="runner-name fw-bold">
           ${COUtils.renderRunnerDot(color, s.name)}
         </td>
-        <td class="club-name text-muted">${s.org || '—'}</td>
+        <td class="club-name text-muted">${s.org ? COUtils.escapeHtml(s.org) : '—'}</td>
         <td class="text-center">${COUtils.renderMedal(s.rank)}</td>
         <td class="text-end time-col d-none d-md-table-cell">${s.time}</td>
         <td class="text-end d-none d-md-table-cell">${piMean}</td>

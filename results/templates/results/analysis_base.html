@@ -139,6 +139,7 @@
 
 {% block extra_js %}
 {% if not no_data %}
+{% block analysis_data %}{% endblock %}
 <script src="{% static 'results/js/chart.umd.min.js' %}"></script>
 <script>
 const PALETTE = [
@@ -184,7 +185,7 @@ function buildLegend() {
     const item       = document.createElement('div');
     item.className   = chart.getDatasetMeta(i).hidden ? 'legend-item hidden' : 'legend-item';
     item.dataset.idx = i;
-    item.innerHTML   = `<div class="legend-color" style="background:${ds.borderColor}"></div><span>${ds.label}</span>`;
+    item.innerHTML   = `<div class="legend-color" style="background:${COUtils.escapeHtml(ds.borderColor)}"></div><span>${COUtils.escapeHtml(ds.label)}</span>`;
     item.addEventListener('click', () => {
       const meta  = chart.getDatasetMeta(i);
       meta.hidden = !meta.hidden;

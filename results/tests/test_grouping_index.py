@@ -373,8 +373,8 @@ class TestGroupingIndexView:
         _, template, ctx = mock_render.call_args[0]
         assert 'grouping_index' in template
         assert ctx['no_data'] is False
-        assert 'results_json' in ctx
-        assert 'leg_labels_json' in ctx
+        assert 'results_data' in ctx
+        assert 'leg_labels' in ctx
         assert ctx['t1'] == 7
         assert ctx['t2'] == 20
 

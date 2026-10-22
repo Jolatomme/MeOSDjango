@@ -232,8 +232,8 @@ class TestGroupingAnalysisView:
         assert context['no_data'] is False
         assert context['n_runners'] == 2
         assert context['n_controls'] == 1
-        assert 'series_json' in context
-        assert 'x_labels_json' in context
+        assert 'series' in context
+        assert 'x_labels' in context
 
     @patch('results.views.get_org_map',        return_value={1: 'COLE'})
     @patch('results.views.get_class_controls', return_value=(
@@ -259,7 +259,7 @@ class TestGroupingAnalysisView:
         grouping_analysis(self._get(), cid=1, class_id=10)
 
         _, _, context = mock_render.call_args[0]
-        series = json.loads(context['series_json'])
+        series = context['series']
 
         assert len(series) == 1
         s = series[0]
@@ -293,7 +293,7 @@ class TestGroupingAnalysisView:
         grouping_analysis(self._get(), cid=1, class_id=10)
 
         _, _, context = mock_render.call_args[0]
-        x_labels = json.loads(context['x_labels_json'])
+        x_labels = context['x_labels']
         assert x_labels == ['Départ', 'Arrivée']
 
     @patch('results.views.get_org_map',        return_value={})
@@ -321,7 +321,7 @@ class TestGroupingAnalysisView:
         grouping_analysis(self._get(), cid=1, class_id=10)
 
         _, _, context = mock_render.call_args[0]
-        x_labels = json.loads(context['x_labels_json'])
+        x_labels = context['x_labels']
         assert x_labels == ['Départ', 'Crête', 'Lac', 'Arrivée']
 
     @patch('results.views.get_org_map',        return_value={})
@@ -349,7 +349,7 @@ class TestGroupingAnalysisView:
         _, _, context = mock_render.call_args[0]
         assert context['n_runners'] == 1
 
-        series = json.loads(context['series_json'])
+        series = context['series']
         noms = [s['name'] for s in series]
         assert 'Alice' in noms
         assert 'Bob'   not in noms
@@ -379,7 +379,7 @@ class TestGroupingAnalysisView:
         grouping_analysis(self._get(), cid=1, class_id=10)
 
         _, _, context = mock_render.call_args[0]
-        series = json.loads(context['series_json'])
+        series = context['series']
 
         # Bob (st=100000) doit apparaître en premier
         assert series[0]['name'] == 'Bob'
@@ -422,7 +422,7 @@ class TestGroupingRealRank:
         grouping_analysis(self._get(), cid=1, class_id=10)
 
         _, _, context = mock_render.call_args[0]
-        series = json.loads(context['series_json'])
+        series = context['series']
 
         # Retrouver par nom
         s_alice = next(s for s in series if s['name'] == 'Alice')
@@ -454,7 +454,7 @@ class TestGroupingRealRank:
         grouping_analysis(self._get(), cid=1, class_id=10)
 
         _, _, context = mock_render.call_args[0]
-        series = json.loads(context['series_json'])
+        series = context['series']
         noms = [s['name'] for s in series]
         assert 'Bob' not in noms, "Un DNF ne doit pas apparaître dans les séries"
         s_alice = next(s for s in series if s['name'] == 'Alice')
@@ -488,7 +488,7 @@ class TestGroupingRealRank:
         grouping_analysis(self._get(), cid=1, class_id=10)
 
         _, _, context = mock_render.call_args[0]
-        series = json.loads(context['series_json'])
+        series = context['series']
 
         rank_map = {s['name']: s['rank'] for s in series}
         assert rank_map['B'] == 1   # rt=40000, le plus rapide
@@ -517,7 +517,7 @@ class TestGroupingRealRank:
         grouping_analysis(self._get(), cid=1, class_id=10)
 
         _, _, context = mock_render.call_args[0]
-        series = json.loads(context['series_json'])
+        series = context['series']
         assert 'time_fmt' in series[0], "time_fmt doit être présent dans chaque série"
         # rt=50000 dixièmes = 5000s = 83min20s
         assert series[0]['time_fmt'] != '—'
@@ -598,7 +598,7 @@ class TestGroupingColorInvariants:
         grouping_analysis(self._get(), cid=1, class_id=10)
 
         _, _, context = mock_render.call_args[0]
-        series = json.loads(context['series_json'])
+        series = context['series']
 
         # Position dans SERIES (index = couleur du graphique)
         idx_bob   = next(i for i, s in enumerate(series) if s['name'] == 'Bob')
@@ -637,7 +637,7 @@ class TestGroupingColorInvariants:
         grouping_analysis(self._get(), cid=1, class_id=10)
 
         _, _, context = mock_render.call_args[0]
-        series = json.loads(context['series_json'])
+        series = context['series']
 
         for s in series:
             assert 'id' in s, f"Le champ 'id' est manquant pour le coureur '{s.get('name')}'"
@@ -672,7 +672,7 @@ class TestGroupingColorInvariants:
         grouping_analysis(self._get(), cid=1, class_id=10)
 
         _, _, context = mock_render.call_args[0]
-        series = json.loads(context['series_json'])
+        series = context['series']
 
         names_in_order = [s['name'] for s in series]
         # Bob (DNF) est exclu : Alice(0), Charlie(1)
