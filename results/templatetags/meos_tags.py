@@ -95,11 +95,11 @@ def time_behind(runner_time, leader_time):
 
 @register.filter
 def lang_flag(lang_code):
-    """Code du drapeau SVG pour un code de langue (en → gb, sv → se).
+    """Code du drapeau SVG pour un code de langue (en → gbr, fr → fra, de → ger, sv → swe).
 
-    Les fichiers vivent dans ``static/results/img/flags/<code>.svg``.
+    Les fichiers vivent dans ``static/results/img/flags/nat/<code>.svg``.
     """
-    return {'en': 'gb', 'sv': 'se'}.get(lang_code, lang_code)
+    return {'fr': 'fra', 'en': 'gbr', 'de': 'ger', 'sv': 'swe'}.get(lang_code, lang_code)
 
 
 @register.simple_tag

@@ -3073,7 +3073,10 @@ class TestDrapeauNationalPages:
 
     def test_classement_sans_nat_aucun_drapeau(self):
         html = self._render_class_results(nat='', org_nat='')
-        assert 'results/img/flags/nat/' not in html
+        # Vérifie qu'il n'y a pas de drapeau de nationalité (SWE, FRA, NOR, etc.)
+        assert 'nat/SWE.svg' not in html
+        assert 'nat/FRA.svg' not in html
+        assert 'nat/NOR.svg' not in html
 
     def test_classement_espace_entre_drapeau_et_nom(self):
         """L'espace drapeau → nom est dans le HTML rendu (pas en CSS)."""
