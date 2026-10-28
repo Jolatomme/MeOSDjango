@@ -50,7 +50,7 @@
           <button type="button" class="co-lang-toggle dropdown-toggle" data-bs-toggle="dropdown"
                   aria-expanded="false" title="{% translate 'Langue' %}">
             {% with flag=CURRENT_LANG|slice:':2'|lang_flag %}
-            <img src="{% static 'results/img/flags/'|add:flag|add:'.svg' %}"
+            <img src="{% static 'results/img/flags/nat/'|add:flag|add:'.svg' %}"
                  alt="" width="24" height="16">
             {% endwith %}
           </button>
@@ -60,7 +60,7 @@
             <button type="submit" name="language" value="{{ code }}"
                     class="dropdown-item co-lang{% if code == CURRENT_LANG|slice:':2' %} active{% endif %}"
                     title="{{ name }}" lang="{{ code }}">
-              <img src="{% static 'results/img/flags/'|add:flag|add:'.svg' %}"
+              <img src="{% static 'results/img/flags/nat/'|add:flag|add:'.svg' %}"
                    alt="" width="24" height="16">
               <span>{{ name }}</span>
               {% if code == CURRENT_LANG|slice:':2' %}<i class="bi bi-check-lg ms-auto"></i>{% endif %}
