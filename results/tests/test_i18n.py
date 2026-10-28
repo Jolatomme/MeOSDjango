@@ -74,9 +74,9 @@ class TestSelecteurDeLangue:
         assert 'csrfmiddlewaretoken' in html
         for code in ('fr', 'en', 'de', 'sv'):
             assert f'name="language" value="{code}"' in html
-        # Pas d'emoji : fichiers SVG (fr / Union Jack / de / sv)
-        for flag in ('fr', 'gb', 'de', 'se'):
-            assert f'results/img/flags/{flag}.svg' in html
+        # Pas d'emoji : fichiers SVG (fra / gbr / ger / swe)
+        for flag in ('fra', 'gbr', 'ger', 'swe'):
+            assert f'results/img/flags/nat/{flag}.svg' in html
 
     def test_menu_deroulant_bootstrap(self):
         """Les drapeaux sont repliés dans un menu déroulant (Bootstrap) :
@@ -95,12 +95,12 @@ class TestSelecteurDeLangue:
         for name in ('Français', 'English', 'Svenska', 'Deutsch'):
             assert f'title="{name}"' in html
 
-    @pytest.mark.parametrize('lang,flag', [('fr', 'fr'), ('en', 'gb'),
-                                           ('de', 'de'), ('sv', 'se')])
+    @pytest.mark.parametrize('lang,flag', [('fr', 'fra'), ('en', 'gbr'),
+                                           ('de', 'ger'), ('sv', 'swe')])
     def test_filtre_lang_flag_et_fichiers(self, lang, flag):
         from results.templatetags.meos_tags import lang_flag
         assert lang_flag(lang) == flag
-        assert (FLAGS_DIR / f'{flag}.svg').is_file()
+        assert (FLAGS_DIR / 'nat' / f'{flag}.svg').is_file()
 
     @pytest.mark.parametrize('lang', ['fr', 'en', 'de', 'sv'])
     def test_un_seul_drapeau_actif_coherent(self, lang):

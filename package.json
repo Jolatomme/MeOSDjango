@@ -1,0 +1,17 @@
+{
+  "name": "meosdjango-js",
+  "private": true,
+  "scripts": {
+    "test:js": "jest results/tests/"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "testMatch": [
+      "**/results/tests/**/*.test.js"
+    ]
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  }
+}

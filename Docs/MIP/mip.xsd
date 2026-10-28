@@ -1,0 +1,410 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+  MeOS Input Protocol 3.0
+
+-->
+
+<xsd:schema xmlns="http://www.melin.nu/mip"
+            xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            targetNamespace="http://www.melin.nu/mip"
+            elementFormDefault="qualified"
+            xml:lang="en"
+            version="3.0">
+  <xsd:annotation>
+    <xsd:documentation>
+      This schema describes the MeOS Input Protocol for web input.
+
+      Authors:
+      Erik Melin
+
+      Date:
+      May 2026
+      
+      Updated:
+      April 2025
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:import namespace="http://www.w3.org/XML/1998/namespace"/>
+
+  <!-- ROOT ELEMENTS -->
+
+  <!-- Usage: To send a input data to the MIP client. -->
+  <xsd:element name="MIPData">
+    <xsd:annotation>
+      <xsd:documentation>
+        Input data block.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexType>
+      <xsd:sequence>
+        <xsd:element name="p" type="FreePunch" minOccurs="0" maxOccurs="unbounded"/>
+        <xsd:element name="card" type="Card" minOccurs="0" maxOccurs="unbounded"/>
+        <xsd:element name="entry" type="Entry" minOccurs="0" maxOccurs="unbounded"/>
+        <xsd:element name="response" type="Response" minOccurs="0" maxOccurs="unbounded"/>
+      </xsd:sequence>
+      <xsd:attribute name="lastid" type="xsd:integer" use="required">
+        <xsd:annotation>
+          <xsd:documentation>
+            Identifier of the last item included in this file. Typically used by the client for the next request.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:attribute>
+      <xsd:attribute name="firstid" type="xsd:integer" use="optional">
+        <xsd:annotation>
+          <xsd:documentation>
+            Identifier of the first item included in this file.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:attribute>
+    </xsd:complexType>
+  </xsd:element>
+
+  <!-- END ROOT ELEMENTS -->
+
+  <xsd:complexType name="SimpleTime">
+    <xsd:attribute name="time" type="xsd:integer" use="required">
+      <xsd:annotation>
+        <xsd:documentation>
+          Punch time, in tenths of a second after 00:00:00 of the day the competition started.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+  </xsd:complexType>
+
+  <xsd:simpleType name="PunchType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="start"/>
+      <xsd:enumeration value="finish"/>
+      <xsd:enumeration value="check"/>
+      <xsd:enumeration value="control"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  
+  <xsd:complexType name="Punch">
+    <xsd:annotation>
+      <xsd:documentation>
+        A description of a punch.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexContent>
+      <xsd:extension base="SimpleTime">
+        <xsd:attribute name="code" type="xsd:integer" use="optional">
+          <xsd:annotation>
+            <xsd:documentation>
+              Identifier of the control (punch code). Needed for control punches to make sense, optional for start/finish/check.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+
+  <xsd:complexType name="FreePunch">
+    <xsd:annotation>
+      <xsd:documentation>
+        A description of a free punch.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexContent>
+      <xsd:extension base="Punch">
+        <xsd:attribute name="card" type="xsd:integer" use="optional">
+          <xsd:annotation>
+            <xsd:documentation>
+              Card number of competitor.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="sno" type="xsd:string" use="optional">
+          <xsd:annotation>
+            <xsd:documentation>
+              Start number (bib) of competitor.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="type" type="PunchType" use="optional">
+          <xsd:annotation>
+            <xsd:documentation>
+              Punch type (e.g. start, finish, control), if known.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+
+  <xsd:complexType name="Card">
+    <xsd:annotation>
+      <xsd:documentation>
+        Punch card data.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="check" type="Punch" minOccurs="0" maxOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>
+            Check time, if included in the card. The code, if present, is used to identify the check unit.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="start" type="Punch" minOccurs="0" maxOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>
+            Start time, if included in the card. The code, if present, is used to identify the start unit.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="finish" type="Punch" minOccurs="0" maxOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>
+            Finish time, if included in the card. The code, if present, is used to identify the finish unit.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="p" type="Punch" minOccurs="0" maxOccurs="unbounded"/>
+    </xsd:sequence>
+    <xsd:attribute name="number" type="xsd:integer" use="required">
+      <xsd:annotation>
+        <xsd:documentation>
+          Card number.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+  </xsd:complexType>
+
+  <xsd:complexType name="Entry">
+    <xsd:annotation>
+      <xsd:documentation>
+        A person entry.
+      </xsd:documentation>
+    </xsd:annotation>
+
+    <xsd:sequence>
+      <xsd:element name="name" type="EntryName" minOccurs="1" maxOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>
+            Persons's name
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+
+      <xsd:element name="club" type="xsd:string" minOccurs="0" maxOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>
+            Club name
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+
+      <xsd:element name="card" type="CardInfo" minOccurs="0" maxOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>
+            Punch card information
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+
+      <xsd:element name="bib" type="xsd:string" minOccurs="0" maxOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>
+            Bib, typically numerical
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+
+      <xsd:element name="phone" type="xsd:string" minOccurs="0" maxOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>
+            Phone number
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+
+      <xsd:element name="rank" type="xsd:string" minOccurs="0" maxOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>
+            Use an integer (for example 101) for order based ranking or a decimal number to 
+            indicate a score based ranking (for example 10.1)
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+
+      <xsd:element name="text" type="xsd:string" minOccurs="0" maxOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>
+             A user defined string associated with the entry.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+
+      <xsd:element name="dataA" type="xsd:integer" minOccurs="0" maxOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>
+             A user defined number associated with the entry.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+
+      <xsd:element name="dataB" type="xsd:integer" minOccurs="0" maxOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>
+             A second user defined number associated with the entry.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+
+    <xsd:attribute name="id" type="xsd:integer" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>
+          User-defined id of entry. If specified, 
+          a unique number is required for each entry. 
+          Can be used to update an entry. Note: This is 
+          not supposed to be a runner's IOF Id, nor an internal
+          id for the receiver of the data.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    
+    <xsd:attribute name="localId" type="xsd:integer" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>
+          The id of entry/person as defined by the receiving software (for example MeOS).
+          This is the same id as is used in the MOP protocol.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    
+    <xsd:attribute name="extId" type="xsd:string" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>
+          Alternative way of identification. The external id of entry/person, typically from an entry system or national database.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+
+
+    <xsd:attribute name="classid" type="xsd:integer" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>
+          The id number of the class entry. Required if class name is not specified.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+
+    <xsd:attribute name="classname" type="xsd:string" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>
+          The exact name of (an existing) entry class. Required if class id is not specified.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+
+    <xsd:attribute name="fee" type="xsd:double" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>
+          The entry fee, specified in the event defined currency. If not specified, the class default fee will be used.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+
+    <xsd:attribute name="paid" type="xsd:boolean" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>
+          True if the fee has been paid (including any card fee). Assumed false if not specified.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+
+    <xsd:attribute name="notiming" type="xsd:boolean" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>
+           It true, the result is presented without time and place.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+
+  </xsd:complexType>
+
+  <xsd:complexType name="CardInfo" mixed="false">
+    <xsd:annotation>
+      <xsd:documentation>
+        The punch card to be used. 
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:simpleContent>
+      <xsd:extension base="xsd:integer">
+        <xsd:attribute name="hired" type="xsd:boolean" use="optional">
+          <xsd:annotation>
+            <xsd:documentation>
+              Use true to specify i hired card. May imply a card fee and a reminder to return it after the race.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+      </xsd:extension>
+    </xsd:simpleContent>
+  </xsd:complexType>
+
+  <xsd:complexType name="EntryName" mixed="false">
+    <xsd:annotation>
+      <xsd:documentation>
+        Competitor's name. If possible, use the form 
+        "LastName, FirstName", otherwise "FirstName LastName" or
+        some other format.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:simpleContent>
+      <xsd:extension base="xsd:string">
+        <xsd:attribute name="birthyear" type="xsd:integer" use="optional">
+          <xsd:annotation>
+            <xsd:documentation>
+              Birth year. A number between 1900 and this year is expected.
+              May affect default fee.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="birthdate" type="xsd:date" use="optional">
+          <xsd:annotation>
+            <xsd:documentation>
+              Birth date on the form 2023-04-22. Birth year is ignored if the birth
+              date is specified. May affect default fee.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="sex" use="optional">
+          <xsd:simpleType>
+            <xsd:restriction base="xsd:NMTOKEN">
+              <xsd:enumeration value="F"/>
+              <xsd:enumeration value="M"/>
+            </xsd:restriction>
+          </xsd:simpleType>
+        </xsd:attribute>
+        <xsd:attribute name="nationality" type="xsd:string" use="optional">
+          <xsd:annotation>
+            <xsd:documentation>
+              The International Olympic Committee's 3-letter code of the country as stated
+              in http://en.wikipedia.org/wiki/List_of_IOC_country_codes. 
+              Note that several of the IOC codes are different from the standard ISO 3166-1 alpha-3 codes.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+      </xsd:extension>
+    </xsd:simpleContent>
+  </xsd:complexType>
+
+  <xsd:complexType name="Response">
+    <xsd:annotation>
+      <xsd:documentation>
+        Requested server response.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:attribute name="type" type="xsd:string" use="required">
+      <xsd:annotation>
+        <xsd:documentation>
+          The requested response type. Possible values are "config", "entrystatus", and "entries".           
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>  
+  </xsd:complexType>
+
+</xsd:schema>

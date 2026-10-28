@@ -110,7 +110,7 @@ curl -s -b 'co_lang=de' $B/ | grep -o '<title>[^<]*</title>'   # traduit (Starts
 curl -s -o /dev/null -w '%{http_code}\n' $B/route-inexistante-xyz   # 404 page custom → DEBUG off
 curl -s -o /dev/null -w '%{http_code}\n' $B/mop/update/             # 405 = endpoint MeOS vivant
 curl -s -o /dev/null -w '%{http_code}\n' $B/admin/login/            # 200
-curl -s -o /dev/null -w '%{http_code}\n' $B/static/results/img/flags/gb.svg   # 200
+curl -s -o /dev/null -w '%{http_code}\n' $B/static/results/img/flags/nat/gbr.svg   # 200
 ```
 
 Au navigateur : bascule de langue au clic sur les drapeaux, persistance après
