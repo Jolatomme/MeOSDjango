@@ -89,3 +89,11 @@ org_logo/
 
 # JavaScript (jest — package.json à la racine)
 node_modules/
+
+# P0-08: Deployment backup and patch artifacts, static/media, scratch YAML
+dev_settings.backup
+settings_local.patch
+staticfiles/
+media/
+*.yaml
+*.yml
