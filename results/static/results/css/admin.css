@@ -415,6 +415,16 @@ label {
   border-bottom-color: var(--co-border-soft);
 }
 
+/* Champs longs de la configuration compétition : lien Livelox, clé API,
+   jeton de gestion. */
+.form-row.field-livelox input,
+.form-row.field-api_key input,
+.form-row.field-manage_token input {
+  width: 100%;
+  max-width: 60rem;
+  box-sizing: border-box;
+}
+
 .help, p.help, div.help {
   color: var(--co-text-muted);
 }
@@ -461,14 +471,23 @@ fieldset .inline-heading {
   background: var(--co-warn);
 }
 
-/* Bouton « Supprimer les données MOP » (change_form CompetitionConfig). */
-.submit-row .co-danger-btn {
+/* Boutons de suppression (change_form CompetitionConfig). */
+.submit-row .co-danger-btn,
+.co-fieldset-actions .co-danger-btn {
   background: var(--co-warn);
   color: #fff;
 }
 
-.submit-row .co-danger-btn:hover {
+.submit-row .co-danger-btn:hover,
+.co-fieldset-actions .co-danger-btn:hover {
   background: #a71d2a;
+}
+
+/* Bouton « Supprimer le logo local », en bas de la vignette course. */
+.co-fieldset-actions {
+  margin-top: 1rem;
+  padding-top: .8rem;
+  border-top: 1px solid var(--co-border-soft);
 }
 
 /* ══ 12. Barre latérale de navigation ═══════════════════════════════════════ */

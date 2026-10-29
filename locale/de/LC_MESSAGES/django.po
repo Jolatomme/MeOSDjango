@@ -286,11 +286,6 @@ msgstr ""
 msgid "Révoquer les liens de gestion privés"
 msgstr "Private Verwaltungslinks widerrufen"
 
-#: results/admin.py:107
-#, python-format
-msgid "Données MOP supprimées pour cid=%(cid)s (%(name)s)."
-msgstr "MOP-Daten für cid=%(cid)s (%(name)s) gelöscht."
-
 #: results/apps.py:8 results/templates/results/analysis_tabs.html:23
 #: results/templates/results/class_results.html:5
 #: results/templates/results/class_results.html:18
@@ -929,13 +924,13 @@ msgstr ""
 "Ein unerwartetes Problem ist auf dem Server aufgetreten. Bitte versuchen Sie "
 "es in wenigen Augenblicken erneut."
 
-#: results/templates/admin/results/competitionconfig/change_form.html:9
-msgid "Supprimer les données MOP"
-msgstr "MOP-Daten löschen"
+#: results/templates/admin/results/competitionconfig/change_form.html
+msgid "Supprimer la compétition"
+msgstr "Wettbewerb löschen"
 
-#: results/templates/admin/results/competitionconfig/change_form.html:10
-msgid "Supprimer TOUTES les données MOP de cette compétition ?"
-msgstr "ALLE MOP-Daten dieses Wettbewerbs löschen?"
+#: results/templates/admin/results/competitionconfig/change_form.html
+msgid "Supprimer définitivement cette compétition et toutes ses données ?"
+msgstr "Diesen Wettbewerb und alle seine Daten endgültig löschen?"
 
 #: results/templates/results/_analysis_partial.html:4
 msgid "Analyse partielle"
@@ -3308,6 +3303,35 @@ msgstr "Passwort ändern"
 #: templates/admin/base_site.html:77
 msgid "Log out"
 msgstr "Abmelden"
+
+#: results/admin.py
+msgid "Accès MeOS"
+msgstr "MeOS-Zugang"
+
+#: results/admin.py
+msgid "Logo actuel :"
+msgstr "Aktuelles Logo:"
+
+#: results/admin.py
+msgid "Logo de l'organisateur supprimé."
+msgstr "Organisator-Logo gelöscht."
+
+#: results/admin.py
+msgid "Aucun logo à supprimer."
+msgstr "Kein Logo zum Löschen vorhanden."
+
+#: results/templates/admin/results/competitionconfig/change_form.html
+msgid "Supprimer le logo local"
+msgstr "Lokales Logo löschen"
+
+#: results/templates/admin/results/competitionconfig/change_form.html
+msgid "Supprimer le logo local de cette compétition ?"
+msgstr "Lokales Logo dieser Veranstaltung löschen?"
+
+#: results/admin.py
+#, python-format
+msgid "Compétition supprimée pour cid=%(cid)s (%(name)s)."
+msgstr "Wettbewerb mit cid=%(cid)s (%(name)s) gelöscht."
 
 #~ msgid "rapport"
 #~ msgstr "Bericht"

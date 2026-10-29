@@ -1,12 +1,22 @@
 {% extends "admin/change_form.html" %}
 {% load i18n %}
 
+{% block field_sets %}
+{% for fieldset in adminform %}
+  {% if "co-race-info" in fieldset.classes %}
+    {% include "admin/results/competitionconfig/fieldset.html" with heading_level=2 prefix="fieldset" id_prefix=0 id_suffix=forloop.counter0 %}
+  {% else %}
+    {% include "admin/includes/fieldset.html" with heading_level=2 prefix="fieldset" id_prefix=0 id_suffix=forloop.counter0 %}
+  {% endif %}
+{% endfor %}
+{% endblock %}
+
 {% block submit_buttons_bottom %}
 {{ block.super }}
 <div class="submit-row" style="margin-top: 10px;">
   <input type="submit" name="_delete_mop_data"
          class="co-danger-btn"
-         value="{% translate "Supprimer les données MOP" %}"
-         onclick="return confirm('{% blocktranslate %}Supprimer TOUTES les données MOP de cette compétition ?{% endblocktranslate %}')">
+         value="{% translate "Supprimer la compétition" %}"
+         onclick="return confirm('{% translate "Supprimer définitivement cette compétition et toutes ses données ?" %}')">
 </div>
 {% endblock %}
