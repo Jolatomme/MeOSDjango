@@ -120,3 +120,49 @@ class RaceCreateForm(RaceBaseForm):
 
 class RaceEditForm(RaceBaseForm):
     """Formulaire d'édition d'une course via son lien privé de gestion."""
+
+
+class IofImportForm(forms.Form):
+    """Import d'un fichier IOF Data Standard v3 ``ResultList``."""
+
+    ioffile = forms.FileField(
+        label=_("Fichier IOF ResultList (.xml)"),
+        help_text=_(
+            "Export IOF Data Standard v3 (ResultList). Les fichiers "
+            "« Complete » et « Snapshot » sont acceptés."
+        ),
+    )
+    race_number = forms.IntegerField(
+        label=_("Numéro de course"),
+        min_value=1,
+        required=False,
+        help_text=_(
+            "Obligatoire pour un fichier contenant plusieurs courses ; "
+            "laissez vide pour un fichier à une seule course."
+        ),
+    )
+    use_event_metadata = forms.BooleanField(
+        label=_("Utiliser les informations de l'événement IOF"),
+        required=False,
+        help_text=_(
+            "Nom, date, organisateur et site web du fichier. Décoché, les "
+            "informations déjà saisies sur le site sont conservées et les "
+            "champs vides sont complétés par le fichier."
+        ),
+    )
+    confirm = forms.BooleanField(
+        label=_("Je comprends que l'import remplace tous les résultats existants."),
+        required=False,
+    )
+
+    def clean_ioffile(self):
+        from .iof_importer import MAX_UPLOAD_BYTES
+
+        uploaded = self.cleaned_data['ioffile']
+        if uploaded.size > MAX_UPLOAD_BYTES:
+            raise ValidationError(
+                gettext("Fichier trop volumineux (%(max)d Mo maximum).") % {
+                    'max': MAX_UPLOAD_BYTES // (1024 * 1024),
+                }
+            )
+        return uploaded

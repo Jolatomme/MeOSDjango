@@ -57,6 +57,11 @@
     <i class="bi bi-check-circle-fill me-2"></i>
     {% translate "Informations de la course mises à jour." %}
   </div>
+{% elif request.GET.ok == 'iof' %}
+  <div class="alert alert-success border-0" style="border-left:4px solid #198754 !important;">
+    <i class="bi bi-check-circle-fill me-2"></i>
+    {% translate "Résultats IOF importés : les anciens résultats ont été remplacés." %}
+  </div>
 {% endif %}
 
 <div class="alert alert-info border-0 no-print" style="border-left:4px solid #0dcaf0 !important;">
@@ -240,6 +245,26 @@
         {% endif %}
       </div>
     </form>
+  </div>
+</div>
+
+<div class="co-card mb-4 no-print">
+  <div class="co-card-header">
+    <i class="bi bi-file-earmark-arrow-up me-2"></i>{% translate "Importer des résultats IOF" %}
+  </div>
+  <div class="p-4">
+    <p class="mb-3">
+      {% blocktranslate %}Remplacez les résultats de la course par un fichier
+      <strong>IOF Data Standard v3</strong> (ResultList) produit par un autre
+      logiciel de chronométrage. L'import écrase tous les résultats existants,
+      comme un envoi MeOS complet.{% endblocktranslate %}
+    </p>
+    {% if config %}
+    <a href="{% url 'results:race_import_iof' token=config.manage_token %}"
+       class="btn btn-outline-success">
+      <i class="bi bi-upload me-1"></i>{% translate "Importer un fichier IOF" %}
+    </a>
+    {% endif %}
   </div>
 </div>
 

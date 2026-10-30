@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-17 15:38+0200\n"
+"POT-Creation-Date: 2026-10-30 22:26+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -29,6 +29,7 @@ msgstr ""
 #: results/templates/results/markdown_content.html:10
 #: results/templates/results/meos_checker.html:10
 #: results/templates/results/race_create.html:11
+#: results/templates/results/race_import_iof.html:10
 #: results/templates/results/race_manage.html:20
 #: results/templates/results/start_list.html:10
 #: results/templates/results/statistics.html:10
@@ -120,9 +121,9 @@ msgstr "Status"
 #: ochecklist/templates/ochecklist/report_detail.html:74
 #: ochecklist/templates/ochecklist/report_detail.html:87
 #: ochecklist/templates/ochecklist/runner_detail.html:18
-#: results/templates/results/start_list.html:174
-#: results/templates/results/start_list.html:181
-#: results/templates/results/start_list.html:189
+#: results/templates/results/start_list.html:170
+#: results/templates/results/start_list.html:177
+#: results/templates/results/start_list.html:185
 #: results/templates/results/verifie_moi.html:140
 msgid "Puce"
 msgstr "SI card"
@@ -136,7 +137,7 @@ msgstr "Name"
 
 #: ochecklist/templates/ochecklist/report_detail.html:84
 #: ochecklist/templates/ochecklist/runner_detail.html:14
-#: results/templates/results/start_list.html:193
+#: results/templates/results/start_list.html:189
 msgid "Dossard"
 msgstr "Bib"
 
@@ -149,8 +150,8 @@ msgstr "Bib"
 #: results/templates/results/org_results.html:36
 #: results/templates/results/recapitulatif.html:106
 #: results/templates/results/start_list.html:44
-#: results/templates/results/start_list.html:180
-#: results/templates/results/start_list.html:188
+#: results/templates/results/start_list.html:176
+#: results/templates/results/start_list.html:184
 #: results/templates/results/verifie_moi.html:139
 msgid "Catégorie"
 msgstr "Category"
@@ -167,8 +168,8 @@ msgstr "Category"
 #: results/templates/results/regularity.html:129
 #: results/templates/results/relay_results.html:69
 #: results/templates/results/start_list.html:45
-#: results/templates/results/start_list.html:173
-#: results/templates/results/start_list.html:187
+#: results/templates/results/start_list.html:169
+#: results/templates/results/start_list.html:183
 #: results/templates/results/superman.html:92
 #: results/templates/results/verifie_moi.html:138
 msgid "Club"
@@ -187,8 +188,8 @@ msgstr "New SI card"
 #: results/templates/results/competitor_detail.html:131
 #: results/templates/results/grouping.html:57
 #: results/templates/results/grouping.html:60
-#: results/templates/results/relay_results.html:152 results/views.py:1135
-#: results/views.py:1326
+#: results/templates/results/relay_results.html:152 results/views.py:1149
+#: results/views.py:1340
 msgid "Départ"
 msgstr "Start"
 
@@ -265,24 +266,58 @@ msgid_plural "%(n)s rapports supprimés."
 msgstr[0] "%(n)s report deleted."
 msgstr[1] "%(n)s reports deleted."
 
-#: results/admin.py:58 results/templates/results/race_manage.html:125
+#: results/admin.py:37 results/forms.py:115
+#: results/templates/results/race_create.html:117
+msgid "Logo de l'organisateur"
+msgstr "Organizer logo"
+
+#: results/admin.py:40 results/templates/results/race_create.html:129
+msgid "SVG, PNG ou JPEG — 2 Mo maximum."
+msgstr "SVG, PNG or JPEG — 2 MB max."
+
+#: results/admin.py:63
+msgid "Logo actuel :"
+msgstr "Current logo:"
+
+#: results/admin.py:117 results/templates/results/race_create.html:32
+msgid "Informations de la course"
+msgstr "Race information"
+
+#: results/admin.py:121
+msgid "Accès MeOS"
+msgstr "MeOS access"
+
+#: results/admin.py:151 results/templates/results/race_manage.html:130
 msgid "Compétition"
 msgstr "Competition"
 
-#: results/admin.py:65 results/forms.py:81 results/models.py:62
+#: results/admin.py:158 results/forms.py:81 results/models.py:67
 #: results/templates/results/competition_list.html:53
 msgid "Date"
 msgstr "Date"
 
-#: results/admin.py:82
+#: results/admin.py:175
 #, python-format
 msgid ""
 "%(n)s lien(s) de gestion révoqué(s) — les clés API MeOS restent actives."
 msgstr "%(n)s management link(s) revoked — the MeOS API keys stay active."
 
-#: results/admin.py:90
+#: results/admin.py:183
 msgid "Révoquer les liens de gestion privés"
 msgstr "Revoke private management links"
+
+#: results/admin.py:200
+#, python-format
+msgid "Compétition supprimée pour cid=%(cid)s (%(name)s)."
+msgstr "Competition deleted for cid=%(cid)s (%(name)s)."
+
+#: results/admin.py:219
+msgid "Logo de l'organisateur supprimé."
+msgstr "Organizer logo deleted."
+
+#: results/admin.py:225
+msgid "Aucun logo à supprimer."
+msgstr "No logo to delete."
 
 #: results/apps.py:8 results/templates/results/analysis_tabs.html:23
 #: results/templates/results/class_results.html:5
@@ -371,7 +406,7 @@ msgid "Organisateur / club"
 msgstr "Organizer / club"
 
 #: results/forms.py:86 results/templates/results/race_create.html:91
-#: results/templates/results/race_manage.html:209
+#: results/templates/results/race_manage.html:214
 msgid "Site web de l'organisateur"
 msgstr "Organizer website"
 
@@ -379,9 +414,347 @@ msgstr "Organizer website"
 msgid "Site web (champ piège)"
 msgstr "Website (honeypot field)"
 
-#: results/forms.py:115 results/templates/results/race_create.html:117
-msgid "Logo de l'organisateur"
-msgstr "Organizer logo"
+#: results/forms.py:129
+msgid "Fichier IOF ResultList (.xml)"
+msgstr "IOF ResultList file (.xml)"
+
+#: results/forms.py:131
+msgid ""
+"Export IOF Data Standard v3 (ResultList). Les fichiers « Complete » et "
+"« Snapshot » sont acceptés."
+msgstr ""
+"IOF Data Standard v3 export (ResultList). “Complete” and “Snapshot” files "
+"are accepted."
+
+#: results/forms.py:136 results/templates/results/race_import_iof.html:180
+msgid "Numéro de course"
+msgstr "Race number"
+
+#: results/forms.py:140
+msgid ""
+"Obligatoire pour un fichier contenant plusieurs courses ; laissez vide pour "
+"un fichier à une seule course."
+msgstr ""
+"Required for a file containing several races; leave blank for a single-race "
+"file."
+
+#: results/forms.py:145
+msgid "Utiliser les informations de l'événement IOF"
+msgstr "Use the IOF event information"
+
+#: results/forms.py:148
+msgid ""
+"Nom, date, organisateur et site web du fichier. Décoché, les informations "
+"déjà saisies sur le site sont conservées et les champs vides sont complétés "
+"par le fichier."
+msgstr ""
+"Name, date, organizer and website from the file. When unchecked, the "
+"information already entered on the site is kept and empty fields are filled "
+"from the file."
+
+#: results/forms.py:154
+msgid "Je comprends que l'import remplace tous les résultats existants."
+msgstr "I understand that the import replaces all existing results."
+
+#: results/forms.py:164
+#, python-format
+msgid "Fichier trop volumineux (%(max)d Mo maximum)."
+msgstr "File too large (%(max)d MB maximum)."
+
+#: results/iof_importer.py:259
+#, python-format
+msgid ""
+"Statut IOF « %(status)s » inconnu : résultat importé avec le statut MOP "
+"inconnu."
+msgstr "Unknown IOF status “%(status)s”: result imported with unknown MOP status."
+
+#: results/iof_importer.py:265
+msgid "Statut IOF absent : résultat importé avec le statut MOP inconnu."
+msgstr "Missing IOF status: result imported with unknown MOP status."
+
+#: results/iof_importer.py:377
+#, python-format
+msgid "« %(label)s » tronqué à %(max)d caractères."
+msgstr "“%(label)s” truncated to %(max)d characters."
+
+#: results/iof_importer.py:402
+#, python-format
+msgid "Certaines valeurs ont été tronquées : %(fields)s."
+msgstr "Some values were truncated: %(fields)s."
+
+#: results/iof_importer.py:450
+msgid "SplitTime sans ControlCode : ignoré."
+msgstr "SplitTime without ControlCode: ignored."
+
+#: results/iof_importer.py:455
+#, python-format
+msgid "Statut de split « %(status)s » inconnu : traité comme OK."
+msgstr "Unknown split status “%(status)s”: treated as OK."
+
+#: results/iof_importer.py:465
+#, python-format
+msgid "Temps négatif ignoré pour le poste « %(code)s »."
+msgstr "Negative time ignored for control “%(code)s”."
+
+#: results/iof_importer.py:482
+msgid "Temps de course négatif ignoré."
+msgstr "Negative race time ignored."
+
+#: results/iof_importer.py:492
+msgid "Heure d'arrivée antérieure au départ : temps ignoré."
+msgstr "Finish time earlier than start: time ignored."
+
+#: results/iof_importer.py:551
+msgid "Plusieurs résultats pour la même course : le premier est conservé."
+msgstr "Several results for the same race: the first one is kept."
+
+#: results/iof_importer.py:589
+msgid "Élément <Event> absent : informations minimales utilisées."
+msgstr "<Event> element missing: minimal information used."
+
+#: results/iof_importer.py:617
+#, python-format
+msgid "RaceNumber absent ou invalide : numéro %(number)s utilisé."
+msgstr "RaceNumber missing or invalid: number %(number)s used."
+
+#: results/iof_importer.py:623
+#, python-format
+msgid "Numéro de course %(number)s dupliqué : occurrence ignorée."
+msgstr "Duplicate race number %(number)s: occurrence ignored."
+
+#: results/iof_importer.py:677
+#, python-format
+msgid "Classe « %(name)s » présente plusieurs fois : résultats fusionnés."
+msgstr "Class “%(name)s” appears several times: results merged."
+
+#: results/iof_importer.py:683
+#, python-format
+msgid ""
+"Classe « %(name)s » : noms différents pour un même identifiant — "
+"« %(kept)s » conservé."
+msgstr "Class “%(name)s”: different names for the same identifier — “%(kept)s” kept."
+
+#: results/iof_importer.py:697
+#, python-format
+msgid ""
+"La classe « %(name)s » mélange des résultats individuels et des équipes, ce "
+"qui n'est pas pris en charge."
+msgstr "Class “%(name)s” mixes individual and team results, which is not supported."
+
+#: results/iof_importer.py:719
+msgid "Le fichier est vide."
+msgstr "The file is empty."
+
+#: results/iof_importer.py:722
+#, python-format
+msgid "Le fichier dépasse la taille maximale de %(max)d Mo."
+msgstr "The file exceeds the maximum size of %(max)d MB."
+
+#: results/iof_importer.py:730
+msgid ""
+"Le fichier contient une déclaration DOCTYPE ou ENTITY, refusée pour des "
+"raisons de sécurité."
+msgstr ""
+"The file contains a DOCTYPE or ENTITY declaration, which is rejected for "
+"security reasons."
+
+#: results/iof_importer.py:739
+#, python-format
+msgid "XML invalide : %(error)s"
+msgstr "Invalid XML: %(error)s"
+
+#: results/iof_importer.py:746
+msgid ""
+"Le fichier n'est pas une liste de résultats IOF v3 (élément <ResultList> "
+"attendu)."
+msgstr "The file is not an IOF v3 result list (<ResultList> element expected)."
+
+#: results/iof_importer.py:755
+#, python-format
+msgid "Namespace IOF v3 attendu (%(ns)s)."
+msgstr "IOF v3 namespace expected (%(ns)s)."
+
+#: results/iof_importer.py:760
+msgid ""
+"Namespace IOF v3 absent : le fichier est accepté, mais vérifiez son format."
+msgstr "IOF v3 namespace missing: the file is accepted, but check its format."
+
+#: results/iof_importer.py:766
+#, python-format
+msgid "Version IOF non prise en charge : %(version)s (IOF v3 attendu)."
+msgstr "Unsupported IOF version: %(version)s (IOF v3 expected)."
+
+#: results/iof_importer.py:772
+msgid "Version IOF absente : le fichier est traité comme IOF v3."
+msgstr "IOF version missing: the file is processed as IOF v3."
+
+#: results/iof_importer.py:779
+msgid ""
+"Le statut « Delta » n'est pas pris en charge : exportez une liste complète "
+"(Complete ou Snapshot)."
+msgstr ""
+"The “Delta” status is not supported: export a complete list (Complete or "
+"Snapshot)."
+
+#: results/iof_importer.py:785
+#, python-format
+msgid "Statut de fichier IOF « %(status)s » inconnu : traité comme Complete."
+msgstr "Unknown IOF file status “%(status)s”: treated as Complete."
+
+#: results/iof_importer.py:791
+msgid "Statut de fichier IOF absent : traité comme Complete."
+msgstr "IOF file status missing: treated as Complete."
+
+#: results/iof_importer.py:809
+#, python-format
+msgid "raceNumber invalide « %(value)s » : ignoré."
+msgstr "Invalid raceNumber “%(value)s”: ignored."
+
+#: results/iof_importer.py:819
+#, python-format
+msgid ""
+"Ce fichier contient plusieurs courses (%(races)s) : précisez le numéro de "
+"course à importer."
+msgstr ""
+"This file contains several races (%(races)s): specify the race number to "
+"import."
+
+#: results/iof_importer.py:828
+#, python-format
+msgid ""
+"La course %(race)s n'existe pas dans ce fichier (courses disponibles : "
+"%(races)s)."
+msgstr "Race %(race)s does not exist in this file (available races: %(races)s)."
+
+#: results/iof_importer.py:846
+msgid "Résultat sans numéro de course dans un fichier multi-course : ignoré."
+msgstr "Result without a race number in a multi-race file: ignored."
+
+#: results/iof_importer.py:854
+msgid "ClassResult sans <Class> : ignoré."
+msgstr "ClassResult without <Class>: ignored."
+
+#: results/iof_importer.py:859
+msgid "Classe sans nom : nom vide conservé."
+msgstr "Class without a name: empty name kept."
+
+#: results/iof_importer.py:865
+msgid "PersonResult sans <Person> : ignoré."
+msgstr "PersonResult without <Person>: ignored."
+
+#: results/iof_importer.py:880
+#, python-format
+msgid "Équipe « %(name)s » sans membre : ignorée."
+msgstr "Team “%(name)s” without members: ignored."
+
+#: results/iof_importer.py:897
+msgid "Le fichier ne contient aucune classe de résultats."
+msgstr "The file contains no result classes."
+
+#: results/iof_importer.py:902
+msgid ""
+"Le fichier ne contient aucun résultat exploitable pour la course "
+"sélectionnée."
+msgstr "The file contains no usable results for the selected race."
+
+#: results/iof_importer.py:941
+#, python-format
+msgid ""
+"Identifiant %(id)s dupliqué (%(label)s) : un identifiant synthétique est "
+"utilisé."
+msgstr "Duplicate identifier %(id)s (%(label)s): a synthetic identifier is used."
+
+#: results/iof_importer.py:1006
+#, python-format
+msgid ""
+"Classe « %(name)s » : identifiant dupliqué, les résultats sont fusionnés."
+msgstr "Class “%(name)s”: duplicate identifier, results are merged."
+
+#: results/iof_importer.py:1015
+#, python-format
+msgid "Classe « %(name)s » sans identifiant : fusion par nom."
+msgstr "Class “%(name)s” without identifier: merged by name."
+
+#: results/iof_importer.py:1148
+#, python-format
+msgid ""
+"Classe « %(name)s » : circuits différents (fourches) — séquence fusionnée, "
+"les temps des postes répétés ne sont pas conservés."
+msgstr ""
+"Class “%(name)s”: different courses (forks) — merged sequence, times at "
+"repeated controls are not kept."
+
+#: results/iof_importer.py:1186
+#, python-format
+msgid ""
+"Poste « %(code)s » répété : temps supplémentaire ignoré pour « %(name)s »."
+msgstr "Repeated control “%(code)s”: extra time ignored for “%(name)s”."
+
+#: results/iof_importer.py:1211
+msgid "Personne sans nom : « Unknown » utilisé."
+msgstr "Person without a name: “Unknown” used."
+
+#: results/iof_importer.py:1226
+#, python-format
+msgid "Coureur « %(name)s » : statut OK sans temps de course."
+msgstr "Runner “%(name)s”: OK status without a race time."
+
+#: results/iof_importer.py:1299
+#, python-format
+msgid "Équipe « %(name)s » : fraction %(leg)s hors limites, ramenée à %(max)s."
+msgstr "Team “%(name)s”: leg %(leg)s out of range, reduced to %(max)s."
+
+#: results/iof_importer.py:1343
+#, python-format
+msgid ""
+"Équipe « %(name)s » : plusieurs membres pour la fraction %(leg)s — le "
+"meilleur membre est utilisé pour le classement."
+msgstr ""
+"Team “%(name)s”: several members for leg %(leg)s — the best member is used "
+"for the ranking."
+
+#: results/iof_importer.py:1357
+#, python-format
+msgid "Équipe « %(name)s » : aucun membre classable — équipe DNF."
+msgstr "Team “%(name)s”: no rankable member — team DNF."
+
+#: results/iof_importer.py:1364
+#, python-format
+msgid ""
+"Équipe « %(name)s » : aucun membre pour la fraction %(leg)s — équipe DNF."
+msgstr "Team “%(name)s”: no member for leg %(leg)s — team DNF."
+
+#: results/iof_importer.py:1385
+#, python-format
+msgid "Équipe « %(name)s » : temps de fraction manquant — équipe DNF."
+msgstr "Team “%(name)s”: missing leg time — team DNF."
+
+#: results/iof_importer.py:1485
+#, python-format
+msgid ""
+"Équipe « %(name)s » : membre sans personne à la fraction %(leg)s — ignoré."
+msgstr "Team “%(name)s”: member without a person for leg %(leg)s — ignored."
+
+#: results/iof_importer.py:1564
+msgid "Impossible de lire les informations actuelles de la course."
+msgstr "Unable to read the current race information."
+
+#: results/iof_importer.py:1624
+msgid "La date de l'événement est absente : date du jour utilisée."
+msgstr "The event date is missing: today's date is used."
+
+#: results/iof_importer.py:1627
+msgid "Course"
+msgstr "Race"
+
+#: results/iof_importer.py:1634
+msgid "Date de course invalide : date du jour utilisée."
+msgstr "Invalid race date: today's date is used."
+
+#: results/iof_importer.py:1841
+#, python-format
+msgid "L'import a échoué (statut MOP : %(status)s)."
+msgstr "The import failed (MOP status: %(status)s)."
 
 #: results/meos_checker.py:143
 #, python-format
@@ -636,156 +1009,179 @@ msgid ""
 "Complétude des données coureurs (circuit, catégorie, puce, départ, ID unique)"
 msgstr "Runner data completeness (course, category, SI card, start, unique ID)"
 
-#: results/models.py:44
+#: results/models.py:48
 msgctxt "mopstatus"
 msgid "Inconnu"
 msgstr "Unknown"
 
-#: results/models.py:45
+#: results/models.py:49
 msgctxt "mopstatus"
 msgid "OK"
 msgstr "OK"
 
-#: results/models.py:46
+#: results/models.py:50
 msgctxt "mopstatus"
 msgid "No Timing"
 msgstr "No Timing"
 
-#: results/models.py:47
+#: results/models.py:51
 msgctxt "mopstatus"
 msgid "PM"
 msgstr "PM"
 
-#: results/models.py:48
+#: results/models.py:52
 msgctxt "mopstatus"
 msgid "Abandon"
 msgstr "DNF"
 
-#: results/models.py:49
+#: results/models.py:53
 msgctxt "mopstatus"
 msgid "DSQ"
 msgstr "DSQ"
 
-#: results/models.py:50
+#: results/models.py:54
 msgctxt "mopstatus"
 msgid "H.T."
 msgstr "OT"
 
-#: results/models.py:51
+#: results/models.py:55
 msgctxt "mopstatus"
 msgid "Hors compét."
 msgstr "Out of comp."
 
-#: results/models.py:52
+#: results/models.py:56
 msgctxt "mopstatus"
 msgid "Non partant"
 msgstr "DNS"
 
-#: results/models.py:53
+#: results/models.py:57
 msgctxt "mopstatus"
 msgid "Cancel"
 msgstr "Cancel"
 
-#: results/models.py:54
+#: results/models.py:58
 msgctxt "mopstatus"
 msgid "Non participant"
 msgstr "Non-participant"
 
-#: results/models.py:61 results/models.py:72
+#: results/models.py:66 results/models.py:76
 msgid "compétition"
 msgstr "Competition"
 
-#: results/models.py:63
+#: results/models.py:68
 msgid "organisateur"
 msgstr "Organizer"
 
-#: results/models.py:64
+#: results/models.py:69
 msgid "page d'accueil"
 msgstr "homepage"
 
-#: results/models.py:73 results/tests/test_i18n.py:415
+#: results/models.py:77 results/tests/test_i18n.py:415
 msgid "compétitions"
 msgstr "Competitions"
 
-#: results/models.py:102 results/models.py:142
+#: results/models.py:107 results/models.py:147
 msgid "nationalité"
 msgstr "nationality"
 
-#: results/models.py:259 results/models.py:309
+#: results/models.py:263 results/models.py:313
 msgid "gelée"
 msgstr "frozen"
 
-#: results/models.py:260
+#: results/models.py:264
 msgid "Bloque l'écrasement des données MOP (MOPComplete/UPDATE refusés)"
 msgstr "Blocks overwriting of MOP data (MOPComplete/UPDATE rejected)"
 
-#: results/models.py:264
+#: results/models.py:268
 msgid "visible"
 msgstr "visible"
 
-#: results/models.py:265
+#: results/models.py:269
 msgid "Afficher cette compétition dans la liste publique"
 msgstr "Show this competition in the public list"
 
-#: results/models.py:269
+#: results/models.py:273
 msgid "à effacer"
 msgstr "To delete"
 
-#: results/models.py:270
+#: results/models.py:274
 msgid "Marquer comme supprimée (masquée de la liste publique)"
 msgstr "Mark as deleted (hidden from the public list)"
 
-#: results/models.py:277
+#: results/models.py:281
 msgid "clé API MeOS"
 msgstr "MeOS API key"
 
-#: results/models.py:278
+#: results/models.py:282
 msgid ""
 "« Password » MeOS unique à cette compétition (NULL = mot de passe global)"
 msgstr "Unique MeOS «Password» for this competition (NULL = global password)"
 
-#: results/models.py:285
+#: results/models.py:289
 msgid "jeton de gestion"
 msgstr "management token"
 
-#: results/models.py:286
+#: results/models.py:290
 msgid "Secret du lien privé de gestion de la course"
 msgstr "Secret of the private race management link"
 
-#: results/models.py:292
+#: results/models.py:296
 msgid "créée le"
 msgstr "created on"
 
-#: results/models.py:298
+#: results/models.py:302
 msgid "configuration compétition"
 msgstr "competition configuration"
 
-#: results/models.py:299 results/tests/test_i18n.py:416
+#: results/models.py:303 results/tests/test_i18n.py:416
 msgid "configurations compétitions"
 msgstr "competition configurations"
 
-#: results/models.py:311
+#: results/models.py:315
 msgid "supprimée"
 msgstr "deleted"
 
-#: results/models.py:313
+#: results/models.py:317
 msgid "masquée"
 msgstr "hidden"
 
-#: results/race_views.py:131
+#: results/race_views.py:134
 msgid "Formulaire invalide. Vérifiez les champs saisis."
 msgstr "Invalid form. Please check the entered fields."
 
-#: results/race_views.py:150
+#: results/race_views.py:153
 msgid "Conflit à la création. Réessayez une nouvelle fois."
 msgstr "Conflict during creation. Please try again."
 
-#: results/race_views.py:205
+#: results/race_views.py:208
 #, python-format
 msgid ""
 "Course « %(name)s » supprimée : résultats, clé API et lien de gestion "
 "effacés."
 msgstr "Race “%(name)s” deleted: results, API key and management link erased."
+
+#: results/race_views.py:286
+msgid ""
+"Cochez la case de confirmation : l'import remplace tous les résultats "
+"existants."
+msgstr "Check the confirmation box: the import replaces all existing results."
+
+#: results/race_views.py:305
+msgid ""
+"La course est gelée : aucun résultat n'a été importé. Dégèle-la dans MeOS "
+"avant de réessayer."
+msgstr ""
+"The race is frozen: no results were imported. Unfreeze it in MeOS before "
+"trying again."
+
+#: results/race_views.py:319
+#, python-format
+msgid ""
+"Résultats IOF importés : %(classes)d classe(s), %(competitors)d "
+"concurrent(s), %(teams)d équipe(s)."
+msgstr ""
+"IOF results imported: %(classes)d class(es), %(competitors)d competitor(s), "
+"%(teams)d team(s)."
 
 #: results/services.py:393 results/services.py:401 results/services.py:513
 #: results/services.py:530 results/templates/results/_split_detail_row.html:2
@@ -795,9 +1191,9 @@ msgstr "Race “%(name)s” deleted: results, API key and management link erased
 #: results/templates/results/competitor_detail.html:151
 #: results/templates/results/grouping.html:58
 #: results/templates/results/grouping.html:61
-#: results/templates/results/relay_results.html:156 results/views.py:1135
-#: results/views.py:1161 results/views.py:1203 results/views.py:1264
-#: results/views.py:1326
+#: results/templates/results/relay_results.html:156 results/views.py:1149
+#: results/views.py:1175 results/views.py:1217 results/views.py:1278
+#: results/views.py:1340
 msgid "Arrivée"
 msgstr "Finish"
 
@@ -908,13 +1304,21 @@ msgstr ""
 "An unexpected problem occurred on the server. Please try again in a few "
 "moments."
 
-#: results/templates/admin/results/competitionconfig/change_form.html
+#: results/templates/admin/results/competitionconfig/change_form.html:19
 msgid "Supprimer la compétition"
 msgstr "Delete competition"
 
-#: results/templates/admin/results/competitionconfig/change_form.html
+#: results/templates/admin/results/competitionconfig/change_form.html:20
 msgid "Supprimer définitivement cette compétition et toutes ses données ?"
 msgstr "Permanently delete this competition and all its data?"
+
+#: results/templates/admin/results/competitionconfig/fieldset.html:43
+msgid "Supprimer le logo local"
+msgstr "Delete local logo"
+
+#: results/templates/admin/results/competitionconfig/fieldset.html:44
+msgid "Supprimer le logo local de cette compétition ?"
+msgstr "Delete the local logo for this competition?"
 
 #: results/templates/results/_analysis_partial.html:4
 msgid "Analyse partielle"
@@ -996,7 +1400,7 @@ msgstr[1] "%(n)s runners"
 #: results/templates/results/_neg_time_warning.html:22
 #: results/templates/results/grouping.html:55
 #: results/templates/results/grouping_index.html:145
-#: results/templates/results/grouping_index.html:226
+#: results/templates/results/grouping_index.html:228
 #: results/templates/results/performance.html:60
 #: results/templates/results/regularity.html:128
 msgid "Coureur"
@@ -1017,8 +1421,8 @@ msgid "Masquer abandons"
 msgstr "Hide DNFs"
 
 #: results/templates/results/_result_filters_bar.html:14
-#: results/templates/results/class_results.html:246
-#: results/templates/results/course_results.html:170
+#: results/templates/results/class_results.html:249
+#: results/templates/results/course_results.html:171
 msgid "Développer tous les intermédiaires"
 msgstr "Expand all splits"
 
@@ -1312,8 +1716,8 @@ msgstr "Competitor"
 
 #: results/templates/results/class_results.html:100
 #: results/templates/results/course_results.html:64
-#: results/templates/results/duel.html:592
-#: results/templates/results/duel.html:716
+#: results/templates/results/duel.html:593
+#: results/templates/results/duel.html:717
 #: results/templates/results/performance.html:62
 #: results/templates/results/regularity.html:132
 #: results/templates/results/regularity.html:137
@@ -1325,7 +1729,7 @@ msgstr "Time"
 #: results/templates/results/class_results.html:101
 #: results/templates/results/course_results.html:65
 #: results/templates/results/duel.html:176
-#: results/templates/results/duel.html:549
+#: results/templates/results/duel.html:550
 #: results/templates/results/relay_results.html:71
 msgid "Écart"
 msgstr "Gap"
@@ -1392,24 +1796,24 @@ msgstr "All categories"
 msgid "Fin"
 msgstr "To"
 
-#: results/templates/results/class_results.html:233
-#: results/templates/results/course_results.html:156
+#: results/templates/results/class_results.html:236
+#: results/templates/results/course_results.html:157
 #, python-format
 msgid "Coureurs en erreur (%%)"
 msgstr "Runners in error (%%)"
 
-#: results/templates/results/class_results.html:234
-#: results/templates/results/course_results.html:157
+#: results/templates/results/class_results.html:237
+#: results/templates/results/course_results.html:158
 msgid "Erreur moyenne (s)"
 msgstr "Average error (s)"
 
-#: results/templates/results/class_results.html:235
-#: results/templates/results/course_results.html:158
+#: results/templates/results/class_results.html:238
+#: results/templates/results/course_results.html:159
 msgid "Erreur moy. (s)"
 msgstr "Avg. error (s)"
 
-#: results/templates/results/class_results.html:245
-#: results/templates/results/course_results.html:169
+#: results/templates/results/class_results.html:248
+#: results/templates/results/course_results.html:170
 msgid "Réduire tous les intermédiaires"
 msgstr "Collapse all splits"
 
@@ -1558,7 +1962,7 @@ msgid "Ne plus suivre ce coureur"
 msgstr "Unfollow this runner"
 
 #: results/templates/results/competitor_detail.html:33
-#: results/templates/results/start_list.html:153
+#: results/templates/results/start_list.html:149
 msgid "Lien copié"
 msgstr "Link copied"
 
@@ -1740,7 +2144,7 @@ msgid "Évolution"
 msgstr "Progression"
 
 #: results/templates/results/duel.html:144
-#: results/templates/results/duel.html:509
+#: results/templates/results/duel.html:510
 msgid "Écart cumulé"
 msgstr "Cumulative gap"
 
@@ -1766,31 +2170,31 @@ msgid ""
 "tronçon."
 msgstr "Select two runners above to show the leg-by-leg duel."
 
-#: results/templates/results/duel.html:406
+#: results/templates/results/duel.html:407
 msgid "TOTAL"
 msgstr "TOTAL"
 
-#: results/templates/results/duel.html:468
+#: results/templates/results/duel.html:469
 msgid "cumulé"
 msgstr "cumulative"
 
-#: results/templates/results/duel.html:468
+#: results/templates/results/duel.html:469
 msgid "tronçon"
 msgstr "leg"
 
-#: results/templates/results/duel.html:509
+#: results/templates/results/duel.html:510
 msgid "Écart sur le tronçon"
 msgstr "Gap on the leg"
 
-#: results/templates/results/duel.html:549
+#: results/templates/results/duel.html:550
 msgid " (A − B : sous 0 = A plus rapide)"
 msgstr " (A − B: below 0 = A is faster)"
 
-#: results/templates/results/duel.html:615
+#: results/templates/results/duel.html:616
 msgid "Écart cumulé (A − B)"
 msgstr "Cumulative gap (A − B)"
 
-#: results/templates/results/duel.html:665
+#: results/templates/results/duel.html:666
 msgid "Écart cumulé (A − B : sous 0 = A en tête)"
 msgstr "Cumulative gap (A − B: below 0 = A leads)"
 
@@ -1889,7 +2293,7 @@ msgstr "Absolute passage time per control"
 msgid "Temps de course"
 msgstr "Race time"
 
-#: results/templates/results/grouping.html:181
+#: results/templates/results/grouping.html:187
 msgid "Heure de passage (temps absolu)"
 msgstr "Passage time (absolute time)"
 
@@ -1964,15 +2368,15 @@ msgstr "Overall index by runner"
 msgid "Indice / Profil"
 msgstr "Index / Profile"
 
-#: results/templates/results/grouping_index.html:230
+#: results/templates/results/grouping_index.html:233
 msgid "Indice global pondéré"
 msgstr "Weighted overall index"
 
-#: results/templates/results/grouping_index.html:230
+#: results/templates/results/grouping_index.html:233
 msgid "Global"
 msgstr "Overall"
 
-#: results/templates/results/grouping_index.html:301
+#: results/templates/results/grouping_index.html:305
 msgid "T2 doit être supérieur à T1."
 msgstr "T2 must be greater than T1."
 
@@ -2245,8 +2649,8 @@ msgid "Temps de course depuis le départ"
 msgstr "Race time since the start"
 
 #: results/templates/results/live_results.html:320
-#: results/templates/results/start_list.html:175
-#: results/templates/results/start_list.html:182
+#: results/templates/results/start_list.html:171
+#: results/templates/results/start_list.html:178
 msgid "Heure de départ"
 msgstr "Start time"
 
@@ -2361,6 +2765,8 @@ msgstr "MeOS export file (<code>.meosxml</code>)"
 #: results/templates/results/meos_checker.html:49
 #: results/templates/results/race_create.html:123
 #: results/templates/results/race_create.html:127
+#: results/templates/results/race_import_iof.html:69
+#: results/templates/results/race_import_iof.html:73
 #: results/templates/results/verifie_moi.html:57
 #: results/templates/results/verifie_moi.html:61
 msgid "Aucun fichier choisi"
@@ -2368,6 +2774,7 @@ msgstr "No file chosen"
 
 #: results/templates/results/meos_checker.html:47
 #: results/templates/results/race_create.html:125
+#: results/templates/results/race_import_iof.html:71
 #: results/templates/results/verifie_moi.html:59
 msgid "Choisir un fichier"
 msgstr "Choose file"
@@ -2476,7 +2883,7 @@ msgstr "Performance index — %(c_name)s — %(comp_name)s"
 
 #: results/templates/results/performance.html:6
 #: results/templates/results/performance.html:8
-#: results/templates/results/performance.html:180
+#: results/templates/results/performance.html:185
 msgid "Indice de performance"
 msgstr "Performance index"
 
@@ -2538,15 +2945,15 @@ msgstr "Avg. PI"
 msgid "Régularité (&sigma;)"
 msgstr "Consistency (&sigma;)"
 
-#: results/templates/results/performance.html:168
+#: results/templates/results/performance.html:173
 msgid "IP = "
 msgstr "PI = "
 
-#: results/templates/results/performance.html:187
+#: results/templates/results/performance.html:192
 msgid "Densité (pondérée par longueur)"
 msgstr "Density (weighted by length)"
 
-#: results/templates/results/performance.html:210
+#: results/templates/results/performance.html:215
 msgid "IP = 1.00"
 msgstr "PI = 1.00"
 
@@ -2558,34 +2965,27 @@ msgstr ""
 "Create your race without an account: a unique MeOS API key and a private\n"
 "        management link are generated automatically."
 
-#: results/templates/results/race_create.html:32
-msgid "Informations de la course"
-msgstr "Race information"
-
 #: results/templates/results/race_create.html:55
-#: results/templates/results/race_manage.html:176
+#: results/templates/results/race_manage.html:181
 msgid "Nom de la course *"
 msgstr "Race name *"
 
 #: results/templates/results/race_create.html:67
-#: results/templates/results/race_manage.html:187
+#: results/templates/results/race_manage.html:192
 msgid "Date *"
 msgstr "Date *"
 
 #: results/templates/results/race_create.html:79
-#: results/templates/results/race_manage.html:198
+#: results/templates/results/race_manage.html:203
 msgid "Organisateur / club *"
 msgstr "Organizer / club *"
-
-#: results/templates/results/race_create.html:129
-msgid "SVG, PNG ou JPEG — 2 Mo maximum."
-msgstr "SVG, PNG or JPEG — 2 MB max."
 
 #: results/templates/results/race_create.html:138
 msgid "Créer la course"
 msgstr "Create the race"
 
 #: results/templates/results/race_create.html:140
+#: results/templates/results/race_import_iof.html:130
 msgid "Annuler"
 msgstr "Cancel"
 
@@ -2633,9 +3033,131 @@ msgstr ""
 "The race appears on the site immediately, awaiting the first\n"
 "          MeOS import."
 
+#: results/templates/results/race_import_iof.html:3
+#: results/templates/results/race_import_iof.html:16
+#: results/templates/results/race_import_iof.html:21
+#: results/templates/results/race_manage.html:253
+msgid "Importer des résultats IOF"
+msgstr "Import IOF results"
+
+#: results/templates/results/race_import_iof.html:13
 #: results/templates/results/race_manage.html:24
 msgid "Gestion de course"
 msgstr "Race management"
+
+#: results/templates/results/race_import_iof.html:39
+msgid ""
+"Cet import <strong>remplace tous les résultats existants</strong> de la "
+"course\n"
+"      (concurrents, équipes, circuits et pointages), exactement comme un "
+"envoi\n"
+"      « MOPComplete » de MeOS. Les informations de course saisies sur le "
+"site\n"
+"      (nom, date, organisateur, site web, Livelox, logo) sont conservées, "
+"sauf\n"
+"      si vous demandez explicitement à utiliser celles du fichier IOF."
+msgstr ""
+"This import <strong>replaces all existing results</strong> for the race\n    "
+"  (competitors, teams, courses and splits), exactly like a MeOS\n      "
+"“MOPComplete” upload. The race information entered on the site\n      (name, "
+"date, organizer, website, Livelox, logo) is kept, unless\n      you "
+"explicitly choose to use the information from the IOF file."
+
+#: results/templates/results/race_import_iof.html:48
+msgid "Fichier IOF Data Standard v3"
+msgstr "IOF Data Standard v3 file"
+
+#: results/templates/results/race_import_iof.html:124
+msgid "Analyser sans importer"
+msgstr "Analyze without importing"
+
+#: results/templates/results/race_import_iof.html:127
+msgid "Importer et remplacer les résultats"
+msgstr "Import and replace results"
+
+#: results/templates/results/race_import_iof.html:139
+msgid "Rapport d'import"
+msgstr "Import report"
+
+#: results/templates/results/race_import_iof.html:141
+msgid "Analyse — aucune écriture"
+msgstr "Analysis — nothing written"
+
+#: results/templates/results/race_import_iof.html:143
+msgid "Course gelée"
+msgstr "Frozen race"
+
+#: results/templates/results/race_import_iof.html:145
+msgid "Importé"
+msgstr "Imported"
+
+#: results/templates/results/race_import_iof.html:153
+msgid "Classes"
+msgstr "Classes"
+
+#: results/templates/results/race_import_iof.html:159
+msgid "Concurrents"
+msgstr "Competitors"
+
+#: results/templates/results/race_import_iof.html:165
+msgid "Équipes"
+msgstr "Teams"
+
+#: results/templates/results/race_import_iof.html:171
+msgid "Pointages"
+msgstr "Splits"
+
+#: results/templates/results/race_import_iof.html:177
+msgid "Course importée"
+msgstr "Imported race"
+
+#: results/templates/results/race_import_iof.html:183
+msgid "Postes"
+msgstr "Controls"
+
+#: results/templates/results/race_import_iof.html:190
+msgid "Points à vérifier"
+msgstr "Points to check"
+
+#: results/templates/results/race_import_iof.html:201
+msgid "Aucun avertissement."
+msgstr "No warnings."
+
+#: results/templates/results/race_import_iof.html:210
+msgid "À propos du format IOF"
+msgstr "About the IOF format"
+
+#: results/templates/results/race_import_iof.html:214
+msgid "Le fichier doit être un <strong>ResultList</strong> au format"
+msgstr "The file must be a <strong>ResultList</strong> in"
+
+#: results/templates/results/race_import_iof.html:219
+msgid ""
+"Fichiers « Complete » et « Snapshot » : import complet ; le statut « Delta » "
+"est refusé."
+msgstr ""
+"“Complete” and “Snapshot” files: full import; the “Delta” status is "
+"rejected."
+
+#: results/templates/results/race_import_iof.html:220
+msgid ""
+"Un seul numéro de course par import : précisez-le pour un fichier multi-"
+"course."
+msgstr "One race number per import: specify it for a multi-race file."
+
+#: results/templates/results/race_import_iof.html:221
+msgid ""
+"Résultats individuels et relais pris en charge ; les circuits avec fourches "
+"sont simplifiés."
+msgstr "Individual and relay results are supported; forked courses are simplified."
+
+#: results/templates/results/race_import_iof.html:222
+msgid ""
+"L'analyse sans import permet de contrôler les classes, effectifs et "
+"avertissements avant d'écrire."
+msgstr ""
+"Analysis without import lets you check classes, entries and warnings before "
+"writing."
 
 #: results/templates/results/race_manage.html:34
 #, python-format
@@ -2663,7 +3185,11 @@ msgstr "Update your bookmarks: the old link no longer works."
 msgid "Informations de la course mises à jour."
 msgstr "Race information updated."
 
-#: results/templates/results/race_manage.html:64
+#: results/templates/results/race_manage.html:63
+msgid "Résultats IOF importés : les anciens résultats ont été remplacés."
+msgstr "IOF results imported: the previous results have been replaced."
+
+#: results/templates/results/race_manage.html:69
 msgid ""
 "Ce lien est <strong>privé</strong> : toute personne qui le possède peut\n"
 "  afficher la clé API et la régénérer. Conservez-le précieusement (avec la\n"
@@ -2673,73 +3199,73 @@ msgstr ""
 "  view the API key and regenerate it. Keep it safe (with the\n"
 "  printed sheet below)."
 
-#: results/templates/results/race_manage.html:71
+#: results/templates/results/race_manage.html:76
 msgid "Copier le lien de gestion"
 msgstr "Copy management link"
 
-#: results/templates/results/race_manage.html:76
+#: results/templates/results/race_manage.html:81
 msgid "Régénérer le lien de gestion ? L\\'ancien lien ne fonctionnera plus."
 msgstr "Regenerate the management link? The old link will stop working."
 
-#: results/templates/results/race_manage.html:80
+#: results/templates/results/race_manage.html:85
 msgid "Régénérer le lien de gestion"
 msgstr "Regenerate management link"
 
-#: results/templates/results/race_manage.html:87
+#: results/templates/results/race_manage.html:92
 msgid "Paramètres à saisir dans MeOS"
 msgstr "Settings to enter in MeOS"
 
-#: results/templates/results/race_manage.html:90
+#: results/templates/results/race_manage.html:95
 msgid "Imprimer / PDF"
 msgstr "Print / PDF"
 
-#: results/templates/results/race_manage.html:99
+#: results/templates/results/race_manage.html:104
 msgid "URL d'envoi"
 msgstr "Upload URL"
 
-#: results/templates/results/race_manage.html:105
+#: results/templates/results/race_manage.html:110
 msgid "Copier l'URL"
 msgstr "Copy URL"
 
-#: results/templates/results/race_manage.html:118
+#: results/templates/results/race_manage.html:123
 msgid "Copier la clé"
 msgstr "Copy key"
 
-#: results/templates/results/race_manage.html:126
+#: results/templates/results/race_manage.html:131
 msgid "laisser vide"
 msgstr "leave empty"
 
-#: results/templates/results/race_manage.html:129
+#: results/templates/results/race_manage.html:134
 msgid "Compression ZIP"
 msgstr "ZIP compression"
 
-#: results/templates/results/race_manage.html:130
+#: results/templates/results/race_manage.html:135
 msgid "Désactivée"
 msgstr "Disabled"
 
-#: results/templates/results/race_manage.html:133
+#: results/templates/results/race_manage.html:138
 msgid "Intervalle"
 msgstr "Interval"
 
-#: results/templates/results/race_manage.html:134
+#: results/templates/results/race_manage.html:139
 msgid "0 seconde"
 msgstr "0 seconds"
 
-#: results/templates/results/race_manage.html:137
+#: results/templates/results/race_manage.html:142
 msgid "Format"
 msgstr "Format"
 
-#: results/templates/results/race_manage.html:146
+#: results/templates/results/race_manage.html:151
 msgid ""
 "Régénérer la clé API ? L\\'ancienne clé deviendra immédiatement invalide."
 msgstr ""
 "Regenerate the API key? The previous key will become invalid immediately."
 
-#: results/templates/results/race_manage.html:150
+#: results/templates/results/race_manage.html:155
 msgid "Régénérer la clé"
 msgstr "Regenerate key"
 
-#: results/templates/results/race_manage.html:154
+#: results/templates/results/race_manage.html:159
 msgid ""
 "Supprimer définitivement cette course ? Toutes les données seront effacées "
 "(résultats, clé API, lien de gestion) et ce lien ne fonctionnera plus. "
@@ -2749,27 +3275,45 @@ msgstr ""
 "management link) and this link will stop working. This action cannot be "
 "undone."
 
-#: results/templates/results/race_manage.html:158
+#: results/templates/results/race_manage.html:163
 msgid "Supprimer la course"
 msgstr "Delete the race"
 
-#: results/templates/results/race_manage.html:167
+#: results/templates/results/race_manage.html:172
 msgid "Modifier l'événement"
 msgstr "Edit event"
 
-#: results/templates/results/race_manage.html:234
+#: results/templates/results/race_manage.html:239
 msgid "Enregistrer les modifications"
 msgstr "Save changes"
 
-#: results/templates/results/race_manage.html:238
+#: results/templates/results/race_manage.html:243
 msgid "Créer une autre course"
 msgstr "Create another race"
+
+#: results/templates/results/race_manage.html:257
+msgid ""
+"Remplacez les résultats de la course par un fichier\n"
+"      <strong>IOF Data Standard v3</strong> (ResultList) produit par un "
+"autre\n"
+"      logiciel de chronométrage. L'import écrase tous les résultats "
+"existants,\n"
+"      comme un envoi MeOS complet."
+msgstr ""
+"Replace the race results with a file\n      in <strong>IOF Data Standard "
+"v3</strong> (ResultList) format produced by another\n      timing software. "
+"The import overwrites all existing results,\n      like a complete MeOS "
+"upload."
+
+#: results/templates/results/race_manage.html:265
+msgid "Importer un fichier IOF"
+msgstr "Import an IOF file"
 
 #: results/templates/results/recapitulatif.html:94
 msgid "Télécharger en CSV"
 msgstr "Download CSV"
 
-#: results/templates/results/recapitulatif.html:112 results/views.py:1384
+#: results/templates/results/recapitulatif.html:112 results/views.py:1398
 msgid "Arr."
 msgstr "Finish"
 
@@ -2892,36 +3436,36 @@ msgstr "Time / avg. PI"
 msgid "Déviation standard pondérée / profil"
 msgstr "Weighted standard deviation / profile"
 
-#: results/templates/results/regularity.html:217
+#: results/templates/results/regularity.html:219
 msgid "σ pondéré"
 msgstr "weighted σ"
 
-#: results/templates/results/regularity.html:238
-#: results/templates/results/regularity.html:292
+#: results/templates/results/regularity.html:240
+#: results/templates/results/regularity.html:294
 msgid "σ = "
 msgstr "σ = "
 
-#: results/templates/results/regularity.html:239
+#: results/templates/results/regularity.html:241
 msgid "IP moyen = "
 msgstr "Avg. PI = "
 
-#: results/templates/results/regularity.html:240
+#: results/templates/results/regularity.html:242
 msgid "Temps : "
 msgstr "Time: "
 
-#: results/templates/results/regularity.html:250
+#: results/templates/results/regularity.html:252
 msgid "Déviation standard pondérée (σ)"
 msgstr "Weighted standard deviation (σ)"
 
-#: results/templates/results/regularity.html:273
+#: results/templates/results/regularity.html:275
 msgid "σ des IP"
 msgstr "σ of PIs"
 
-#: results/templates/results/regularity.html:292
+#: results/templates/results/regularity.html:294
 msgid "Référence : "
 msgstr "Reference: "
 
-#: results/templates/results/regularity.html:305
+#: results/templates/results/regularity.html:307
 msgid "σ des IP (dispersion entre coureurs)"
 msgstr "σ of PIs (spread between runners)"
 
@@ -2989,41 +3533,41 @@ msgstr "By time"
 msgid "Heure"
 msgstr "Time"
 
-#: results/templates/results/start_list.html:154
+#: results/templates/results/start_list.html:150
 msgid "Impossible de copier le lien"
 msgstr "Could not copy the link"
 
-#: results/templates/results/start_list.html:162
+#: results/templates/results/start_list.html:158
 msgid "catégories"
 msgstr "categories"
 
-#: results/templates/results/start_list.html:163
+#: results/templates/results/start_list.html:159
 msgid "heures de départ"
 msgstr "start times"
 
-#: results/templates/results/start_list.html:164
+#: results/templates/results/start_list.html:160
 msgid "clubs"
 msgstr "clubs"
 
-#: results/templates/results/start_list.html:171
-#: results/templates/results/start_list.html:178
-#: results/templates/results/start_list.html:185
+#: results/templates/results/start_list.html:167
+#: results/templates/results/start_list.html:174
+#: results/templates/results/start_list.html:181
 msgid "Nom / Prénom"
 msgstr "Name / First name"
 
-#: results/templates/results/start_list.html:230
+#: results/templates/results/start_list.html:226
 msgid "Copier le lien vers ce regroupement"
 msgstr "Copy link to this grouping"
 
-#: results/templates/results/start_list.html:234
+#: results/templates/results/start_list.html:230
 msgid "Merci de signaler tout changement de puce."
 msgstr "Please report any SI card change."
 
-#: results/templates/results/start_list.html:246
+#: results/templates/results/start_list.html:242
 msgid "Aucun résultat pour cette recherche."
 msgstr "No result for this search."
 
-#: results/templates/results/start_list.html:247
+#: results/templates/results/start_list.html:243
 msgid ""
 "${totalRowsVisible} partants affichés dans ${totalGroupsVisible} $"
 "{getGroupLabelPlural()}."
@@ -3111,7 +3655,7 @@ msgstr "Total: %(superman_total)s"
 msgid "Coureur(s)"
 msgstr "Runner(s)"
 
-#: results/templates/results/superman.html:181
+#: results/templates/results/superman.html:186
 msgid "Retard vs Superman"
 msgstr "Loss vs Superman"
 
@@ -3219,15 +3763,15 @@ msgstr ""
 "      Runners without a start time (parallel start) are excluded.\n"
 "      Separator: comma."
 
-#: results/templates/results/verifie_moi.html:226
+#: results/templates/results/verifie_moi.html:228
 msgid "Génération…"
 msgstr "Generating…"
 
-#: results/views.py:169
+#: results/views.py:183
 msgid "Circuit non trouvé"
 msgstr "Course not found"
 
-#: results/views.py:1384
+#: results/views.py:1398
 msgid "Dép."
 msgstr "Start"
 
@@ -3255,43 +3799,11 @@ msgstr "Change password"
 msgid "Log out"
 msgstr "Log out"
 
-#: results/admin.py
-msgid "Accès MeOS"
-msgstr "MeOS access"
-
-#: results/admin.py
-msgid "Logo actuel :"
-msgstr "Current logo:"
-
-#: results/admin.py
-msgid "Logo de l'organisateur supprimé."
-msgstr "Organizer logo deleted."
-
-#: results/admin.py
-msgid "Aucun logo à supprimer."
-msgstr "No logo to delete."
-
-#: results/templates/admin/results/competitionconfig/change_form.html
-msgid "Supprimer le logo local"
-msgstr "Delete local logo"
-
-#: results/templates/admin/results/competitionconfig/change_form.html
-msgid "Supprimer le logo local de cette compétition ?"
-msgstr "Delete the local logo for this competition?"
-
-#: results/admin.py
-#, python-format
-msgid "Compétition supprimée pour cid=%(cid)s (%(name)s)."
-msgstr "Competition deleted for cid=%(cid)s (%(name)s)."
-
 #~ msgid "rapport"
 #~ msgstr "report"
 
 #~ msgid "erreur"
 #~ msgstr "error"
-
-#~ msgid "Poste"
-#~ msgstr "Control"
 
 #~ msgid "coureur"
 #~ msgstr "runner"
