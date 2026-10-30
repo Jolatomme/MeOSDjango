@@ -1,0 +1,229 @@
+{% extends "results/base.html" %}
+{% load meos_tags i18n %}
+{% block title %}{% translate "Importer des résultats IOF" %} — {{ competition.name|default:'course' }} — {{ SITE_NAME }}{% endblock %}
+
+{% block page_header %}
+<div class="co-page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="co-breadcrumb">
+      <ol class="breadcrumb mb-2 small">
+        <li class="breadcrumb-item"><a href="{% url 'results:home' %}">{% translate "Accueil" %}</a></li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'results:race_manage' token=config.manage_token %}">
+            {% translate "Gestion de course" %}
+          </a>
+        </li>
+        <li class="breadcrumb-item active">{% translate "Importer des résultats IOF" %}</li>
+      </ol>
+    </nav>
+    <div>
+      <h1><i class="bi bi-file-earmark-arrow-up me-2 opacity-75"></i>
+        {% translate "Importer des résultats IOF" %}
+      </h1>
+      <p class="opacity-75 small mt-1 mb-0">
+        {{ competition.name|default:'Course' }}
+        {% if competition.date %} &bull; {{ competition.date|date:"d/m/Y" }}{% endif %}
+        {% if competition.organizer %} &bull; {{ competition.organizer }}{% endif %}
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-9">
+
+    <div class="alert alert-warning border-0" style="border-left:4px solid #ffc107 !important;">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>
+      {% blocktranslate %}Cet import <strong>remplace tous les résultats existants</strong> de la course
+      (concurrents, équipes, circuits et pointages), exactement comme un envoi
+      « MOPComplete » de MeOS. Les informations de course saisies sur le site
+      (nom, date, organisateur, site web, Livelox, logo) sont conservées, sauf
+      si vous demandez explicitement à utiliser celles du fichier IOF.{% endblocktranslate %}
+    </div>
+
+    <div class="co-card mb-4">
+      <div class="co-card-header">
+        <i class="bi bi-upload me-2"></i>{% translate "Fichier IOF Data Standard v3" %}
+      </div>
+      <div class="p-4">
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+          </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label for="{{ form.ioffile.id_for_label }}" class="form-label fw-bold small text-muted">
+              {{ form.ioffile.label }} *
+            </label>
+            <div class="co-file{% if form.ioffile.errors %} is-invalid{% endif %}">
+              <input type="file" class="co-file-input"
+                     id="{{ form.ioffile.id_for_label }}" name="{{ form.ioffile.html_name }}"
+                     accept=".xml,application/xml,text/xml"
+                     data-default="{% translate 'Aucun fichier choisi' %}">
+              <label for="{{ form.ioffile.id_for_label }}" class="btn btn-outline-success co-file-btn">
+                <i class="bi bi-folder2-open me-1"></i>{% translate "Choisir un fichier" %}
+              </label>
+              <span class="co-file-name">{% translate "Aucun fichier choisi" %}</span>
+            </div>
+            <div class="form-text">{{ form.ioffile.help_text }}</div>
+            {% for error in form.ioffile.errors %}
+              <div class="invalid-feedback d-block">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-3">
+            <label for="{{ form.race_number.id_for_label }}" class="form-label fw-bold small text-muted">
+              {{ form.race_number.label }}
+            </label>
+            <input type="number" min="1"
+                   class="form-control{% if form.race_number.errors %} is-invalid{% endif %}"
+                   id="{{ form.race_number.id_for_label }}" name="{{ form.race_number.html_name }}"
+                   value="{{ form.race_number.value|default:'' }}">
+            <div class="form-text">{{ form.race_number.help_text }}</div>
+            {% for error in form.race_number.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="form-check mb-3">
+            <input type="checkbox" class="form-check-input"
+                   id="{{ form.use_event_metadata.id_for_label }}"
+                   name="{{ form.use_event_metadata.html_name }}"
+                   {% if form.use_event_metadata.value %}checked{% endif %}>
+            <label class="form-check-label" for="{{ form.use_event_metadata.id_for_label }}">
+              {{ form.use_event_metadata.label }}
+            </label>
+            <div class="form-text">{{ form.use_event_metadata.help_text }}</div>
+            {% for error in form.use_event_metadata.errors %}
+              <div class="invalid-feedback d-block">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="form-check mb-3">
+            <input type="checkbox" class="form-check-input{% if form.confirm.errors %} is-invalid{% endif %}"
+                   id="{{ form.confirm.id_for_label }}"
+                   name="{{ form.confirm.html_name }}"
+                   {% if form.confirm.value %}checked{% endif %}>
+            <label class="form-check-label" for="{{ form.confirm.id_for_label }}">
+              {{ form.confirm.label }}
+            </label>
+            {% for error in form.confirm.errors %}
+              <div class="invalid-feedback d-block">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 mt-4">
+            <button type="submit" name="action" value="inspect" class="btn btn-outline-secondary">
+              <i class="bi bi-search me-1"></i>{% translate "Analyser sans importer" %}
+            </button>
+            <button type="submit" name="action" value="import" class="btn btn-success fw-bold">
+              <i class="bi bi-upload me-1"></i>{% translate "Importer et remplacer les résultats" %}
+            </button>
+            <a href="{% url 'results:race_manage' token=config.manage_token %}"
+               class="btn btn-link">{% translate "Annuler" %}</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {% if report %}
+    <div class="co-card mb-4">
+      <div class="co-card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clipboard-data me-2"></i>{% translate "Rapport d'import" %}</span>
+        {% if report.status == 'DRY-RUN' %}
+          <span class="badge bg-info text-dark">{% translate "Analyse — aucune écriture" %}</span>
+        {% elif report.status == 'FROZEN' %}
+          <span class="badge bg-danger">{% translate "Course gelée" %}</span>
+        {% else %}
+          <span class="badge bg-success">{% translate "Importé" %}</span>
+        {% endif %}
+      </div>
+      <div class="p-4">
+        <div class="row g-3 text-center mb-3">
+          <div class="col-6 col-md-3">
+            <div class="border rounded p-3 h-100">
+              <div class="fs-3 fw-bold">{{ report.classes }}</div>
+              <div class="small text-muted">{% translate "Classes" %}</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="border rounded p-3 h-100">
+              <div class="fs-3 fw-bold">{{ report.competitors }}</div>
+              <div class="small text-muted">{% translate "Concurrents" %}</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="border rounded p-3 h-100">
+              <div class="fs-3 fw-bold">{{ report.teams }}</div>
+              <div class="small text-muted">{% translate "Équipes" %}</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="border rounded p-3 h-100">
+              <div class="fs-3 fw-bold">{{ report.splits }}</div>
+              <div class="small text-muted">{% translate "Pointages" %}</div>
+            </div>
+          </div>
+        </div>
+
+        <dl class="row small mb-3">
+          <dt class="col-sm-4">{% translate "Course importée" %}</dt>
+          <dd class="col-sm-8">{{ report.competition_name }}</dd>
+          {% if report.race_number %}
+          <dt class="col-sm-4">{% translate "Numéro de course" %}</dt>
+          <dd class="col-sm-8">{{ report.race_number }}</dd>
+          {% endif %}
+          <dt class="col-sm-4">{% translate "Postes" %}</dt>
+          <dd class="col-sm-8">{{ report.controls }}</dd>
+        </dl>
+
+        {% if report.warnings %}
+          <div class="alert alert-secondary mb-0">
+            <div class="fw-bold mb-2">
+              <i class="bi bi-info-circle me-1"></i>{% translate "Points à vérifier" %}
+            </div>
+            <ul class="mb-0 small">
+              {% for warning in report.warnings %}
+                <li>{{ warning }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% else %}
+          <div class="alert alert-success mb-0">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            {% translate "Aucun avertissement." %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="co-card mb-4">
+      <div class="co-card-header">
+        <i class="bi bi-question-circle me-2"></i>{% translate "À propos du format IOF" %}
+      </div>
+      <div class="p-4 small">
+        <p class="mb-2">
+          {% blocktranslate %}Le fichier doit être un <strong>ResultList</strong> au format{% endblocktranslate %}
+          <a href="https://github.com/international-orienteering-federation/datastandard-v3"
+             target="_blank" rel="noopener">IOF Data Standard v3</a>.
+        </p>
+        <ul class="mb-0">
+          <li>{% translate "Fichiers « Complete » et « Snapshot » : import complet ; le statut « Delta » est refusé." %}</li>
+          <li>{% translate "Un seul numéro de course par import : précisez-le pour un fichier multi-course." %}</li>
+          <li>{% translate "Résultats individuels et relais pris en charge ; les circuits avec fourches sont simplifiés." %}</li>
+          <li>{% translate "L'analyse sans import permet de contrôler les classes, effectifs et avertissements avant d'écrire." %}</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

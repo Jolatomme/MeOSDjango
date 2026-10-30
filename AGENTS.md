@@ -24,6 +24,12 @@ python manage.py setup_db
 #   --force         drop existing tables first (DANGEROUS, incompatible with --dry-run)
 #   --fake-initial  mark tables as created in django_migrations (existing DBs)
 
+# Import an IOF Data Standard v3 ResultList (full replacement, like MOPComplete)
+python manage.py import_iof resultats.xml --cid 12
+python manage.py import_iof resultats.xml --cid 12 --race 2 --dry-run
+#   --use-event-metadata  use IOF event name/date/organizer/homepage
+#   --yes                 skip the interactive confirmation
+
 # JavaScript unit tests (jest — config dans package.json, à la racine)
 #   npm install       # 1 fois, crée node_modules/ (gitignoré)
 npx jest results/tests/test_site_js.test.js
@@ -47,6 +53,7 @@ python manage.py compilemessages                  # *.mo ignored by git — requ
   - Supports `Content-Encoding: gzip` decompression
   - Verifies `Content-Digest` header (SHA-256/512, MD5)
   - Optional auth via custom header (`OCHECKLIST_HEADER_KEY` / `OCHECKLIST_HEADER_VALUE`)
+- **IOF import**: `results/iof_importer.py` converts an IOF Data Standard v3 `ResultList` into an in-memory MOP `MOPComplete` document, then calls `process_mop_xml` — same transaction, frozen check, full replacement and `livelox`/`logo` preservation as MeOS. Entry points: private page `/gestion-course/<token>/importer-iof/` (`RaceImportIofView`) and command `python manage.py import_iof`. Supports individual and relay results; `Complete`/`Snapshot` only (`Delta` rejected); one race per import; site metadata preserved unless `--use-event-metadata`/the form checkbox is used. No schema change or migration.
 - **i18n**: French is the source language; catalogs for `en`/`de`/`sv` live in `locale/<lang>/LC_MESSAGES/django.po` (`LOCALE_PATHS`). **No `i18n_patterns`** — URLs are identical in every language (MeOS links, `/gestion-course/<token>/`, APIs, CSV). Language is carried by the `co_lang` cookie (`LocaleMiddleware` + built-in `set_language` view on `/i18n/setlang/`), chosen via the SVG flag selector in `base.html` (browser `Accept-Language` on first visit). Shared JS strings are injected from templates (`COUtils.setStrings`, `LiveResults.init({ strings })`); `pgettext('mopstatus', …)` avoids collisions with Django's core catalogs (e.g. `PM` → « Après-midi »). CSV headers, MOP protocol responses and DB content stay French on purpose.
 - **Django admin** — habillé de la charte du site (« skin », structure admin conservée) :
   - `templates/admin/base_site.html` (dossier `TEMPLATES['DIRS']`, seul endroit prioritaire sur `django.contrib.admin`, 1er dans `INSTALLED_APPS`) : marque (logo club + `SITE_NAME`), lien « Retour au site », chargement de `site.css` + `admin.css` + `admin-theme.js`, retrait de `admin/js/theme.js`
@@ -110,26 +117,31 @@ MeOSDjango/
 │   ├── views.py                       # Django views
 │   ├── mop_views.py                   # MOP XML endpoint
 │   ├── mop_receiver.py                # XML parser
+│   ├── iof_importer.py                # IOF Data Standard v3 ResultList → MOPComplete
+│   ├── race_views.py                  # Création/gestion de course + import IOF
 │   ├── meos_checker.py                # MeOS data validation
 │   ├── verifie_moi.py                 # Data verification
 │   ├── classViews.py                  # Class-based views (TutoView)
 │   ├── context_processors.py          # Global context (SITE_NAME, etc.)
-│   ├── forms.py                       # MeosFileForm + règles de vérification (R1–R8)
+│   ├── forms.py                       # MeosFileForm + règles R1–R8 + IofImportForm
 │   ├── admin.py                       # CompetitionConfig + MeosTutorial (Mop* non enregistrés : PK composites)
 │   ├── apps.py
 │   ├── urls.py
 │   ├── management/commands/
-│   │   └── setup_db.py                # Crée les tables mop* / colonnes manquantes
+│   │   ├── setup_db.py                # Crée les tables mop* / colonnes manquantes
+│   │   └── import_iof.py              # Import CLI d'un fichier IOF ResultList
 │   ├── templatetags/
 │   │   ├── __init__.py
 │   │   └── meos_tags.py               # Custom template filters/tags
 │   ├── static/results/                # CSS (site.css, dark.css, admin.css…), JS (site.js,
 │   │                                  # admin-theme.js, results-splits.js…), images, fonts
-│   ├── templates/results/             # Django templates
+│   ├── templates/results/             # Django templates (dont race_import_iof.html)
 │   ├── templates/admin/results/       # Surcharge change_form CompetitionConfig (bouton MOP)
 │   ├── migrations/                    # 0001–0008 (mop* historiques + modèles Django-managed)
 │   └── tests/                         # Suite pytest (DB mockée) + test_site_js.test.js (jest)
 │       ├── conftest.py
+│       ├── test_iof_importer.py
+│       ├── test_iof_views.py
 │       └── test_*.py
 │
 ├── ochecklist/                        # App Django — Rapports de départ O'checklist

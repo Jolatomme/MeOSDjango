@@ -31,6 +31,7 @@ Interface web de résultats en temps réel pour les compétitions de **course d'
 | **Listes de départ** | Ordres de départ |
 | **Tutoriels** | Articles Markdown intégrés |
 | **Réception MOP** | Endpoint `POST /mop/update/` — MeOS pousse les données en temps réel |
+| **Import IOF** | Fichier `ResultList` IOF Data Standard v3 (individuel ou relais), page privée ou commande `import_iof` |
 | **O'checklist** | Rapports de départ YAML |
 | **4 langues** | Sélecteur de drapeaux dans la barre (fr · en · de · sv) — langue du navigateur à la 1ʳᵉ visite, choix conservé en cookie, URLs identiques dans toutes les langues |
 

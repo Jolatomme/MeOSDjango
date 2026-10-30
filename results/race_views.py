@@ -26,7 +26,10 @@ from django.urls import reverse
 from django.utils.translation import gettext
 from django.views import View
 
-from .forms import RaceCreateForm, RaceEditForm
+from .forms import IofImportForm, RaceCreateForm, RaceEditForm
+from .iof_importer import (
+    IofImportError, import_iof_result_list, inspect_iof_result_list,
+)
 from .models import CompetitionConfig, Mopcompetition
 from .services import (
     create_race, delete_race, regenerate_api_key, regenerate_manage_token,
@@ -228,3 +231,107 @@ class RaceManageView(View):
             )
 
         return redirect(request.path)
+
+
+class RaceImportIofView(View):
+    """Import privé d'un fichier IOF ResultList dans une course."""
+
+    template_name = 'results/race_import_iof.html'
+
+    @staticmethod
+    def _context(config, competition, form, report=None):
+        return {
+            'config': config,
+            'competition': competition,
+            'form': form,
+            'report': report,
+        }
+
+    def get(self, request, token):
+        config = _config_for_token(token)
+        competition = _competition_of(config)
+        return render(
+            request, self.template_name,
+            self._context(config, competition, IofImportForm()),
+        )
+
+    def post(self, request, token):
+        config = _config_for_token(token)
+        competition = _competition_of(config)
+        form = IofImportForm(request.POST, request.FILES)
+        action = request.POST.get('action', 'import')
+        if action not in ('inspect', 'import'):
+            action = 'import'
+        report = None
+
+        if form.is_valid():
+            xml_data = form.cleaned_data['ioffile'].read()
+            race_number = form.cleaned_data.get('race_number')
+            use_event_metadata = form.cleaned_data.get('use_event_metadata', False)
+
+            if action == 'inspect':
+                try:
+                    report = inspect_iof_result_list(
+                        xml_data,
+                        cid=config.cid,
+                        race_number=race_number,
+                        use_event_metadata=use_event_metadata,
+                    )
+                except IofImportError as exc:
+                    form.add_error(None, str(exc))
+            elif not form.cleaned_data.get('confirm'):
+                form.add_error(
+                    'confirm',
+                    gettext(
+                        "Cochez la case de confirmation : l'import remplace "
+                        "tous les résultats existants."
+                    ),
+                )
+            else:
+                try:
+                    report = import_iof_result_list(
+                        config.cid,
+                        xml_data,
+                        race_number=race_number,
+                        use_event_metadata=use_event_metadata,
+                    )
+                except IofImportError as exc:
+                    form.add_error(None, str(exc))
+                else:
+                    if report.status == 'FROZEN':
+                        form.add_error(
+                            None,
+                            gettext(
+                                "La course est gelée : aucun résultat n'a été "
+                                "importé. Dégèle-la dans MeOS avant de réessayer."
+                            ),
+                        )
+                    else:
+                        logger.info(
+                            "race_import_iof: cid=%s — import IOF réussi "
+                            "(%d classes, %d concurrents, %d équipes)",
+                            config.cid, report.classes,
+                            report.competitors, report.teams,
+                        )
+                        messages.success(
+                            request,
+                            gettext(
+                                "Résultats IOF importés : %(classes)d classe(s), "
+                                "%(competitors)d concurrent(s), %(teams)d équipe(s)."
+                            ) % {
+                                'classes': report.classes,
+                                'competitors': report.competitors,
+                                'teams': report.teams,
+                            },
+                        )
+                        manage_url = reverse(
+                            'results:race_manage',
+                            kwargs={'token': config.manage_token},
+                        )
+                        return redirect(f'{manage_url}?ok=iof')
+
+        return render(
+            request, self.template_name,
+            self._context(config, competition, form, report),
+        )
+

@@ -6,7 +6,7 @@ from .classViews import (
     CompetitionListView, MeosCheckerView, VerifieMoiView,
 )
 from .mop_views import mop_update
-from .race_views import RaceCreateView, RaceManageView
+from .race_views import RaceCreateView, RaceImportIofView, RaceManageView
 
 app_name = 'results'
 
@@ -24,6 +24,7 @@ urlpatterns = [
     # ── Création / gestion de course (public, clé API MeOS) ────────────────
     path('creer-course/',            RaceCreateView.as_view(), name='race_create'),
     path('gestion-course/<str:token>/', RaceManageView.as_view(), name='race_manage'),
+    path('gestion-course/<str:token>/importer-iof/', RaceImportIofView.as_view(), name='race_import_iof'),
 
     # ── Logos d'organisateur (fichiers uploadés, org_logo/ à la racine) ────
     path('org_logo/<str:filename>', views.org_logo_file, name='org_logo'),
