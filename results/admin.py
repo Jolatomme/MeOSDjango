@@ -126,7 +126,11 @@ class CompetitionConfigAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         # Le formulaire porte livelox/logo, absents du modèle CompetitionConfig.
-        form.save_competition_fields()
+        # Le formulaire inline du changelist (list_editable) est généré par
+        # Django : il ne porte pas ces champs et donc pas cette méthode.
+        save_race_info = getattr(form, 'save_competition_fields', None)
+        if save_race_info is not None:
+            save_race_info()
 
     def get_queryset(self, request):
         existing = {c.cid for c in CompetitionConfig.objects.all()}

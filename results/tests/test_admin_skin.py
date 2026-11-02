@@ -115,6 +115,15 @@ class TestAdminCss:
         assert 'var(--co-shadow)' in css         # ombre des cartes
         assert '#result_list thead th' in css    # en-tête de tableau façon site
 
+    def test_bouton_supprimer_competition_pousse_a_droite(self):
+        """Le bouton de suppression occupe l'extrémité droite de la barre."""
+        css = ADMIN_CSS.read_text()
+        assert (
+            '.submit-row .co-danger-btn {\n'
+            '  margin-left: auto;\n'
+            '}'
+        ) in css
+
 
 # ─── Bascule de thème partagée ────────────────────────────────────────────────
 

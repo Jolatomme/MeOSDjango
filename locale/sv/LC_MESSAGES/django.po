@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-30 22:26+0100\n"
+"POT-Creation-Date: 2026-11-02 22:16+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -287,35 +287,35 @@ msgstr "Tävlingsuppgifter"
 msgid "Accès MeOS"
 msgstr "MeOS-åtkomst"
 
-#: results/admin.py:151 results/templates/results/race_manage.html:130
+#: results/admin.py:155 results/templates/results/race_manage.html:130
 msgid "Compétition"
 msgstr "Tävling"
 
-#: results/admin.py:158 results/forms.py:81 results/models.py:67
+#: results/admin.py:162 results/forms.py:81 results/models.py:67
 #: results/templates/results/competition_list.html:53
 msgid "Date"
 msgstr "Datum"
 
-#: results/admin.py:175
+#: results/admin.py:179
 #, python-format
 msgid ""
 "%(n)s lien(s) de gestion révoqué(s) — les clés API MeOS restent actives."
 msgstr "%(n)s hanteringslänk(ar) återkallade — MeOS-nycklarna förblir aktiva."
 
-#: results/admin.py:183
+#: results/admin.py:187
 msgid "Révoquer les liens de gestion privés"
 msgstr "Återkalla privata hanteringslänkar"
 
-#: results/admin.py:200
+#: results/admin.py:204
 #, python-format
 msgid "Compétition supprimée pour cid=%(cid)s (%(name)s)."
 msgstr "Tävlingen med cid=%(cid)s (%(name)s) har tagits bort."
 
-#: results/admin.py:219
+#: results/admin.py:223
 msgid "Logo de l'organisateur supprimé."
 msgstr "Organisatörens logotyp har tagits bort."
 
-#: results/admin.py:225
+#: results/admin.py:229
 msgid "Aucun logo à supprimer."
 msgstr "Ingen logotyp att ta bort."
 
@@ -466,7 +466,8 @@ msgstr "Filen är för stor (högst %(max)d MB)."
 msgid ""
 "Statut IOF « %(status)s » inconnu : résultat importé avec le statut MOP "
 "inconnu."
-msgstr "Okänd IOF-status ”%(status)s”: resultatet importerades med okänd MOP-status."
+msgstr ""
+"Okänd IOF-status ”%(status)s”: resultatet importerades med okänd MOP-status."
 
 #: results/iof_importer.py:265
 msgid "Statut IOF absent : résultat importé avec le statut MOP inconnu."
@@ -532,7 +533,8 @@ msgstr "Klassen ”%(name)s” förekommer flera gånger: resultaten slås samma
 msgid ""
 "Classe « %(name)s » : noms différents pour un même identifiant — "
 "« %(kept)s » conservé."
-msgstr "Klassen ”%(name)s”: olika namn för samma identifierare — ”%(kept)s” behålls."
+msgstr ""
+"Klassen ”%(name)s”: olika namn för samma identifierare — ”%(kept)s” behålls."
 
 #: results/iof_importer.py:697
 #, python-format
@@ -569,7 +571,8 @@ msgstr "Ogiltig XML: %(error)s"
 msgid ""
 "Le fichier n'est pas une liste de résultats IOF v3 (élément <ResultList> "
 "attendu)."
-msgstr "Filen är inte en IOF v3-resultatlista (<ResultList>-element förväntas)."
+msgstr ""
+"Filen är inte en IOF v3-resultatlista (<ResultList>-element förväntas)."
 
 #: results/iof_importer.py:755
 #, python-format
@@ -626,7 +629,8 @@ msgstr ""
 msgid ""
 "La course %(race)s n'existe pas dans ce fichier (courses disponibles : "
 "%(races)s)."
-msgstr "Tävling %(race)s finns inte i filen (tillgängliga tävlingar: %(races)s)."
+msgstr ""
+"Tävling %(race)s finns inte i filen (tillgängliga tävlingar: %(races)s)."
 
 #: results/iof_importer.py:846
 msgid "Résultat sans numéro de course dans un fichier multi-course : ignoré."
@@ -706,7 +710,8 @@ msgstr "Tävlande ”%(name)s”: status OK utan tävlingstid."
 #: results/iof_importer.py:1299
 #, python-format
 msgid "Équipe « %(name)s » : fraction %(leg)s hors limites, ramenée à %(max)s."
-msgstr "Lag ”%(name)s”: sträcka %(leg)s utanför intervallet, begränsas till %(max)s."
+msgstr ""
+"Lag ”%(name)s”: sträcka %(leg)s utanför intervallet, begränsas till %(max)s."
 
 #: results/iof_importer.py:1343
 #, python-format
@@ -1319,6 +1324,11 @@ msgstr "Ta bort tävling"
 #: results/templates/admin/results/competitionconfig/change_form.html:20
 msgid "Supprimer définitivement cette compétition et toutes ses données ?"
 msgstr "Ta bort den här tävlingen och alla dess data permanent?"
+
+#: results/templates/admin/results/competitionconfig/change_list.html:9
+#: results/tests/test_i18n.py:435
+msgid "Ajouter une compétition"
+msgstr "Lägg till en tävling"
 
 #: results/templates/admin/results/competitionconfig/fieldset.html:43
 msgid "Supprimer le logo local"
@@ -3073,11 +3083,13 @@ msgid ""
 "sauf\n"
 "      si vous demandez explicitement à utiliser celles du fichier IOF."
 msgstr ""
-"Importen <strong>ersätter alla befintliga resultat</strong> för tävlingen\n  "
-"    (tävlande, lag, banor och mellantider), precis som en\n      "
-"”MOPComplete”-överföring från MeOS. Tävlingsuppgifterna som angetts på\n     "
-" webbplatsen (namn, datum, arrangör, webbplats, Livelox, logotyp) behålls,\n "
-"     om du inte uttryckligen väljer att använda uppgifterna från IOF-filen."
+"Importen <strong>ersätter alla befintliga resultat</strong> för tävlingen\n"
+"      (tävlande, lag, banor och mellantider), precis som en\n"
+"      ”MOPComplete”-överföring från MeOS. Tävlingsuppgifterna som angetts "
+"på\n"
+"      webbplatsen (namn, datum, arrangör, webbplats, Livelox, logotyp) "
+"behålls,\n"
+"      om du inte uttryckligen väljer att använda uppgifterna från IOF-filen."
 
 #: results/templates/results/race_import_iof.html:48
 msgid "Fichier IOF Data Standard v3"
@@ -3159,7 +3171,8 @@ msgstr ""
 msgid ""
 "Un seul numéro de course par import : précisez-le pour un fichier multi-"
 "course."
-msgstr "Ett tävlingsnummer per import: ange det för en fil med flera tävlingar."
+msgstr ""
+"Ett tävlingsnummer per import: ange det för en fil med flera tävlingar."
 
 #: results/templates/results/race_import_iof.html:221
 msgid ""
@@ -3317,10 +3330,12 @@ msgid ""
 "existants,\n"
 "      comme un envoi MeOS complet."
 msgstr ""
-"Ersätt tävlingens resultat med en fil\n      i formatet <strong>IOF Data "
-"Standard v3</strong> (ResultList) skapad av en annan\n      "
-"tidtagningsprogramvara. Importen skriver över alla befintliga resultat,\n    "
-"  precis som en fullständig MeOS-överföring."
+"Ersätt tävlingens resultat med en fil\n"
+"      i formatet <strong>IOF Data Standard v3</strong> (ResultList) skapad "
+"av en annan\n"
+"      tidtagningsprogramvara. Importen skriver över alla befintliga "
+"resultat,\n"
+"      precis som en fullständig MeOS-överföring."
 
 #: results/templates/results/race_manage.html:265
 msgid "Importer un fichier IOF"

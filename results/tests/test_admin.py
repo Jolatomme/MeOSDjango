@@ -2,6 +2,7 @@
 Tests pour l'admin Django de results (DB entièrement mockée via connection).
 """
 
+from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -310,6 +311,75 @@ class TestCompetitionConfigAdminForm:
             inst.save_model(request, obj, form, change=True)
         mock_super.assert_called_once_with(request, obj, form, True)
         form.save_competition_fields.assert_called_once_with()
+
+    def test_save_model_sans_methode_sur_le_formulaire_inline(self):
+        """Le formulaire list_editable n'a pas save_competition_fields.
+
+        Sans le garde-fou de save_model, l'enregistrement depuis la liste
+        (gel/visibilité) levait AttributeError → 500.
+        """
+        from results.admin import CompetitionConfigAdmin
+        from results.models import CompetitionConfig
+        inst = CompetitionConfigAdmin(CompetitionConfig, None)
+        request = RequestFactory().post('/admin/results/competitionconfig/')
+        form = inst.get_changelist_form(request)()
+        assert not hasattr(form, 'save_competition_fields')
+
+        obj = MagicMock(cid=5)
+        with patch('django.contrib.admin.options.ModelAdmin.save_model') as mock_super:
+            inst.save_model(request, obj, form, change=True)
+        mock_super.assert_called_once_with(request, obj, form, True)
+
+    def test_change_list_renomme_le_bouton_ajouter(self):
+        """Le changelist surcharge le libellé « Ajouter configuration… »."""
+        from django.template.loader import get_template
+        template = get_template(
+            'admin/results/competitionconfig/change_list.html'
+        )
+        assert template.origin.name.endswith(
+            'results/templates/admin/results/competitionconfig/change_list.html'
+        )
+        source = Path(template.origin.name).read_text(encoding='utf-8')
+        assert '{% translate "Ajouter une compétition" %}' in source
+
+    def test_submit_line_place_la_suppression_dans_la_barre(self):
+        """Le bouton de suppression est dans la barre des boutons standards."""
+        from types import SimpleNamespace
+        from django.template.loader import get_template, render_to_string
+        from results.models import CompetitionConfig
+
+        template = get_template(
+            'admin/results/competitionconfig/submit_line.html'
+        )
+        assert template.origin.name.endswith(
+            'results/templates/admin/results/competitionconfig/submit_line.html'
+        )
+
+        def rendu(change):
+            return render_to_string(
+                'admin/results/competitionconfig/submit_line.html',
+                {
+                    'show_save': True,
+                    'show_save_as_new': False,
+                    'show_save_and_add_another': True,
+                    'show_save_and_continue': True,
+                    'show_close': False,
+                    'show_delete_link': False,
+                    'change': change,
+                    'original': SimpleNamespace(pk=5) if change else None,
+                    'opts': CompetitionConfig._meta,
+                },
+            )
+
+        html = rendu(change=True)
+        assert html.count('<div class="submit-row">') == 1
+        assert 'name="_save"' in html
+        assert 'name="_delete_mop_data"' in html
+
+        # Page d'ajout : rien à supprimer, le bouton disparaît.
+        html = rendu(change=False)
+        assert 'name="_save"' in html
+        assert 'name="_delete_mop_data"' not in html
 
 
 # ─── changeform_view ──────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-30 22:26+0100\n"
+"POT-Creation-Date: 2026-11-02 22:16+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -287,35 +287,35 @@ msgstr "Race information"
 msgid "Accès MeOS"
 msgstr "MeOS access"
 
-#: results/admin.py:151 results/templates/results/race_manage.html:130
+#: results/admin.py:155 results/templates/results/race_manage.html:130
 msgid "Compétition"
 msgstr "Competition"
 
-#: results/admin.py:158 results/forms.py:81 results/models.py:67
+#: results/admin.py:162 results/forms.py:81 results/models.py:67
 #: results/templates/results/competition_list.html:53
 msgid "Date"
 msgstr "Date"
 
-#: results/admin.py:175
+#: results/admin.py:179
 #, python-format
 msgid ""
 "%(n)s lien(s) de gestion révoqué(s) — les clés API MeOS restent actives."
 msgstr "%(n)s management link(s) revoked — the MeOS API keys stay active."
 
-#: results/admin.py:183
+#: results/admin.py:187
 msgid "Révoquer les liens de gestion privés"
 msgstr "Revoke private management links"
 
-#: results/admin.py:200
+#: results/admin.py:204
 #, python-format
 msgid "Compétition supprimée pour cid=%(cid)s (%(name)s)."
 msgstr "Competition deleted for cid=%(cid)s (%(name)s)."
 
-#: results/admin.py:219
+#: results/admin.py:223
 msgid "Logo de l'organisateur supprimé."
 msgstr "Organizer logo deleted."
 
-#: results/admin.py:225
+#: results/admin.py:229
 msgid "Aucun logo à supprimer."
 msgstr "No logo to delete."
 
@@ -466,7 +466,8 @@ msgstr "File too large (%(max)d MB maximum)."
 msgid ""
 "Statut IOF « %(status)s » inconnu : résultat importé avec le statut MOP "
 "inconnu."
-msgstr "Unknown IOF status “%(status)s”: result imported with unknown MOP status."
+msgstr ""
+"Unknown IOF status “%(status)s”: result imported with unknown MOP status."
 
 #: results/iof_importer.py:265
 msgid "Statut IOF absent : résultat importé avec le statut MOP inconnu."
@@ -532,14 +533,16 @@ msgstr "Class “%(name)s” appears several times: results merged."
 msgid ""
 "Classe « %(name)s » : noms différents pour un même identifiant — "
 "« %(kept)s » conservé."
-msgstr "Class “%(name)s”: different names for the same identifier — “%(kept)s” kept."
+msgstr ""
+"Class “%(name)s”: different names for the same identifier — “%(kept)s” kept."
 
 #: results/iof_importer.py:697
 #, python-format
 msgid ""
 "La classe « %(name)s » mélange des résultats individuels et des équipes, ce "
 "qui n'est pas pris en charge."
-msgstr "Class “%(name)s” mixes individual and team results, which is not supported."
+msgstr ""
+"Class “%(name)s” mixes individual and team results, which is not supported."
 
 #: results/iof_importer.py:719
 msgid "Le fichier est vide."
@@ -624,7 +627,8 @@ msgstr ""
 msgid ""
 "La course %(race)s n'existe pas dans ce fichier (courses disponibles : "
 "%(races)s)."
-msgstr "Race %(race)s does not exist in this file (available races: %(races)s)."
+msgstr ""
+"Race %(race)s does not exist in this file (available races: %(races)s)."
 
 #: results/iof_importer.py:846
 msgid "Résultat sans numéro de course dans un fichier multi-course : ignoré."
@@ -662,7 +666,8 @@ msgstr "The file contains no usable results for the selected race."
 msgid ""
 "Identifiant %(id)s dupliqué (%(label)s) : un identifiant synthétique est "
 "utilisé."
-msgstr "Duplicate identifier %(id)s (%(label)s): a synthetic identifier is used."
+msgstr ""
+"Duplicate identifier %(id)s (%(label)s): a synthetic identifier is used."
 
 #: results/iof_importer.py:1006
 #, python-format
@@ -1311,6 +1316,11 @@ msgstr "Delete competition"
 #: results/templates/admin/results/competitionconfig/change_form.html:20
 msgid "Supprimer définitivement cette compétition et toutes ses données ?"
 msgstr "Permanently delete this competition and all its data?"
+
+#: results/templates/admin/results/competitionconfig/change_list.html:9
+#: results/tests/test_i18n.py:435
+msgid "Ajouter une compétition"
+msgstr "Add a competition"
 
 #: results/templates/admin/results/competitionconfig/fieldset.html:43
 msgid "Supprimer le logo local"
@@ -3057,11 +3067,11 @@ msgid ""
 "sauf\n"
 "      si vous demandez explicitement à utiliser celles du fichier IOF."
 msgstr ""
-"This import <strong>replaces all existing results</strong> for the race\n    "
-"  (competitors, teams, courses and splits), exactly like a MeOS\n      "
-"“MOPComplete” upload. The race information entered on the site\n      (name, "
-"date, organizer, website, Livelox, logo) is kept, unless\n      you "
-"explicitly choose to use the information from the IOF file."
+"This import <strong>replaces all existing results</strong> for the race\n"
+"      (competitors, teams, courses and splits), exactly like a MeOS\n"
+"      “MOPComplete” upload. The race information entered on the site\n"
+"      (name, date, organizer, website, Livelox, logo) is kept, unless\n"
+"      you explicitly choose to use the information from the IOF file."
 
 #: results/templates/results/race_import_iof.html:48
 msgid "Fichier IOF Data Standard v3"
@@ -3136,8 +3146,7 @@ msgid ""
 "Fichiers « Complete » et « Snapshot » : import complet ; le statut « Delta » "
 "est refusé."
 msgstr ""
-"“Complete” and “Snapshot” files: full import; the “Delta” status is "
-"rejected."
+"“Complete” and “Snapshot” files: full import; the “Delta” status is rejected."
 
 #: results/templates/results/race_import_iof.html:220
 msgid ""
@@ -3149,7 +3158,8 @@ msgstr "One race number per import: specify it for a multi-race file."
 msgid ""
 "Résultats individuels et relais pris en charge ; les circuits avec fourches "
 "sont simplifiés."
-msgstr "Individual and relay results are supported; forked courses are simplified."
+msgstr ""
+"Individual and relay results are supported; forked courses are simplified."
 
 #: results/templates/results/race_import_iof.html:222
 msgid ""
@@ -3300,10 +3310,11 @@ msgid ""
 "existants,\n"
 "      comme un envoi MeOS complet."
 msgstr ""
-"Replace the race results with a file\n      in <strong>IOF Data Standard "
-"v3</strong> (ResultList) format produced by another\n      timing software. "
-"The import overwrites all existing results,\n      like a complete MeOS "
-"upload."
+"Replace the race results with a file\n"
+"      in <strong>IOF Data Standard v3</strong> (ResultList) format produced "
+"by another\n"
+"      timing software. The import overwrites all existing results,\n"
+"      like a complete MeOS upload."
 
 #: results/templates/results/race_manage.html:265
 msgid "Importer un fichier IOF"
