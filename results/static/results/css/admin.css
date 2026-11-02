@@ -478,6 +478,12 @@ fieldset .inline-heading {
   color: #fff;
 }
 
+/* Bouton « Supprimer la compétition » poussé à l'extrémité droite de la
+   barre d'enregistrement (comme le lien « Supprimer » natif de Django). */
+.submit-row .co-danger-btn {
+  margin-left: auto;
+}
+
 .submit-row .co-danger-btn:hover,
 .co-fieldset-actions .co-danger-btn:hover {
   background: #a71d2a;

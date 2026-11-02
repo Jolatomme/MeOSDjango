@@ -1,0 +1,12 @@
+{% extends "admin/submit_line.html" %}
+{% load i18n %}
+
+{% block submit-row %}
+{{ block.super }}
+{% if change %}
+  <input type="submit" name="_delete_mop_data"
+         class="co-danger-btn"
+         value="{% translate "Supprimer la compétition" %}"
+         onclick="return confirm('{% translate "Supprimer définitivement cette compétition et toutes ses données ?" %}')">
+{% endif %}
+{% endblock %}

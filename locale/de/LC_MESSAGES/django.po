@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-30 22:26+0100\n"
+"POT-Creation-Date: 2026-11-02 22:16+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -288,36 +288,36 @@ msgstr "Angaben zum Wettkampf"
 msgid "Accès MeOS"
 msgstr "MeOS-Zugang"
 
-#: results/admin.py:151 results/templates/results/race_manage.html:130
+#: results/admin.py:155 results/templates/results/race_manage.html:130
 msgid "Compétition"
 msgstr "Wettbewerbsnummer"
 
-#: results/admin.py:158 results/forms.py:81 results/models.py:67
+#: results/admin.py:162 results/forms.py:81 results/models.py:67
 #: results/templates/results/competition_list.html:53
 msgid "Date"
 msgstr "Datum"
 
-#: results/admin.py:175
+#: results/admin.py:179
 #, python-format
 msgid ""
 "%(n)s lien(s) de gestion révoqué(s) — les clés API MeOS restent actives."
 msgstr ""
 "%(n)s Verwaltungslink(s) widerrufen — die MeOS-API-Schlüssel bleiben aktiv."
 
-#: results/admin.py:183
+#: results/admin.py:187
 msgid "Révoquer les liens de gestion privés"
 msgstr "Private Verwaltungslinks widerrufen"
 
-#: results/admin.py:200
+#: results/admin.py:204
 #, python-format
 msgid "Compétition supprimée pour cid=%(cid)s (%(name)s)."
 msgstr "Wettbewerb mit cid=%(cid)s (%(name)s) gelöscht."
 
-#: results/admin.py:219
+#: results/admin.py:223
 msgid "Logo de l'organisateur supprimé."
 msgstr "Organisator-Logo gelöscht."
 
-#: results/admin.py:225
+#: results/admin.py:229
 msgid "Aucun logo à supprimer."
 msgstr "Kein Logo zum Löschen vorhanden."
 
@@ -510,7 +510,8 @@ msgstr "Zielzeit vor der Startzeit: Zeit ignoriert."
 
 #: results/iof_importer.py:551
 msgid "Plusieurs résultats pour la même course : le premier est conservé."
-msgstr "Mehrere Ergebnisse für denselben Wettkampf: das erste wird beibehalten."
+msgstr ""
+"Mehrere Ergebnisse für denselben Wettkampf: das erste wird beibehalten."
 
 #: results/iof_importer.py:589
 msgid "Élément <Event> absent : informations minimales utilisées."
@@ -575,7 +576,8 @@ msgstr "Ungültiges XML: %(error)s"
 msgid ""
 "Le fichier n'est pas une liste de résultats IOF v3 (élément <ResultList> "
 "attendu)."
-msgstr "Die Datei ist keine IOF-v3-Ergebnisliste (<ResultList>-Element erwartet)."
+msgstr ""
+"Die Datei ist keine IOF-v3-Ergebnisliste (<ResultList>-Element erwartet)."
 
 #: results/iof_importer.py:755
 #, python-format
@@ -686,7 +688,8 @@ msgstr ""
 #, python-format
 msgid ""
 "Classe « %(name)s » : identifiant dupliqué, les résultats sont fusionnés."
-msgstr "Klasse „%(name)s“: doppelte Kennung, die Ergebnisse werden zusammengeführt."
+msgstr ""
+"Klasse „%(name)s“: doppelte Kennung, die Ergebnisse werden zusammengeführt."
 
 #: results/iof_importer.py:1015
 #, python-format
@@ -1354,6 +1357,11 @@ msgstr "Wettbewerb löschen"
 #: results/templates/admin/results/competitionconfig/change_form.html:20
 msgid "Supprimer définitivement cette compétition et toutes ses données ?"
 msgstr "Diesen Wettbewerb und alle seine Daten endgültig löschen?"
+
+#: results/templates/admin/results/competitionconfig/change_list.html:9
+#: results/tests/test_i18n.py:435
+msgid "Ajouter une compétition"
+msgstr "Wettbewerb hinzufügen"
 
 #: results/templates/admin/results/competitionconfig/fieldset.html:43
 msgid "Supprimer le logo local"
@@ -3124,11 +3132,13 @@ msgid ""
 "      si vous demandez explicitement à utiliser celles du fichier IOF."
 msgstr ""
 "Dieser Import <strong>ersetzt alle vorhandenen Ergebnisse</strong> des "
-"Wettkampfs\n      (Teilnehmer, Mannschaften, Strecken und Zwischenzeiten), "
-"genau wie eine\n      „MOPComplete“-Übertragung von MeOS. Die auf der "
-"Website eingegebenen\n      Wettkampfangaben (Name, Datum, Veranstalter, "
-"Website, Livelox, Logo)\n      bleiben erhalten, sofern Sie nicht "
-"ausdrücklich die Angaben aus der\n      IOF-Datei verwenden möchten."
+"Wettkampfs\n"
+"      (Teilnehmer, Mannschaften, Strecken und Zwischenzeiten), genau wie "
+"eine\n"
+"      „MOPComplete“-Übertragung von MeOS. Die auf der Website eingegebenen\n"
+"      Wettkampfangaben (Name, Datum, Veranstalter, Website, Livelox, Logo)\n"
+"      bleiben erhalten, sofern Sie nicht ausdrücklich die Angaben aus der\n"
+"      IOF-Datei verwenden möchten."
 
 #: results/templates/results/race_import_iof.html:48
 msgid "Fichier IOF Data Standard v3"
@@ -3377,10 +3387,12 @@ msgid ""
 "existants,\n"
 "      comme un envoi MeOS complet."
 msgstr ""
-"Ersetzen Sie die Ergebnisse des Wettkampfs durch eine Datei\n      im Format "
-"<strong>IOF Data Standard v3</strong> (ResultList), die von einer anderen\n  "
-"    Zeitnahme-Software erzeugt wurde. Der Import überschreibt alle "
-"vorhandenen\n      Ergebnisse, wie eine vollständige MeOS-Übertragung."
+"Ersetzen Sie die Ergebnisse des Wettkampfs durch eine Datei\n"
+"      im Format <strong>IOF Data Standard v3</strong> (ResultList), die von "
+"einer anderen\n"
+"      Zeitnahme-Software erzeugt wurde. Der Import überschreibt alle "
+"vorhandenen\n"
+"      Ergebnisse, wie eine vollständige MeOS-Übertragung."
 
 #: results/templates/results/race_manage.html:265
 msgid "Importer un fichier IOF"

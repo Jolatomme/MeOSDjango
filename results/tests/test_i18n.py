@@ -428,6 +428,14 @@ class TestLibellesAdmin:
             assert str(cfg.verbose_name) != 'Résultats'
 
     @pytest.mark.parametrize('lang', ['en', 'de', 'sv'])
+    def test_bouton_ajouter_competition_traduit(self, lang):
+        """Le bouton « Ajouter une compétition » du changelist est traduit."""
+        _skip_si_non_compile(lang)
+        with translation.override(lang):
+            trad = translation.gettext('Ajouter une compétition')
+        assert trad and trad != 'Ajouter une compétition'
+
+    @pytest.mark.parametrize('lang', ['en', 'de', 'sv'])
     def test_libelles_colonnes_vue_competition(self, lang):
         """Les en-têtes de colonnes de l'admin Mopcompetition (champs name,
         date, organizer, homepage) sont traduits dans la langue active."""
