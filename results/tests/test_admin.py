@@ -165,9 +165,13 @@ class TestCompetitionConfigAdmin:
             request, obj=CompetitionConfig(cid=5), change=True,
         )
         assert 'created_at' not in form_class.base_fields
+        assert 'homepage' in form_class.base_fields
         assert 'livelox' in form_class.base_fields
         assert 'logo' in form_class.base_fields
         assert 'remove_logo' not in form_class.base_fields
+        assert inst.fieldsets[1][1]['fields'] == (
+            'homepage', 'livelox', 'logo',
+        )
         assert inst.fieldsets[1][1]['classes'] == ('co-race-info',)
 
 
@@ -188,30 +192,34 @@ class TestCompetitionConfigAdminForm:
             )
         return form, MockCompetition
 
-    def test_initial_livelox_et_lien_logo_actuel(self):
+    def test_initial_homepage_livelox_et_lien_logo_actuel(self):
         competition = MagicMock(
+            homepage='https://club.example',
             livelox='https://livelox.example/42',
             logo='logo-abc123.png',
         )
         form, MockCompetition = self._form(competition)
 
         MockCompetition.objects.filter.assert_called_once_with(cid=5, id=1)
+        assert form.initial['homepage'] == 'https://club.example'
         assert form.initial['livelox'] == 'https://livelox.example/42'
-        assert 'logo-abc123.png' in str(form.fields['logo'].help_text)
-        assert '/org_logo/logo-abc123.png' in str(
-            form.fields['logo'].help_text
-        )
+        help_text = str(form.fields['logo'].help_text)
+        assert 'logo-abc123.png' in help_text
+        assert '/org_logo/logo-abc123.png' in help_text
+        assert '<img' in help_text
 
     def test_sans_ligne_mopcompetition(self):
         form, _ = self._form(None)
         assert form._competition is None
+        assert form.initial.get('homepage', '') == ''
         assert form.initial.get('livelox', '') == ''
 
     @patch('results.admin.delete_org_logo')
     def test_save_livelox_seul(self, mock_delete):
-        competition = MagicMock(livelox='', logo='')
+        competition = MagicMock(homepage='', livelox='', logo='')
         form, MockCompetition = self._form(competition)
         form.cleaned_data = {
+            'homepage': '',
             'livelox': 'https://livelox.example/99',
             'logo': None,
         }
@@ -225,13 +233,34 @@ class TestCompetitionConfigAdminForm:
         mock_delete.assert_not_called()
 
     @patch('results.admin.delete_org_logo')
+    def test_save_homepage_seul(self, mock_delete):
+        competition = MagicMock(
+            homepage='https://ancien.example', livelox='', logo='',
+        )
+        form, MockCompetition = self._form(competition)
+        form.cleaned_data = {
+            'homepage': 'https://nouveau.example',
+            'livelox': '',
+            'logo': None,
+        }
+
+        with patch('results.admin.Mopcompetition', MockCompetition):
+            form.save_competition_fields()
+
+        MockCompetition.objects.filter.return_value.update.assert_called_once_with(
+            homepage='https://nouveau.example',
+        )
+        mock_delete.assert_not_called()
+
+    @patch('results.admin.delete_org_logo')
     @patch('results.admin.save_org_logo', return_value='logo-new.png')
     def test_save_nouveau_logo_remplace_l_ancien(self, mock_save, mock_delete):
         from django.core.files.uploadedfile import SimpleUploadedFile
-        competition = MagicMock(livelox='', logo='logo-old.png')
+        competition = MagicMock(homepage='', livelox='', logo='logo-old.png')
         form, MockCompetition = self._form(competition)
         upload = SimpleUploadedFile('club.png', b'\x89PNG\r\n\x1a\nx')
         form.cleaned_data = {
+            'homepage': '',
             'livelox': '',
             'logo': upload,
         }
@@ -247,10 +276,12 @@ class TestCompetitionConfigAdminForm:
 
     def test_save_sans_changement_ne_touche_pas_a_la_base(self):
         competition = MagicMock(
+            homepage='https://club.example',
             livelox='https://livelox.example/42', logo='logo-old.png',
         )
         form, MockCompetition = self._form(competition)
         form.cleaned_data = {
+            'homepage': 'https://club.example',
             'livelox': 'https://livelox.example/42',
             'logo': None,
         }
@@ -261,12 +292,48 @@ class TestCompetitionConfigAdminForm:
 
     def test_save_sans_competition_ne_touche_pas_a_la_base(self):
         form, MockCompetition = self._form(None)
-        form.cleaned_data = {'livelox': 'https://x.example', 'logo': None}
+        form.cleaned_data = {
+            'homepage': 'https://x.example',
+            'livelox': 'https://x.example',
+            'logo': None,
+        }
 
         form.save_competition_fields()
 
         MockCompetition.objects.filter.assert_called_once()
         MockCompetition.objects.filter.return_value.update.assert_not_called()
+
+    def test_fieldset_affiche_l_apercu_et_les_champs_course(self):
+        from django.contrib.admin.helpers import Fieldset
+        from django.template.loader import render_to_string
+        from results.models import CompetitionConfig
+
+        competition = MagicMock(
+            homepage='https://club.example',
+            livelox='https://livelox.example/42',
+            logo='logo-abc.png',
+        )
+        form, _ = self._form(competition)
+        fieldset = Fieldset(
+            form, name="Informations de la course",
+            fields=['homepage', 'livelox', 'logo'], classes=('co-race-info',),
+        )
+        html = render_to_string(
+            'admin/results/competitionconfig/fieldset.html',
+            {
+                'fieldset': fieldset,
+                'heading_level': 2,
+                'prefix': 'fieldset',
+                'id_prefix': 0,
+                'id_suffix': 1,
+                'competition_logo': 'logo-abc.png',
+            },
+        )
+        assert 'name="homepage"' in html
+        assert 'name="livelox"' in html
+        assert 'name="logo"' in html
+        assert 'value="https://club.example"' in html
+        assert '<img src="/org_logo/logo-abc.png"' in html
 
     def test_fieldset_course_contient_le_bouton_supprimer_logo(self):
         from django.contrib.admin.helpers import Fieldset
@@ -277,7 +344,7 @@ class TestCompetitionConfigAdminForm:
         form = CompetitionConfigAdminForm(instance=CompetitionConfig())
         fieldset = Fieldset(
             form, name="Informations de la course",
-            fields=['livelox', 'logo'], classes=('co-race-info',),
+            fields=['homepage', 'livelox', 'logo'], classes=('co-race-info',),
         )
         context = {
             'fieldset': fieldset,
@@ -291,6 +358,9 @@ class TestCompetitionConfigAdminForm:
             'admin/results/competitionconfig/fieldset.html',
             {**context, 'competition_logo': 'logo-abc.png'},
         )
+        assert 'name="homepage"' in html
+        assert 'name="livelox"' in html
+        assert 'name="logo"' in html
         assert 'name="_delete_logo"' in html
         assert 'Supprimer le logo local' in html
 

@@ -22,11 +22,18 @@ MEOS_TABLES = [
 class CompetitionConfigAdminForm(forms.ModelForm):
     """Formulaire admin de la configuration, enrichi des champs de course.
 
-    ``livelox`` et ``logo`` appartiennent à ``mopCompetition`` (table MeOS non
-    gérée par Django) : ils sont exposés ici pour pouvoir les modifier après
-    la création de la course, sans passer par le lien privé de gestion.
+    ``homepage``, ``livelox`` et ``logo`` appartiennent à ``mopCompetition``
+    (table MeOS non gérée par Django) : ils sont exposés ici pour pouvoir les
+    modifier après la création de la course, sans passer par le lien privé de
+    gestion.
     """
 
+    homepage = forms.URLField(
+        label=gettext_lazy("Site web de l'organisateur"),
+        max_length=128,
+        required=False,
+        assume_scheme='https',
+    )
     livelox = forms.URLField(
         label="Livelox",
         max_length=128,
@@ -54,25 +61,40 @@ class CompetitionConfigAdminForm(forms.ModelForm):
             )
         if self._competition is not None:
             self.initial.setdefault(
+                'homepage', self._competition.homepage or '',
+            )
+            self.initial.setdefault(
                 'livelox', self._competition.livelox or '',
             )
             if self._competition.logo:
+                logo_url = reverse(
+                    'results:org_logo', args=[self._competition.logo],
+                )
                 self.fields['logo'].help_text = format_html(
-                    '{} {} <a href="{}" target="_blank" rel="noopener">{}</a>',
-                    self.fields['logo'].help_text,
+                    '<span class="co-admin-logo-preview">'
+                    '<a href="{}" target="_blank" rel="noopener">'
+                    '<img src="{}" alt=""></a></span>'
+                    '<span class="co-admin-logo-current">{} '
+                    '<a href="{}" target="_blank" rel="noopener">{}</a></span>'
+                    '<span class="co-admin-logo-hint">{}</span>',
+                    logo_url, logo_url,
                     gettext("Logo actuel :"),
-                    reverse('results:org_logo', args=[self._competition.logo]),
-                    self._competition.logo,
+                    logo_url, self._competition.logo,
+                    self.fields['logo'].help_text,
                 )
 
     def save_competition_fields(self):
-        """Reporte livelox/logo sur la ligne ``mopCompetition`` (cid, id=1)."""
+        """Reporte homepage/livelox/logo sur ``mopCompetition`` (cid, id=1)."""
         competition = self._competition
         cleaned = getattr(self, 'cleaned_data', None)
         if competition is None or not cleaned:
             return
 
         changes = {}
+
+        homepage = cleaned.get('homepage') or ''
+        if (competition.homepage or '') != homepage:
+            changes['homepage'] = homepage
 
         livelox = cleaned.get('livelox') or ''
         if (competition.livelox or '') != livelox:
@@ -115,7 +137,7 @@ class CompetitionConfigAdmin(admin.ModelAdmin):
             'fields': ('cid', 'frozen', 'visible', 'deleted'),
         }),
         (gettext_lazy("Informations de la course"), {
-            'fields': ('livelox', 'logo'),
+            'fields': ('homepage', 'livelox', 'logo'),
             'classes': ('co-race-info',),
         }),
         (gettext_lazy("Accès MeOS"), {

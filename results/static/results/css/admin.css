@@ -415,8 +415,9 @@ label {
   border-bottom-color: var(--co-border-soft);
 }
 
-/* Champs longs de la configuration compétition : lien Livelox, clé API,
-   jeton de gestion. */
+/* Champs longs de la configuration compétition : site de l'organisateur,
+   lien Livelox, clé API, jeton de gestion. */
+.form-row.field-homepage input,
 .form-row.field-livelox input,
 .form-row.field-api_key input,
 .form-row.field-manage_token input {
@@ -427,6 +428,28 @@ label {
 
 .help, p.help, div.help {
   color: var(--co-text-muted);
+}
+
+/* Aperçu du logo de l'organisateur dans le change_form CompetitionConfig. */
+.co-admin-logo-preview {
+  display: block;
+  margin-bottom: .5rem;
+}
+
+.co-admin-logo-preview img {
+  display: block;
+  width: auto;
+  max-width: 14rem;
+  max-height: 5rem;
+  background: #fff;
+  border: 1px solid var(--co-border);
+  border-radius: var(--co-radius-sm);
+  padding: .25rem .5rem;
+}
+
+.co-admin-logo-current,
+.co-admin-logo-hint {
+  display: block;
 }
 
 .readonly {

@@ -352,6 +352,10 @@ table { font-variant-numeric: tabular-nums; }
 }
 .co-card-header .bi { opacity: .85; }
 
+/* Carte « Zone de danger » (suppression de course) : bordure et en-tête rouges. */
+.co-card.co-danger-card { border-color: var(--co-warn); }
+.co-danger-card .co-card-header { background: var(--co-warn); }
+
 /* Logo d'organisation sur le badge de course (accueil) :
    pastille claire pour rester lisible sur le bandeau vert (logo rouge) */
 .org-logo {
@@ -360,6 +364,13 @@ table { font-variant-numeric: tabular-nums; }
   border-radius: var(--co-radius-sm); padding: .1rem .3rem;
 }
 html[data-theme="dark"] .org-logo { border-color: rgba(0, 0, 0, .25); }
+
+/* Aperçu du logo dans le formulaire d'édition (page de gestion). */
+.co-logo-preview {
+  display: block; width: auto; max-width: 12rem; max-height: 4rem;
+  background: #fff; border: 1px solid var(--co-border);
+  border-radius: var(--co-radius-sm); padding: .25rem .5rem;
+}
 
 /* Carte de course cliquable (accueil) : lien tendu sur toute la carte,
    les liens internes (site de l'organisateur, horaire) passent au-dessus */

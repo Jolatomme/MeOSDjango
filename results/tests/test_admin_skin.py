@@ -124,6 +124,11 @@ class TestAdminCss:
             '}'
         ) in css
 
+    def test_apercu_du_logo_dans_le_change_form(self):
+        css = ADMIN_CSS.read_text()
+        assert '.co-admin-logo-preview img' in css
+        assert 'max-height: 5rem;' in css
+
 
 # ─── Bascule de thème partagée ────────────────────────────────────────────────
 

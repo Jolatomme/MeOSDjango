@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-02 22:16+0100\n"
+"POT-Creation-Date: 2026-11-02 23:31+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -30,7 +30,7 @@ msgstr ""
 #: results/templates/results/meos_checker.html:10
 #: results/templates/results/race_create.html:11
 #: results/templates/results/race_import_iof.html:10
-#: results/templates/results/race_manage.html:20
+#: results/templates/results/race_manage.html:22
 #: results/templates/results/start_list.html:10
 #: results/templates/results/statistics.html:10
 #: results/templates/results/tuto.html:10
@@ -267,12 +267,14 @@ msgid_plural "%(n)s rapports supprimés."
 msgstr[0] "%(n)s Bericht gelöscht."
 msgstr[1] "%(n)s Berichte gelöscht."
 
-#: results/admin.py:37 results/forms.py:115
+#: results/admin.py:37 results/forms.py:115 results/forms.py:125
 #: results/templates/results/race_create.html:117
+#: results/templates/results/race_manage.html:279
 msgid "Logo de l'organisateur"
 msgstr "Logo des Veranstalters"
 
 #: results/admin.py:40 results/templates/results/race_create.html:129
+#: results/templates/results/race_manage.html:310
 msgid "SVG, PNG ou JPEG — 2 Mo maximum."
 msgstr "SVG, PNG oder JPEG — maximal 2 MB."
 
@@ -288,7 +290,7 @@ msgstr "Angaben zum Wettkampf"
 msgid "Accès MeOS"
 msgstr "MeOS-Zugang"
 
-#: results/admin.py:155 results/templates/results/race_manage.html:130
+#: results/admin.py:155 results/templates/results/race_manage.html:170
 msgid "Compétition"
 msgstr "Wettbewerbsnummer"
 
@@ -331,7 +333,7 @@ msgstr "Kein Logo zum Löschen vorhanden."
 #: results/templates/results/course_results.html:13
 #: results/templates/results/course_results.html:18
 #: results/templates/results/live_results.html:119
-#: results/tests/test_i18n.py:427
+#: results/tests/test_i18n.py:430
 msgid "Résultats"
 msgstr "Ergebnisse"
 
@@ -408,7 +410,7 @@ msgid "Organisateur / club"
 msgstr "Veranstalter / Verein"
 
 #: results/forms.py:86 results/templates/results/race_create.html:91
-#: results/templates/results/race_manage.html:214
+#: results/templates/results/race_manage.html:255
 msgid "Site web de l'organisateur"
 msgstr "Website des Veranstalters"
 
@@ -416,11 +418,20 @@ msgstr "Website des Veranstalters"
 msgid "Site web (champ piège)"
 msgstr "Website (Honeypot-Feld)"
 
-#: results/forms.py:129
+#: results/forms.py:128
+msgid "Laissez vide pour conserver le logo actuel."
+msgstr "Leer lassen, um das aktuelle Logo zu behalten."
+
+#: results/forms.py:131
+#
+msgid "Supprimer le logo actuel"
+msgstr "Aktuelles Logo löschen"
+
+#: results/forms.py:140
 msgid "Fichier IOF ResultList (.xml)"
 msgstr "IOF-ResultList-Datei (.xml)"
 
-#: results/forms.py:131
+#: results/forms.py:142
 msgid ""
 "Export IOF Data Standard v3 (ResultList). Les fichiers « Complete » et "
 "« Snapshot » sont acceptés."
@@ -428,11 +439,11 @@ msgstr ""
 "IOF-Data-Standard-v3-Export (ResultList). Dateien vom Typ „Complete“ und "
 "„Snapshot“ werden akzeptiert."
 
-#: results/forms.py:136 results/templates/results/race_import_iof.html:180
+#: results/forms.py:147 results/templates/results/_iof_import_panel.html:177
 msgid "Numéro de course"
 msgstr "Wettkampfnummer"
 
-#: results/forms.py:140
+#: results/forms.py:151
 msgid ""
 "Obligatoire pour un fichier contenant plusieurs courses ; laissez vide pour "
 "un fichier à une seule course."
@@ -440,11 +451,11 @@ msgstr ""
 "Erforderlich für eine Datei mit mehreren Wettkämpfen; leer lassen für eine "
 "Datei mit nur einem Wettkampf."
 
-#: results/forms.py:145
+#: results/forms.py:156
 msgid "Utiliser les informations de l'événement IOF"
 msgstr "Informationen der IOF-Veranstaltung verwenden"
 
-#: results/forms.py:148
+#: results/forms.py:159
 msgid ""
 "Nom, date, organisateur et site web du fichier. Décoché, les informations "
 "déjà saisies sur le site sont conservées et les champs vides sont complétés "
@@ -454,11 +465,11 @@ msgstr ""
 "die bereits auf der Website eingegebenen Angaben erhalten, leere Felder "
 "werden aus der Datei ergänzt."
 
-#: results/forms.py:154
+#: results/forms.py:165
 msgid "Je comprends que l'import remplace tous les résultats existants."
 msgstr "Ich verstehe, dass der Import alle vorhandenen Ergebnisse ersetzt."
 
-#: results/forms.py:164
+#: results/forms.py:175
 #, python-format
 msgid "Fichier trop volumineux (%(max)d Mo maximum)."
 msgstr "Datei zu groß (maximal %(max)d MB)."
@@ -1112,7 +1123,7 @@ msgstr "Veranstalter"
 msgid "page d'accueil"
 msgstr "Startseite"
 
-#: results/models.py:77 results/tests/test_i18n.py:415
+#: results/models.py:77 results/tests/test_i18n.py:418
 msgid "compétitions"
 msgstr "Wettbewerbe"
 
@@ -1172,7 +1183,7 @@ msgstr "erstellt am"
 msgid "configuration compétition"
 msgstr "Wettbewerbskonfiguration"
 
-#: results/models.py:303 results/tests/test_i18n.py:416
+#: results/models.py:303 results/tests/test_i18n.py:419
 msgid "configurations compétitions"
 msgstr "Wettbewerbskonfigurationen"
 
@@ -1184,24 +1195,7 @@ msgstr "gelöscht"
 msgid "masquée"
 msgstr "verborgen"
 
-#: results/race_views.py:134
-msgid "Formulaire invalide. Vérifiez les champs saisis."
-msgstr "Ungültiges Formular. Bitte die Eingaben prüfen."
-
-#: results/race_views.py:153
-msgid "Conflit à la création. Réessayez une nouvelle fois."
-msgstr "Konflikt beim Erstellen. Bitte erneut versuchen."
-
-#: results/race_views.py:208
-#, python-format
-msgid ""
-"Course « %(name)s » supprimée : résultats, clé API et lien de gestion "
-"effacés."
-msgstr ""
-"Wettkampf „%(name)s“ gelöscht: Ergebnisse, API-Schlüssel und Verwaltungslink "
-"entfernt."
-
-#: results/race_views.py:286
+#: results/race_views.py:179
 msgid ""
 "Cochez la case de confirmation : l'import remplace tous les résultats "
 "existants."
@@ -1209,7 +1203,7 @@ msgstr ""
 "Aktivieren Sie das Bestätigungsfeld: Der Import ersetzt alle vorhandenen "
 "Ergebnisse."
 
-#: results/race_views.py:305
+#: results/race_views.py:200
 msgid ""
 "La course est gelée : aucun résultat n'a été importé. Dégèle-la dans MeOS "
 "avant de réessayer."
@@ -1217,7 +1211,7 @@ msgstr ""
 "Der Wettkampf ist eingefroren: Es wurden keine Ergebnisse importiert. Heben "
 "Sie die Sperre in MeOS auf, bevor Sie es erneut versuchen."
 
-#: results/race_views.py:319
+#: results/race_views.py:215
 #, python-format
 msgid ""
 "Résultats IOF importés : %(classes)d classe(s), %(competitors)d "
@@ -1225,6 +1219,23 @@ msgid ""
 msgstr ""
 "IOF-Ergebnisse importiert: %(classes)d Klasse(n), %(competitors)d "
 "Teilnehmer, %(teams)d Mannschaft(en)."
+
+#: results/race_views.py:253
+msgid "Formulaire invalide. Vérifiez les champs saisis."
+msgstr "Ungültiges Formular. Bitte die Eingaben prüfen."
+
+#: results/race_views.py:272
+msgid "Conflit à la création. Réessayez une nouvelle fois."
+msgstr "Konflikt beim Erstellen. Bitte erneut versuchen."
+
+#: results/race_views.py:349
+#, python-format
+msgid ""
+"Course « %(name)s » supprimée : résultats, clé API et lien de gestion "
+"effacés."
+msgstr ""
+"Wettkampf „%(name)s“ gelöscht: Ergebnisse, API-Schlüssel und Verwaltungslink "
+"entfernt."
 
 #: results/services.py:393 results/services.py:401 results/services.py:513
 #: results/services.py:530 results/templates/results/_split_detail_row.html:2
@@ -1350,16 +1361,8 @@ msgstr ""
 "Ein unerwartetes Problem ist auf dem Server aufgetreten. Bitte versuchen Sie "
 "es in wenigen Augenblicken erneut."
 
-#: results/templates/admin/results/competitionconfig/change_form.html:19
-msgid "Supprimer la compétition"
-msgstr "Wettbewerb löschen"
-
-#: results/templates/admin/results/competitionconfig/change_form.html:20
-msgid "Supprimer définitivement cette compétition et toutes ses données ?"
-msgstr "Diesen Wettbewerb und alle seine Daten endgültig löschen?"
-
 #: results/templates/admin/results/competitionconfig/change_list.html:9
-#: results/tests/test_i18n.py:435
+#: results/tests/test_i18n.py:438
 msgid "Ajouter une compétition"
 msgstr "Wettbewerb hinzufügen"
 
@@ -1370,6 +1373,14 @@ msgstr "Lokales Logo löschen"
 #: results/templates/admin/results/competitionconfig/fieldset.html:44
 msgid "Supprimer le logo local de cette compétition ?"
 msgstr "Lokales Logo dieser Veranstaltung löschen?"
+
+#: results/templates/admin/results/competitionconfig/submit_line.html:9
+msgid "Supprimer la compétition"
+msgstr "Wettbewerb löschen"
+
+#: results/templates/admin/results/competitionconfig/submit_line.html:10
+msgid "Supprimer définitivement cette compétition et toutes ses données ?"
+msgstr "Diesen Wettbewerb und alle seine Daten endgültig löschen?"
 
 #: results/templates/results/_analysis_partial.html:4
 msgid "Analyse partielle"
@@ -1424,6 +1435,150 @@ msgstr[1] "%(n)s Warnungen"
 #: results/templates/results/_error_chart_card.html:5
 msgid "Taux d'erreur par tronçon"
 msgstr "Fehlerquote pro Streckenabschnitt"
+
+#: results/templates/results/_iof_import_panel.html:14
+msgid ""
+"Cet import <strong>remplace tous les résultats existants</strong> de la "
+"course\n"
+"  (concurrents, équipes, circuits et pointages), exactement comme un envoi\n"
+"  « MOPComplete » de MeOS. Les informations de course saisies sur le site\n"
+"  (nom, date, organisateur, site web, Livelox, logo) sont conservées, sauf\n"
+"  si vous demandez explicitement à utiliser celles du fichier IOF."
+msgstr ""
+"Dieser Import <strong>ersetzt alle vorhandenen Ergebnisse</strong> des "
+"Wettkampfs\n"
+"      (Teilnehmer, Mannschaften, Strecken und Zwischenzeiten), genau wie "
+"eine\n"
+"      „MOPComplete“-Übertragung von MeOS. Die auf der Website eingegebenen\n"
+"      Wettkampfangaben (Name, Datum, Veranstalter, Website, Livelox, Logo)\n"
+"      bleiben erhalten, sofern Sie nicht ausdrücklich die Angaben aus der\n"
+"      IOF-Datei verwenden möchten."
+
+#: results/templates/results/_iof_import_panel.html:23
+msgid "À propos du format IOF"
+msgstr "Über das IOF-Format"
+
+#: results/templates/results/_iof_import_panel.html:27
+msgid "Le fichier doit être un <strong>ResultList</strong> au format"
+msgstr "Die Datei muss eine <strong>ResultList</strong> nach dem"
+
+#: results/templates/results/_iof_import_panel.html:32
+msgid ""
+"Fichiers « Complete » et « Snapshot » : import complet ; le statut « Delta » "
+"est refusé."
+msgstr ""
+"Dateien „Complete“ und „Snapshot“: vollständiger Import; der Status „Delta“ "
+"wird abgelehnt."
+
+#: results/templates/results/_iof_import_panel.html:33
+msgid ""
+"Un seul numéro de course par import : précisez-le pour un fichier multi-"
+"course."
+msgstr ""
+"Eine Wettkampfnummer pro Import: Geben Sie sie für eine Datei mit mehreren "
+"Wettkämpfen an."
+
+#: results/templates/results/_iof_import_panel.html:34
+msgid ""
+"Résultats individuels et relais pris en charge ; les circuits avec fourches "
+"sont simplifiés."
+msgstr ""
+"Einzel- und Staffelergebnisse werden unterstützt; Strecken mit Gabelungen "
+"werden vereinfacht."
+
+#: results/templates/results/_iof_import_panel.html:35
+msgid ""
+"L'analyse sans import permet de contrôler les classes, effectifs et "
+"avertissements avant d'écrire."
+msgstr ""
+"Die Analyse ohne Import ermöglicht es, Klassen, Teilnehmerzahlen und "
+"Warnungen vor dem Schreiben zu prüfen."
+
+#: results/templates/results/_iof_import_panel.html:42
+msgid "Fichier IOF Data Standard v3"
+msgstr "IOF-Data-Standard-v3-Datei"
+
+#: results/templates/results/_iof_import_panel.html:64
+#: results/templates/results/_iof_import_panel.html:68
+#: results/templates/results/meos_checker.html:45
+#: results/templates/results/meos_checker.html:49
+#: results/templates/results/race_create.html:123
+#: results/templates/results/race_create.html:127
+#: results/templates/results/race_manage.html:303
+#: results/templates/results/race_manage.html:307
+#: results/templates/results/verifie_moi.html:57
+#: results/templates/results/verifie_moi.html:61
+msgid "Aucun fichier choisi"
+msgstr "Keine Datei ausgewählt"
+
+#: results/templates/results/_iof_import_panel.html:66
+#: results/templates/results/meos_checker.html:47
+#: results/templates/results/race_create.html:125
+#: results/templates/results/race_manage.html:305
+#: results/templates/results/verifie_moi.html:59
+msgid "Choisir un fichier"
+msgstr "Datei auswählen"
+
+#: results/templates/results/_iof_import_panel.html:119
+msgid "Analyser sans importer"
+msgstr "Ohne Import analysieren"
+
+#: results/templates/results/_iof_import_panel.html:122
+msgid "Importer et remplacer les résultats"
+msgstr "Importieren und Ergebnisse ersetzen"
+
+#: results/templates/results/_iof_import_panel.html:126
+#: results/templates/results/race_create.html:140
+msgid "Annuler"
+msgstr "Abbrechen"
+
+#: results/templates/results/_iof_import_panel.html:136
+msgid "Rapport d'import"
+msgstr "Importbericht"
+
+#: results/templates/results/_iof_import_panel.html:138
+msgid "Analyse — aucune écriture"
+msgstr "Analyse — keine Schreibvorgänge"
+
+#: results/templates/results/_iof_import_panel.html:140
+msgid "Course gelée"
+msgstr "Wettkampf eingefroren"
+
+#: results/templates/results/_iof_import_panel.html:142
+msgid "Importé"
+msgstr "Importiert"
+
+#: results/templates/results/_iof_import_panel.html:150
+msgid "Classes"
+msgstr "Klassen"
+
+#: results/templates/results/_iof_import_panel.html:156
+msgid "Concurrents"
+msgstr "Teilnehmer"
+
+#: results/templates/results/_iof_import_panel.html:162
+msgid "Équipes"
+msgstr "Mannschaften"
+
+#: results/templates/results/_iof_import_panel.html:168
+msgid "Pointages"
+msgstr "Zwischenzeiten"
+
+#: results/templates/results/_iof_import_panel.html:174
+msgid "Course importée"
+msgstr "Importierter Wettkampf"
+
+#: results/templates/results/_iof_import_panel.html:180
+msgid "Postes"
+msgstr "Kontrollpunkte"
+
+#: results/templates/results/_iof_import_panel.html:187
+msgid "Points à vérifier"
+msgstr "Zu prüfende Punkte"
+
+#: results/templates/results/_iof_import_panel.html:198
+msgid "Aucun avertissement."
+msgstr "Keine Warnungen."
 
 #: results/templates/results/_neg_time_warning.html:10
 msgid "Poste suspecté"
@@ -1622,7 +1777,7 @@ msgstr "Wettkampfliste"
 #: results/templates/results/race_create.html:3
 #: results/templates/results/race_create.html:12
 #: results/templates/results/race_create.html:16
-#: results/templates/results/race_manage.html:22
+#: results/templates/results/race_manage.html:24
 msgid "Créer une course"
 msgstr "Wettkampf erstellen"
 
@@ -2828,24 +2983,6 @@ msgstr "MeOS-Datei laden"
 msgid "Fichier d'exportation MeOS (<code>.meosxml</code>)"
 msgstr "MeOS-Exportdatei (<code>.meosxml</code>)"
 
-#: results/templates/results/meos_checker.html:45
-#: results/templates/results/meos_checker.html:49
-#: results/templates/results/race_create.html:123
-#: results/templates/results/race_create.html:127
-#: results/templates/results/race_import_iof.html:69
-#: results/templates/results/race_import_iof.html:73
-#: results/templates/results/verifie_moi.html:57
-#: results/templates/results/verifie_moi.html:61
-msgid "Aucun fichier choisi"
-msgstr "Keine Datei ausgewählt"
-
-#: results/templates/results/meos_checker.html:47
-#: results/templates/results/race_create.html:125
-#: results/templates/results/race_import_iof.html:71
-#: results/templates/results/verifie_moi.html:59
-msgid "Choisir un fichier"
-msgstr "Datei auswählen"
-
 #: results/templates/results/meos_checker.html:62
 msgid "Verifier la conformite"
 msgstr "Konformität prüfen"
@@ -3038,28 +3175,23 @@ msgstr ""
 "        werden automatisch erzeugt."
 
 #: results/templates/results/race_create.html:55
-#: results/templates/results/race_manage.html:181
+#: results/templates/results/race_manage.html:222
 msgid "Nom de la course *"
 msgstr "Name des Wettkampfs *"
 
 #: results/templates/results/race_create.html:67
-#: results/templates/results/race_manage.html:192
+#: results/templates/results/race_manage.html:233
 msgid "Date *"
 msgstr "Datum *"
 
 #: results/templates/results/race_create.html:79
-#: results/templates/results/race_manage.html:203
+#: results/templates/results/race_manage.html:244
 msgid "Organisateur / club *"
 msgstr "Veranstalter / Verein *"
 
 #: results/templates/results/race_create.html:138
 msgid "Créer la course"
 msgstr "Wettkampf erstellen"
-
-#: results/templates/results/race_create.html:140
-#: results/templates/results/race_import_iof.html:130
-msgid "Annuler"
-msgstr "Abbrechen"
 
 #: results/templates/results/race_create.html:148
 msgid "Comment ça marche ?"
@@ -3110,170 +3242,48 @@ msgstr ""
 #: results/templates/results/race_import_iof.html:3
 #: results/templates/results/race_import_iof.html:16
 #: results/templates/results/race_import_iof.html:21
-#: results/templates/results/race_manage.html:253
 msgid "Importer des résultats IOF"
 msgstr "IOF-Ergebnisse importieren"
 
 #: results/templates/results/race_import_iof.html:13
-#: results/templates/results/race_manage.html:24
+#: results/templates/results/race_manage.html:26
 msgid "Gestion de course"
 msgstr "Wettkampf-Verwaltung"
 
-#: results/templates/results/race_import_iof.html:39
-msgid ""
-"Cet import <strong>remplace tous les résultats existants</strong> de la "
-"course\n"
-"      (concurrents, équipes, circuits et pointages), exactement comme un "
-"envoi\n"
-"      « MOPComplete » de MeOS. Les informations de course saisies sur le "
-"site\n"
-"      (nom, date, organisateur, site web, Livelox, logo) sont conservées, "
-"sauf\n"
-"      si vous demandez explicitement à utiliser celles du fichier IOF."
-msgstr ""
-"Dieser Import <strong>ersetzt alle vorhandenen Ergebnisse</strong> des "
-"Wettkampfs\n"
-"      (Teilnehmer, Mannschaften, Strecken und Zwischenzeiten), genau wie "
-"eine\n"
-"      „MOPComplete“-Übertragung von MeOS. Die auf der Website eingegebenen\n"
-"      Wettkampfangaben (Name, Datum, Veranstalter, Website, Livelox, Logo)\n"
-"      bleiben erhalten, sofern Sie nicht ausdrücklich die Angaben aus der\n"
-"      IOF-Datei verwenden möchten."
-
-#: results/templates/results/race_import_iof.html:48
-msgid "Fichier IOF Data Standard v3"
-msgstr "IOF-Data-Standard-v3-Datei"
-
-#: results/templates/results/race_import_iof.html:124
-msgid "Analyser sans importer"
-msgstr "Ohne Import analysieren"
-
-#: results/templates/results/race_import_iof.html:127
-msgid "Importer et remplacer les résultats"
-msgstr "Importieren und Ergebnisse ersetzen"
-
-#: results/templates/results/race_import_iof.html:139
-msgid "Rapport d'import"
-msgstr "Importbericht"
-
-#: results/templates/results/race_import_iof.html:141
-msgid "Analyse — aucune écriture"
-msgstr "Analyse — keine Schreibvorgänge"
-
-#: results/templates/results/race_import_iof.html:143
-msgid "Course gelée"
-msgstr "Wettkampf eingefroren"
-
-#: results/templates/results/race_import_iof.html:145
-msgid "Importé"
-msgstr "Importiert"
-
-#: results/templates/results/race_import_iof.html:153
-msgid "Classes"
-msgstr "Klassen"
-
-#: results/templates/results/race_import_iof.html:159
-msgid "Concurrents"
-msgstr "Teilnehmer"
-
-#: results/templates/results/race_import_iof.html:165
-msgid "Équipes"
-msgstr "Mannschaften"
-
-#: results/templates/results/race_import_iof.html:171
-msgid "Pointages"
-msgstr "Zwischenzeiten"
-
-#: results/templates/results/race_import_iof.html:177
-msgid "Course importée"
-msgstr "Importierter Wettkampf"
-
-#: results/templates/results/race_import_iof.html:183
-msgid "Postes"
-msgstr "Kontrollpunkte"
-
-#: results/templates/results/race_import_iof.html:190
-msgid "Points à vérifier"
-msgstr "Zu prüfende Punkte"
-
-#: results/templates/results/race_import_iof.html:201
-msgid "Aucun avertissement."
-msgstr "Keine Warnungen."
-
-#: results/templates/results/race_import_iof.html:210
-msgid "À propos du format IOF"
-msgstr "Über das IOF-Format"
-
-#: results/templates/results/race_import_iof.html:214
-msgid "Le fichier doit être un <strong>ResultList</strong> au format"
-msgstr "Die Datei muss eine <strong>ResultList</strong> nach dem"
-
-#: results/templates/results/race_import_iof.html:219
-msgid ""
-"Fichiers « Complete » et « Snapshot » : import complet ; le statut « Delta » "
-"est refusé."
-msgstr ""
-"Dateien „Complete“ und „Snapshot“: vollständiger Import; der Status „Delta“ "
-"wird abgelehnt."
-
-#: results/templates/results/race_import_iof.html:220
-msgid ""
-"Un seul numéro de course par import : précisez-le pour un fichier multi-"
-"course."
-msgstr ""
-"Eine Wettkampfnummer pro Import: Geben Sie sie für eine Datei mit mehreren "
-"Wettkämpfen an."
-
-#: results/templates/results/race_import_iof.html:221
-msgid ""
-"Résultats individuels et relais pris en charge ; les circuits avec fourches "
-"sont simplifiés."
-msgstr ""
-"Einzel- und Staffelergebnisse werden unterstützt; Strecken mit Gabelungen "
-"werden vereinfacht."
-
-#: results/templates/results/race_import_iof.html:222
-msgid ""
-"L'analyse sans import permet de contrôler les classes, effectifs et "
-"avertissements avant d'écrire."
-msgstr ""
-"Die Analyse ohne Import ermöglicht es, Klassen, Teilnehmerzahlen und "
-"Warnungen vor dem Schreiben zu prüfen."
-
-#: results/templates/results/race_manage.html:34
+#: results/templates/results/race_manage.html:36
 #, python-format
 msgid "CID interne : %(cid)s"
 msgstr "Interne CID: %(cid)s"
 
-#: results/templates/results/race_manage.html:46
+#: results/templates/results/race_manage.html:48
 msgid "Nouvelle clé API générée."
 msgstr "Neuer API-Schlüssel erzeugt."
 
-#: results/templates/results/race_manage.html:47
+#: results/templates/results/race_manage.html:49
 msgid ""
 "Remplacez l'ancienne clé dans MeOS, sans quoi les envois seront refusés."
 msgstr ""
 "Ersetzen Sie den alten Schlüssel in MeOS, sonst werden die Übertragungen "
 "abgelehnt."
 
-#: results/templates/results/race_manage.html:52
+#: results/templates/results/race_manage.html:54
 msgid "Nouveau lien de gestion généré."
 msgstr "Neuer Verwaltungslink erzeugt."
 
-#: results/templates/results/race_manage.html:53
+#: results/templates/results/race_manage.html:55
 msgid "Mettez à jour vos favoris : l'ancien lien ne fonctionne plus."
 msgstr ""
 "Aktualisieren Sie Ihre Lesezeichen: Der alte Link funktioniert nicht mehr."
 
-#: results/templates/results/race_manage.html:58
+#: results/templates/results/race_manage.html:60
 msgid "Informations de la course mises à jour."
 msgstr "Angaben zum Wettkampf aktualisiert."
 
-#: results/templates/results/race_manage.html:63
+#: results/templates/results/race_manage.html:65
 msgid "Résultats IOF importés : les anciens résultats ont été remplacés."
 msgstr "IOF-Ergebnisse importiert: Die bisherigen Ergebnisse wurden ersetzt."
 
-#: results/templates/results/race_manage.html:69
+#: results/templates/results/race_manage.html:71
 msgid ""
 "Ce lien est <strong>privé</strong> : toute personne qui le possède peut\n"
 "  afficher la clé API et la régénérer. Conservez-le précieusement (avec la\n"
@@ -3284,75 +3294,127 @@ msgstr ""
 "(mit dem\n"
 "  unten gedruckten Datenblatt)."
 
-#: results/templates/results/race_manage.html:76
+#: results/templates/results/race_manage.html:78
 msgid "Copier le lien de gestion"
 msgstr "Verwaltungslink kopieren"
 
-#: results/templates/results/race_manage.html:81
+#: results/templates/results/race_manage.html:83
 msgid "Régénérer le lien de gestion ? L\\'ancien lien ne fonctionnera plus."
 msgstr ""
 "Verwaltungslink neu generieren? Dann geht\\'s mit dem alten Link nicht mehr."
 
-#: results/templates/results/race_manage.html:85
+#: results/templates/results/race_manage.html:88
 msgid "Régénérer le lien de gestion"
 msgstr "Verwaltungslink neu generieren"
 
-#: results/templates/results/race_manage.html:92
+#: results/templates/results/race_manage.html:96
+#: results/templates/results/race_manage.html:102
+#: results/tests/test_i18n.py:446
+msgid "Méthode de saisie des résultats"
+msgstr "Methode der Ergebnisübermittlung"
+
+#: results/templates/results/race_manage.html:100
+msgid ""
+"Choisissez la méthode utilisée pour transmettre les résultats de cette "
+"course. Seul le panneau correspondant est affiché."
+msgstr ""
+"Wählen Sie die Methode, mit der die Ergebnisse dieses Wettkampfs übermittelt "
+"werden. Nur das entsprechende Feld wird angezeigt."
+
+#: results/templates/results/race_manage.html:106
+msgid "MeOS (MOP)"
+msgstr "MeOS (MOP)"
+
+#: results/templates/results/race_manage.html:111
+#: results/tests/test_i18n.py:447
+msgid "Fichier IOF XML"
+msgstr "IOF-XML-Datei"
+
+#: results/templates/results/race_manage.html:122
+msgid "Importer un fichier IOF"
+msgstr "IOF-Datei importieren"
+
+#: results/templates/results/race_manage.html:132
 msgid "Paramètres à saisir dans MeOS"
 msgstr "In MeOS einzutragende Parameter"
 
-#: results/templates/results/race_manage.html:95
+#: results/templates/results/race_manage.html:135
 msgid "Imprimer / PDF"
 msgstr "Drucken / PDF"
 
-#: results/templates/results/race_manage.html:104
+#: results/templates/results/race_manage.html:144
 msgid "URL d'envoi"
 msgstr "Sende-URL"
 
-#: results/templates/results/race_manage.html:110
+#: results/templates/results/race_manage.html:150
 msgid "Copier l'URL"
 msgstr "URL kopieren"
 
-#: results/templates/results/race_manage.html:123
+#: results/templates/results/race_manage.html:163
 msgid "Copier la clé"
 msgstr "Schlüssel kopieren"
 
-#: results/templates/results/race_manage.html:131
+#: results/templates/results/race_manage.html:171
 msgid "laisser vide"
 msgstr "leer lassen"
 
-#: results/templates/results/race_manage.html:134
+#: results/templates/results/race_manage.html:174
 msgid "Compression ZIP"
 msgstr "ZIP-Kompression"
 
-#: results/templates/results/race_manage.html:135
+#: results/templates/results/race_manage.html:175
 msgid "Désactivée"
 msgstr "Deaktiviert"
 
-#: results/templates/results/race_manage.html:138
+#: results/templates/results/race_manage.html:178
 msgid "Intervalle"
 msgstr "Intervall"
 
-#: results/templates/results/race_manage.html:139
+#: results/templates/results/race_manage.html:179
 msgid "0 seconde"
 msgstr "0 Sekunden"
 
-#: results/templates/results/race_manage.html:142
+#: results/templates/results/race_manage.html:182
 msgid "Format"
 msgstr "Format"
 
-#: results/templates/results/race_manage.html:151
+#: results/templates/results/race_manage.html:191
 msgid ""
 "Régénérer la clé API ? L\\'ancienne clé deviendra immédiatement invalide."
 msgstr ""
 "API-Schlüssel neu generieren? Danach ist\\'s mit dem alten Schlüssel vorbei "
 "— er wird sofort ungültig."
 
-#: results/templates/results/race_manage.html:155
+#: results/templates/results/race_manage.html:195
 msgid "Régénérer la clé"
 msgstr "Schlüssel neu erzeugen"
 
-#: results/templates/results/race_manage.html:159
+#: results/templates/results/race_manage.html:212
+msgid "Modifier l'événement"
+msgstr "Wettkampf bearbeiten"
+
+#: results/templates/results/race_manage.html:320
+msgid "Enregistrer les modifications"
+msgstr "Änderungen speichern"
+
+#: results/templates/results/race_manage.html:324
+msgid "Créer une autre course"
+msgstr "Weiteren Wettkampf erstellen"
+
+#: results/templates/results/race_manage.html:335
+#: results/tests/test_i18n.py:448
+msgid "Zone de danger"
+msgstr "Gefahrenzone"
+
+#: results/templates/results/race_manage.html:339
+msgid ""
+"La suppression est définitive : résultats, clé API et lien de gestion seront "
+"effacés. Cette action est irréversible."
+msgstr ""
+"Das Löschen ist endgültig: Ergebnisse, API-Schlüssel und Verwaltungslink "
+"werden gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."
+
+#: results/templates/results/race_manage.html:342
 msgid ""
 "Supprimer définitivement cette course ? Toutes les données seront effacées "
 "(résultats, clé API, lien de gestion) et ce lien ne fonctionnera plus. "
@@ -3362,41 +3424,9 @@ msgstr ""
 "API-Schlüssel, Verwaltungslink) und dieser Link funktioniert nicht mehr. "
 "Diese Aktion kann nicht rückgängig gemacht werden."
 
-#: results/templates/results/race_manage.html:163
+#: results/templates/results/race_manage.html:346
 msgid "Supprimer la course"
 msgstr "Wettkampf löschen"
-
-#: results/templates/results/race_manage.html:172
-msgid "Modifier l'événement"
-msgstr "Wettkampf bearbeiten"
-
-#: results/templates/results/race_manage.html:239
-msgid "Enregistrer les modifications"
-msgstr "Änderungen speichern"
-
-#: results/templates/results/race_manage.html:243
-msgid "Créer une autre course"
-msgstr "Weiteren Wettkampf erstellen"
-
-#: results/templates/results/race_manage.html:257
-msgid ""
-"Remplacez les résultats de la course par un fichier\n"
-"      <strong>IOF Data Standard v3</strong> (ResultList) produit par un "
-"autre\n"
-"      logiciel de chronométrage. L'import écrase tous les résultats "
-"existants,\n"
-"      comme un envoi MeOS complet."
-msgstr ""
-"Ersetzen Sie die Ergebnisse des Wettkampfs durch eine Datei\n"
-"      im Format <strong>IOF Data Standard v3</strong> (ResultList), die von "
-"einer anderen\n"
-"      Zeitnahme-Software erzeugt wurde. Der Import überschreibt alle "
-"vorhandenen\n"
-"      Ergebnisse, wie eine vollständige MeOS-Übertragung."
-
-#: results/templates/results/race_manage.html:265
-msgid "Importer un fichier IOF"
-msgstr "IOF-Datei importieren"
 
 #: results/templates/results/recapitulatif.html:94
 msgid "Télécharger en CSV"
@@ -3891,6 +3921,21 @@ msgstr "Passwort ändern"
 #: templates/admin/base_site.html:77
 msgid "Log out"
 msgstr "Abmelden"
+
+#~ msgid ""
+#~ "Remplacez les résultats de la course par un fichier\n"
+#~ "      <strong>IOF Data Standard v3</strong> (ResultList) produit par un "
+#~ "autre\n"
+#~ "      logiciel de chronométrage. L'import écrase tous les résultats "
+#~ "existants,\n"
+#~ "      comme un envoi MeOS complet."
+#~ msgstr ""
+#~ "Ersetzen Sie die Ergebnisse des Wettkampfs durch eine Datei\n"
+#~ "      im Format <strong>IOF Data Standard v3</strong> (ResultList), die "
+#~ "von einer anderen\n"
+#~ "      Zeitnahme-Software erzeugt wurde. Der Import überschreibt alle "
+#~ "vorhandenen\n"
+#~ "      Ergebnisse, wie eine vollständige MeOS-Übertragung."
 
 #~ msgid "rapport"
 #~ msgstr "Bericht"

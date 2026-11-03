@@ -98,6 +98,11 @@ class TestGet:
         assert 'value="import"' in content
         assert f'/gestion-course/{TOKEN}/' in content
         assert 'Trail de Test' in content
+        # Le commentaire de documentation du partiel ne doit pas fuiter,
+        # et l'aide sur le format précède le formulaire.
+        assert "Panneau d'import IOF partagé" not in content
+        assert content.index('À propos du format IOF') < content.index(
+            'Fichier IOF Data Standard v3')
 
     @patch('results.race_views.CompetitionConfig')
     def test_jeton_invalide_404(self, MockConfig):
@@ -207,7 +212,7 @@ class TestImport:
         response = RaceImportIofView.as_view()(request, token=TOKEN)
 
         assert response.status_code == 302
-        assert response['Location'] == f'/gestion-course/{TOKEN}/?ok=iof'
+        assert response['Location'] == f'/gestion-course/{TOKEN}/?ok=iof&mode=iof'
         mock_import.assert_called_once()
         args, kwargs = mock_import.call_args
         assert args[0] == 9
@@ -294,7 +299,8 @@ class TestLienGestion:
 
     @patch('results.race_views.Mopcompetition')
     @patch('results.race_views.CompetitionConfig')
-    def test_lien_import_present(self, MockConfig, MockComp):
+    def test_formulaire_iof_integre_et_lien_de_secours(self, MockConfig, MockComp):
+        """La page de gestion intègre le formulaire IOF (et garde un accès dédié)."""
         MockConfig.objects.filter.return_value.first.return_value = _config()
         MockComp.objects.filter.return_value.first.return_value = _competition()
 
@@ -305,5 +311,10 @@ class TestLienGestion:
 
         assert response.status_code == 200
         content = response.content.decode()
+        # Formulaire intégré dans le panneau IOF
+        assert 'name="ioffile"' in content
+        assert 'name="form_mode" value="iof"' in content
+        assert 'id="raceModeIofPanel"' in content
+        # Lien de secours (noscript) vers la page dédiée
         assert URL in content
         assert 'Importer un fichier IOF' in content
