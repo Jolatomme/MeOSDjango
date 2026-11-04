@@ -1167,3 +1167,119 @@ class TestProcessMopXmlFrozen:
             from results.mop_receiver import process_mop_xml
             status = process_mop_xml(1, b'<MOPComplete></MOPComplete>')
         assert status == 'ERROR'
+
+
+#  Tests pour les nouvelles fonctionnalités MOP 
+
+class TestProcessControlDelete:
+    """Tests pour la suppression des contrôles (delete attribute)."""
+
+    @patch('results.mop_receiver.connection')
+    def test_delete_control(self, mock_conn):
+        """<ctrl delete="true" id="70"> doit supprimer le contrôle."""
+        from results.mop_receiver import process_control
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+        el = elem('ctrl', {'id': '70', 'delete': 'true'})
+        process_control(1, el)
+
+        sql = cur.execute.call_args[0][0]
+        assert 'DELETE' in sql
+        assert 'mopControl' in sql
+
+
+class TestProcessCompetitionDelete:
+    """Tests pour la suppression de la compétition (delete attribute)."""
+
+    @patch('results.mop_receiver.clear_competition')
+    def test_delete_competition(self, mock_clear):
+        """<competition delete="true"> doit effacer toute la compétition."""
+        from results.mop_receiver import process_competition
+
+        el = elem('competition', {'delete': 'true'})
+        process_competition(1, el)
+
+        mock_clear.assert_called_once_with(1)
+
+
+class TestProcessCompetitionZerotime:
+    """Tests pour l'attribut zerotime sur competition."""
+
+    @patch('results.mop_receiver._upsert')
+    def test_zerotime_attribut(self, mock_upsert):
+        """<competition zerotime="09:00:00"> doit stocker zerotime."""
+        from results.mop_receiver import process_competition
+
+        el = elem('competition', {'date': '2024-01-01', 'zerotime': '09:00:00'}, text='Test')
+        process_competition(1, el)
+
+        fields = mock_upsert.call_args[0][3]
+        assert fields['zerotime'] == '09:00:00'
+
+    @patch('results.mop_receiver._upsert')
+    def test_sans_zerotime_ne_lecrase_pas(self, mock_upsert):
+        """MOPDiff partiel sans zerotime ne doit pas effacer la valeur existante."""
+        from results.mop_receiver import process_competition
+
+        el = elem('competition', {'date': '2024-01-01'}, text='Test')
+        process_competition(1, el)
+
+        fields = mock_upsert.call_args[0][3]
+        assert 'zerotime' not in fields
+
+
+class TestProcessCompetitorCompeting:
+    """Tests pour l'attribut competing sur cmp."""
+
+    @patch('results.mop_receiver._upsert')
+    @patch('results.mop_receiver.connection')
+    def test_competing_true(self, mock_conn, mock_upsert):
+        """<cmp competing="true"> doit stocker competing=1."""
+        from results.mop_receiver import process_competitor
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+        el = elem('cmp', {'id': '1', 'competing': 'true'}, children=[
+            ('base', {'org': '1', 'cls': '1', 'stat': '0', 'st': '0', 'rt': '0'}, 'Test'),
+        ])
+        process_competitor(1, el)
+
+        fields = mock_upsert.call_args[0][3]
+        assert fields['competing'] == 1
+
+    @patch('results.mop_receiver._upsert')
+    @patch('results.mop_receiver.connection')
+    def test_competing_false(self, mock_conn, mock_upsert):
+        """<cmp sans competing> doit stocker competing=0."""
+        from results.mop_receiver import process_competitor
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+        el = elem('cmp', {'id': '1'}, children=[
+            ('base', {'org': '1', 'cls': '1', 'stat': '0', 'st': '0', 'rt': '0'}, 'Test'),
+        ])
+        process_competitor(1, el)
+
+        fields = mock_upsert.call_args[0][3]
+        assert fields['competing'] == 0
+
+    @patch('results.mop_receiver._upsert')
+    @patch('results.mop_receiver.connection')
+    def test_competing_explicit_false(self, mock_conn, mock_upsert):
+        """<cmp competing="false"> doit stocker competing=0."""
+        from results.mop_receiver import process_competitor
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+        el = elem('cmp', {'id': '1', 'competing': 'false'}, children=[
+            ('base', {'org': '1', 'cls': '1', 'stat': '0', 'st': '0', 'rt': '0'}, 'Test'),
+        ])
+        process_competitor(1, el)
+
+        fields = mock_upsert.call_args[0][3]
+        assert fields['competing'] == 0

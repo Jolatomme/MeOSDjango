@@ -204,19 +204,42 @@ def process_competition(cid: int, elem: ET.Element):
                  homepage="http://..." zerotime="09:00:00">
       Nom de la compétition
     </competition>
+    <competition delete="true"></competition>
     """
+    if elem.get('delete') == 'true':
+        clear_competition(cid)
+        return
+
     fields = {
         'name':      (elem.text or '').strip(),
         'date':      elem.get('date', '2000-01-01'),
         'organizer': elem.get('organizer', ''),
         'homepage':  elem.get('homepage', ''),
     }
+    
+    # zerotime : heure de référence pour les temps de course (optionnel)
+    # Stocké dans mopCompetition si présent dans le XML
+    zerotime_attr = elem.get('zerotime')
+    if zerotime_attr is not None:
+        fields['zerotime'] = zerotime_attr.strip()
+    
     _upsert('mopCompetition', cid, 1, fields)
 
 
 def process_control(cid: int, elem: ET.Element):
-    """<ctrl id="70">Radio</ctrl>"""
+    """<ctrl id="70">Radio</ctrl>
+    <ctrl id="70" delete="true"></ctrl>
+    """
     id_ = int(elem.get('id'))
+
+    if elem.get('delete') == 'true':
+        with connection.cursor() as cur:
+            cur.execute(
+                "DELETE FROM mopControl WHERE cid=%s AND id=%s",
+                [cid, id_]
+            )
+        return
+
     _upsert('mopControl', cid, id_, {
         'name': (elem.text or '').strip(),
     })
@@ -311,7 +334,7 @@ def process_competitor(cid: int, elem: ET.Element):
       stat=15 : OCC (Out-of-competition, v3.7)
       prel    : résultat préliminaire (arrivé mais carte non lue) — attribut
                 "true" sur <base> ; absent = résultat officiel (carte lue).
-      competing : a pointé mais pas encore arrivé
+      competing : a pointé mais pas encore arrivé — attribut "true" sur <cmp>
     """
     id_ = int(elem.get('id'))
 
@@ -339,6 +362,7 @@ def process_competitor(cid: int, elem: ET.Element):
         'st':    int(base.get('st', 0)),
         'rt':    int(base.get('rt', 0)),
         'prel':  1 if base.get('prel') == 'true' else 0,
+        'competing': 1 if elem.get('competing') == 'true' else 0,
     }
 
     # Dossard : seulement si l'attribut est présent, pour ne pas

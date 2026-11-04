@@ -69,6 +69,7 @@ class Mopcompetition(models.Model):
     homepage  = models.CharField(verbose_name=gettext_lazy("page d'accueil"), max_length=128)
     livelox   = models.CharField(max_length=128, blank=True)
     logo      = models.CharField(max_length=128, blank=True)
+    zerotime  = models.CharField(max_length=16, blank=True, default='')
 
     class Meta:
         managed         = False
@@ -146,6 +147,10 @@ class Mopcompetitor(models.Model):
         max_length=8, blank=True, default='',
         verbose_name=gettext_lazy("nationalité"),
         help_text="Code nationalité MOP transmis par MeOS (ex. SWE)",
+    )
+    competing = models.BooleanField(
+        default=False,
+        help_text="A pointé mais pas encore arrivé (MOP competing attribute)",
     )
 
     class Meta:
