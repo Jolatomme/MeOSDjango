@@ -223,6 +223,26 @@ def get_org_map(cid, *, as_objects=False):
 
 # ─── Contrôles ─────────────────────────────────────────────────────────────────
 
+_POINTS_SUFFIX_RE = re.compile(r'\s*\(\s*-?\d+(?:[.,]\d+)?\s*p\s*\)')
+
+
+def format_control_label(name, ordinal=None):
+    """Libellé de poste sans le suffixe de points MeOS « (Np) ».
+
+    MeOS ajoute les points d'un poste score/rogaining à son nom
+    (``222 (3p)``). Ce suffixe ne doit pas apparaître dans les libellés
+    affichés, mais le suffixe ``-N`` reste indispensable : il distingue
+    deux passages sur le même poste (``222 (3p)-1`` → ``222-1``).
+
+    ``ordinal`` est le numéro 1-based du poste dans le circuit ; s'il est
+    fourni, il est préfixé au libellé (``1-222-1``).
+    """
+    label = _POINTS_SUFFIX_RE.sub('', str(name)).strip()
+    if ordinal is not None:
+        label = f"{ordinal}-{label}"
+    return label
+
+
 def get_class_controls(cid, class_id, *, leg=None):
     qs = Mopclasscontrol.objects.filter(cid=cid, id=class_id)
     if leg is not None:
@@ -238,7 +258,8 @@ def get_class_controls(cid, class_id, *, leg=None):
     controls_seq = [
         {
             'ctrl_id':   cc.ctrl,
-            'ctrl_name': f"{cc.ord + 1}-{control_name_map.get(cc.ctrl, str(cc.ctrl))}",
+            'ctrl_name': format_control_label(
+                control_name_map.get(cc.ctrl, str(cc.ctrl)), cc.ord + 1),
         }
         for cc in class_controls
     ]
@@ -1086,7 +1107,8 @@ def get_courses_map(cid, relay_class_ids=None, class_totals=None):
         ctrl_seq = [
             {
                 'ctrl_id':   cc.ctrl,
-                'ctrl_name': f"{cc.ord + 1}-{control_name_map.get(cc.ctrl, str(cc.ctrl))}",
+                'ctrl_name': format_control_label(
+                    control_name_map.get(cc.ctrl, str(cc.ctrl)), cc.ord + 1),
             }
             for cc in ccs
         ]

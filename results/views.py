@@ -26,6 +26,7 @@ from .models import (
 )
 from .services import (
     get_org_map, get_class_controls, get_controls_by_leg,
+    format_control_label,
     get_radio_map, compute_splits, build_finish_split,
     get_negative_time_stats, _neg_banner, _suspect_box_controls,
     attested_ctrls, detect_prestart_ctrls,
@@ -1684,7 +1685,8 @@ def relay_results(request, cid, class_id):
         leg_runners = [competitors[m.rid] for m in all_members
                        if m.leg == leg_num and m.rid in competitors]
         ctrl_seq_full = [
-            {'ctrl_id': cv, 'ctrl_name': f"{idx+1}-{control_name_map.get(cv, str(cv))}"}
+            {'ctrl_id': cv, 'ctrl_name': format_control_label(
+                control_name_map.get(cv, str(cv)), idx + 1)}
             for idx, cv in enumerate(controls_by_leg.get(leg_num, []))
         ]
         attested = attested_ctrls({r.id: radio_map.get(r.id, {})
@@ -1713,7 +1715,8 @@ def relay_results(request, cid, class_id):
                 cum_time_raw = cum_time if leg_time_raw else None
                 if can_show_splits:
                     ctrl_seq_full = [
-                        {'ctrl_id': cv, 'ctrl_name': f"{idx+1}-{control_name_map.get(cv, str(cv))}"}
+                        {'ctrl_id': cv, 'ctrl_name': format_control_label(
+                            control_name_map.get(cv, str(cv)), idx + 1)}
                         for idx, cv in enumerate(controls_by_leg.get(leg_num, []))
                     ]
                     # Fourches : n'afficher que les postes poinçonnés par CE coureur.

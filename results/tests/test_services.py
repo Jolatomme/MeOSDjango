@@ -1079,6 +1079,35 @@ class TestNowAbs:
         assert self._call(date(2025, 8, 13), self._SansDate()) == 432000
 
 
+# ─── Tests format_control_label ───────────────────────────────────────────────
+
+class TestFormatControlLabel:
+    """Libellés de postes : points « (Np) » retirés, suffixe « -N » conservé."""
+
+    def _call(self, name, ordinal=None):
+        from results.services import format_control_label
+        return format_control_label(name, ordinal)
+
+    def test_suffixe_points_retire(self):
+        assert self._call('222 (3p)') == '222'
+
+    def test_points_decimaux(self):
+        assert self._call('222 (3.5p)') == '222'
+        assert self._call('222 (3,5p)') == '222'
+
+    def test_suffixe_tiret_conserve(self):
+        assert self._call('222 (3p)-1') == '222-1'
+        assert self._call('222-2') == '222-2'
+
+    def test_numero_ordinal_prefixe(self):
+        assert self._call('222 (3p)', 1) == '1-222'
+        assert self._call('222 (3p)-1', 2) == '2-222-1'
+
+    def test_sans_suffixe_inchange(self):
+        assert self._call('222') == '222'
+        assert self._call(31, 2) == '2-31'
+
+
 # ─── Tests get_class_controls ─────────────────────────────────────────────────
 
 class TestGetClassControls:
@@ -1116,6 +1145,24 @@ class TestGetClassControls:
         assert seq[1] == {'ctrl_id': 32, 'ctrl_name': '3-P32'}
         assert name_map[31] == 'P31'
         assert name_map[32] == 'P32'
+
+    @patch('results.services.Mopcontrol')
+    @patch('results.services.Mopclasscontrol')
+    def test_points_retires_et_suffixe_tiret_conserve(self, MockCC, MockCtrl):
+        """« (Np) » disparaît du libellé, « -N » reste, la map brute est intacte."""
+        MockCC.objects.filter.return_value.order_by.return_value = [
+            self._make_cc(222, leg=1, ord_=0),
+            self._make_cc(100222, leg=1, ord_=1),
+        ]
+        MockCtrl.objects.filter.return_value = [
+            self._make_ctrl(222, '222 (3p)'),
+            self._make_ctrl(100222, '222 (3p)-1'),
+        ]
+        from results.services import get_class_controls
+        seq, name_map = get_class_controls(cid=1, class_id=10)
+
+        assert [c['ctrl_name'] for c in seq] == ['1-222', '2-222-1']
+        assert name_map == {222: '222 (3p)', 100222: '222 (3p)-1'}
 
     @patch('results.services.Mopcontrol')
     @patch('results.services.Mopclasscontrol')
