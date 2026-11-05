@@ -2351,7 +2351,7 @@ class TestRelayResultsView:
         assert legs[0]['flag'].endswith('/swe.svg')   # nat du coureur
         assert legs[1]['flag'].endswith('/nor.svg')   # repli club
 
-    def _run_splits(self, radio_map, controls_by_leg=None):
+    def _run_splits(self, radio_map, controls_by_leg=None, name_map=None):
         """Exécute relay_results avec contrôles/radio mockés, rendu capturé.
 
         Returns ``(ctx, mock_render)`` — splits calculés pour vrai
@@ -2360,7 +2360,8 @@ class TestRelayResultsView:
         if controls_by_leg is None:
             # Fraction 1 : union des fourches [39, 47, 49, 87, 76]
             controls_by_leg = {1: [39, 47, 49, 87, 76]}
-        name_map = {39: '39', 47: '47', 49: '49', 87: '87', 76: '76'}
+        if name_map is None:
+            name_map = {39: '39', 47: '47', 49: '49', 87: '87', 76: '76'}
         with patch('results.views.get_controls_by_leg',
                    return_value=(controls_by_leg, name_map)), \
              patch('results.views.get_radio_map', return_value=radio_map), \
@@ -2443,6 +2444,18 @@ class TestRelayResultsView:
         ctx, _ = self._run_splits(radio)
         splits = ctx['teams_data'][0]['legs'][0]['splits']
         assert [sp['ctrl_name'] for sp in splits] == ['5-76', 'Arrivée']
+
+    def test_splits_libelles_sans_points_et_suffixe_tiret(self):
+        """« (Np) » retiré des libellés relais, suffixe « -N » conservé."""
+        name_map = {
+            39: '222 (3p)', 47: '222 (3p)-1',
+            49: '49', 87: '87', 76: '76',
+        }
+        radio = {101: {39: 500, 47: 700, 49: 1000, 87: 1500, 76: 2000}}
+        ctx, _ = self._run_splits(radio, name_map=name_map)
+        splits = ctx['teams_data'][0]['legs'][0]['splits']
+        assert [sp['ctrl_name'] for sp in splits] == [
+            '1-222', '2-222-1', '3-49', '4-87', '5-76', 'Arrivée']
 
 
 # ══════════════════════════════════════════════════════════════════════════════

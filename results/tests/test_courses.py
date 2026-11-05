@@ -183,6 +183,26 @@ class TestGetCoursesMap:
     @patch('results.services.Mopcontrol')
     @patch('results.services.Mopclasscontrol')
     @patch('results.services.Mopclass')
+    def test_libelles_sans_points_et_suffixe_tiret(self, MockClass, MockCC, MockCtrl):
+        """« (Np) » retiré des libellés, « -N » conservé, map brute intacte."""
+        MockClass.objects.filter.return_value.order_by.return_value = [make_cls(10, 'H21')]
+        MockCC.objects.filter.return_value.order_by.return_value = [
+            make_cc(10, 222, 1, 0), make_cc(10, 100222, 1, 1)
+        ]
+        MockCtrl.objects.filter.return_value = [
+            make_ctrl(222, '222 (3p)'), make_ctrl(100222, '222 (3p)-1')
+        ]
+
+        from results.services import get_courses_map
+        course = list(get_courses_map(cid=1).values())[0]
+        assert [c['ctrl_name'] for c in course['controls_seq']] == ['1-222', '2-222-1']
+        assert course['control_name_map'] == {
+            222: '222 (3p)', 100222: '222 (3p)-1',
+        }
+
+    @patch('results.services.Mopcontrol')
+    @patch('results.services.Mopclasscontrol')
+    @patch('results.services.Mopclass')
     def test_deux_categories_meme_circuit_un_seul_groupe(self, MockClass, MockCC, MockCtrl):
         cls_h21 = make_cls(10, 'H21'); cls_d21 = make_cls(11, 'D21')
         MockClass.objects.filter.return_value.order_by.return_value = [cls_h21, cls_d21]
