@@ -281,13 +281,13 @@ def process_class(cid: int, elem: ET.Element):
         return
 
     name = (elem.text or '').strip()
-    ord_ = int(elem.get('ord', 0))
-    fields = {'name': name, 'ord': ord_}
-    
     # Nom : peut aussi être dans l'attribut name (en plus du texte)
     name_attr = elem.get('name')
     if name_attr is not None:
-        fields['name'] = name_attr.strip()
+        name = name_attr.strip()
+    
+    ord_ = int(elem.get('ord', 0))
+    fields = {'name': name, 'ord': ord_}
     
     _upsert('mopClass', cid, id_, fields)
 
@@ -322,8 +322,14 @@ def process_organization(cid: int, elem: ET.Element):
             )
         return
 
+    name = (elem.text or '').strip()
+    # Nom : peut aussi être dans l'attribut name (en plus du texte)
+    name_attr = elem.get('name')
+    if name_attr is not None:
+        name = name_attr.strip()
+    
     fields = {
-        'name': (elem.text or '').strip(),
+        'name': name,
     }
 
     # Nationalité : seulement si l'attribut est présent, pour ne pas

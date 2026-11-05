@@ -1315,9 +1315,13 @@ class TestNameAttribute:
         assert fields['name'] == 'Radio Control'
 
     @patch('results.mop_receiver._upsert')
-    def test_cls_name_attribute(self, mock_upsert):
+    @patch('results.mop_receiver.connection')
+    def test_cls_name_attribute(self, mock_conn, mock_upsert):
         """<cls name="H21E"> doit utiliser l'attribut name."""
         from results.mop_receiver import process_class
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
 
         el = elem('cls', {'id': '1', 'ord': '10', 'name': 'H21E'}, text='Old Name')
         process_class(1, el)
@@ -1326,9 +1330,13 @@ class TestNameAttribute:
         assert fields['name'] == 'H21E'
 
     @patch('results.mop_receiver._upsert')
-    def test_org_name_attribute(self, mock_upsert):
+    @patch('results.mop_receiver.connection')
+    def test_org_name_attribute(self, mock_conn, mock_upsert):
         """<org name="Club"> doit utiliser l'attribut name."""
         from results.mop_receiver import process_organization
+        cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: cur
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
 
         el = elem('org', {'id': '1', 'name': 'Test Club'}, text='Old Name')
         process_organization(1, el)
