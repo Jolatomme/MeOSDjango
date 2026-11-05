@@ -134,7 +134,7 @@ class CompetitionConfigAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at',)
     fieldsets = (
         (None, {
-            'fields': ('cid', 'frozen', 'visible', 'deleted'),
+            'fields': ('cid', 'frozen', 'visible', 'deleted', 'score_race'),
         }),
         (gettext_lazy("Informations de la course"), {
             'fields': ('homepage', 'livelox', 'logo'),

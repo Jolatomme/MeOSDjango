@@ -271,7 +271,36 @@ def class_results(request, cid, class_id):
     for c in competitors:
         c.org_obj = org_map.get(c.org)
 
-    finishers, non_finishers, leader_time = rank_finishers(competitors)
+    # Vérifier si c'est une course au score
+    from results.services import is_score_race, rank_finishers_score, get_class_controls
+    
+    score_race = is_score_race(cid)
+    
+    if score_race:
+        # Pour la course au score, obtenir les informations nécessaires
+        if course is not None:
+            # Pour un circuit, obtenir controls_seq et control_name_map
+            controls_seq = course['controls_seq']
+            # Obtenir control_name_map - il faut le recalculer
+            # Pour l'instant, nous allons utiliser une approche simple
+            # en appelant get_class_controls pour la première classe du circuit
+            if course['class_ids']:
+                _, control_name_map = get_class_controls(cid, course['class_ids'][0])
+            else:
+                control_name_map = {}
+        else:
+            controls_seq, control_name_map = get_class_controls(cid, cls.id)
+        
+        # Obtenir radio_map pour calculer les scores
+        radio_map = get_radio_map(cid, [c.id for c in competitors])
+        
+        finishers, non_finishers, leader_time, leader_score = rank_finishers_score(
+            competitors, controls_seq, control_name_map, radio_map
+        )
+        leader_score = leader_score
+    else:
+        finishers, non_finishers, leader_time = rank_finishers(competitors)
+        leader_score = None
 
     # Rang dans la catégorie d'origine pour les vues circuit
     if course is not None:
@@ -356,6 +385,8 @@ def class_results(request, cid, class_id):
         'all_classes':         all_classes,
         'course_hash':         course['hash'] if course else compute_course_hash(controls_seq),
         'neg_time_warning':    get_negative_time_stats(cid),
+        'leader_score':       leader_score,
+        'score_race':         score_race,
     })
 
 
