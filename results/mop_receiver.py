@@ -217,6 +217,11 @@ def process_competition(cid: int, elem: ET.Element):
         'homepage':  elem.get('homepage', ''),
     }
     
+    # Nom : peut aussi être dans l'attribut name (en plus du texte)
+    name_attr = elem.get('name')
+    if name_attr is not None:
+        fields['name'] = name_attr.strip()
+    
     # zerotime : heure de référence pour les temps de course (optionnel)
     # Stocké dans mopCompetition si présent dans le XML
     zerotime_attr = elem.get('zerotime')
@@ -240,9 +245,16 @@ def process_control(cid: int, elem: ET.Element):
             )
         return
 
-    _upsert('mopControl', cid, id_, {
+    fields = {
         'name': (elem.text or '').strip(),
-    })
+    }
+    
+    # Nom : peut aussi être dans l'attribut name (en plus du texte)
+    name_attr = elem.get('name')
+    if name_attr is not None:
+        fields['name'] = name_attr.strip()
+    
+    _upsert('mopControl', cid, id_, fields)
 
 
 def process_class(cid: int, elem: ET.Element):
@@ -270,7 +282,14 @@ def process_class(cid: int, elem: ET.Element):
 
     name = (elem.text or '').strip()
     ord_ = int(elem.get('ord', 0))
-    _upsert('mopClass', cid, id_, {'name': name, 'ord': ord_})
+    fields = {'name': name, 'ord': ord_}
+    
+    # Nom : peut aussi être dans l'attribut name (en plus du texte)
+    name_attr = elem.get('name')
+    if name_attr is not None:
+        fields['name'] = name_attr.strip()
+    
+    _upsert('mopClass', cid, id_, fields)
 
     # radio est un ATTRIBUT (ex: radio="70" ou radio="31,32;33" ou radio="")
     radio_attr = elem.get('radio', '').strip()
@@ -364,6 +383,11 @@ def process_competitor(cid: int, elem: ET.Element):
         'prel':  1 if base.get('prel') == 'true' else 0,
         'competing': 1 if elem.get('competing') == 'true' else 0,
     }
+    
+    # Nom : peut aussi être dans l'attribut name de <cmp> (en plus de base.text)
+    name_attr = elem.get('name')
+    if name_attr is not None:
+        fields['name'] = name_attr.strip()
 
     # Dossard : seulement si l'attribut est présent, pour ne pas
     # écraser une valeur existante lors d'un MOPDiff partiel sans bib.
@@ -456,6 +480,11 @@ def process_team(cid: int, elem: ET.Element):
         'rt':   int(base.get('rt', 0)),
         'prel': 1 if base.get('prel') == 'true' else 0,
     }
+    # Nom : peut aussi être dans l'attribut name de <tm> (en plus de base.text)
+    name_attr = elem.get('name')
+    if name_attr is not None:
+        fields['name'] = name_attr.strip()
+
     _upsert('mopTeam', cid, id_, fields)
 
     r_elem = _find(elem, 'r')
