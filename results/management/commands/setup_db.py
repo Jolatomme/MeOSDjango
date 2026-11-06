@@ -126,12 +126,16 @@ MISSING_COLUMN_ALTERS = {
                    "ADD COLUMN `livelox` VARCHAR(128) NOT NULL DEFAULT ''",
         "logo": "ALTER TABLE `mopCompetition` "
                 "ADD COLUMN `logo` VARCHAR(128) NOT NULL DEFAULT ''",
+        "zerotime": "ALTER TABLE `mopCompetition` "
+                    "ADD COLUMN `zerotime` VARCHAR(16) NOT NULL DEFAULT ''",
     },
     "mopCompetitor": {
         "card": "ALTER TABLE `mopCompetitor` "
                 "ADD COLUMN `card` VARCHAR(32) NOT NULL DEFAULT ''",
         "bib": "ALTER TABLE `mopCompetitor` "
                "ADD COLUMN `bib` VARCHAR(32) NOT NULL DEFAULT ''",
+        "competing": "ALTER TABLE `mopCompetitor` "
+                     "ADD COLUMN `competing` TINYINT NOT NULL DEFAULT 0",
         "prel": "ALTER TABLE `mopCompetitor` "
                 "ADD COLUMN `prel` TINYINT NOT NULL DEFAULT 0",
         "nat": "ALTER TABLE `mopCompetitor` "
