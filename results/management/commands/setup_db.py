@@ -12,7 +12,8 @@ CREATE_TABLES = {
         `organizer` VARCHAR(64) NOT NULL DEFAULT '',
         `homepage` VARCHAR(128) NOT NULL DEFAULT '',
         `livelox` VARCHAR(128) NOT NULL DEFAULT '',
-        `logo` VARCHAR(128) NOT NULL DEFAULT ''
+        `logo` VARCHAR(128) NOT NULL DEFAULT '',
+        `zerotime` VARCHAR(16) NOT NULL DEFAULT ''
     ) ENGINE = InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""",
 
     "mopControl": """CREATE TABLE IF NOT EXISTS `mopControl` (
@@ -58,7 +59,8 @@ CREATE_TABLES = {
         `tstat` TINYINT NOT NULL DEFAULT 0,
         `it` INT NOT NULL DEFAULT 0,
         `prel` TINYINT NOT NULL DEFAULT 0,
-        `nat` VARCHAR(8) NOT NULL DEFAULT ''
+        `nat` VARCHAR(8) NOT NULL DEFAULT '',
+        `competing` TINYINT NOT NULL DEFAULT 0
     ) ENGINE = InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""",
 
     "mopTeam": """CREATE TABLE IF NOT EXISTS `mopTeam` (
@@ -124,12 +126,16 @@ MISSING_COLUMN_ALTERS = {
                    "ADD COLUMN `livelox` VARCHAR(128) NOT NULL DEFAULT ''",
         "logo": "ALTER TABLE `mopCompetition` "
                 "ADD COLUMN `logo` VARCHAR(128) NOT NULL DEFAULT ''",
+        "zerotime": "ALTER TABLE `mopCompetition` "
+                    "ADD COLUMN `zerotime` VARCHAR(16) NOT NULL DEFAULT ''",
     },
     "mopCompetitor": {
         "card": "ALTER TABLE `mopCompetitor` "
                 "ADD COLUMN `card` VARCHAR(32) NOT NULL DEFAULT ''",
         "bib": "ALTER TABLE `mopCompetitor` "
                "ADD COLUMN `bib` VARCHAR(32) NOT NULL DEFAULT ''",
+        "competing": "ALTER TABLE `mopCompetitor` "
+                     "ADD COLUMN `competing` TINYINT NOT NULL DEFAULT 0",
         "prel": "ALTER TABLE `mopCompetitor` "
                 "ADD COLUMN `prel` TINYINT NOT NULL DEFAULT 0",
         "nat": "ALTER TABLE `mopCompetitor` "

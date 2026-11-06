@@ -204,22 +204,57 @@ def process_competition(cid: int, elem: ET.Element):
                  homepage="http://..." zerotime="09:00:00">
       Nom de la compétition
     </competition>
+    <competition delete="true"></competition>
     """
+    if elem.get('delete') == 'true':
+        clear_competition(cid)
+        return
+
     fields = {
         'name':      (elem.text or '').strip(),
         'date':      elem.get('date', '2000-01-01'),
         'organizer': elem.get('organizer', ''),
         'homepage':  elem.get('homepage', ''),
     }
+    
+    # Nom : peut aussi être dans l'attribut name (en plus du texte)
+    name_attr = elem.get('name')
+    if name_attr is not None:
+        fields['name'] = name_attr.strip()
+    
+    # zerotime : heure de référence pour les temps de course (optionnel)
+    # Stocké dans mopCompetition si présent dans le XML
+    zerotime_attr = elem.get('zerotime')
+    if zerotime_attr is not None:
+        fields['zerotime'] = zerotime_attr.strip()
+    
     _upsert('mopCompetition', cid, 1, fields)
 
 
 def process_control(cid: int, elem: ET.Element):
-    """<ctrl id="70">Radio</ctrl>"""
+    """<ctrl id="70">Radio</ctrl>
+    <ctrl id="70" delete="true"></ctrl>
+    """
     id_ = int(elem.get('id'))
-    _upsert('mopControl', cid, id_, {
+
+    if elem.get('delete') == 'true':
+        with connection.cursor() as cur:
+            cur.execute(
+                "DELETE FROM mopControl WHERE cid=%s AND id=%s",
+                [cid, id_]
+            )
+        return
+
+    fields = {
         'name': (elem.text or '').strip(),
-    })
+    }
+    
+    # Nom : peut aussi être dans l'attribut name (en plus du texte)
+    name_attr = elem.get('name')
+    if name_attr is not None:
+        fields['name'] = name_attr.strip()
+    
+    _upsert('mopControl', cid, id_, fields)
 
 
 def process_class(cid: int, elem: ET.Element):
@@ -246,8 +281,15 @@ def process_class(cid: int, elem: ET.Element):
         return
 
     name = (elem.text or '').strip()
+    # Nom : peut aussi être dans l'attribut name (en plus du texte)
+    name_attr = elem.get('name')
+    if name_attr is not None:
+        name = name_attr.strip()
+    
     ord_ = int(elem.get('ord', 0))
-    _upsert('mopClass', cid, id_, {'name': name, 'ord': ord_})
+    fields = {'name': name, 'ord': ord_}
+    
+    _upsert('mopClass', cid, id_, fields)
 
     # radio est un ATTRIBUT (ex: radio="70" ou radio="31,32;33" ou radio="")
     radio_attr = elem.get('radio', '').strip()
@@ -280,8 +322,14 @@ def process_organization(cid: int, elem: ET.Element):
             )
         return
 
+    name = (elem.text or '').strip()
+    # Nom : peut aussi être dans l'attribut name (en plus du texte)
+    name_attr = elem.get('name')
+    if name_attr is not None:
+        name = name_attr.strip()
+    
     fields = {
-        'name': (elem.text or '').strip(),
+        'name': name,
     }
 
     # Nationalité : seulement si l'attribut est présent, pour ne pas
@@ -311,7 +359,7 @@ def process_competitor(cid: int, elem: ET.Element):
       stat=15 : OCC (Out-of-competition, v3.7)
       prel    : résultat préliminaire (arrivé mais carte non lue) — attribut
                 "true" sur <base> ; absent = résultat officiel (carte lue).
-      competing : a pointé mais pas encore arrivé
+      competing : a pointé mais pas encore arrivé — attribut "true" sur <cmp>
     """
     id_ = int(elem.get('id'))
 
@@ -339,7 +387,13 @@ def process_competitor(cid: int, elem: ET.Element):
         'st':    int(base.get('st', 0)),
         'rt':    int(base.get('rt', 0)),
         'prel':  1 if base.get('prel') == 'true' else 0,
+        'competing': 1 if elem.get('competing') == 'true' else 0,
     }
+    
+    # Nom : peut aussi être dans l'attribut name de <cmp> (en plus de base.text)
+    name_attr = elem.get('name')
+    if name_attr is not None:
+        fields['name'] = name_attr.strip()
 
     # Dossard : seulement si l'attribut est présent, pour ne pas
     # écraser une valeur existante lors d'un MOPDiff partiel sans bib.
@@ -432,6 +486,11 @@ def process_team(cid: int, elem: ET.Element):
         'rt':   int(base.get('rt', 0)),
         'prel': 1 if base.get('prel') == 'true' else 0,
     }
+    # Nom : peut aussi être dans l'attribut name de <tm> (en plus de base.text)
+    name_attr = elem.get('name')
+    if name_attr is not None:
+        fields['name'] = name_attr.strip()
+
     _upsert('mopTeam', cid, id_, fields)
 
     r_elem = _find(elem, 'r')

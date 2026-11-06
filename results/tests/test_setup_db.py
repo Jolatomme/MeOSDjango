@@ -67,3 +67,23 @@ class TestNatColumn:
         sql = MISSING_COLUMN_ALTERS['mopOrganization']['nat']
         assert sql.startswith('ALTER TABLE `mopOrganization`')
         assert 'ADD COLUMN `nat` VARCHAR(8)' in sql
+
+
+class TestColonnesMop20:
+    """Colonnes MOP 2.0 zerotime / competing, ajoutées après les tables d'origine."""
+
+    def test_zerotime_dans_le_create_table(self):
+        assert "`zerotime` VARCHAR(16) NOT NULL DEFAULT ''" in CREATE_TABLES['mopCompetition']
+
+    def test_alter_zerotime_pour_les_bases_existantes(self):
+        sql = MISSING_COLUMN_ALTERS['mopCompetition']['zerotime']
+        assert sql.startswith('ALTER TABLE `mopCompetition`')
+        assert 'ADD COLUMN `zerotime` VARCHAR(16)' in sql
+
+    def test_competing_dans_le_create_table(self):
+        assert '`competing` TINYINT NOT NULL DEFAULT 0' in CREATE_TABLES['mopCompetitor']
+
+    def test_alter_competing_pour_les_bases_existantes(self):
+        sql = MISSING_COLUMN_ALTERS['mopCompetitor']['competing']
+        assert sql.startswith('ALTER TABLE `mopCompetitor`')
+        assert 'ADD COLUMN `competing` TINYINT' in sql

@@ -122,18 +122,24 @@ WSGI_APPLICATION = 'MeOSDjango.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
+# Allow override via DATABASE_ENGINE variable (e.g., in dev_settings.py)
+DB_ENGINE = globals().get('DATABASE_ENGINE', 'django.db.backends.mysql')
+DB_OPTIONS = {}
+if DB_ENGINE == 'django.db.backends.mysql':
+    DB_OPTIONS = {
+        'charset': 'utf8mb4',
+        'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+    }
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
+        'ENGINE': DB_ENGINE,
         'NAME': DATABASE_NAME,
         'USER': DATABASE_USER,
         'PASSWORD': DATABASE_PASSWORD,
         'HOST': DATABASE_HOST,
         'PORT': DATABASE_PORT,
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
+        'OPTIONS': DB_OPTIONS,
     }
 }
 
