@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-02 22:16+0100\n"
+"POT-Creation-Date: 2026-11-02 23:31+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -30,7 +30,7 @@ msgstr ""
 #: results/templates/results/meos_checker.html:10
 #: results/templates/results/race_create.html:11
 #: results/templates/results/race_import_iof.html:10
-#: results/templates/results/race_manage.html:20
+#: results/templates/results/race_manage.html:22
 #: results/templates/results/start_list.html:10
 #: results/templates/results/statistics.html:10
 #: results/templates/results/tuto.html:10
@@ -266,12 +266,14 @@ msgid_plural "%(n)s rapports supprimés."
 msgstr[0] "%(n)s rapport borttagen."
 msgstr[1] "%(n)s rapporter borttagna."
 
-#: results/admin.py:37 results/forms.py:115
+#: results/admin.py:37 results/forms.py:115 results/forms.py:125
 #: results/templates/results/race_create.html:117
+#: results/templates/results/race_manage.html:279
 msgid "Logo de l'organisateur"
 msgstr "Arrangörens logotyp"
 
 #: results/admin.py:40 results/templates/results/race_create.html:129
+#: results/templates/results/race_manage.html:310
 msgid "SVG, PNG ou JPEG — 2 Mo maximum."
 msgstr "SVG, PNG eller JPEG — högst 2 MB."
 
@@ -287,7 +289,7 @@ msgstr "Tävlingsuppgifter"
 msgid "Accès MeOS"
 msgstr "MeOS-åtkomst"
 
-#: results/admin.py:155 results/templates/results/race_manage.html:130
+#: results/admin.py:155 results/templates/results/race_manage.html:170
 msgid "Compétition"
 msgstr "Tävling"
 
@@ -329,7 +331,7 @@ msgstr "Ingen logotyp att ta bort."
 #: results/templates/results/course_results.html:13
 #: results/templates/results/course_results.html:18
 #: results/templates/results/live_results.html:119
-#: results/tests/test_i18n.py:427
+#: results/tests/test_i18n.py:430
 msgid "Résultats"
 msgstr "Resultat"
 
@@ -406,7 +408,7 @@ msgid "Organisateur / club"
 msgstr "Arrangör / klubb"
 
 #: results/forms.py:86 results/templates/results/race_create.html:91
-#: results/templates/results/race_manage.html:214
+#: results/templates/results/race_manage.html:255
 msgid "Site web de l'organisateur"
 msgstr "Arrangörens webbplats"
 
@@ -414,11 +416,20 @@ msgstr "Arrangörens webbplats"
 msgid "Site web (champ piège)"
 msgstr "Webbplats (fältfälla)"
 
-#: results/forms.py:129
+#: results/forms.py:128
+msgid "Laissez vide pour conserver le logo actuel."
+msgstr "Lämna tomt för att behålla den nuvarande logotypen."
+
+#: results/forms.py:131
+#
+msgid "Supprimer le logo actuel"
+msgstr "Ta bort den nuvarande logotypen"
+
+#: results/forms.py:140
 msgid "Fichier IOF ResultList (.xml)"
 msgstr "IOF ResultList-fil (.xml)"
 
-#: results/forms.py:131
+#: results/forms.py:142
 msgid ""
 "Export IOF Data Standard v3 (ResultList). Les fichiers « Complete » et "
 "« Snapshot » sont acceptés."
@@ -426,11 +437,11 @@ msgstr ""
 "IOF Data Standard v3-export (ResultList). Filer av typen ”Complete” och "
 "”Snapshot” accepteras."
 
-#: results/forms.py:136 results/templates/results/race_import_iof.html:180
+#: results/forms.py:147 results/templates/results/_iof_import_panel.html:177
 msgid "Numéro de course"
 msgstr "Tävlingsnummer"
 
-#: results/forms.py:140
+#: results/forms.py:151
 msgid ""
 "Obligatoire pour un fichier contenant plusieurs courses ; laissez vide pour "
 "un fichier à une seule course."
@@ -438,11 +449,11 @@ msgstr ""
 "Obligatoriskt för en fil med flera tävlingar; lämna tomt för en fil med en "
 "enda tävling."
 
-#: results/forms.py:145
+#: results/forms.py:156
 msgid "Utiliser les informations de l'événement IOF"
 msgstr "Använd IOF-tävlingens uppgifter"
 
-#: results/forms.py:148
+#: results/forms.py:159
 msgid ""
 "Nom, date, organisateur et site web du fichier. Décoché, les informations "
 "déjà saisies sur le site sont conservées et les champs vides sont complétés "
@@ -452,11 +463,11 @@ msgstr ""
 "behålls uppgifterna som redan angetts på webbplatsen och tomma fält fylls i "
 "från filen."
 
-#: results/forms.py:154
+#: results/forms.py:165
 msgid "Je comprends que l'import remplace tous les résultats existants."
 msgstr "Jag förstår att importen ersätter alla befintliga resultat."
 
-#: results/forms.py:164
+#: results/forms.py:175
 #, python-format
 msgid "Fichier trop volumineux (%(max)d Mo maximum)."
 msgstr "Filen är för stor (högst %(max)d MB)."
@@ -1087,7 +1098,7 @@ msgstr "Arrangör"
 msgid "page d'accueil"
 msgstr "startsida"
 
-#: results/models.py:77 results/tests/test_i18n.py:415
+#: results/models.py:77 results/tests/test_i18n.py:418
 msgid "compétitions"
 msgstr "Tävlingar"
 
@@ -1144,7 +1155,7 @@ msgstr "skapad"
 msgid "configuration compétition"
 msgstr "tävlingskonfiguration"
 
-#: results/models.py:303 results/tests/test_i18n.py:416
+#: results/models.py:303 results/tests/test_i18n.py:419
 msgid "configurations compétitions"
 msgstr "tävlingskonfigurationer"
 
@@ -1156,30 +1167,13 @@ msgstr "raderad"
 msgid "masquée"
 msgstr "dold"
 
-#: results/race_views.py:134
-msgid "Formulaire invalide. Vérifiez les champs saisis."
-msgstr "Ogiltigt formulär. Kontrollera de ifyllda fälten."
-
-#: results/race_views.py:153
-msgid "Conflit à la création. Réessayez une nouvelle fois."
-msgstr "Konflikt vid skapande. Försök igen."
-
-#: results/race_views.py:208
-#, python-format
-msgid ""
-"Course « %(name)s » supprimée : résultats, clé API et lien de gestion "
-"effacés."
-msgstr ""
-"Tävlingen «%(name)s» raderad: resultat, API-nyckel och hanteringslänk "
-"borttagna."
-
-#: results/race_views.py:286
+#: results/race_views.py:179
 msgid ""
 "Cochez la case de confirmation : l'import remplace tous les résultats "
 "existants."
 msgstr "Markera bekräftelserutan: importen ersätter alla befintliga resultat."
 
-#: results/race_views.py:305
+#: results/race_views.py:200
 msgid ""
 "La course est gelée : aucun résultat n'a été importé. Dégèle-la dans MeOS "
 "avant de réessayer."
@@ -1187,7 +1181,7 @@ msgstr ""
 "Tävlingen är fryst: inga resultat importerades. Lås upp den i MeOS innan du "
 "försöker igen."
 
-#: results/race_views.py:319
+#: results/race_views.py:215
 #, python-format
 msgid ""
 "Résultats IOF importés : %(classes)d classe(s), %(competitors)d "
@@ -1195,6 +1189,23 @@ msgid ""
 msgstr ""
 "IOF-resultat importerade: %(classes)d klass(er), %(competitors)d tävlande, "
 "%(teams)d lag."
+
+#: results/race_views.py:253
+msgid "Formulaire invalide. Vérifiez les champs saisis."
+msgstr "Ogiltigt formulär. Kontrollera de ifyllda fälten."
+
+#: results/race_views.py:272
+msgid "Conflit à la création. Réessayez une nouvelle fois."
+msgstr "Konflikt vid skapande. Försök igen."
+
+#: results/race_views.py:349
+#, python-format
+msgid ""
+"Course « %(name)s » supprimée : résultats, clé API et lien de gestion "
+"effacés."
+msgstr ""
+"Tävlingen «%(name)s» raderad: resultat, API-nyckel och hanteringslänk "
+"borttagna."
 
 #: results/services.py:393 results/services.py:401 results/services.py:513
 #: results/services.py:530 results/templates/results/_split_detail_row.html:2
@@ -1317,16 +1328,8 @@ msgid ""
 "        Merci de réessayer dans quelques instants."
 msgstr "Ett oväntat problem uppstod på servern. Försök igen om en stund."
 
-#: results/templates/admin/results/competitionconfig/change_form.html:19
-msgid "Supprimer la compétition"
-msgstr "Ta bort tävling"
-
-#: results/templates/admin/results/competitionconfig/change_form.html:20
-msgid "Supprimer définitivement cette compétition et toutes ses données ?"
-msgstr "Ta bort den här tävlingen och alla dess data permanent?"
-
 #: results/templates/admin/results/competitionconfig/change_list.html:9
-#: results/tests/test_i18n.py:435
+#: results/tests/test_i18n.py:438
 msgid "Ajouter une compétition"
 msgstr "Lägg till en tävling"
 
@@ -1337,6 +1340,14 @@ msgstr "Ta bort lokal logotyp"
 #: results/templates/admin/results/competitionconfig/fieldset.html:44
 msgid "Supprimer le logo local de cette compétition ?"
 msgstr "Ta bort den lokala logotypen för denna tävling?"
+
+#: results/templates/admin/results/competitionconfig/submit_line.html:9
+msgid "Supprimer la compétition"
+msgstr "Ta bort tävling"
+
+#: results/templates/admin/results/competitionconfig/submit_line.html:10
+msgid "Supprimer définitivement cette compétition et toutes ses données ?"
+msgstr "Ta bort den här tävlingen och alla dess data permanent?"
 
 #: results/templates/results/_analysis_partial.html:4
 msgid "Analyse partielle"
@@ -1391,6 +1402,148 @@ msgstr[1] "%(n)s varningar"
 #: results/templates/results/_error_chart_card.html:5
 msgid "Taux d'erreur par tronçon"
 msgstr "Felfrekvens per sträcka"
+
+#: results/templates/results/_iof_import_panel.html:14
+msgid ""
+"Cet import <strong>remplace tous les résultats existants</strong> de la "
+"course\n"
+"  (concurrents, équipes, circuits et pointages), exactement comme un envoi\n"
+"  « MOPComplete » de MeOS. Les informations de course saisies sur le site\n"
+"  (nom, date, organisateur, site web, Livelox, logo) sont conservées, sauf\n"
+"  si vous demandez explicitement à utiliser celles du fichier IOF."
+msgstr ""
+"Importen <strong>ersätter alla befintliga resultat</strong> för tävlingen\n"
+"      (tävlande, lag, banor och mellantider), precis som en\n"
+"      ”MOPComplete”-överföring från MeOS. Tävlingsuppgifterna som angetts "
+"på\n"
+"      webbplatsen (namn, datum, arrangör, webbplats, Livelox, logotyp) "
+"behålls,\n"
+"      om du inte uttryckligen väljer att använda uppgifterna från IOF-filen."
+
+#: results/templates/results/_iof_import_panel.html:23
+msgid "À propos du format IOF"
+msgstr "Om IOF-formatet"
+
+#: results/templates/results/_iof_import_panel.html:27
+msgid "Le fichier doit être un <strong>ResultList</strong> au format"
+msgstr "Filen måste vara en <strong>ResultList</strong> enligt"
+
+#: results/templates/results/_iof_import_panel.html:32
+msgid ""
+"Fichiers « Complete » et « Snapshot » : import complet ; le statut « Delta » "
+"est refusé."
+msgstr ""
+"Filer av typen ”Complete” och ”Snapshot”: fullständig import; statusen "
+"”Delta” avvisas."
+
+#: results/templates/results/_iof_import_panel.html:33
+msgid ""
+"Un seul numéro de course par import : précisez-le pour un fichier multi-"
+"course."
+msgstr ""
+"Ett tävlingsnummer per import: ange det för en fil med flera tävlingar."
+
+#: results/templates/results/_iof_import_panel.html:34
+msgid ""
+"Résultats individuels et relais pris en charge ; les circuits avec fourches "
+"sont simplifiés."
+msgstr ""
+"Individuella resultat och stafettresultat stöds; banor med gaffling "
+"förenklas."
+
+#: results/templates/results/_iof_import_panel.html:35
+msgid ""
+"L'analyse sans import permet de contrôler les classes, effectifs et "
+"avertissements avant d'écrire."
+msgstr ""
+"Analysen utan import låter dig kontrollera klasser, antal tävlande och "
+"varningar innan något skrivs."
+
+#: results/templates/results/_iof_import_panel.html:42
+msgid "Fichier IOF Data Standard v3"
+msgstr "IOF Data Standard v3-fil"
+
+#: results/templates/results/_iof_import_panel.html:64
+#: results/templates/results/_iof_import_panel.html:68
+#: results/templates/results/meos_checker.html:45
+#: results/templates/results/meos_checker.html:49
+#: results/templates/results/race_create.html:123
+#: results/templates/results/race_create.html:127
+#: results/templates/results/race_manage.html:303
+#: results/templates/results/race_manage.html:307
+#: results/templates/results/verifie_moi.html:57
+#: results/templates/results/verifie_moi.html:61
+msgid "Aucun fichier choisi"
+msgstr "Ingen fil vald"
+
+#: results/templates/results/_iof_import_panel.html:66
+#: results/templates/results/meos_checker.html:47
+#: results/templates/results/race_create.html:125
+#: results/templates/results/race_manage.html:305
+#: results/templates/results/verifie_moi.html:59
+msgid "Choisir un fichier"
+msgstr "Välj fil"
+
+#: results/templates/results/_iof_import_panel.html:119
+msgid "Analyser sans importer"
+msgstr "Analysera utan att importera"
+
+#: results/templates/results/_iof_import_panel.html:122
+msgid "Importer et remplacer les résultats"
+msgstr "Importera och ersätt resultaten"
+
+#: results/templates/results/_iof_import_panel.html:126
+#: results/templates/results/race_create.html:140
+msgid "Annuler"
+msgstr "Avbryt"
+
+#: results/templates/results/_iof_import_panel.html:136
+msgid "Rapport d'import"
+msgstr "Importrapport"
+
+#: results/templates/results/_iof_import_panel.html:138
+msgid "Analyse — aucune écriture"
+msgstr "Analys — inget skrivs"
+
+#: results/templates/results/_iof_import_panel.html:140
+msgid "Course gelée"
+msgstr "Tävlingen är fryst"
+
+#: results/templates/results/_iof_import_panel.html:142
+msgid "Importé"
+msgstr "Importerad"
+
+#: results/templates/results/_iof_import_panel.html:150
+msgid "Classes"
+msgstr "Klasser"
+
+#: results/templates/results/_iof_import_panel.html:156
+msgid "Concurrents"
+msgstr "Tävlande"
+
+#: results/templates/results/_iof_import_panel.html:162
+msgid "Équipes"
+msgstr "Lag"
+
+#: results/templates/results/_iof_import_panel.html:168
+msgid "Pointages"
+msgstr "Mellantider"
+
+#: results/templates/results/_iof_import_panel.html:174
+msgid "Course importée"
+msgstr "Importerad tävling"
+
+#: results/templates/results/_iof_import_panel.html:180
+msgid "Postes"
+msgstr "Kontroller"
+
+#: results/templates/results/_iof_import_panel.html:187
+msgid "Points à vérifier"
+msgstr "Punkter att kontrollera"
+
+#: results/templates/results/_iof_import_panel.html:198
+msgid "Aucun avertissement."
+msgstr "Inga varningar."
 
 #: results/templates/results/_neg_time_warning.html:10
 msgid "Poste suspecté"
@@ -1589,7 +1742,7 @@ msgstr "Tävlingslista"
 #: results/templates/results/race_create.html:3
 #: results/templates/results/race_create.html:12
 #: results/templates/results/race_create.html:16
-#: results/templates/results/race_manage.html:22
+#: results/templates/results/race_manage.html:24
 msgid "Créer une course"
 msgstr "Skapa en tävling"
 
@@ -2785,24 +2938,6 @@ msgstr "Ladda upp en MeOS-fil"
 msgid "Fichier d'exportation MeOS (<code>.meosxml</code>)"
 msgstr "MeOS-exportfil (<code>.meosxml</code>)"
 
-#: results/templates/results/meos_checker.html:45
-#: results/templates/results/meos_checker.html:49
-#: results/templates/results/race_create.html:123
-#: results/templates/results/race_create.html:127
-#: results/templates/results/race_import_iof.html:69
-#: results/templates/results/race_import_iof.html:73
-#: results/templates/results/verifie_moi.html:57
-#: results/templates/results/verifie_moi.html:61
-msgid "Aucun fichier choisi"
-msgstr "Ingen fil vald"
-
-#: results/templates/results/meos_checker.html:47
-#: results/templates/results/race_create.html:125
-#: results/templates/results/race_import_iof.html:71
-#: results/templates/results/verifie_moi.html:59
-msgid "Choisir un fichier"
-msgstr "Välj fil"
-
 #: results/templates/results/meos_checker.html:62
 msgid "Verifier la conformite"
 msgstr "Kontrollera regeluppfyllnad"
@@ -2991,28 +3126,23 @@ msgstr ""
 "        privat hanteringslänk skapas automatiskt."
 
 #: results/templates/results/race_create.html:55
-#: results/templates/results/race_manage.html:181
+#: results/templates/results/race_manage.html:222
 msgid "Nom de la course *"
 msgstr "Tävlingens namn *"
 
 #: results/templates/results/race_create.html:67
-#: results/templates/results/race_manage.html:192
+#: results/templates/results/race_manage.html:233
 msgid "Date *"
 msgstr "Datum *"
 
 #: results/templates/results/race_create.html:79
-#: results/templates/results/race_manage.html:203
+#: results/templates/results/race_manage.html:244
 msgid "Organisateur / club *"
 msgstr "Arrangör / klubb *"
 
 #: results/templates/results/race_create.html:138
 msgid "Créer la course"
 msgstr "Skapa tävlingen"
-
-#: results/templates/results/race_create.html:140
-#: results/templates/results/race_import_iof.html:130
-msgid "Annuler"
-msgstr "Avbryt"
 
 #: results/templates/results/race_create.html:148
 msgid "Comment ça marche ?"
@@ -3062,165 +3192,45 @@ msgstr ""
 #: results/templates/results/race_import_iof.html:3
 #: results/templates/results/race_import_iof.html:16
 #: results/templates/results/race_import_iof.html:21
-#: results/templates/results/race_manage.html:253
 msgid "Importer des résultats IOF"
 msgstr "Importera IOF-resultat"
 
 #: results/templates/results/race_import_iof.html:13
-#: results/templates/results/race_manage.html:24
+#: results/templates/results/race_manage.html:26
 msgid "Gestion de course"
 msgstr "Tävlingshantering"
 
-#: results/templates/results/race_import_iof.html:39
-msgid ""
-"Cet import <strong>remplace tous les résultats existants</strong> de la "
-"course\n"
-"      (concurrents, équipes, circuits et pointages), exactement comme un "
-"envoi\n"
-"      « MOPComplete » de MeOS. Les informations de course saisies sur le "
-"site\n"
-"      (nom, date, organisateur, site web, Livelox, logo) sont conservées, "
-"sauf\n"
-"      si vous demandez explicitement à utiliser celles du fichier IOF."
-msgstr ""
-"Importen <strong>ersätter alla befintliga resultat</strong> för tävlingen\n"
-"      (tävlande, lag, banor och mellantider), precis som en\n"
-"      ”MOPComplete”-överföring från MeOS. Tävlingsuppgifterna som angetts "
-"på\n"
-"      webbplatsen (namn, datum, arrangör, webbplats, Livelox, logotyp) "
-"behålls,\n"
-"      om du inte uttryckligen väljer att använda uppgifterna från IOF-filen."
-
-#: results/templates/results/race_import_iof.html:48
-msgid "Fichier IOF Data Standard v3"
-msgstr "IOF Data Standard v3-fil"
-
-#: results/templates/results/race_import_iof.html:124
-msgid "Analyser sans importer"
-msgstr "Analysera utan att importera"
-
-#: results/templates/results/race_import_iof.html:127
-msgid "Importer et remplacer les résultats"
-msgstr "Importera och ersätt resultaten"
-
-#: results/templates/results/race_import_iof.html:139
-msgid "Rapport d'import"
-msgstr "Importrapport"
-
-#: results/templates/results/race_import_iof.html:141
-msgid "Analyse — aucune écriture"
-msgstr "Analys — inget skrivs"
-
-#: results/templates/results/race_import_iof.html:143
-msgid "Course gelée"
-msgstr "Tävlingen är fryst"
-
-#: results/templates/results/race_import_iof.html:145
-msgid "Importé"
-msgstr "Importerad"
-
-#: results/templates/results/race_import_iof.html:153
-msgid "Classes"
-msgstr "Klasser"
-
-#: results/templates/results/race_import_iof.html:159
-msgid "Concurrents"
-msgstr "Tävlande"
-
-#: results/templates/results/race_import_iof.html:165
-msgid "Équipes"
-msgstr "Lag"
-
-#: results/templates/results/race_import_iof.html:171
-msgid "Pointages"
-msgstr "Mellantider"
-
-#: results/templates/results/race_import_iof.html:177
-msgid "Course importée"
-msgstr "Importerad tävling"
-
-#: results/templates/results/race_import_iof.html:183
-msgid "Postes"
-msgstr "Kontroller"
-
-#: results/templates/results/race_import_iof.html:190
-msgid "Points à vérifier"
-msgstr "Punkter att kontrollera"
-
-#: results/templates/results/race_import_iof.html:201
-msgid "Aucun avertissement."
-msgstr "Inga varningar."
-
-#: results/templates/results/race_import_iof.html:210
-msgid "À propos du format IOF"
-msgstr "Om IOF-formatet"
-
-#: results/templates/results/race_import_iof.html:214
-msgid "Le fichier doit être un <strong>ResultList</strong> au format"
-msgstr "Filen måste vara en <strong>ResultList</strong> enligt"
-
-#: results/templates/results/race_import_iof.html:219
-msgid ""
-"Fichiers « Complete » et « Snapshot » : import complet ; le statut « Delta » "
-"est refusé."
-msgstr ""
-"Filer av typen ”Complete” och ”Snapshot”: fullständig import; statusen "
-"”Delta” avvisas."
-
-#: results/templates/results/race_import_iof.html:220
-msgid ""
-"Un seul numéro de course par import : précisez-le pour un fichier multi-"
-"course."
-msgstr ""
-"Ett tävlingsnummer per import: ange det för en fil med flera tävlingar."
-
-#: results/templates/results/race_import_iof.html:221
-msgid ""
-"Résultats individuels et relais pris en charge ; les circuits avec fourches "
-"sont simplifiés."
-msgstr ""
-"Individuella resultat och stafettresultat stöds; banor med gaffling "
-"förenklas."
-
-#: results/templates/results/race_import_iof.html:222
-msgid ""
-"L'analyse sans import permet de contrôler les classes, effectifs et "
-"avertissements avant d'écrire."
-msgstr ""
-"Analysen utan import låter dig kontrollera klasser, antal tävlande och "
-"varningar innan något skrivs."
-
-#: results/templates/results/race_manage.html:34
+#: results/templates/results/race_manage.html:36
 #, python-format
 msgid "CID interne : %(cid)s"
 msgstr "Internt CID: %(cid)s"
 
-#: results/templates/results/race_manage.html:46
+#: results/templates/results/race_manage.html:48
 msgid "Nouvelle clé API générée."
 msgstr "Ny API-nyckel genererad."
 
-#: results/templates/results/race_manage.html:47
+#: results/templates/results/race_manage.html:49
 msgid ""
 "Remplacez l'ancienne clé dans MeOS, sans quoi les envois seront refusés."
 msgstr "Ersätt den gamla nyckeln i MeOS, annars avvisas sändningarna."
 
-#: results/templates/results/race_manage.html:52
+#: results/templates/results/race_manage.html:54
 msgid "Nouveau lien de gestion généré."
 msgstr "Ny hanteringslänk genererad."
 
-#: results/templates/results/race_manage.html:53
+#: results/templates/results/race_manage.html:55
 msgid "Mettez à jour vos favoris : l'ancien lien ne fonctionne plus."
 msgstr "Uppdatera dina bokmärken: den gamla länken fungerar inte längre."
 
-#: results/templates/results/race_manage.html:58
+#: results/templates/results/race_manage.html:60
 msgid "Informations de la course mises à jour."
 msgstr "Tävlingsuppgifterna har uppdaterats."
 
-#: results/templates/results/race_manage.html:63
+#: results/templates/results/race_manage.html:65
 msgid "Résultats IOF importés : les anciens résultats ont été remplacés."
 msgstr "IOF-resultat importerade: de tidigare resultaten har ersatts."
 
-#: results/templates/results/race_manage.html:69
+#: results/templates/results/race_manage.html:71
 msgid ""
 "Ce lien est <strong>privé</strong> : toute personne qui le possède peut\n"
 "  afficher la clé API et la régénérer. Conservez-le précieusement (avec la\n"
@@ -3230,72 +3240,124 @@ msgstr ""
 "  visa API-nyckeln och generera om den. Spara den noga (tillsammans med\n"
 "  det utskrivna arket nedan)."
 
-#: results/templates/results/race_manage.html:76
+#: results/templates/results/race_manage.html:78
 msgid "Copier le lien de gestion"
 msgstr "Kopiera hanteringslänken"
 
-#: results/templates/results/race_manage.html:81
+#: results/templates/results/race_manage.html:83
 msgid "Régénérer le lien de gestion ? L\\'ancien lien ne fonctionnera plus."
 msgstr "Generera om hanteringslänken? Den gamla länken slutar att fungera."
 
-#: results/templates/results/race_manage.html:85
+#: results/templates/results/race_manage.html:88
 msgid "Régénérer le lien de gestion"
 msgstr "Generera om hanteringslänken"
 
-#: results/templates/results/race_manage.html:92
+#: results/templates/results/race_manage.html:96
+#: results/templates/results/race_manage.html:102
+#: results/tests/test_i18n.py:446
+msgid "Méthode de saisie des résultats"
+msgstr "Metod för resultatinmatning"
+
+#: results/templates/results/race_manage.html:100
+msgid ""
+"Choisissez la méthode utilisée pour transmettre les résultats de cette "
+"course. Seul le panneau correspondant est affiché."
+msgstr ""
+"Välj metoden som används för att skicka in tävlingens resultat. Endast "
+"motsvarande panel visas."
+
+#: results/templates/results/race_manage.html:106
+msgid "MeOS (MOP)"
+msgstr "MeOS (MOP)"
+
+#: results/templates/results/race_manage.html:111
+#: results/tests/test_i18n.py:447
+msgid "Fichier IOF XML"
+msgstr "IOF XML-fil"
+
+#: results/templates/results/race_manage.html:122
+msgid "Importer un fichier IOF"
+msgstr "Importera en IOF-fil"
+
+#: results/templates/results/race_manage.html:132
 msgid "Paramètres à saisir dans MeOS"
 msgstr "Inställningar att ange i MeOS"
 
-#: results/templates/results/race_manage.html:95
+#: results/templates/results/race_manage.html:135
 msgid "Imprimer / PDF"
 msgstr "Skriva ut / PDF"
 
-#: results/templates/results/race_manage.html:104
+#: results/templates/results/race_manage.html:144
 msgid "URL d'envoi"
 msgstr "Sänd-URL"
 
-#: results/templates/results/race_manage.html:110
+#: results/templates/results/race_manage.html:150
 msgid "Copier l'URL"
 msgstr "Kopiera URL:en"
 
-#: results/templates/results/race_manage.html:123
+#: results/templates/results/race_manage.html:163
 msgid "Copier la clé"
 msgstr "Kopiera nyckeln"
 
-#: results/templates/results/race_manage.html:131
+#: results/templates/results/race_manage.html:171
 msgid "laisser vide"
 msgstr "lämna tomt"
 
-#: results/templates/results/race_manage.html:134
+#: results/templates/results/race_manage.html:174
 msgid "Compression ZIP"
 msgstr "ZIP-komprimering"
 
-#: results/templates/results/race_manage.html:135
+#: results/templates/results/race_manage.html:175
 msgid "Désactivée"
 msgstr "Avstängd"
 
-#: results/templates/results/race_manage.html:138
+#: results/templates/results/race_manage.html:178
 msgid "Intervalle"
 msgstr "Intervall"
 
-#: results/templates/results/race_manage.html:139
+#: results/templates/results/race_manage.html:179
 msgid "0 seconde"
 msgstr "0 sekund"
 
-#: results/templates/results/race_manage.html:142
+#: results/templates/results/race_manage.html:182
 msgid "Format"
 msgstr "Format"
 
-#: results/templates/results/race_manage.html:151
+#: results/templates/results/race_manage.html:191
 msgid ""
 "Régénérer la clé API ? L\\'ancienne clé deviendra immédiatement invalide."
 msgstr "Generera om API-nyckeln? Den gamla nyckeln blir omedeligt ogiltig."
 
-#: results/templates/results/race_manage.html:155
+#: results/templates/results/race_manage.html:195
 msgid "Régénérer la clé"
 msgstr "Generera om nyckeln"
 
-#: results/templates/results/race_manage.html:159
+#: results/templates/results/race_manage.html:212
+msgid "Modifier l'événement"
+msgstr "Redigera tävlingen"
+
+#: results/templates/results/race_manage.html:320
+msgid "Enregistrer les modifications"
+msgstr "Spara ändringarna"
+
+#: results/templates/results/race_manage.html:324
+msgid "Créer une autre course"
+msgstr "Skapa en annan tävling"
+
+#: results/templates/results/race_manage.html:335
+#: results/tests/test_i18n.py:448
+msgid "Zone de danger"
+msgstr "Farlig zon"
+
+#: results/templates/results/race_manage.html:339
+msgid ""
+"La suppression est définitive : résultats, clé API et lien de gestion seront "
+"effacés. Cette action est irréversible."
+msgstr ""
+"Borttagningen är permanent: resultat, API-nyckel och hanteringslänk raderas. "
+"Åtgärden kan inte ångras."
+
+#: results/templates/results/race_manage.html:342
 msgid ""
 "Supprimer définitivement cette course ? Toutes les données seront effacées "
 "(résultats, clé API, lien de gestion) et ce lien ne fonctionnera plus. "
@@ -3305,41 +3367,9 @@ msgstr ""
 "nyckel, hanteringslänk) och den här länken kommer inte längre att fungera. "
 "Åtgärden kan inte ångras."
 
-#: results/templates/results/race_manage.html:163
+#: results/templates/results/race_manage.html:346
 msgid "Supprimer la course"
 msgstr "Radera tävlingen"
-
-#: results/templates/results/race_manage.html:172
-msgid "Modifier l'événement"
-msgstr "Redigera tävlingen"
-
-#: results/templates/results/race_manage.html:239
-msgid "Enregistrer les modifications"
-msgstr "Spara ändringarna"
-
-#: results/templates/results/race_manage.html:243
-msgid "Créer une autre course"
-msgstr "Skapa en annan tävling"
-
-#: results/templates/results/race_manage.html:257
-msgid ""
-"Remplacez les résultats de la course par un fichier\n"
-"      <strong>IOF Data Standard v3</strong> (ResultList) produit par un "
-"autre\n"
-"      logiciel de chronométrage. L'import écrase tous les résultats "
-"existants,\n"
-"      comme un envoi MeOS complet."
-msgstr ""
-"Ersätt tävlingens resultat med en fil\n"
-"      i formatet <strong>IOF Data Standard v3</strong> (ResultList) skapad "
-"av en annan\n"
-"      tidtagningsprogramvara. Importen skriver över alla befintliga "
-"resultat,\n"
-"      precis som en fullständig MeOS-överföring."
-
-#: results/templates/results/race_manage.html:265
-msgid "Importer un fichier IOF"
-msgstr "Importera en IOF-fil"
 
 #: results/templates/results/recapitulatif.html:94
 msgid "Télécharger en CSV"
@@ -3831,6 +3861,21 @@ msgstr "Byt lösenord"
 #: templates/admin/base_site.html:77
 msgid "Log out"
 msgstr "Logga ut"
+
+#~ msgid ""
+#~ "Remplacez les résultats de la course par un fichier\n"
+#~ "      <strong>IOF Data Standard v3</strong> (ResultList) produit par un "
+#~ "autre\n"
+#~ "      logiciel de chronométrage. L'import écrase tous les résultats "
+#~ "existants,\n"
+#~ "      comme un envoi MeOS complet."
+#~ msgstr ""
+#~ "Ersätt tävlingens resultat med en fil\n"
+#~ "      i formatet <strong>IOF Data Standard v3</strong> (ResultList) "
+#~ "skapad av en annan\n"
+#~ "      tidtagningsprogramvara. Importen skriver över alla befintliga "
+#~ "resultat,\n"
+#~ "      precis som en fullständig MeOS-överföring."
 
 #~ msgid "rapport"
 #~ msgstr "rapport"

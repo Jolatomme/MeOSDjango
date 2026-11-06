@@ -9,6 +9,7 @@ Couvre :
   - ENABLE_RACE_CREATION : création activée (défaut) ou désactivée (404)
 """
 
+import re
 from datetime import date
 from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
@@ -18,6 +19,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
 from django.http import Http404
 from django.test import RequestFactory, override_settings
+
+from results.iof_importer import IofImportError, IofImportReport
 
 PNG_MAGIC = b'\x89PNG\r\n\x1a\n'
 
@@ -62,6 +65,28 @@ def _competition():
         organizer='COCS 73',
         homepage='https://example.org',
         livelox='https://livelox.example/42',
+        logo='logo-old.png',
+    )
+
+
+def _iof_upload(content=b'<ResultList xmlns="http://www.orienteering.org/datastandard/3.0"/>',
+                name='resultats.xml'):
+    return SimpleUploadedFile(name, content, content_type='application/xml')
+
+
+def _iof_report(status='DRY-RUN'):
+    return IofImportReport(
+        status=status,
+        race_number=None,
+        competition_name='Championnat test',
+        classes=2,
+        competitors=3,
+        teams=0,
+        controls=4,
+        splits=5,
+        warnings=['Un avertissement'],
+        class_ids=[10, 20],
+        course_hashes=['abcd1234'],
     )
 
 
@@ -312,6 +337,12 @@ class TestRaceManageView:
         assert "Site web de l'organisateur" in content
         assert 'name="livelox"' in content
         assert 'https://livelox.example/42' in content   # valeur enregistrée
+        # Logo actuel + possibilité de le remplacer ou de le supprimer
+        assert 'enctype="multipart/form-data"' in content
+        assert 'name="logo"' in content
+        assert 'name="remove_logo"' in content
+        assert "/org_logo/logo-old.png" in content
+        assert "Supprimer le logo actuel" in content
         # Date ISO dans <input type="date"> (et non localisée : « 17 mai 2026 »,
         # que le navigateur rejetterait → champ affiché vide)
         assert 'value="2026-05-17"' in content
@@ -319,6 +350,24 @@ class TestRaceManageView:
         MockConfig.objects.filter.assert_called_once_with(
             manage_token='jeton-prive-abc'
         )
+
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_get_sans_logo_pas_de_suppression(self, MockConfig, MockComp):
+        """Sans logo existant : champ de dépôt seul, pas de case « supprimer »."""
+        MockConfig.objects.filter.return_value.first.return_value = _config()
+        competition = _competition()
+        competition.logo = ''
+        MockComp.objects.filter.return_value.first.return_value = competition
+
+        from results.race_views import RaceManageView
+        response = RaceManageView.as_view()(
+            rf().get('/gestion-course/jeton-prive-abc/'), token='jeton-prive-abc',
+        )
+
+        content = response.content.decode()
+        assert 'name="logo"' in content
+        assert 'name="remove_logo"' not in content
 
     @patch('results.race_views.CompetitionConfig')
     def test_get_jeton_invalide_404(self, MockConfig):
@@ -425,6 +474,121 @@ class TestRaceManageView:
             livelox='https://livelox.example/99',
         )
 
+    @patch('results.race_views.delete_org_logo')
+    @patch('results.race_views.save_org_logo', return_value='logo-nouveau.png')
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_post_modifie_logo(self, MockConfig, MockComp, mock_save, mock_del):
+        config = _config()
+        MockConfig.objects.filter.return_value.first.return_value = config
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+
+        from results.race_views import RaceManageView
+        data = {
+            'action': 'edit',
+            'name': 'Nouveau nom',
+            'date': '2026-06-01',
+            'organizer': 'OK Autre',
+            'homepage': 'https://autre.example',
+            'livelox': '',
+            'logo': _png_file(),
+        }
+        request = rf().post('/gestion-course/jeton-prive-abc/', data)
+        response = RaceManageView.as_view()(request, token='jeton-prive-abc')
+
+        assert response.status_code == 302
+        mock_save.assert_called_once()
+        assert mock_save.call_args.args[0].name == 'logo-club.png'
+        update_kwargs = MockComp.objects.filter.return_value.update.call_args.kwargs
+        assert update_kwargs['logo'] == 'logo-nouveau.png'
+        mock_del.assert_called_once_with('logo-old.png')
+
+    @patch('results.race_views.delete_org_logo')
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_post_supprime_logo(self, MockConfig, MockComp, mock_del):
+        config = _config()
+        MockConfig.objects.filter.return_value.first.return_value = config
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+
+        from results.race_views import RaceManageView
+        data = {
+            'action': 'edit',
+            'name': 'Nouveau nom',
+            'date': '2026-06-01',
+            'organizer': 'OK Autre',
+            'homepage': '',
+            'livelox': '',
+            'remove_logo': 'on',
+        }
+        request = rf().post('/gestion-course/jeton-prive-abc/', data)
+        response = RaceManageView.as_view()(request, token='jeton-prive-abc')
+
+        assert response.status_code == 302
+        update_kwargs = MockComp.objects.filter.return_value.update.call_args.kwargs
+        assert update_kwargs['logo'] == ''
+        mock_del.assert_called_once_with('logo-old.png')
+
+    @patch('results.race_views.delete_org_logo')
+    @patch('results.race_views.save_org_logo', return_value='logo-nouveau.png')
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_post_logo_nettoie_si_maj_echoue(
+            self, MockConfig, MockComp, mock_save, mock_del):
+        """Le nouveau fichier est retiré si l'écriture en base échoue."""
+        config = _config()
+        MockConfig.objects.filter.return_value.first.return_value = config
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+        MockComp.objects.filter.return_value.update.side_effect = IntegrityError('boom')
+
+        from results.race_views import RaceManageView
+        data = {
+            'action': 'edit',
+            'name': 'Nouveau nom',
+            'date': '2026-06-01',
+            'organizer': 'OK Autre',
+            'homepage': '',
+            'livelox': '',
+            'logo': _png_file(),
+        }
+        with pytest.raises(IntegrityError):
+            RaceManageView.as_view()(
+                rf().post('/gestion-course/jeton-prive-abc/', data),
+                token='jeton-prive-abc',
+            )
+
+        mock_save.assert_called_once()
+        mock_del.assert_called_once_with('logo-nouveau.png')
+
+    @patch('results.race_views.delete_org_logo')
+    @patch('results.race_views.save_org_logo')
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_post_logo_invalide_rend_erreur(
+            self, MockConfig, MockComp, mock_save, mock_del):
+        config = _config()
+        MockConfig.objects.filter.return_value.first.return_value = config
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+
+        from results.race_views import RaceManageView
+        data = {
+            'action': 'edit',
+            'name': 'Nouveau nom',
+            'date': '2026-06-01',
+            'organizer': 'OK Autre',
+            'homepage': '',
+            'livelox': '',
+            'logo': SimpleUploadedFile('evil.exe', b'MZ\x90\x00'),
+        }
+        request = rf().post('/gestion-course/jeton-prive-abc/', data)
+        response = RaceManageView.as_view()(request, token='jeton-prive-abc')
+
+        assert response.status_code == 200
+        assert 'Format accepté : SVG, PNG ou JPEG.' in response.content.decode()
+        MockComp.objects.filter.return_value.update.assert_not_called()
+        mock_save.assert_not_called()
+        mock_del.assert_not_called()
+
     @patch('results.race_views.Mopcompetition')
     @patch('results.race_views.CompetitionConfig')
     def test_post_modifie_champs_invalides_rend_erreurs(self, MockConfig, MockComp):
@@ -451,6 +615,287 @@ class TestRaceManageView:
         response = RaceManageView.as_view()(request, token='jeton-prive-abc')
         assert response.status_code == 302
         assert response['Location'] == '/gestion-course/jeton-prive-abc/'
+
+
+# ─── RaceManageView : panneau IOF intégré ─────────────────────────────────────
+
+class TestRaceManageIof:
+    """Choix MeOS / IOF et formulaire IOF intégré à la page de gestion."""
+
+    URL = '/gestion-course/jeton-prive-abc/'
+
+    @staticmethod
+    def _panel_tag(content, panel_id):
+        match = re.search(r'<div id="%s"[^>]*>' % panel_id, content)
+        assert match is not None, panel_id
+        return match.group(0)
+
+    @staticmethod
+    def _iof_post(data=None):
+        payload = {
+            'form_mode': 'iof',
+            'action': 'inspect',
+            'ioffile': _iof_upload(),
+            'race_number': '',
+            'use_event_metadata': '',
+            'confirm': '',
+        }
+        payload.update(data or {})
+        return rf().post('/gestion-course/jeton-prive-abc/', payload)
+
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_get_meos_par_defaut(self, MockConfig, MockComp):
+        MockConfig.objects.filter.return_value.first.return_value = _config()
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+
+        from results.race_views import RaceManageView
+        response = RaceManageView.as_view()(rf().get(self.URL), token='jeton-prive-abc')
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert 'Méthode de saisie des résultats' in content
+        assert 'hidden' not in self._panel_tag(content, 'raceModeMeosPanel')
+        assert 'hidden' in self._panel_tag(content, 'raceModeIofPanel')
+        assert re.search(
+            r'<input[^>]*id="raceModeMeos"[^>]*checked', content,
+        )
+        assert not re.search(
+            r'<input[^>]*id="raceModeIof"[^>]*checked', content,
+        )
+
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_get_mode_iof_affiche_le_formulaire(self, MockConfig, MockComp):
+        MockConfig.objects.filter.return_value.first.return_value = _config()
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+
+        from results.race_views import RaceManageView
+        response = RaceManageView.as_view()(
+            rf().get(self.URL + '?mode=iof'), token='jeton-prive-abc',
+        )
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert 'hidden' in self._panel_tag(content, 'raceModeMeosPanel')
+        assert 'hidden' not in self._panel_tag(content, 'raceModeIofPanel')
+        assert 'name="ioffile"' in content
+        assert 'name="form_mode" value="iof"' in content
+        assert 'value="inspect"' in content
+        assert 'value="import"' in content
+        assert "Panneau d'import IOF partagé" not in content
+        assert content.index('À propos du format IOF') < content.index(
+            'Fichier IOF Data Standard v3')
+
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_get_ok_iof_ouvre_le_panneau_iof(self, MockConfig, MockComp):
+        MockConfig.objects.filter.return_value.first.return_value = _config()
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+
+        from results.race_views import RaceManageView
+        response = RaceManageView.as_view()(
+            rf().get(self.URL + '?ok=iof'), token='jeton-prive-abc',
+        )
+
+        content = response.content.decode()
+        assert 'hidden' not in self._panel_tag(content, 'raceModeIofPanel')
+
+    @patch('results.race_views.import_iof_result_list')
+    @patch('results.race_views.inspect_iof_result_list', return_value=_iof_report())
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_post_analyse_depuis_gestion(
+            self, MockConfig, MockComp, mock_inspect, mock_import):
+        MockConfig.objects.filter.return_value.first.return_value = _config()
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+
+        from results.race_views import RaceManageView
+        request = self._iof_post({
+            'action': 'inspect', 'race_number': '2', 'use_event_metadata': 'on',
+        })
+        response = RaceManageView.as_view()(request, token='jeton-prive-abc')
+
+        assert response.status_code == 200
+        mock_inspect.assert_called_once()
+        args, kwargs = mock_inspect.call_args
+        assert args[0].startswith(b'<ResultList')
+        assert kwargs == {
+            'cid': 9,
+            'race_number': 2,
+            'use_event_metadata': True,
+        }
+        mock_import.assert_not_called()
+
+        content = response.content.decode()
+        assert 'Analyse — aucune écriture' in content
+        assert 'Championnat test' in content
+        assert 'hidden' not in self._panel_tag(content, 'raceModeIofPanel')
+        assert 'hidden' in self._panel_tag(content, 'raceModeMeosPanel')
+
+    @patch('results.race_views.import_iof_result_list')
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_post_import_sans_confirmation(
+            self, MockConfig, MockComp, mock_import):
+        MockConfig.objects.filter.return_value.first.return_value = _config()
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+
+        from results.race_views import RaceManageView
+        response = RaceManageView.as_view()(
+            self._iof_post({'action': 'import'}), token='jeton-prive-abc',
+        )
+
+        assert response.status_code == 200
+        mock_import.assert_not_called()
+        content = response.content.decode()
+        assert 'Cochez la case de confirmation' in content
+        assert 'hidden' not in self._panel_tag(content, 'raceModeIofPanel')
+
+    @patch('results.race_views.import_iof_result_list', return_value=_iof_report('OK'))
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_post_import_confirme_redirige(
+            self, MockConfig, MockComp, mock_import):
+        from django.contrib.messages.storage.cookie import CookieStorage
+
+        MockConfig.objects.filter.return_value.first.return_value = _config()
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+
+        from results.race_views import RaceManageView
+        request = self._iof_post({
+            'action': 'import', 'confirm': 'on', 'race_number': '1',
+            'use_event_metadata': 'on',
+        })
+        request._messages = CookieStorage(request)
+        response = RaceManageView.as_view()(request, token='jeton-prive-abc')
+
+        assert response.status_code == 302
+        assert response['Location'] == self.URL + '?ok=iof&mode=iof'
+        mock_import.assert_called_once()
+        args, kwargs = mock_import.call_args
+        assert args[0] == 9
+        assert args[1].startswith(b'<ResultList')
+        assert kwargs == {'race_number': 1, 'use_event_metadata': True}
+        flash = ' '.join(str(message) for message in request._messages)
+        assert 'Résultats IOF importés' in flash
+
+    @patch('results.race_views.import_iof_result_list', return_value=_iof_report('FROZEN'))
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_post_course_gelee(
+            self, MockConfig, MockComp, mock_import):
+        MockConfig.objects.filter.return_value.first.return_value = _config()
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+
+        from results.race_views import RaceManageView
+        response = RaceManageView.as_view()(
+            self._iof_post({'action': 'import', 'confirm': 'on'}),
+            token='jeton-prive-abc',
+        )
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert 'course est gelée' in content
+        assert 'Course gelée' in content
+        assert 'hidden' not in self._panel_tag(content, 'raceModeIofPanel')
+
+    @patch('results.race_views.inspect_iof_result_list',
+            side_effect=IofImportError('Fichier invalide'))
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_post_erreur_de_parsing(
+            self, MockConfig, MockComp, mock_inspect):
+        MockConfig.objects.filter.return_value.first.return_value = _config()
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+
+        from results.race_views import RaceManageView
+        response = RaceManageView.as_view()(
+            self._iof_post({'action': 'inspect'}), token='jeton-prive-abc',
+        )
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert 'Fichier invalide' in content
+        assert 'hidden' not in self._panel_tag(content, 'raceModeIofPanel')
+
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_edition_preserve_le_mode_iof(self, MockConfig, MockComp):
+        MockConfig.objects.filter.return_value.first.return_value = _config()
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+
+        from results.race_views import RaceManageView
+        request = rf().post(self.URL, {
+            'action': 'edit',
+            'mode': 'iof',
+            'name': 'Nouveau nom',
+            'date': '2026-06-01',
+            'organizer': 'OK Autre',
+            'homepage': 'https://autre.example',
+            'livelox': '',
+        })
+        response = RaceManageView.as_view()(request, token='jeton-prive-abc')
+
+        assert response.status_code == 302
+        assert response['Location'] == self.URL + '?ok=info&mode=iof'
+
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_edition_invalide_reste_en_mode_iof(self, MockConfig, MockComp):
+        MockConfig.objects.filter.return_value.first.return_value = _config()
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+
+        from results.race_views import RaceManageView
+        request = rf().post(self.URL, {
+            'action': 'edit', 'mode': 'iof',
+            'name': '', 'date': '', 'organizer': '',
+        })
+        response = RaceManageView.as_view()(request, token='jeton-prive-abc')
+
+        content = response.content.decode()
+        assert response.status_code == 200
+        assert 'hidden' not in self._panel_tag(content, 'raceModeIofPanel')
+
+    @patch('results.race_views.regenerate_manage_token', return_value='nouveau-jeton')
+    @patch('results.race_views.CompetitionConfig')
+    def test_regeneration_lien_preserve_le_mode_iof(
+            self, MockConfig, mock_regen):
+        MockConfig.objects.filter.return_value.first.return_value = _config()
+
+        from results.race_views import RaceManageView
+        request = rf().post(
+            self.URL, {'action': 'regenerate_link', 'mode': 'iof'},
+        )
+        response = RaceManageView.as_view()(request, token='jeton-prive-abc')
+
+        assert response.status_code == 302
+        assert response['Location'] == (
+            '/gestion-course/nouveau-jeton/?ok=link&mode=iof'
+        )
+
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_suppression_hors_panneau_meos_et_toujours_accessible(
+            self, MockConfig, MockComp):
+        MockConfig.objects.filter.return_value.first.return_value = _config()
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+
+        from results.race_views import RaceManageView
+        for suffix in ('', '?mode=iof'):
+            response = RaceManageView.as_view()(
+                rf().get(self.URL + suffix), token='jeton-prive-abc',
+            )
+            content = response.content.decode()
+            assert 'id="raceDangerZone"' in content
+            assert 'name="action" value="delete"' in content
+
+            meos_start = content.index('id="raceModeMeosPanel"')
+            iof_start = content.index('id="raceModeIofPanel"')
+            assert 'name="action" value="delete"' not in content[meos_start:iof_start]
+
+            danger_start = content.index('id="raceDangerZone"')
+            assert 'name="action" value="delete"' in content[danger_start:]
 
 
 # ─── PUBLIC_SITE_URL (URL de production canonique) ─────────────────────────────

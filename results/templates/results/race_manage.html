@@ -8,6 +8,8 @@
     nav, footer, #backToTop, .no-print { display: none !important; }
     main { padding-top: 0 !important; }
     .co-card { border: 1px solid #dee2e6 !important; break-inside: avoid; }
+    #raceModeIofPanel, #raceDangerZone, .co-mode-switch { display: none !important; }
+    #raceModeMeosPanel { display: block !important; }
   }
 </style>
 {% endblock %}
@@ -81,90 +83,128 @@
         onsubmit="return confirm('{% blocktranslate %}Régénérer le lien de gestion ? L\'ancien lien ne fonctionnera plus.{% endblocktranslate %}');">
     {% csrf_token %}
     <input type="hidden" name="action" value="regenerate_link">
+    <input type="hidden" name="mode" value="{{ race_mode }}" data-race-mode-field>
     <button type="submit" class="btn btn-sm btn-outline-secondary">
       <i class="bi bi-arrow-clockwise me-1"></i>{% translate "Régénérer le lien de gestion" %}
     </button>
   </form>
 </div>
 
-<div class="co-card mb-4">
-  <div class="co-card-header d-flex justify-content-between align-items-center">
-    <span><i class="bi bi-sliders me-2"></i>{% translate "Paramètres à saisir dans MeOS" %}</span>
-    <span class="no-print d-flex gap-2">
-      <button class="btn btn-sm btn-outline-secondary" type="button" onclick="window.print()">
-        <i class="bi bi-printer me-1"></i>{% translate "Imprimer / PDF" %}
-      </button>
-    </span>
+{# ── Choix de la méthode de saisie ─────────────────────────────────────────── #}
+<div class="co-card co-mode-switch mb-4 no-print">
+  <div class="co-card-header">
+    <i class="bi bi-signpost-split me-2"></i>{% translate "Méthode de saisie des résultats" %}
   </div>
   <div class="p-4">
-    <div class="table-responsive">
-      <table class="table table-sm align-middle mb-0">
-        <tbody>
-          <tr>
-            <th style="width:220px">{% translate "URL d'envoi" %}</th>
-            <td>
-              <div class="input-group input-group-sm">
-                <input type="text" class="form-control font-monospace" id="meosUrl"
-                       value="{{ meos_url }}" readonly>
-                <button class="btn btn-outline-secondary" type="button" data-copy="meosUrl"
-                        title="{% blocktranslate %}Copier l'URL{% endblocktranslate %}">
-                  <i class="bi bi-clipboard"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <th>Password / API key</th>
-            <td>
-              <div class="input-group input-group-sm">
-                <input type="text" class="form-control font-monospace" id="apiKey"
-                       value="{{ config.api_key }}" readonly>
-                <button class="btn btn-outline-secondary" type="button" data-copy="apiKey"
-                        title="{% translate 'Copier la clé' %}">
-                  <i class="bi bi-clipboard"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <th>{% translate "Compétition" %}</th>
-            <td><code>{% translate "laisser vide" %}</code></td>
-          </tr>
-          <tr>
-            <th>{% translate "Compression ZIP" %}</th>
-            <td>{% translate "Désactivée" %}</td>
-          </tr>
-          <tr>
-            <th>{% translate "Intervalle" %}</th>
-            <td>{% translate "0 seconde" %}</td>
-          </tr>
-          <tr>
-            <th>{% translate "Format" %}</th>
-            <td>MeOS Online Protocol XML 2.0</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="d-flex flex-wrap gap-2 mt-3 no-print">
-      <form method="post"
-            onsubmit="return confirm('{% blocktranslate %}Régénérer la clé API ? L\'ancienne clé deviendra immédiatement invalide.{% endblocktranslate %}');">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="regenerate_key">
-        <button type="submit" class="btn btn-outline-warning btn-sm fw-bold">
-          <i class="bi bi-arrow-clockwise me-1"></i>{% translate "Régénérer la clé" %}
-        </button>
-      </form>
-      <form method="post"
-            onsubmit="return confirm('{% blocktranslate %}Supprimer définitivement cette course ? Toutes les données seront effacées (résultats, clé API, lien de gestion) et ce lien ne fonctionnera plus. Action irréversible.{% endblocktranslate %}');">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="delete">
-        <button type="submit" class="btn btn-outline-danger btn-sm fw-bold">
-          <i class="bi bi-trash me-1"></i>{% translate "Supprimer la course" %}
-        </button>
-      </form>
+    <p class="small text-muted mb-3">
+      {% translate "Choisissez la méthode utilisée pour transmettre les résultats de cette course. Seul le panneau correspondant est affiché." %}
+    </p>
+    <div class="btn-group" role="group" aria-label="{% translate 'Méthode de saisie des résultats' %}">
+      <input type="radio" class="btn-check" name="raceMode" id="raceModeMeos"
+             value="meos" autocomplete="off" {% if race_mode == 'meos' %}checked{% endif %}>
+      <label class="btn btn-outline-success" for="raceModeMeos" id="raceModeMeosLabel">
+        <i class="bi bi-broadcast me-1"></i>{% translate "MeOS (MOP)" %}
+      </label>
+      <input type="radio" class="btn-check" name="raceMode" id="raceModeIof"
+             value="iof" autocomplete="off" {% if race_mode == 'iof' %}checked{% endif %}>
+      <label class="btn btn-outline-success" for="raceModeIof" id="raceModeIofLabel">
+        <i class="bi bi-file-earmark-arrow-up me-1"></i>{% translate "Fichier IOF XML" %}
+      </label>
     </div>
   </div>
+</div>
+
+{# Sans JavaScript, le panneau IOF reste accessible via la page dédiée. #}
+<noscript>
+  <div class="alert alert-secondary border-0 no-print">
+    <i class="bi bi-info-circle me-2"></i>
+    <a href="{% url 'results:race_import_iof' token=config.manage_token %}">
+      {% translate "Importer un fichier IOF" %}
+    </a>
+  </div>
+</noscript>
+
+{# ── Panneau MeOS (MOP) ────────────────────────────────────────────────────── #}
+<div id="raceModeMeosPanel" role="region" aria-labelledby="raceModeMeosLabel"
+     {% if race_mode != 'meos' %}hidden{% endif %}>
+  <div class="co-card mb-4">
+    <div class="co-card-header d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-sliders me-2"></i>{% translate "Paramètres à saisir dans MeOS" %}</span>
+      <span class="no-print d-flex gap-2">
+        <button class="btn btn-sm btn-outline-secondary" type="button" onclick="window.print()">
+          <i class="bi bi-printer me-1"></i>{% translate "Imprimer / PDF" %}
+        </button>
+      </span>
+    </div>
+    <div class="p-4">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <tbody>
+            <tr>
+              <th style="width:220px">{% translate "URL d'envoi" %}</th>
+              <td>
+                <div class="input-group input-group-sm">
+                  <input type="text" class="form-control font-monospace" id="meosUrl"
+                         value="{{ meos_url }}" readonly>
+                  <button class="btn btn-outline-secondary" type="button" data-copy="meosUrl"
+                          title="{% blocktranslate %}Copier l'URL{% endblocktranslate %}">
+                    <i class="bi bi-clipboard"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th>Password / API key</th>
+              <td>
+                <div class="input-group input-group-sm">
+                  <input type="text" class="form-control font-monospace" id="apiKey"
+                         value="{{ config.api_key }}" readonly>
+                  <button class="btn btn-outline-secondary" type="button" data-copy="apiKey"
+                          title="{% translate 'Copier la clé' %}">
+                    <i class="bi bi-clipboard"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th>{% translate "Compétition" %}</th>
+              <td><code>{% translate "laisser vide" %}</code></td>
+            </tr>
+            <tr>
+              <th>{% translate "Compression ZIP" %}</th>
+              <td>{% translate "Désactivée" %}</td>
+            </tr>
+            <tr>
+              <th>{% translate "Intervalle" %}</th>
+              <td>{% translate "0 seconde" %}</td>
+            </tr>
+            <tr>
+              <th>{% translate "Format" %}</th>
+              <td>MeOS Online Protocol XML 2.0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 mt-3 no-print">
+        <form method="post"
+              onsubmit="return confirm('{% blocktranslate %}Régénérer la clé API ? L\'ancienne clé deviendra immédiatement invalide.{% endblocktranslate %}');">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="regenerate_key">
+          <button type="submit" class="btn btn-outline-warning btn-sm fw-bold">
+            <i class="bi bi-arrow-clockwise me-1"></i>{% translate "Régénérer la clé" %}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Panneau IOF XML ───────────────────────────────────────────────────────── #}
+<div id="raceModeIofPanel" role="region" aria-labelledby="raceModeIofLabel"
+     {% if race_mode != 'iof' %}hidden{% endif %}>
+  {% url 'results:race_manage' token=config.manage_token as iof_action %}
+  {% include "results/_iof_import_panel.html" with form=iof_form report=iof_report form_action=iof_action iof_form_mode=True %}
 </div>
 
 <div class="co-card mb-4 no-print">
@@ -172,9 +212,10 @@
     <i class="bi bi-pencil-square me-2"></i>{% translate "Modifier l'événement" %}
   </div>
   <div class="p-4">
-    <form method="post" novalidate>
+    <form method="post" enctype="multipart/form-data" novalidate>
       {% csrf_token %}
       <input type="hidden" name="action" value="edit">
+      <input type="hidden" name="mode" value="{{ race_mode }}" data-race-mode-field>
       <div class="row g-3">
         <div class="col-12">
           <label for="{{ form.name.id_for_label }}" class="form-label fw-bold small text-muted">
@@ -233,6 +274,46 @@
             <div class="invalid-feedback">{{ error }}</div>
           {% endfor %}
         </div>
+        <div class="col-12">
+          <label for="{{ form.logo.id_for_label }}" class="form-label fw-bold small text-muted">
+            {% translate "Logo de l'organisateur" %}
+          </label>
+          {% if competition.logo %}
+            <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+              <img src="{% url 'results:org_logo' competition.logo %}" alt=""
+                   class="co-logo-preview">
+              <div class="form-check mb-0">
+                <input type="checkbox" class="form-check-input"
+                       id="{{ form.remove_logo.id_for_label }}"
+                       name="{{ form.remove_logo.html_name }}"
+                       {% if form.remove_logo.value %}checked{% endif %}>
+                <label class="form-check-label" for="{{ form.remove_logo.id_for_label }}">
+                  {{ form.remove_logo.label }}
+                </label>
+              </div>
+            </div>
+            {% for error in form.remove_logo.errors %}
+              <div class="invalid-feedback d-block">{{ error }}</div>
+            {% endfor %}
+          {% endif %}
+          <div class="co-file{% if form.logo.errors %} is-invalid{% endif %}">
+            <input type="file" class="co-file-input"
+                   id="{{ form.logo.id_for_label }}" name="{{ form.logo.html_name }}"
+                   accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg"
+                   data-default="{% translate 'Aucun fichier choisi' %}">
+            <label for="{{ form.logo.id_for_label }}" class="btn btn-outline-success co-file-btn">
+              <i class="bi bi-folder2-open me-1"></i>{% translate "Choisir un fichier" %}
+            </label>
+            <span class="co-file-name">{% translate "Aucun fichier choisi" %}</span>
+          </div>
+          <div class="form-text">
+            {% translate "SVG, PNG ou JPEG — 2 Mo maximum." %}
+            {% if competition.logo %}{{ form.logo.help_text }}{% endif %}
+          </div>
+          {% for error in form.logo.errors %}
+            <div class="invalid-feedback d-block">{{ error }}</div>
+          {% endfor %}
+        </div>
       </div>
       <div class="d-flex flex-wrap gap-2 mt-3">
         <button type="submit" class="btn btn-success fw-bold">
@@ -248,23 +329,23 @@
   </div>
 </div>
 
-<div class="co-card mb-4 no-print">
+{# ── Zone de danger (toujours visible, hors panneaux) ──────────────────────── #}
+<div class="co-card co-danger-card mb-4 no-print" id="raceDangerZone">
   <div class="co-card-header">
-    <i class="bi bi-file-earmark-arrow-up me-2"></i>{% translate "Importer des résultats IOF" %}
+    <i class="bi bi-exclamation-octagon me-2"></i>{% translate "Zone de danger" %}
   </div>
   <div class="p-4">
-    <p class="mb-3">
-      {% blocktranslate %}Remplacez les résultats de la course par un fichier
-      <strong>IOF Data Standard v3</strong> (ResultList) produit par un autre
-      logiciel de chronométrage. L'import écrase tous les résultats existants,
-      comme un envoi MeOS complet.{% endblocktranslate %}
+    <p class="small text-muted mb-3">
+      {% translate "La suppression est définitive : résultats, clé API et lien de gestion seront effacés. Cette action est irréversible." %}
     </p>
-    {% if config %}
-    <a href="{% url 'results:race_import_iof' token=config.manage_token %}"
-       class="btn btn-outline-success">
-      <i class="bi bi-upload me-1"></i>{% translate "Importer un fichier IOF" %}
-    </a>
-    {% endif %}
+    <form method="post"
+          onsubmit="return confirm('{% blocktranslate %}Supprimer définitivement cette course ? Toutes les données seront effacées (résultats, clé API, lien de gestion) et ce lien ne fonctionnera plus. Action irréversible.{% endblocktranslate %}');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="delete">
+      <button type="submit" class="btn btn-outline-danger fw-bold">
+        <i class="bi bi-trash me-1"></i>{% translate "Supprimer la course" %}
+      </button>
+    </form>
   </div>
 </div>
 
@@ -284,5 +365,33 @@
       });
     });
   });
+
+  // Bascule MeOS / IOF : le serveur rend l'état initial (attribut hidden),
+  // le JS ne fait que synchroniser les panneaux et les champs cachés « mode »
+  // des formulaires situés hors des panneaux (édition, régénération du lien).
+  (function () {
+    var radios = document.querySelectorAll('input[name="raceMode"]');
+    var panels = {
+      meos: document.getElementById('raceModeMeosPanel'),
+      iof: document.getElementById('raceModeIofPanel')
+    };
+    var fields = document.querySelectorAll('[data-race-mode-field]');
+
+    function apply(mode) {
+      Object.keys(panels).forEach(function (key) {
+        if (panels[key]) panels[key].hidden = key !== mode;
+      });
+      fields.forEach(function (field) { field.value = mode; });
+    }
+
+    radios.forEach(function (radio) {
+      radio.addEventListener('change', function () {
+        if (radio.checked) apply(radio.value);
+      });
+    });
+
+    var checked = document.querySelector('input[name="raceMode"]:checked');
+    if (checked) apply(checked.value);
+  })();
 </script>
 {% endblock %}

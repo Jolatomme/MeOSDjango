@@ -77,6 +77,35 @@ def _competition_of(config):
     return Mopcompetition.objects.filter(cid=config.cid, id=1).first()
 
 
+def _race_mode(params):
+    """Mode d'affichage de la page de gestion : ``meos`` (défaut) ou ``iof``.
+
+    Le mode est porté par le paramètre ``mode`` (GET ou champ caché des
+    formulaires). MeOS reste le défaut : pas de mémorisation côté navigateur.
+    """
+    return 'iof' if params.get('mode') == 'iof' else 'meos'
+
+
+def _race_mode_query(mode):
+    """Complète une query string ``ok=…`` avec ``&mode=iof`` si nécessaire.
+
+    On n'ajoute rien pour MeOS afin de conserver les URLs historiques
+    (``?ok=info``, ``?ok=link``).
+    """
+    return '&mode=iof' if mode == 'iof' else ''
+
+
+def _race_edit_form(competition):
+    """Formulaire d'édition pré-rempli avec les données de la compétition."""
+    return RaceEditForm(initial={
+        'name': competition.name if competition else '',
+        'date': competition.date if competition else None,
+        'organizer': competition.organizer if competition else '',
+        'homepage': competition.homepage if competition else '',
+        'livelox': competition.livelox if competition else '',
+    })
+
+
 def _absolute_url(request, path):
     """URL absolue à afficher à l'organisateur.
 
@@ -91,17 +120,107 @@ def _absolute_url(request, path):
     return request.build_absolute_uri(path)
 
 
-def _manage_context(request, config, form, competition=None):
+def _manage_context(request, config, form, competition=None,
+                    iof_form=None, iof_report=None, race_mode='meos'):
+    if iof_form is None:
+        iof_form = IofImportForm()
+    if race_mode not in ('meos', 'iof'):
+        race_mode = 'meos'
     return {
         'config': config,
         'competition': competition,
         'form': form,
+        'iof_form': iof_form,
+        'iof_report': iof_report,
+        'race_mode': race_mode,
         'meos_url': _absolute_url(request, reverse('results:mop_update')),
         'manage_url': _absolute_url(
             request,
             reverse('results:race_manage', kwargs={'token': config.manage_token}),
         ),
     }
+
+
+def _process_iof_import(request, config, form, action='import'):
+    """Traite une analyse ou un import IOF ; retourne ``(report, imported)``.
+
+    Logique partagée entre la page de gestion (formulaire intégré) et la
+    page dédiée ``/importer-iof/``. ``imported`` vaut True uniquement quand
+    les résultats ont été écrits : le caller redirige alors vers la page de
+    gestion avec ``?ok=iof&mode=iof``.
+    """
+    if action not in ('inspect', 'import'):
+        action = 'import'
+    report = None
+
+    if not form.is_valid():
+        return report, False
+
+    xml_data = form.cleaned_data['ioffile'].read()
+    race_number = form.cleaned_data.get('race_number')
+    use_event_metadata = form.cleaned_data.get('use_event_metadata', False)
+
+    if action == 'inspect':
+        try:
+            report = inspect_iof_result_list(
+                xml_data,
+                cid=config.cid,
+                race_number=race_number,
+                use_event_metadata=use_event_metadata,
+            )
+        except IofImportError as exc:
+            form.add_error(None, str(exc))
+        return report, False
+
+    if not form.cleaned_data.get('confirm'):
+        form.add_error(
+            'confirm',
+            gettext(
+                "Cochez la case de confirmation : l'import remplace "
+                "tous les résultats existants."
+            ),
+        )
+        return report, False
+
+    try:
+        report = import_iof_result_list(
+            config.cid,
+            xml_data,
+            race_number=race_number,
+            use_event_metadata=use_event_metadata,
+        )
+    except IofImportError as exc:
+        form.add_error(None, str(exc))
+        return report, False
+
+    if report.status == 'FROZEN':
+        form.add_error(
+            None,
+            gettext(
+                "La course est gelée : aucun résultat n'a été "
+                "importé. Dégèle-la dans MeOS avant de réessayer."
+            ),
+        )
+        return report, False
+
+    logger.info(
+        "race_import_iof: cid=%s — import IOF réussi "
+        "(%d classes, %d concurrents, %d équipes)",
+        config.cid, report.classes,
+        report.competitors, report.teams,
+    )
+    messages.success(
+        request,
+        gettext(
+            "Résultats IOF importés : %(classes)d classe(s), "
+            "%(competitors)d concurrent(s), %(teams)d équipe(s)."
+        ) % {
+            'classes': report.classes,
+            'competitors': report.competitors,
+            'teams': report.teams,
+        },
+    )
+    return report, True
 
 
 class RaceCreateView(View):
@@ -167,20 +286,41 @@ class RaceManageView(View):
     def get(self, request, token):
         config = _config_for_token(token)
         competition = _competition_of(config)
-        form = RaceEditForm(initial={
-            'name': competition.name if competition else '',
-            'date': competition.date if competition else None,
-            'organizer': competition.organizer if competition else '',
-            'homepage': competition.homepage if competition else '',
-            'livelox': competition.livelox if competition else '',
-        })
+        race_mode = 'iof' if (
+            request.GET.get('mode') == 'iof'
+            or request.GET.get('ok') == 'iof'
+        ) else 'meos'
         return render(
             request, self.template_name,
-            _manage_context(request, config, form, competition),
+            _manage_context(
+                request, config, _race_edit_form(competition), competition,
+                race_mode=race_mode,
+            ),
         )
 
     def post(self, request, token):
         config = _config_for_token(token)
+
+        # Formulaire IOF intégré : identifié par son champ caché ``form_mode``
+        # pour ne pas entrer en collision avec les actions de gestion
+        # (regenerate_key, regenerate_link, delete, edit).
+        if request.POST.get('form_mode') == 'iof':
+            competition = _competition_of(config)
+            iof_form = IofImportForm(request.POST, request.FILES)
+            report, imported = _process_iof_import(
+                request, config, iof_form,
+                request.POST.get('action', 'import'),
+            )
+            if imported:
+                return redirect(f"{request.path}?ok=iof&mode=iof")
+            return render(
+                request, self.template_name,
+                _manage_context(
+                    request, config, _race_edit_form(competition), competition,
+                    iof_form=iof_form, iof_report=report, race_mode='iof',
+                ),
+            )
+
         action = request.POST.get('action', '')
 
         if action == 'regenerate_key':
@@ -189,11 +329,12 @@ class RaceManageView(View):
 
         if action == 'regenerate_link':
             # L'ancien lien meurt immédiatement : on redirige vers le nouveau
+            mode = _race_mode(request.POST)
             new_token = regenerate_manage_token(config)
             new_url = reverse(
                 'results:race_manage', kwargs={'token': new_token}
             )
-            return redirect(f"{new_url}?ok=link")
+            return redirect(f"{new_url}?ok=link{_race_mode_query(mode)}")
 
         if action == 'delete':
             # Suppression totale : le lien privé meurt avec la course →
@@ -212,22 +353,49 @@ class RaceManageView(View):
             return redirect('results:home')
 
         if action == 'edit':
-            form = RaceEditForm(request.POST)
+            mode = _race_mode(request.POST)
+            form = RaceEditForm(request.POST, request.FILES)
             if form.is_valid():
                 cleaned = form.cleaned_data
-                Mopcompetition.objects.filter(cid=config.cid, id=1).update(
-                    name=cleaned['name'],
-                    date=cleaned['date'],
-                    organizer=cleaned['organizer'],
-                    homepage=cleaned.get('homepage') or '',
-                    livelox=cleaned.get('livelox') or '',
-                )
+                logo_file = cleaned.get('logo')
+                remove_logo = bool(cleaned.get('remove_logo'))
+                fields = {
+                    'name': cleaned['name'],
+                    'date': cleaned['date'],
+                    'organizer': cleaned['organizer'],
+                    'homepage': cleaned.get('homepage') or '',
+                    'livelox': cleaned.get('livelox') or '',
+                }
+
+                # Le logo n'est touché que si un fichier est fourni ou si
+                # l'organisateur demande explicitement sa suppression.
+                old_logo = ''
+                new_logo = ''
+                if logo_file or remove_logo:
+                    competition = _competition_of(config)
+                    old_logo = (competition.logo or '') if competition else ''
+                    if logo_file:
+                        new_logo = save_org_logo(logo_file)
+                        fields['logo'] = new_logo
+                    else:
+                        fields['logo'] = ''
+
+                try:
+                    Mopcompetition.objects.filter(cid=config.cid, id=1).update(**fields)
+                except Exception:
+                    if new_logo:
+                        delete_org_logo(new_logo)
+                    raise
+                if new_logo or remove_logo:
+                    delete_org_logo(old_logo)
                 logger.info("race_manage: course cid=%s mise à jour", config.cid)
-                return redirect(f"{request.path}?ok=info")
+                return redirect(f"{request.path}?ok=info{_race_mode_query(mode)}")
             competition = _competition_of(config)
             return render(
                 request, self.template_name,
-                _manage_context(request, config, form, competition),
+                _manage_context(
+                    request, config, form, competition, race_mode=mode,
+                ),
             )
 
         return redirect(request.path)
@@ -259,76 +427,15 @@ class RaceImportIofView(View):
         config = _config_for_token(token)
         competition = _competition_of(config)
         form = IofImportForm(request.POST, request.FILES)
-        action = request.POST.get('action', 'import')
-        if action not in ('inspect', 'import'):
-            action = 'import'
-        report = None
-
-        if form.is_valid():
-            xml_data = form.cleaned_data['ioffile'].read()
-            race_number = form.cleaned_data.get('race_number')
-            use_event_metadata = form.cleaned_data.get('use_event_metadata', False)
-
-            if action == 'inspect':
-                try:
-                    report = inspect_iof_result_list(
-                        xml_data,
-                        cid=config.cid,
-                        race_number=race_number,
-                        use_event_metadata=use_event_metadata,
-                    )
-                except IofImportError as exc:
-                    form.add_error(None, str(exc))
-            elif not form.cleaned_data.get('confirm'):
-                form.add_error(
-                    'confirm',
-                    gettext(
-                        "Cochez la case de confirmation : l'import remplace "
-                        "tous les résultats existants."
-                    ),
-                )
-            else:
-                try:
-                    report = import_iof_result_list(
-                        config.cid,
-                        xml_data,
-                        race_number=race_number,
-                        use_event_metadata=use_event_metadata,
-                    )
-                except IofImportError as exc:
-                    form.add_error(None, str(exc))
-                else:
-                    if report.status == 'FROZEN':
-                        form.add_error(
-                            None,
-                            gettext(
-                                "La course est gelée : aucun résultat n'a été "
-                                "importé. Dégèle-la dans MeOS avant de réessayer."
-                            ),
-                        )
-                    else:
-                        logger.info(
-                            "race_import_iof: cid=%s — import IOF réussi "
-                            "(%d classes, %d concurrents, %d équipes)",
-                            config.cid, report.classes,
-                            report.competitors, report.teams,
-                        )
-                        messages.success(
-                            request,
-                            gettext(
-                                "Résultats IOF importés : %(classes)d classe(s), "
-                                "%(competitors)d concurrent(s), %(teams)d équipe(s)."
-                            ) % {
-                                'classes': report.classes,
-                                'competitors': report.competitors,
-                                'teams': report.teams,
-                            },
-                        )
-                        manage_url = reverse(
-                            'results:race_manage',
-                            kwargs={'token': config.manage_token},
-                        )
-                        return redirect(f'{manage_url}?ok=iof')
+        report, imported = _process_iof_import(
+            request, config, form, request.POST.get('action', 'import'),
+        )
+        if imported:
+            manage_url = reverse(
+                'results:race_manage',
+                kwargs={'token': config.manage_token},
+            )
+            return redirect(f'{manage_url}?ok=iof&mode=iof')
 
         return render(
             request, self.template_name,

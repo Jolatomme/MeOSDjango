@@ -313,7 +313,10 @@ class TestBoutonSuppressionCourse:
     ])
     def test_bouton_traduit_dans_le_catalogue(self, lang, attendu):
         _skip_si_non_compile(lang)
-        html = _render('results/race_manage.html', lang)
+        config = SimpleNamespace(
+            cid=1, manage_token='jeton-test', api_key='cle-test',
+        )
+        html = _render('results/race_manage.html', lang, {'config': config})
         with translation.override(lang):
             assert translation.gettext(self.FR_BOUTON) == attendu
         assert attendu in html
@@ -434,6 +437,18 @@ class TestLibellesAdmin:
         with translation.override(lang):
             trad = translation.gettext('Ajouter une compétition')
         assert trad and trad != 'Ajouter une compétition'
+
+    @pytest.mark.parametrize('lang', ['en', 'de', 'sv'])
+    def test_selecteur_methode_saisie_traduit(self, lang):
+        """Les libellés du choix MeOS / IOF de la page de gestion sont traduits."""
+        _skip_si_non_compile(lang)
+        with translation.override(lang):
+            methode = translation.gettext('Méthode de saisie des résultats')
+            iof = translation.gettext('Fichier IOF XML')
+            danger = translation.gettext('Zone de danger')
+        assert methode and methode != 'Méthode de saisie des résultats'
+        assert iof and iof != 'Fichier IOF XML'
+        assert danger and danger != 'Zone de danger'
 
     @pytest.mark.parametrize('lang', ['en', 'de', 'sv'])
     def test_libelles_colonnes_vue_competition(self, lang):

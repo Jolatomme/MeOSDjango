@@ -121,6 +121,17 @@ class RaceCreateForm(RaceBaseForm):
 class RaceEditForm(RaceBaseForm):
     """Formulaire d'édition d'une course via son lien privé de gestion."""
 
+    logo = forms.FileField(
+        label=_("Logo de l'organisateur"),
+        required=False,
+        validators=[validate_org_logo],
+        help_text=_("Laissez vide pour conserver le logo actuel."),
+    )
+    remove_logo = forms.BooleanField(
+        label=_("Supprimer le logo actuel"),
+        required=False,
+    )
+
 
 class IofImportForm(forms.Form):
     """Import d'un fichier IOF Data Standard v3 ``ResultList``."""
