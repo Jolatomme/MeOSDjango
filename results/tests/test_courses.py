@@ -546,6 +546,48 @@ class TestClassResultsTemplateSelection:
         _, ctx = self._run(course=course)
         assert ctx['course_hash'] == 'abc12345'
 
+    def test_colspan_circuit_sans_score(self):
+        _, ctx = self._run(course=_make_course())
+        assert ctx['results_colspan'] == 6
+
+    def test_course_au_score_en_mode_circuit(self):
+        """Circuit au score : points, score max et colspan élargi."""
+        course = _make_course(controls_seq=[
+            {'ctrl_id': 31, 'ctrl_name': '31'},
+            {'ctrl_id': 32, 'ctrl_name': '32'},
+        ])
+        course['control_name_map'] = {31: '31 (10p)', 32: '32 (5p)'}
+        alice = make_competitor(1, rt=5000, cls=10)
+        bob = make_competitor(2, rt=3000, cls=10)
+        competition = MagicMock(); competition.cid = 1
+        cls_obj = make_cls(10, 'abc12345')
+        with patch('results.views._load_class_context',
+                   return_value=(competition, cls_obj, [alice, bob], course)), \
+             patch('results.views.Mopclass') as MockClass, \
+             patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views.get_org_map', return_value={}), \
+             patch('results.views.is_score_race', return_value=True), \
+             patch('results.views.get_radio_map', return_value={
+                 1: {31: 100, 32: 200},
+                 2: {31: 100},
+             }), \
+             patch('results.views.compute_splits', return_value=[]), \
+             patch('results.views.compute_error_estimates', return_value={}), \
+             patch('results.views.mark_best_splits'), \
+             patch('results.views.rank_splits'), \
+             patch('results.views.render') as mock_render:
+            MockClass.objects.filter.return_value.order_by.return_value = []
+            MockTeam.objects.filter.return_value.exists.return_value = False
+            from results.views import class_results
+            class_results(rf_get(), cid=1, class_id='abc12345')
+            _, _, ctx = mock_render.call_args[0]
+
+        assert ctx['score_race'] is True
+        assert ctx['leader_score'] == 15
+        assert ctx['results_colspan'] == 7
+        assert [r.id for r in ctx['results']] == [1, 2]
+        assert [r.score for r in ctx['results']] == [15, 10]
+
     def test_prev_next_none_en_mode_circuit(self):
         course = _make_course()
         _, ctx = self._run(course=course)

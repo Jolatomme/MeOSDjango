@@ -43,7 +43,7 @@
         {% endif %}
         {% if score_race and leader_score %}
           <span class="badge bg-success text-dark fs-6 fw-bold">
-            <i class="bi bi-award me-1"></i>{% blocktranslate %}Score max : {{ leader_score|floatformat:0 }}{% endblocktranslate %}
+            <i class="bi bi-award me-1"></i>{% blocktranslate with score=leader_score|floatformat %}Score max : {{ score }}{% endblocktranslate %}
           </span>
         {% endif %}
         <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=results|length %}{{ n }} coureur{% plural %}{{ n }} coureurs{% endblocktranslate %}</span>
@@ -109,7 +109,7 @@
         </tr>
       </thead>
       <tbody>
-        {% with colspan=course|yesno:"7,5" %}
+        {% with colspan=results_colspan|default:5 %}
         {% for comp in results %}
         <tr class="result-row {% if comp.neg_time %}neg-row{% endif %} {% if not comp.is_ok %}non-finisher{% endif %}"
             data-name="{{ comp.name|lower }}{% if course and comp.class_obj %} {{ comp.class_obj.name|lower }}{% endif %}{% if comp.org_obj %} {{ comp.org_obj.name|lower }}{% endif %}">
@@ -171,8 +171,8 @@
 
           {% if score_race %}
           <td class="text-end score-col">
-            {% if comp.is_ok %}{{ comp.score|floatformat:0 }}
-            {% else %}<span class="badge bg-{{ comp.stat|status_badge }}">{{ comp.stat|status_label }}</span>
+            {% if comp.is_ok %}{{ comp.score|floatformat }}
+            {% else %}<span class="text-muted">—</span>
             {% endif %}
           </td>
           {% endif %}

@@ -113,6 +113,23 @@
             </div>
 
             <div class="col-12">
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input{% if form.score_race.errors %} is-invalid{% endif %}"
+                       id="{{ form.score_race.id_for_label }}"
+                       name="{{ form.score_race.html_name }}"
+                       {% if form.score_race.value %}checked{% endif %}>
+                <label class="form-check-label fw-bold small text-muted"
+                       for="{{ form.score_race.id_for_label }}">
+                  {{ form.score_race.label }}
+                </label>
+              </div>
+              <div class="form-text">{{ form.score_race.help_text }}</div>
+              {% for error in form.score_race.errors %}
+                <div class="invalid-feedback d-block">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="col-12">
               <label for="{{ form.logo.id_for_label }}" class="form-label fw-bold small text-muted">
                 {% translate "Logo de l'organisateur" %}
               </label>

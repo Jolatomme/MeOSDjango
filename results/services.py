@@ -54,6 +54,24 @@ def competition_visible(cid):
     return not cfg.deleted and cfg.visible
 
 
+def is_score_race(cid):
+    """True si la compétition est configurée comme course au score.
+
+    Une course sans ligne de configuration (créée directement dans MeOS) est
+    une course classique. En cas d'erreur DB, on reste sur le classement
+    habituel par temps plutôt que de casser l'affichage des résultats.
+    """
+    try:
+        config = CompetitionConfig.objects.filter(cid=cid).first()
+    except Exception:
+        logger.warning(
+            "is_score_race(%s) : erreur DB, course classique par défaut",
+            cid, exc_info=True,
+        )
+        return False
+    return bool(config is not None and config.score_race)
+
+
 def slugify_no_prefix(value, separator='-'):
     """Slugify after removing numbered prefix (e.g., '1.2. Title' → 'title')."""
     return slugify_unicode(_PREFIX_RE.sub('', value), separator)
@@ -114,12 +132,15 @@ def next_cid():
     return max(max_mop, max_cfg) + 1
 
 
-def create_race(*, name, date, organizer, homepage='', livelox='', logo=''):
+def create_race(*, name, date, organizer, homepage='', livelox='', logo='',
+                score_race=False):
     """Crée une course : CompetitionConfig (clé API + jeton) + mopCompetition.
 
     La ligne mopCompetition est pré-remplie (id=1) pour que la course
     apparaisse immédiatement sur le site ; le premier MOPComplete de MeOS
     la remplace (clear_competition + réinsertion).
+
+    ``score_race`` active le classement par points (course au score).
 
     Retourne la CompetitionConfig fraîchement créée.
     Lève IntegrityError si l'allocation de CID est perdue face à une
@@ -137,6 +158,7 @@ def create_race(*, name, date, organizer, homepage='', livelox='', logo=''):
                     visible=True,
                     frozen=False,
                     deleted=False,
+                    score_race=bool(score_race),
                 )
                 Mopcompetition.objects.create(
                     cid=cid,
@@ -225,6 +247,7 @@ def get_org_map(cid, *, as_objects=False):
 
 _POINTS_SUFFIX_RE = re.compile(r'\s*\(\s*-?\d+(?:[.,]\d+)?\s*p\s*\)')
 
+
 def extract_control_points(name):
     """Extrait les points d'un nom de poste MeOS.
 
@@ -235,20 +258,20 @@ def extract_control_points(name):
         float: nombre de points, ou 0 si aucun point trouvé.
     """
     match = re.search(r'\(\s*(-?\d+(?:[.,]\d+)?)\s*p\s*\)', str(name))
-    if match:
-        points_str = match.group(1).replace(',', '.')
-        try:
-            return float(points_str)
-        except ValueError:
-            return 0
+    if not match:
+        return 0
+    try:
+        return float(match.group(1).replace(',', '.'))
+    except ValueError:
+        return 0
 
 
 def compute_runner_score(runner_id, controls_seq, control_name_map, radio_map):
     """Calcule le score total d'un coureur pour une course au score.
 
-    Le score est la somme des points de tous les postes poinçonnés par le coureur.
-    Un poste est considéré comme poinçonné si le coureur a un temps radio
-    positif (mopRadio.rt > 0) pour ce poste.
+    Le score est la somme des points de tous les postes poinçonnés par le
+    coureur. Un poste est considéré comme poinçonné si le coureur a un temps
+    radio positif (mopRadio.rt > 0) pour ce poste.
 
     Args:
         runner_id: identifiant du coureur
@@ -261,50 +284,14 @@ def compute_runner_score(runner_id, controls_seq, control_name_map, radio_map):
     """
     radios = radio_map.get(runner_id, {})
     total_score = 0.0
-    
+
     for ctrl in controls_seq:
         ctrl_id = ctrl['ctrl_id']
-        # Vérifier si le coureur a poinçonné ce poste
         if ctrl_id in radios and radios[ctrl_id] > 0:
-            # Obtenir le nom original du poste
-            ctrl_name = control_name_map.get(ctrl_id, '')
-            # Extraire les points
-            points = extract_control_points(ctrl_name)
-            total_score += points
-    
-    return total_score
-    return 0
+            total_score += extract_control_points(
+                control_name_map.get(ctrl_id, '')
+            )
 
-
-def compute_runner_score(runner_id, controls_seq, control_name_map, radio_map):
-    """Calcule le score total d'un coureur pour une course au score.
-
-    Le score est la somme des points de tous les postes poinçonnés par le coureur.
-    Un poste est considéré comme poinçonné si le coureur a un temps radio
-    positif (mopRadio.rt > 0) pour ce poste.
-
-    Args:
-        runner_id: identifiant du coureur
-        controls_seq: liste des postes du circuit avec leurs ids
-        control_name_map: dictionnaire {ctrl_id: ctrl_name} avec les noms originaux
-        radio_map: dictionnaire {runner_id: {ctrl_id: rt}}
-
-    Returns:
-        float: score total du coureur
-    """
-    radios = radio_map.get(runner_id, {})
-    total_score = 0.0
-    
-    for ctrl in controls_seq:
-        ctrl_id = ctrl['ctrl_id']
-        # Vérifier si le coureur a poinçonné ce poste
-        if ctrl_id in radios and radios[ctrl_id] > 0:
-            # Obtenir le nom original du poste
-            ctrl_name = control_name_map.get(ctrl_id, '')
-            # Extraire les points
-            points = extract_control_points(ctrl_name)
-            total_score += points
-    
     return total_score
 
 
@@ -320,88 +307,6 @@ def format_control_label(name, ordinal=None):
     fourni, il est préfixé au libellé (``1-222-1``).
     """
     label = _POINTS_SUFFIX_RE.sub('', str(name)).strip()
-
-def extract_control_points(name):
-    """Extrait les points d'un nom de poste MeOS.
-
-    MeOS ajoute les points sous la forme "(Np)" où N est le nombre de points.
-    Args:
-        name: Nom du poste (ex: "222 (3p)", "31 (10.5p)", "45")
-    Returns:
-        float: nombre de points, ou 0 si aucun point trouvé.
-    """
-    match = re.search(r'\(\s*(-?\d+(?:[.,]\d+)?)\s*p\s*\)', str(name))
-    if match:
-        points_str = match.group(1).replace(',', '.')
-        try:
-            return float(points_str)
-        except ValueError:
-            return 0
-
-
-def compute_runner_score(runner_id, controls_seq, control_name_map, radio_map):
-    """Calcule le score total d'un coureur pour une course au score.
-
-    Le score est la somme des points de tous les postes poinçonnés par le coureur.
-    Un poste est considéré comme poinçonné si le coureur a un temps radio
-    positif (mopRadio.rt > 0) pour ce poste.
-
-    Args:
-        runner_id: identifiant du coureur
-        controls_seq: liste des postes du circuit avec leurs ids
-        control_name_map: dictionnaire {ctrl_id: ctrl_name} avec les noms originaux
-        radio_map: dictionnaire {runner_id: {ctrl_id: rt}}
-
-    Returns:
-        float: score total du coureur
-    """
-    radios = radio_map.get(runner_id, {})
-    total_score = 0.0
-    
-    for ctrl in controls_seq:
-        ctrl_id = ctrl['ctrl_id']
-        # Vérifier si le coureur a poinçonné ce poste
-        if ctrl_id in radios and radios[ctrl_id] > 0:
-            # Obtenir le nom original du poste
-            ctrl_name = control_name_map.get(ctrl_id, '')
-            # Extraire les points
-            points = extract_control_points(ctrl_name)
-            total_score += points
-    
-    return total_score
-    return 0
-
-
-def compute_runner_score(runner_id, controls_seq, control_name_map, radio_map):
-    """Calcule le score total d'un coureur pour une course au score.
-
-    Le score est la somme des points de tous les postes poinçonnés par le coureur.
-    Un poste est considéré comme poinçonné si le coureur a un temps radio
-    positif (mopRadio.rt > 0) pour ce poste.
-
-    Args:
-        runner_id: identifiant du coureur
-        controls_seq: liste des postes du circuit avec leurs ids
-        control_name_map: dictionnaire {ctrl_id: ctrl_name} avec les noms originaux
-        radio_map: dictionnaire {runner_id: {ctrl_id: rt}}
-
-    Returns:
-        float: score total du coureur
-    """
-    radios = radio_map.get(runner_id, {})
-    total_score = 0.0
-    
-    for ctrl in controls_seq:
-        ctrl_id = ctrl['ctrl_id']
-        # Vérifier si le coureur a poinçonné ce poste
-        if ctrl_id in radios and radios[ctrl_id] > 0:
-            # Obtenir le nom original du poste
-            ctrl_name = control_name_map.get(ctrl_id, '')
-            # Extraire les points
-            points = extract_control_points(ctrl_name)
-            total_score += points
-    
-    return total_score
     if ordinal is not None:
         label = f"{ordinal}-{label}"
     return label

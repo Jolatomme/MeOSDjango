@@ -125,9 +125,11 @@ def _competition_name(cid):
 @admin.register(CompetitionConfig)
 class CompetitionConfigAdmin(admin.ModelAdmin):
     form = CompetitionConfigAdminForm
-    list_display  = ('_name', '_date', 'cid', 'frozen', 'visible', 'deleted')
+    list_display  = (
+        '_name', '_date', 'cid', 'frozen', 'visible', 'deleted', 'score_race',
+    )
     list_display_links = ('_name',)
-    list_filter   = ('frozen', 'visible', 'deleted')
+    list_filter   = ('frozen', 'visible', 'deleted', 'score_race')
     list_editable = ('frozen', 'visible', 'deleted')
     search_fields = ('_name',)
     ordering      = ('-cid',)

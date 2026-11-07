@@ -45,7 +45,7 @@ python manage.py compilemessages                  # *.mo ignored by git — requ
 - **Two Django apps** inside `MeOSDjango/` project:
   - **`results/`** — MeOS live results (main app)
   - **`ochecklist/`** — O'checklist Android app YAML report receiver
-- **`results/`** — MeOS tables `mop*` are NOT managed by Django (models use `managed=False`). MeOS creates and manages them directly (tables can also be created with `setup_db`). Django manages only `MeosTutorial` and `CompetitionConfig` (`db_table = results_competitionconfig`), with migrations `0001`→`0008` (some migrations are historical leftovers of former `mop*` models; `0008` ne met à jour que l’état Django pour les clés primaires composites, aucun SQL).
+- **`results/`** — MeOS tables `mop*` are NOT managed by Django (models use `managed=False`). MeOS creates and manages them directly (tables can also be created with `setup_db`). Django manages only `MeosTutorial` and `CompetitionConfig` (`db_table = results_competitionconfig`), with migrations `0001`→`0009` (some migrations are historical leftovers of former `mop*` models; `0008` ne met à jour que l’état Django pour les clés primaires composites, aucun SQL ; `0009` ajoute `CompetitionConfig.score_race` pour les courses au score).
 - **`ochecklist/`** — Tables ARE managed by Django (`managed=True`), with a standard `0001_initial.py` migration.
 - **MOP endpoint**: `POST /mop/update/` (XML, from MeOS) — app `results/`
 - **Health endpoint**: `GET /health/` ou `GET /health` (mêmes deux notations que `mop/update`, sans 301 `APPEND_SLASH`) — `results.health_check`, nom `results:health_check` ; `SELECT 1` sur la DB, répond `200 {"status": "ok", "db": "ok"}` ou `503 {"status": "error", "db": "error"}`
@@ -137,7 +137,7 @@ MeOSDjango/
 │   │                                  # admin-theme.js, results-splits.js…), images, fonts
 │   ├── templates/results/             # Django templates (dont race_import_iof.html)
 │   ├── templates/admin/results/       # Surcharge change_form CompetitionConfig (bouton MOP)
-│   ├── migrations/                    # 0001–0008 (mop* historiques + modèles Django-managed)
+│   ├── migrations/                    # 0001–0009 (mop* historiques + modèles Django-managed)
 │   └── tests/                         # Suite pytest (DB mockée) + test_site_js.test.js (jest)
 │       ├── conftest.py
 │       ├── test_iof_importer.py

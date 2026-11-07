@@ -94,6 +94,13 @@ class RaceBaseForm(forms.Form):
         required=False,
         assume_scheme='https',
     )
+    score_race = forms.BooleanField(
+        label=_("Course au score"),
+        required=False,
+        help_text=_(
+            "Classer les coureurs par points puis par temps en cas d'égalité"
+        ),
+    )
 
 
 class RaceCreateForm(RaceBaseForm):
