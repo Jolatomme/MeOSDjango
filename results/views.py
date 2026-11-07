@@ -31,7 +31,7 @@ from .services import (
     get_negative_time_stats, _neg_banner, _suspect_box_controls,
     attested_ctrls, detect_prestart_ctrls,
     mark_best_splits, rank_splits,
-    rank_finishers, build_rank_map,
+    rank_finishers, rank_finishers_score, is_score_race, build_rank_map,
     build_leg_matrix, compute_leg_refs,
     build_abs_time_series, compute_error_estimates,
     compute_grouping_index, compute_regularity_analysis,
@@ -271,7 +271,24 @@ def class_results(request, cid, class_id):
     for c in competitors:
         c.org_obj = org_map.get(c.org)
 
-    finishers, non_finishers, leader_time = rank_finishers(competitors)
+    # Circuit réellement couru : une seule lecture des postes, réutilisée
+    # pour le calcul du score et l'affichage des intermédiaires.
+    if course is not None:
+        controls_seq = course['controls_seq']
+        control_name_map = course.get('control_name_map', {})
+    else:
+        controls_seq, control_name_map = get_class_controls(cid, cls.id)
+
+    # Course au score : classement par points (décroissants) puis temps.
+    score_race = is_score_race(cid)
+    if score_race:
+        radio_map = get_radio_map(cid, [c.id for c in competitors])
+        finishers, non_finishers, leader_time, leader_score = rank_finishers_score(
+            competitors, controls_seq, control_name_map, radio_map
+        )
+    else:
+        finishers, non_finishers, leader_time = rank_finishers(competitors)
+        leader_score = None
 
     # Rang dans la catégorie d'origine pour les vues circuit
     if course is not None:
@@ -280,15 +297,26 @@ def class_results(request, cid, class_id):
             cls_id = c.cls
             if cls_id not in class_rank_cache:
                 all_in_cls = [x for x in competitors if x.cls == cls_id]
-                cls_finishers = sorted(
-                    [x for x in all_in_cls if x.is_ok],
-                    key=lambda x: x.rt,
-                )
-                class_rank_cache[cls_id] = {x.id: i+1 for i, x in enumerate(cls_finishers)}
+                if score_race:
+                    cls_finishers = sorted(
+                        [x for x in all_in_cls if x.is_ok],
+                        key=lambda x: (-getattr(x, 'score', 0), x.rt),
+                    )
+                else:
+                    cls_finishers = sorted(
+                        [x for x in all_in_cls if x.is_ok],
+                        key=lambda x: x.rt,
+                    )
+                class_rank_cache[cls_id] = {
+                    x.id: i + 1 for i, x in enumerate(cls_finishers)
+                }
             c.cat_rank = class_rank_cache[cls_id].get(c.id)
 
-    results      = finishers + _sort_non_finishers(non_finishers)
-    controls_seq = _controls_for(cid, cls, course)
+    results = finishers + _sort_non_finishers(non_finishers)
+    results_colspan = (
+        (7 if score_race else 6) if course is not None
+        else (6 if score_race else 5)
+    )
     # Per-category gate: hide punches until one runner has finished (OK or prel)
     can_show_splits = has_completed(competitors)
 
@@ -356,6 +384,9 @@ def class_results(request, cid, class_id):
         'all_classes':         all_classes,
         'course_hash':         course['hash'] if course else compute_course_hash(controls_seq),
         'neg_time_warning':    get_negative_time_stats(cid),
+        'leader_score':       leader_score,
+        'score_race':         score_race,
+        'results_colspan':    results_colspan,
     })
 
 

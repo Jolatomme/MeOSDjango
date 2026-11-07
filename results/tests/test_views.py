@@ -860,6 +860,65 @@ class TestClassResultsView:
             _, _, ctx = mock_render.call_args[0]
             assert ctx['neg_time_warning'] == warning
 
+    def test_score_race_faux_par_defaut(self):
+        _, ctx = self._run([make_competitor()])
+        assert ctx['score_race'] is False
+        assert ctx['leader_score'] is None
+        assert ctx['results_colspan'] == 5
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# class_results — course au score
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestClassResultsScoreRace:
+    """Classement par points puis temps quand score_race est actif."""
+
+    CONTROLS = [
+        {'ctrl_id': 31, 'ctrl_name': '31'},
+        {'ctrl_id': 32, 'ctrl_name': '32'},
+    ]
+    NAMES = {31: '31 (10p)', 32: '32 (5p)'}
+
+    def _run(self, competitors, radio_map):
+        comp = make_competition(); cls = make_cls()
+        with patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views.get_object_or_404', side_effect=[comp, cls]), \
+             patch('results.views._get_adjacent_classes',
+                   return_value=(None, None, [])), \
+             patch('results.views.get_org_map', return_value={}), \
+             patch('results.views.is_score_race', return_value=True), \
+             patch('results.views.get_class_controls',
+                   return_value=(self.CONTROLS, self.NAMES)), \
+             patch('results.views.get_radio_map', return_value=radio_map), \
+             patch('results.views.compute_splits', return_value=[]), \
+             patch('results.views.compute_error_estimates', return_value={}), \
+             patch('results.views.mark_best_splits'), \
+             patch('results.views.rank_splits'), \
+             patch('results.views.render') as mock_render:
+            MockTeam.objects.filter.return_value.exists.return_value = False
+            MockComp.objects.filter.return_value = competitors
+            from results.views import class_results
+            class_results(rf_get(), cid=1, class_id=10)
+            _, _, ctx = mock_render.call_args[0]
+            return ctx
+
+    def test_classement_points_puis_temps(self):
+        c1 = make_competitor(1, rt=5000)
+        c2 = make_competitor(2, rt=4000)
+        c3 = make_competitor(3, rt=3000)
+        ctx = self._run([c1, c2, c3], {
+            1: {31: 100, 32: 200},
+            2: {31: 100},
+            3: {31: 100},
+        })
+        assert [c.id for c in ctx['results']] == [1, 3, 2]
+        assert [c.score for c in ctx['results']] == [15, 10, 10]
+        assert ctx['leader_score'] == 15
+        assert ctx['score_race'] is True
+        assert ctx['results_colspan'] == 6
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # class_results — marquage des coureurs à temps négatif

@@ -54,6 +54,24 @@ def competition_visible(cid):
     return not cfg.deleted and cfg.visible
 
 
+def is_score_race(cid):
+    """True si la compétition est configurée comme course au score.
+
+    Une course sans ligne de configuration (créée directement dans MeOS) est
+    une course classique. En cas d'erreur DB, on reste sur le classement
+    habituel par temps plutôt que de casser l'affichage des résultats.
+    """
+    try:
+        config = CompetitionConfig.objects.filter(cid=cid).first()
+    except Exception:
+        logger.warning(
+            "is_score_race(%s) : erreur DB, course classique par défaut",
+            cid, exc_info=True,
+        )
+        return False
+    return bool(config is not None and config.score_race)
+
+
 def slugify_no_prefix(value, separator='-'):
     """Slugify after removing numbered prefix (e.g., '1.2. Title' → 'title')."""
     return slugify_unicode(_PREFIX_RE.sub('', value), separator)
@@ -114,12 +132,15 @@ def next_cid():
     return max(max_mop, max_cfg) + 1
 
 
-def create_race(*, name, date, organizer, homepage='', livelox='', logo=''):
+def create_race(*, name, date, organizer, homepage='', livelox='', logo='',
+                score_race=False):
     """Crée une course : CompetitionConfig (clé API + jeton) + mopCompetition.
 
     La ligne mopCompetition est pré-remplie (id=1) pour que la course
     apparaisse immédiatement sur le site ; le premier MOPComplete de MeOS
     la remplace (clear_competition + réinsertion).
+
+    ``score_race`` active le classement par points (course au score).
 
     Retourne la CompetitionConfig fraîchement créée.
     Lève IntegrityError si l'allocation de CID est perdue face à une
@@ -137,6 +158,7 @@ def create_race(*, name, date, organizer, homepage='', livelox='', logo=''):
                     visible=True,
                     frozen=False,
                     deleted=False,
+                    score_race=bool(score_race),
                 )
                 Mopcompetition.objects.create(
                     cid=cid,
@@ -224,6 +246,53 @@ def get_org_map(cid, *, as_objects=False):
 # ─── Contrôles ─────────────────────────────────────────────────────────────────
 
 _POINTS_SUFFIX_RE = re.compile(r'\s*\(\s*-?\d+(?:[.,]\d+)?\s*p\s*\)')
+
+
+def extract_control_points(name):
+    """Extrait les points d'un nom de poste MeOS.
+
+    MeOS ajoute les points sous la forme "(Np)" où N est le nombre de points.
+    Args:
+        name: Nom du poste (ex: "222 (3p)", "31 (10.5p)", "45")
+    Returns:
+        float: nombre de points, ou 0 si aucun point trouvé.
+    """
+    match = re.search(r'\(\s*(-?\d+(?:[.,]\d+)?)\s*p\s*\)', str(name))
+    if not match:
+        return 0
+    try:
+        return float(match.group(1).replace(',', '.'))
+    except ValueError:
+        return 0
+
+
+def compute_runner_score(runner_id, controls_seq, control_name_map, radio_map):
+    """Calcule le score total d'un coureur pour une course au score.
+
+    Le score est la somme des points de tous les postes poinçonnés par le
+    coureur. Un poste est considéré comme poinçonné si le coureur a un temps
+    radio positif (mopRadio.rt > 0) pour ce poste.
+
+    Args:
+        runner_id: identifiant du coureur
+        controls_seq: liste des postes du circuit avec leurs ids
+        control_name_map: dictionnaire {ctrl_id: ctrl_name} avec les noms originaux
+        radio_map: dictionnaire {runner_id: {ctrl_id: rt}}
+
+    Returns:
+        float: score total du coureur
+    """
+    radios = radio_map.get(runner_id, {})
+    total_score = 0.0
+
+    for ctrl in controls_seq:
+        ctrl_id = ctrl['ctrl_id']
+        if ctrl_id in radios and radios[ctrl_id] > 0:
+            total_score += extract_control_points(
+                control_name_map.get(ctrl_id, '')
+            )
+
+    return total_score
 
 
 def format_control_label(name, ordinal=None):
@@ -776,6 +845,61 @@ def rank_finishers(entries, *, time_field='rt', ok_predicate=None):
     for entry in non_finishers:
         entry.rank = None; entry.time_behind = None
     return finishers, non_finishers, leader_time
+
+
+def rank_finishers_score(entries, controls_seq, control_name_map, radio_map, *, time_field='rt', ok_predicate=None):
+    """Classe les coureurs par points puis par temps en cas d'égalité (course au score).
+
+    Pour une course au score (rogaining), les coureurs sont classés par:
+    1. Score total (décroissant) - somme des points des postes poinçonnés
+    2. Temps total (croissant) - en cas d'égalité de points
+
+    Args:
+        entries: liste des coureurs
+        controls_seq: liste des postes du circuit
+        control_name_map: dictionnaire {ctrl_id: ctrl_name} avec les noms originaux
+        radio_map: dictionnaire {runner_id: {ctrl_id: rt}}
+        time_field: champ à utiliser pour le temps (par défaut 'rt')
+        ok_predicate: fonction pour déterminer si un coureur a fini
+
+    Returns:
+        tuple: (finishers, non_finishers, leader_time, leader_score)
+    """
+    if ok_predicate is None:
+        ok_predicate = lambda e: getattr(e, 'is_ok', False)
+    
+    # Calculer les scores pour tous les coureurs
+    scores = {}
+    for entry in entries:
+        if ok_predicate(entry):
+            scores[entry.id] = compute_runner_score(entry.id, controls_seq, control_name_map, radio_map)
+    
+    # Trier les finishers par score (décroissant) puis par temps (croissant)
+    finishers = sorted(
+        [e for e in entries if ok_predicate(e)],
+        key=lambda e: (-scores.get(e.id, 0), getattr(e, time_field, 0)),
+    )
+    
+    non_finishers = [e for e in entries if not ok_predicate(e)]
+    
+    # Calculer leader_time et leader_score
+    leader_time = getattr(finishers[0], time_field) if finishers else None
+    leader_score = scores.get(finishers[0].id, 0) if finishers else 0
+    
+    # Assigner les rangs
+    for i, entry in enumerate(finishers):
+        entry.rank = i + 1
+        entry.time_behind = getattr(entry, time_field) - leader_time if i > 0 else 0
+        entry.score = scores.get(entry.id, 0)
+        entry.score_behind = leader_score - entry.score if i > 0 else 0
+    
+    for entry in non_finishers:
+        entry.rank = None
+        entry.time_behind = None
+        entry.score = 0
+        entry.score_behind = None
+    
+    return finishers, non_finishers, leader_time, leader_score
 
 
 def has_completed(entries):

@@ -52,10 +52,14 @@ def _valid_post(age=10.0, **extra):
     return data
 
 
-def _config(cid=9, token='jeton-prive-abc', api_key='k' * 43):
+def _config(cid=9, token='jeton-prive-abc', api_key='k' * 43,
+            score_race=False):
     # SimpleNamespace (et non MagicMock) : les templates Django tentent un
     # accès dictionnaire d'abord, que MagicMock satisferait à tort.
-    return SimpleNamespace(cid=cid, manage_token=token, api_key=api_key)
+    return SimpleNamespace(
+        cid=cid, manage_token=token, api_key=api_key,
+        score_race=score_race, save=MagicMock(),
+    )
 
 
 def _competition():
@@ -110,6 +114,8 @@ class TestRaceCreateView:
         assert 'Livelox' in content
         assert 'name="logo"' in content
         assert 'Logo de l\'organisateur' in content
+        assert 'name="score_race"' in content
+        assert 'Course au score' in content
         assert 'enctype="multipart/form-data"' in content
 
     @patch('results.race_views.save_org_logo')
@@ -128,7 +134,18 @@ class TestRaceCreateView:
             homepage='https://example.org',
             livelox='https://livelox.example/42',
             logo='',
+            score_race=False,
         )
+
+    @patch('results.race_views.create_race')
+    def test_post_course_au_score_transmet_true(self, mock_create):
+        mock_create.return_value = _config(token='tok-secret')
+        from results.race_views import RaceCreateView
+        response = RaceCreateView.as_view()(
+            rf().post('/creer-course/', _valid_post(score_race='on')),
+        )
+        assert response.status_code == 302
+        assert mock_create.call_args.kwargs['score_race'] is True
 
     @patch('results.race_views.save_org_logo', return_value='logo-deadbeef0001.png')
     @patch('results.race_views.create_race')
@@ -343,6 +360,8 @@ class TestRaceManageView:
         assert 'name="remove_logo"' in content
         assert "/org_logo/logo-old.png" in content
         assert "Supprimer le logo actuel" in content
+        assert 'name="score_race"' in content
+        assert 'Course au score' in content
         # Date ISO dans <input type="date"> (et non localisée : « 17 mai 2026 »,
         # que le navigateur rejetterait → champ affiché vide)
         assert 'value="2026-05-17"' in content
@@ -350,6 +369,23 @@ class TestRaceManageView:
         MockConfig.objects.filter.assert_called_once_with(
             manage_token='jeton-prive-abc'
         )
+
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_get_course_au_score_case_cochee(self, MockConfig, MockComp):
+        MockConfig.objects.filter.return_value.first.return_value = _config(
+            score_race=True,
+        )
+        MockComp.objects.filter.return_value.first.return_value = _competition()
+
+        from results.race_views import RaceManageView
+        response = RaceManageView.as_view()(
+            rf().get('/gestion-course/jeton-prive-abc/'),
+            token='jeton-prive-abc',
+        )
+
+        content = response.content.decode()
+        assert re.search(r'name="score_race"[^>]*checked', content)
 
     @patch('results.race_views.Mopcompetition')
     @patch('results.race_views.CompetitionConfig')
@@ -473,6 +509,30 @@ class TestRaceManageView:
             homepage='https://autre.example',
             livelox='https://livelox.example/99',
         )
+        config.save.assert_not_called()
+
+    @patch('results.race_views.Mopcompetition')
+    @patch('results.race_views.CompetitionConfig')
+    def test_post_active_course_au_score(self, MockConfig, MockComp):
+        config = _config()
+        MockConfig.objects.filter.return_value.first.return_value = config
+
+        from results.race_views import RaceManageView
+        data = {
+            'action': 'edit',
+            'name': 'Nouveau nom',
+            'date': '2026-06-01',
+            'organizer': 'OK Autre',
+            'homepage': '',
+            'livelox': '',
+            'score_race': 'on',
+        }
+        request = rf().post('/gestion-course/jeton-prive-abc/', data)
+        response = RaceManageView.as_view()(request, token='jeton-prive-abc')
+
+        assert response.status_code == 302
+        assert config.score_race is True
+        config.save.assert_called_once_with(update_fields=['score_race'])
 
     @patch('results.race_views.delete_org_logo')
     @patch('results.race_views.save_org_logo', return_value='logo-nouveau.png')

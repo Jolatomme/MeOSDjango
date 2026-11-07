@@ -1108,6 +1108,125 @@ class TestFormatControlLabel:
         assert self._call(31, 2) == '2-31'
 
 
+# ─── Tests course au score ────────────────────────────────────────────────────
+
+class TestExtractControlPoints:
+    """Points lus dans les noms de postes MeOS « (Np) »."""
+
+    def _call(self, name):
+        from results.services import extract_control_points
+        return extract_control_points(name)
+
+    def test_points_entiers(self):
+        assert self._call('222 (3p)') == 3
+
+    def test_points_decimaux(self):
+        assert self._call('31 (10.5p)') == 10.5
+        assert self._call('31 (10,5p)') == 10.5
+
+    def test_sans_points(self):
+        assert self._call('45') == 0
+        assert self._call(None) == 0
+
+
+class TestComputeRunnerScore:
+    """Somme des points des postes réellement poinçonnés."""
+
+    CONTROLS = [{'ctrl_id': 31}, {'ctrl_id': 32}]
+    NAMES = {31: '31 (10p)', 32: '32 (5p)'}
+
+    def _call(self, runner_id, radio_map):
+        from results.services import compute_runner_score
+        return compute_runner_score(
+            runner_id, self.CONTROLS, self.NAMES, radio_map,
+        )
+
+    def test_somme_des_postes_poinconnes(self):
+        assert self._call(1, {1: {31: 100, 32: 200}}) == 15
+
+    def test_ignore_poste_non_poinconne(self):
+        assert self._call(1, {1: {31: 100}}) == 10
+
+    def test_ignore_temps_negatif(self):
+        assert self._call(1, {1: {31: 100, 32: -5}}) == 10
+
+    def test_coureur_sans_poincon(self):
+        assert self._call(99, {1: {31: 100}}) == 0
+
+
+class TestRankFinishersScore:
+    """Classement par points décroissants puis temps croissants."""
+
+    CONTROLS = [{'ctrl_id': 31}, {'ctrl_id': 32}]
+    NAMES = {31: '31 (10p)', 32: '32 (5p)'}
+
+    def _call(self, entries, radio_map):
+        from results.services import rank_finishers_score
+        return rank_finishers_score(
+            entries, self.CONTROLS, self.NAMES, radio_map,
+        )
+
+    def test_points_puis_temps(self):
+        c1 = make_competitor(1, rt=5000)     # 15 pts
+        c2 = make_competitor(2, rt=4000)     # 10 pts
+        c3 = make_competitor(3, rt=3000)     # 10 pts, plus rapide
+        radio_map = {
+            1: {31: 100, 32: 200},
+            2: {31: 100},
+            3: {31: 100},
+        }
+        finishers, _, leader_time, leader_score = self._call(
+            [c1, c2, c3], radio_map,
+        )
+        assert [c.id for c in finishers] == [1, 3, 2]
+        assert [c.rank for c in finishers] == [1, 2, 3]
+        assert [c.score for c in finishers] == [15, 10, 10]
+        assert leader_time == 5000
+        assert leader_score == 15
+
+    def test_non_classe_score_zero(self):
+        ok = make_competitor(1, rt=5000)
+        pm = make_competitor(2, rt=-1, stat=STAT_MP)
+        pm.is_ok = False
+        _, non_finishers, _, _ = self._call(
+            [ok, pm], {1: {31: 100}},
+        )
+        assert non_finishers[0].rank is None
+        assert non_finishers[0].score == 0
+
+
+class TestIsScoreRace:
+    """Drapeau porté par CompetitionConfig, faux si absent ou en erreur."""
+
+    @patch('results.services.CompetitionConfig')
+    def test_true(self, MockConfig):
+        MockConfig.objects.filter.return_value.first.return_value = (
+            SimpleNamespace(score_race=True)
+        )
+        from results.services import is_score_race
+        assert is_score_race(12) is True
+
+    @patch('results.services.CompetitionConfig')
+    def test_false(self, MockConfig):
+        MockConfig.objects.filter.return_value.first.return_value = (
+            SimpleNamespace(score_race=False)
+        )
+        from results.services import is_score_race
+        assert is_score_race(12) is False
+
+    @patch('results.services.CompetitionConfig')
+    def test_absente(self, MockConfig):
+        MockConfig.objects.filter.return_value.first.return_value = None
+        from results.services import is_score_race
+        assert is_score_race(12) is False
+
+    @patch('results.services.CompetitionConfig')
+    def test_erreur_db(self, MockConfig):
+        MockConfig.objects.filter.side_effect = Exception('db down')
+        from results.services import is_score_race
+        assert is_score_race(12) is False
+
+
 # ─── Tests get_class_controls ─────────────────────────────────────────────────
 
 class TestGetClassControls:
