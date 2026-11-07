@@ -48,5 +48,6 @@ def _no_neg_time_stats_db():
          patch('results.classViews.get_negative_time_stats', return_value=None), \
          patch('results.views.competition_visible', return_value=True), \
          patch('results.classViews.competition_visible', return_value=True), \
-         patch('results.views.is_score_race', return_value=False):
+         patch('results.views.is_score_race', return_value=False), \
+         patch('results.classViews.is_score_race', return_value=False):
         yield

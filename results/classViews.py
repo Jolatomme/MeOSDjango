@@ -16,6 +16,7 @@ from .models import (
 from .services import (
     get_org_map, get_class_controls, get_courses_map,
     get_negative_time_stats, slugify_no_prefix, competition_visible,
+    is_score_race,
 )
 from .nat_flags import nat_flag_url
 
@@ -213,7 +214,7 @@ class CompetitionDetailView(RenderShortcutMixin, DetailView):
         class_totals = {cs['cls'].id: cs['total'] for cs in class_stats}
         courses_map = get_courses_map(cid, relay_class_ids, class_totals)
 
-        neg_stats = get_negative_time_stats(cid)
+        neg_stats = None if is_score_race(cid) else get_negative_time_stats(cid)
         if neg_stats:
             neg_by_cls = {}
             for r in neg_stats['runners']:

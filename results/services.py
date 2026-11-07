@@ -531,7 +531,8 @@ def detect_arrival_punch(radios, controls_seq):
 
 # ─── Calcul des splits ─────────────────────────────────────────────────────────
 
-def compute_splits(runner_id, controls_seq, radio_map, prestart_ctrls=None):
+def compute_splits(runner_id, controls_seq, radio_map, prestart_ctrls=None,
+                   detect_negatives=True):
     """Calcule les temps intermédiaires d'un coureur.
 
     ``prestart_ctrls`` : postes présumés pointés avant le départ d'un
@@ -543,8 +544,13 @@ def compute_splits(runner_id, controls_seq, radio_map, prestart_ctrls=None):
     adjacents inconnus, mais la chaîne reprend au poinçon connu suivant
     (les tronçons entre deux poinçons connus restent valides). Un tronçon
     négatif est signalé via ``neg_leg``.
+
+    ``detect_negatives=False`` désactive cette signalisation (course au
+    score, où l'ordre des postes n'est pas imposé).
     """
     radios = radio_map.get(runner_id, {})
+    if not detect_negatives:
+        prestart_ctrls = set()
     prestart_ctrls = prestart_ctrls or set()
     splits = []
     prev   = 0
@@ -566,7 +572,7 @@ def compute_splits(runner_id, controls_seq, radio_map, prestart_ctrls=None):
             continue
         if abs_t is not None and prev is not None:
             leg     = abs_t - prev
-            neg_leg = leg < 0
+            neg_leg = detect_negatives and leg < 0
         else:
             leg, neg_leg = None, False
         splits.append({
@@ -584,7 +590,8 @@ def compute_splits(runner_id, controls_seq, radio_map, prestart_ctrls=None):
     return splits
 
 
-def build_finish_split(rt, last_abs, *, leg_full_race_if_missing=True):
+def build_finish_split(rt, last_abs, *, leg_full_race_if_missing=True,
+                       detect_negatives=True):
     """Construit le dict du tronçon 'Arrivée'.
 
     Un temps d'arrivée antérieur au dernier poste (boîtier mal
@@ -597,6 +604,8 @@ def build_finish_split(rt, last_abs, *, leg_full_race_if_missing=True):
         leg_full_race_if_missing: si True et qu'aucun dernier poste
             n'est connu, le tronçon vaut rt (temps total) ; si False,
             le tronçon reste inconnu ('-').
+        detect_negatives: False pour ne jamais marquer ``neg_leg``
+            (course au score).
     """
     if rt is None or rt <= 0:
         return {
@@ -622,7 +631,7 @@ def build_finish_split(rt, last_abs, *, leg_full_race_if_missing=True):
         'leg_time':  format_time(leg_raw) if leg_raw else '-',
         'leg_raw':   leg_raw,
         'abs_raw':   rt,
-        'neg_leg':   leg_raw is not None and leg_raw < 0,
+        'neg_leg':   detect_negatives and leg_raw is not None and leg_raw < 0,
         'is_best':   False,
         'leg_rank':  None,
         'abs_rank':  None,
@@ -1401,7 +1410,8 @@ def race_in_progress(competitors, now=None, competition_date=None):
     )
 
 
-def mark_negative_times(competitors, controls_seq, radio_map):
+def mark_negative_times(competitors, controls_seq, radio_map, *,
+                        detect_negatives=True):
     """Pose ``c.neg_time`` et ``c.neg_ctrls`` sur les coureurs ayant au
     moins un temps négatif.
 
@@ -1413,7 +1423,15 @@ def mark_negative_times(competitors, controls_seq, radio_map):
     d'arrivée ``rt`` négatif (seulement si le statut est OK — pour les
     statuts non-OK, ``rt = -1`` est la sentinelle « non classé », pas un
     temps négatif).
+
+    ``detect_negatives=False`` efface les drapeaux sans calcul (course
+    au score).
     """
+    if not detect_negatives:
+        for c in competitors:
+            c.neg_ctrls = []
+            c.neg_time  = False
+        return
     attested = attested_ctrls(radio_map)
     for c in competitors:
         neg_ctrls = collect_negative_ctrls(c, controls_seq, radio_map, attested)
