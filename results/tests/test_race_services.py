@@ -95,12 +95,31 @@ class TestCreateRace:
         assert kwargs['visible'] is True
         assert kwargs['frozen'] is False
         assert kwargs['deleted'] is False
+        assert kwargs['score_race'] is False
         MockComp.objects.create.assert_called_once_with(
             cid=11, id=1, name='Trail', date='2026-05-17',
             organizer='COCS', homepage='https://example.org',
             livelox='https://livelox.example/42',
             logo='logo-abc123def456.png',
         )
+
+    @patch('results.services.transaction.atomic')
+    @patch('results.services.Mopcompetition')
+    @patch('results.services.CompetitionConfig')
+    @patch('results.services.next_cid', return_value=11)
+    def test_cree_course_au_score(
+        self, mock_next, MockConfig, MockComp, mock_atomic,
+    ):
+        """score_race=True est enregistré dans CompetitionConfig."""
+        from results.services import create_race
+        MockConfig.objects.create.return_value = MagicMock()
+
+        create_race(
+            name='Score', date='2026-05-17', organizer='COCS',
+            score_race=True,
+        )
+
+        assert MockConfig.objects.create.call_args.kwargs['score_race'] is True
 
     @patch('results.services.transaction.atomic')
     @patch('results.services.Mopcompetition')

@@ -294,6 +294,11 @@ class CompetitionConfig(models.Model):
         verbose_name=gettext_lazy("jeton de gestion"),
         help_text=gettext_lazy("Secret du lien privé de gestion de la course"),
     )
+    score_race = models.BooleanField(
+        default=False,
+        verbose_name=gettext_lazy("course au score"),
+        help_text=gettext_lazy("Classer les coureurs par points puis par temps en cas d'égalité"),
+    )
     created_at = models.DateTimeField(
         auto_now_add=True,
         null=True,

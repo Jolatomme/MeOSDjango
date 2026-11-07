@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-02 23:31+0100\n"
+"POT-Creation-Date: 2026-11-06 23:38+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -144,9 +144,9 @@ msgstr "Startnummer"
 #: ochecklist/templates/ochecklist/report_detail.html:85
 #: ochecklist/templates/ochecklist/runner_detail.html:17
 #: results/templates/results/_neg_time_warning.html:23
-#: results/templates/results/class_results.html:98
+#: results/templates/results/class_results.html:103
 #: results/templates/results/competitor_detail.html:51
-#: results/templates/results/course_results.html:62
+#: results/templates/results/course_results.html:67
 #: results/templates/results/org_results.html:36
 #: results/templates/results/recapitulatif.html:106
 #: results/templates/results/start_list.html:44
@@ -158,9 +158,9 @@ msgstr "Wertungsklasse"
 
 #: ochecklist/templates/ochecklist/report_detail.html:86
 #: ochecklist/templates/ochecklist/runner_detail.html:16
-#: results/templates/results/class_results.html:99
+#: results/templates/results/class_results.html:104
 #: results/templates/results/competitor_detail.html:57
-#: results/templates/results/course_results.html:63
+#: results/templates/results/course_results.html:68
 #: results/templates/results/grouping.html:56
 #: results/templates/results/grouping_index.html:146
 #: results/templates/results/performance.html:61
@@ -188,8 +188,8 @@ msgstr "Neue SI-Karte"
 #: results/templates/results/competitor_detail.html:131
 #: results/templates/results/grouping.html:57
 #: results/templates/results/grouping.html:60
-#: results/templates/results/relay_results.html:152 results/views.py:1149
-#: results/views.py:1340
+#: results/templates/results/relay_results.html:152 results/views.py:1181
+#: results/views.py:1372
 msgid "Départ"
 msgstr "Start"
 
@@ -267,59 +267,65 @@ msgid_plural "%(n)s rapports supprimés."
 msgstr[0] "%(n)s Bericht gelöscht."
 msgstr[1] "%(n)s Berichte gelöscht."
 
-#: results/admin.py:37 results/forms.py:115 results/forms.py:125
-#: results/templates/results/race_create.html:117
-#: results/templates/results/race_manage.html:279
+#: results/admin.py:32 results/forms.py:86
+#: results/templates/results/race_create.html:91
+#: results/templates/results/race_manage.html:255
+msgid "Site web de l'organisateur"
+msgstr "Website des Veranstalters"
+
+#: results/admin.py:44 results/forms.py:122 results/forms.py:132
+#: results/templates/results/race_create.html:134
+#: results/templates/results/race_manage.html:296
 msgid "Logo de l'organisateur"
 msgstr "Logo des Veranstalters"
 
-#: results/admin.py:40 results/templates/results/race_create.html:129
-#: results/templates/results/race_manage.html:310
+#: results/admin.py:47 results/templates/results/race_create.html:146
+#: results/templates/results/race_manage.html:327
 msgid "SVG, PNG ou JPEG — 2 Mo maximum."
 msgstr "SVG, PNG oder JPEG — maximal 2 MB."
 
-#: results/admin.py:63
+#: results/admin.py:81
 msgid "Logo actuel :"
 msgstr "Aktuelles Logo:"
 
-#: results/admin.py:117 results/templates/results/race_create.html:32
+#: results/admin.py:141 results/templates/results/race_create.html:32
 msgid "Informations de la course"
 msgstr "Angaben zum Wettkampf"
 
-#: results/admin.py:121
+#: results/admin.py:145
 msgid "Accès MeOS"
 msgstr "MeOS-Zugang"
 
-#: results/admin.py:155 results/templates/results/race_manage.html:170
+#: results/admin.py:179 results/templates/results/race_manage.html:170
 msgid "Compétition"
 msgstr "Wettbewerbsnummer"
 
-#: results/admin.py:162 results/forms.py:81 results/models.py:67
+#: results/admin.py:186 results/forms.py:81 results/models.py:67
 #: results/templates/results/competition_list.html:53
 msgid "Date"
 msgstr "Datum"
 
-#: results/admin.py:179
+#: results/admin.py:203
 #, python-format
 msgid ""
 "%(n)s lien(s) de gestion révoqué(s) — les clés API MeOS restent actives."
 msgstr ""
 "%(n)s Verwaltungslink(s) widerrufen — die MeOS-API-Schlüssel bleiben aktiv."
 
-#: results/admin.py:187
+#: results/admin.py:211
 msgid "Révoquer les liens de gestion privés"
 msgstr "Private Verwaltungslinks widerrufen"
 
-#: results/admin.py:204
+#: results/admin.py:228
 #, python-format
 msgid "Compétition supprimée pour cid=%(cid)s (%(name)s)."
 msgstr "Wettbewerb mit cid=%(cid)s (%(name)s) gelöscht."
 
-#: results/admin.py:223
+#: results/admin.py:247
 msgid "Logo de l'organisateur supprimé."
 msgstr "Organisator-Logo gelöscht."
 
-#: results/admin.py:229
+#: results/admin.py:253
 msgid "Aucun logo à supprimer."
 msgstr "Kein Logo zum Löschen vorhanden."
 
@@ -409,29 +415,32 @@ msgstr "Name des Wettkampfs"
 msgid "Organisateur / club"
 msgstr "Veranstalter / Verein"
 
-#: results/forms.py:86 results/templates/results/race_create.html:91
-#: results/templates/results/race_manage.html:255
-msgid "Site web de l'organisateur"
-msgstr "Website des Veranstalters"
+#: results/forms.py:98
+msgid "Course au score"
+msgstr "Punktelauf"
 
-#: results/forms.py:109
+#: results/forms.py:101 results/models.py:295
+msgid "Classer les coureurs par points puis par temps en cas d'égalité"
+msgstr "Läufer nach Punkten und bei Gleichstand nach Zeit klassieren"
+
+#: results/forms.py:116
 msgid "Site web (champ piège)"
 msgstr "Website (Honeypot-Feld)"
 
-#: results/forms.py:128
+#: results/forms.py:135
 msgid "Laissez vide pour conserver le logo actuel."
 msgstr "Leer lassen, um das aktuelle Logo zu behalten."
 
-#: results/forms.py:131
 #
+#: results/forms.py:138
 msgid "Supprimer le logo actuel"
 msgstr "Aktuelles Logo löschen"
 
-#: results/forms.py:140
+#: results/forms.py:147
 msgid "Fichier IOF ResultList (.xml)"
 msgstr "IOF-ResultList-Datei (.xml)"
 
-#: results/forms.py:142
+#: results/forms.py:149
 msgid ""
 "Export IOF Data Standard v3 (ResultList). Les fichiers « Complete » et "
 "« Snapshot » sont acceptés."
@@ -439,11 +448,11 @@ msgstr ""
 "IOF-Data-Standard-v3-Export (ResultList). Dateien vom Typ „Complete“ und "
 "„Snapshot“ werden akzeptiert."
 
-#: results/forms.py:147 results/templates/results/_iof_import_panel.html:177
+#: results/forms.py:154 results/templates/results/_iof_import_panel.html:177
 msgid "Numéro de course"
 msgstr "Wettkampfnummer"
 
-#: results/forms.py:151
+#: results/forms.py:158
 msgid ""
 "Obligatoire pour un fichier contenant plusieurs courses ; laissez vide pour "
 "un fichier à une seule course."
@@ -451,11 +460,11 @@ msgstr ""
 "Erforderlich für eine Datei mit mehreren Wettkämpfen; leer lassen für eine "
 "Datei mit nur einem Wettkampf."
 
-#: results/forms.py:156
+#: results/forms.py:163
 msgid "Utiliser les informations de l'événement IOF"
 msgstr "Informationen der IOF-Veranstaltung verwenden"
 
-#: results/forms.py:159
+#: results/forms.py:166
 msgid ""
 "Nom, date, organisateur et site web du fichier. Décoché, les informations "
 "déjà saisies sur le site sont conservées et les champs vides sont complétés "
@@ -465,11 +474,11 @@ msgstr ""
 "die bereits auf der Website eingegebenen Angaben erhalten, leere Felder "
 "werden aus der Datei ergänzt."
 
-#: results/forms.py:165
+#: results/forms.py:172
 msgid "Je comprends que l'import remplace tous les résultats existants."
 msgstr "Ich verstehe, dass der Import alle vorhandenen Ergebnisse ersetzt."
 
-#: results/forms.py:175
+#: results/forms.py:182
 #, python-format
 msgid "Fichier trop volumineux (%(max)d Mo maximum)."
 msgstr "Datei zu groß (maximal %(max)d MB)."
@@ -1131,7 +1140,7 @@ msgstr "Wettbewerbe"
 msgid "nationalité"
 msgstr "Nationalität"
 
-#: results/models.py:263 results/models.py:313
+#: results/models.py:263 results/models.py:318
 msgid "gelée"
 msgstr "eingefroren"
 
@@ -1175,27 +1184,31 @@ msgstr "Verwaltungstoken"
 msgid "Secret du lien privé de gestion de la course"
 msgstr "Secret des privaten Verwaltungslinks für den Wettbewerb"
 
-#: results/models.py:296
+#: results/models.py:294
+msgid "course au score"
+msgstr "Punktelauf"
+
+#: results/models.py:301
 msgid "créée le"
 msgstr "erstellt am"
 
-#: results/models.py:302
+#: results/models.py:307
 msgid "configuration compétition"
 msgstr "Wettbewerbskonfiguration"
 
-#: results/models.py:303 results/tests/test_i18n.py:419
+#: results/models.py:308 results/tests/test_i18n.py:419
 msgid "configurations compétitions"
 msgstr "Wettbewerbskonfigurationen"
 
-#: results/models.py:315
+#: results/models.py:320
 msgid "supprimée"
 msgstr "gelöscht"
 
-#: results/models.py:317
+#: results/models.py:322
 msgid "masquée"
 msgstr "verborgen"
 
-#: results/race_views.py:179
+#: results/race_views.py:180
 msgid ""
 "Cochez la case de confirmation : l'import remplace tous les résultats "
 "existants."
@@ -1203,7 +1216,7 @@ msgstr ""
 "Aktivieren Sie das Bestätigungsfeld: Der Import ersetzt alle vorhandenen "
 "Ergebnisse."
 
-#: results/race_views.py:200
+#: results/race_views.py:201
 msgid ""
 "La course est gelée : aucun résultat n'a été importé. Dégèle-la dans MeOS "
 "avant de réessayer."
@@ -1211,7 +1224,7 @@ msgstr ""
 "Der Wettkampf ist eingefroren: Es wurden keine Ergebnisse importiert. Heben "
 "Sie die Sperre in MeOS auf, bevor Sie es erneut versuchen."
 
-#: results/race_views.py:215
+#: results/race_views.py:216
 #, python-format
 msgid ""
 "Résultats IOF importés : %(classes)d classe(s), %(competitors)d "
@@ -1220,15 +1233,15 @@ msgstr ""
 "IOF-Ergebnisse importiert: %(classes)d Klasse(n), %(competitors)d "
 "Teilnehmer, %(teams)d Mannschaft(en)."
 
-#: results/race_views.py:253
+#: results/race_views.py:254
 msgid "Formulaire invalide. Vérifiez les champs saisis."
 msgstr "Ungültiges Formular. Bitte die Eingaben prüfen."
 
-#: results/race_views.py:272
+#: results/race_views.py:274
 msgid "Conflit à la création. Réessayez une nouvelle fois."
 msgstr "Konflikt beim Erstellen. Bitte erneut versuchen."
 
-#: results/race_views.py:349
+#: results/race_views.py:352
 #, python-format
 msgid ""
 "Course « %(name)s » supprimée : résultats, clé API et lien de gestion "
@@ -1237,31 +1250,31 @@ msgstr ""
 "Wettkampf „%(name)s“ gelöscht: Ergebnisse, API-Schlüssel und Verwaltungslink "
 "entfernt."
 
-#: results/services.py:393 results/services.py:401 results/services.py:513
-#: results/services.py:530 results/templates/results/_split_detail_row.html:2
+#: results/services.py:483 results/services.py:491 results/services.py:603
+#: results/services.py:620 results/templates/results/_split_detail_row.html:2
 #: results/templates/results/_split_detail_row.html:35
 #: results/templates/results/competitor_detail.html:74
 #: results/templates/results/competitor_detail.html:136
 #: results/templates/results/competitor_detail.html:151
 #: results/templates/results/grouping.html:58
 #: results/templates/results/grouping.html:61
-#: results/templates/results/relay_results.html:156 results/views.py:1149
-#: results/views.py:1175 results/views.py:1217 results/views.py:1278
-#: results/views.py:1340
+#: results/templates/results/relay_results.html:156 results/views.py:1181
+#: results/views.py:1207 results/views.py:1249 results/views.py:1310
+#: results/views.py:1372
 msgid "Arrivée"
 msgstr "Ziel"
 
-#: results/services.py:569
+#: results/services.py:659
 #, python-format
 msgid "au poste %(ctrls)s"
 msgstr "an Kontrolle %(ctrls)s"
 
-#: results/services.py:571
+#: results/services.py:661
 #, python-format
 msgid "aux postes %(ctrls)s"
 msgstr "an Kontrollpunkten %(ctrls)s"
 
-#: results/services.py:573
+#: results/services.py:663
 #, python-format
 msgid ""
 "%(n)s coureur a des temps négatifs %(postes)s : probable boîtier mal "
@@ -1276,11 +1289,11 @@ msgstr[1] ""
 "%(n)s Läufer haben negative Zeiten %(postes)s: vermutlich nicht "
 "synchronisiertes Kontrollgerät."
 
-#: results/services.py:579
+#: results/services.py:669
 msgid "Temps négatif : boîtier probablement mal synchronisé"
 msgstr "Negative Zeit: Kontrollgerät wahrscheinlich nicht synchronisiert"
 
-#: results/services.py:583
+#: results/services.py:673
 msgid ""
 "1 coureur a un temps négatif : probable carte SI non effacée (problème "
 "d'effacement de doigts)."
@@ -1288,11 +1301,11 @@ msgstr ""
 "1 Läufer hat eine negative Zeit: vermutlich eine nicht gelöschte SI-Karte "
 "(Löschproblem)."
 
-#: results/services.py:586
+#: results/services.py:676
 msgid "Temps négatif : carte SI probablement non effacée"
 msgstr "Negative Zeit: SI-Karte vermutlich nicht gelöscht"
 
-#: results/services.py:590
+#: results/services.py:680
 #, python-format
 msgid ""
 "%(n)s coureur a des temps négatifs sur des postes différents : probables "
@@ -1307,7 +1320,7 @@ msgstr[1] ""
 "%(n)s Läufer haben negative Zeiten an verschiedenen Kontrollpunkten: "
 "vermutlich nicht gelöschte SI-Karten (Löschproblem)."
 
-#: results/services.py:596
+#: results/services.py:686
 msgid ""
 "Temps négatifs sur des postes différents : cartes SI probablement non "
 "effacées"
@@ -1502,10 +1515,10 @@ msgstr "IOF-Data-Standard-v3-Datei"
 #: results/templates/results/_iof_import_panel.html:68
 #: results/templates/results/meos_checker.html:45
 #: results/templates/results/meos_checker.html:49
-#: results/templates/results/race_create.html:123
-#: results/templates/results/race_create.html:127
-#: results/templates/results/race_manage.html:303
-#: results/templates/results/race_manage.html:307
+#: results/templates/results/race_create.html:140
+#: results/templates/results/race_create.html:144
+#: results/templates/results/race_manage.html:320
+#: results/templates/results/race_manage.html:324
 #: results/templates/results/verifie_moi.html:57
 #: results/templates/results/verifie_moi.html:61
 msgid "Aucun fichier choisi"
@@ -1513,8 +1526,8 @@ msgstr "Keine Datei ausgewählt"
 
 #: results/templates/results/_iof_import_panel.html:66
 #: results/templates/results/meos_checker.html:47
-#: results/templates/results/race_create.html:125
-#: results/templates/results/race_manage.html:305
+#: results/templates/results/race_create.html:142
+#: results/templates/results/race_manage.html:322
 #: results/templates/results/verifie_moi.html:59
 msgid "Choisir un fichier"
 msgstr "Datei auswählen"
@@ -1528,7 +1541,7 @@ msgid "Importer et remplacer les résultats"
 msgstr "Importieren und Ergebnisse ersetzen"
 
 #: results/templates/results/_iof_import_panel.html:126
-#: results/templates/results/race_create.html:140
+#: results/templates/results/race_create.html:157
 msgid "Annuler"
 msgstr "Abbrechen"
 
@@ -1587,8 +1600,8 @@ msgstr[0] "Verdächtiger Kontrollpunkt"
 msgstr[1] "Verdächtige Kontrollpunkte"
 
 #: results/templates/results/_neg_time_warning.html:12
-#: results/templates/results/class_results.html:44
-#: results/templates/results/course_results.html:32
+#: results/templates/results/class_results.html:49
+#: results/templates/results/course_results.html:37
 #: results/templates/results/duel.html:46
 #: results/templates/results/grouping.html:13
 #: results/templates/results/grouping_index.html:43
@@ -1627,8 +1640,8 @@ msgid "Masquer abandons"
 msgstr "Aufgegebene ausblenden"
 
 #: results/templates/results/_result_filters_bar.html:14
-#: results/templates/results/class_results.html:249
-#: results/templates/results/course_results.html:171
+#: results/templates/results/class_results.html:262
+#: results/templates/results/course_results.html:184
 msgid "Développer tous les intermédiaires"
 msgstr "Alle Zwischenzeiten ausklappen"
 
@@ -1835,24 +1848,24 @@ msgid "Retour en haut"
 msgstr "Nach oben"
 
 #: results/templates/results/base.html:211
-#: results/templates/results/class_results.html:112
-#: results/templates/results/course_results.html:75
+#: results/templates/results/class_results.html:118
+#: results/templates/results/course_results.html:81
 #: results/templates/results/org_results.html:46
 #: results/templates/results/relay_results.html:80
 msgid "1er"
 msgstr "1."
 
 #: results/templates/results/base.html:212
-#: results/templates/results/class_results.html:113
-#: results/templates/results/course_results.html:76
+#: results/templates/results/class_results.html:119
+#: results/templates/results/course_results.html:82
 #: results/templates/results/org_results.html:48
 #: results/templates/results/relay_results.html:81
 msgid "2e"
 msgstr "2."
 
 #: results/templates/results/base.html:213
-#: results/templates/results/class_results.html:114
-#: results/templates/results/course_results.html:77
+#: results/templates/results/class_results.html:120
+#: results/templates/results/course_results.html:83
 #: results/templates/results/org_results.html:50
 #: results/templates/results/relay_results.html:82
 msgid "3e"
@@ -1871,9 +1884,15 @@ msgid "Leader : %(leader_time)s"
 msgstr "Führender: %(leader_time)s"
 
 #: results/templates/results/class_results.html:46
+#: results/templates/results/course_results.html:34
+#, python-format
+msgid "Score max : %(score)s"
+msgstr "Maximale Punktzahl: %(score)s"
+
+#: results/templates/results/class_results.html:51
 #: results/templates/results/competition_detail.html:121
 #: results/templates/results/competition_detail.html:182
-#: results/templates/results/course_results.html:34
+#: results/templates/results/course_results.html:39
 #: results/templates/results/duel.html:48
 #: results/templates/results/grouping.html:15
 #: results/templates/results/grouping_index.html:45
@@ -1888,40 +1907,40 @@ msgid_plural "%(n)s postes"
 msgstr[0] "%(n)s Kontrollpunkt"
 msgstr[1] "%(n)s Kontrollpunkte"
 
-#: results/templates/results/class_results.html:62
+#: results/templates/results/class_results.html:67
 #: results/templates/results/recapitulatif.html:64
 msgid "Catégories sur ce circuit"
 msgstr "Wertungsklassen auf dieser Strecke"
 
-#: results/templates/results/class_results.html:74
+#: results/templates/results/class_results.html:79
 msgid "Nom, club ou catégorie…"
 msgstr "Name, Verein oder Klasse…"
 
-#: results/templates/results/class_results.html:77
-#: results/templates/results/course_results.html:47
+#: results/templates/results/class_results.html:82
+#: results/templates/results/course_results.html:52
 msgid "Nom ou club…"
 msgstr "Name oder Verein…"
 
-#: results/templates/results/class_results.html:87
+#: results/templates/results/class_results.html:92
 msgid "Classement"
 msgstr "Wertung"
 
-#: results/templates/results/class_results.html:88
+#: results/templates/results/class_results.html:93
 #: results/templates/results/recapitulatif.html:77
 #, python-format
 msgid "Circuit %(name)s"
 msgstr "Strecke %(name)s"
 
-#: results/templates/results/class_results.html:97
-#: results/templates/results/course_results.html:61
+#: results/templates/results/class_results.html:102
+#: results/templates/results/course_results.html:66
 #: results/templates/results/org_results.html:35
 #: results/templates/results/recapitulatif.html:105
 #: results/templates/results/superman.html:91
 msgid "Concurrent"
 msgstr "Teilnehmer"
 
-#: results/templates/results/class_results.html:100
-#: results/templates/results/course_results.html:64
+#: results/templates/results/class_results.html:105
+#: results/templates/results/course_results.html:69
 #: results/templates/results/duel.html:593
 #: results/templates/results/duel.html:717
 #: results/templates/results/performance.html:62
@@ -1932,25 +1951,30 @@ msgstr "Teilnehmer"
 msgid "Temps"
 msgstr "Zeit"
 
-#: results/templates/results/class_results.html:101
-#: results/templates/results/course_results.html:65
+#: results/templates/results/class_results.html:106
+#: results/templates/results/course_results.html:70
+msgid "Points"
+msgstr "Punkte"
+
+#: results/templates/results/class_results.html:107
+#: results/templates/results/course_results.html:71
 #: results/templates/results/duel.html:176
 #: results/templates/results/duel.html:550
 #: results/templates/results/relay_results.html:71
 msgid "Écart"
 msgstr "Abstand"
 
-#: results/templates/results/class_results.html:102
+#: results/templates/results/class_results.html:108
 msgid "Rang dans la catégorie"
 msgstr "Rang in der Wertungsklasse"
 
-#: results/templates/results/class_results.html:102
+#: results/templates/results/class_results.html:108
 msgid "Rg. cat."
 msgstr "Rang Kl."
 
-#: results/templates/results/class_results.html:122
+#: results/templates/results/class_results.html:128
 #: results/templates/results/competitor_detail.html:19
-#: results/templates/results/course_results.html:85
+#: results/templates/results/course_results.html:91
 #: results/templates/results/live_results.html:314
 #: results/templates/results/recapitulatif.html:124
 #: results/templates/results/recapitulatif.html:167
@@ -1960,9 +1984,9 @@ msgstr ""
 "Negative Zeit: Kontrollgerät nicht synchronisiert oder SI-Karte nicht "
 "gelöscht"
 
-#: results/templates/results/class_results.html:122
+#: results/templates/results/class_results.html:128
 #: results/templates/results/competitor_detail.html:19
-#: results/templates/results/course_results.html:85
+#: results/templates/results/course_results.html:91
 #: results/templates/results/live_results.html:315
 #: results/templates/results/recapitulatif.html:124
 #: results/templates/results/recapitulatif.html:167
@@ -1970,25 +1994,25 @@ msgstr ""
 msgid "Temps négatif"
 msgstr "Negative Zeit"
 
-#: results/templates/results/class_results.html:145
-#: results/templates/results/course_results.html:102
+#: results/templates/results/class_results.html:151
+#: results/templates/results/course_results.html:108
 msgid "Afficher les intermédiaires"
 msgstr "Zwischenzeiten einblenden"
 
-#: results/templates/results/class_results.html:184
+#: results/templates/results/class_results.html:197
 #: results/templates/results/recapitulatif.html:185
 msgid "Aucun résultat."
 msgstr "Keine Ergebnisse."
 
-#: results/templates/results/class_results.html:202
+#: results/templates/results/class_results.html:215
 #: results/templates/results/live_results.html:177
 #: results/templates/results/recapitulatif.html:202
 msgid "Début"
 msgstr "Von"
 
-#: results/templates/results/class_results.html:206
-#: results/templates/results/class_results.html:221
-#: results/templates/results/course_results.html:143
+#: results/templates/results/class_results.html:219
+#: results/templates/results/class_results.html:234
+#: results/templates/results/course_results.html:156
 #: results/templates/results/live_results.html:181
 #: results/templates/results/live_results.html:196
 #: results/templates/results/org_results.html:99
@@ -1998,30 +2022,30 @@ msgstr "Von"
 msgid "Toutes les catégories"
 msgstr "Alle Wertungsklassen"
 
-#: results/templates/results/class_results.html:214
+#: results/templates/results/class_results.html:227
 #: results/templates/results/live_results.html:189
 #: results/templates/results/recapitulatif.html:214
 msgid "Fin"
 msgstr "Bis"
 
-#: results/templates/results/class_results.html:236
-#: results/templates/results/course_results.html:157
+#: results/templates/results/class_results.html:249
+#: results/templates/results/course_results.html:170
 #, python-format
 msgid "Coureurs en erreur (%%)"
 msgstr "Läufer in Fehler (%%)"
 
-#: results/templates/results/class_results.html:237
-#: results/templates/results/course_results.html:158
+#: results/templates/results/class_results.html:250
+#: results/templates/results/course_results.html:171
 msgid "Erreur moyenne (s)"
 msgstr "Mittlerer Fehler (s)"
 
-#: results/templates/results/class_results.html:238
-#: results/templates/results/course_results.html:159
+#: results/templates/results/class_results.html:251
+#: results/templates/results/course_results.html:172
 msgid "Erreur moy. (s)"
 msgstr "Mittl. Fehler (s)"
 
-#: results/templates/results/class_results.html:248
-#: results/templates/results/course_results.html:170
+#: results/templates/results/class_results.html:261
+#: results/templates/results/course_results.html:183
 msgid "Réduire tous les intermédiaires"
 msgstr "Alle Zwischenzeiten einklappen"
 
@@ -2265,17 +2289,17 @@ msgstr "Gesamtrang"
 msgid "Rang tronçon"
 msgstr "Abschnittsrang"
 
-#: results/templates/results/course_results.html:53
+#: results/templates/results/course_results.html:58
 #, python-format
 msgid "Classement circuit — %(name)s"
 msgstr "Streckenwertung — %(name)s"
 
-#: results/templates/results/course_results.html:84
+#: results/templates/results/course_results.html:90
 #, python-format
 msgid "(%(rank)s<sup>e</sup> cat.)"
 msgstr "(<sup>%(rank)s.</sup> Platz Kl.)"
 
-#: results/templates/results/course_results.html:132
+#: results/templates/results/course_results.html:145
 msgid "Aucun résultat pour ce circuit."
 msgstr "Keine Ergebnisse für diese Strecke."
 
@@ -3189,19 +3213,19 @@ msgstr "Datum *"
 msgid "Organisateur / club *"
 msgstr "Veranstalter / Verein *"
 
-#: results/templates/results/race_create.html:138
+#: results/templates/results/race_create.html:155
 msgid "Créer la course"
 msgstr "Wettkampf erstellen"
 
-#: results/templates/results/race_create.html:148
+#: results/templates/results/race_create.html:165
 msgid "Comment ça marche ?"
 msgstr "Wie funktioniert das?"
 
-#: results/templates/results/race_create.html:152
+#: results/templates/results/race_create.html:169
 msgid "Renseignez le nom, la date et le club organisateur."
 msgstr "Tragen Sie Name, Datum und den veranstaltenden Verein ein."
 
-#: results/templates/results/race_create.html:154
+#: results/templates/results/race_create.html:171
 msgid ""
 "Après création, une <strong>clé API MeOS unique</strong> et un\n"
 "            <strong>lien privé de gestion</strong> sont affichés."
@@ -3210,7 +3234,7 @@ msgstr ""
 "strong> und ein\n"
 "            <strong>privater Verwaltungslink</strong> angezeigt."
 
-#: results/templates/results/race_create.html:158
+#: results/templates/results/race_create.html:175
 msgid ""
 "Dans MeOS (<em>Outils &rarr; Serveur Online</em>) : URL = celle du site,\n"
 "            <strong>Password = la clé API</strong>, numéro de compétition\n"
@@ -3223,7 +3247,7 @@ msgstr ""
 "            <strong>leer lassen</strong>, ZIP-Kompression deaktiviert,\n"
 "            Format <em>MeOS Online Protocol XML 2.0</em>."
 
-#: results/templates/results/race_create.html:164
+#: results/templates/results/race_create.html:181
 msgid ""
 "Conservez le lien privé : il permet de retrouver la clé,\n"
 "            de la régénérer et d'éditer les informations."
@@ -3231,7 +3255,7 @@ msgstr ""
 "Bewahren Sie den privaten Link auf: Damit finden Sie den Schlüssel wieder,\n"
 "            erzeugen Sie ihn neu und bearbeiten Sie die Angaben."
 
-#: results/templates/results/race_create.html:170
+#: results/templates/results/race_create.html:187
 msgid ""
 "La course apparaît immédiatement sur le site, en attente du premier\n"
 "          import MeOS."
@@ -3393,20 +3417,20 @@ msgstr "Schlüssel neu erzeugen"
 msgid "Modifier l'événement"
 msgstr "Wettkampf bearbeiten"
 
-#: results/templates/results/race_manage.html:320
+#: results/templates/results/race_manage.html:337
 msgid "Enregistrer les modifications"
 msgstr "Änderungen speichern"
 
-#: results/templates/results/race_manage.html:324
+#: results/templates/results/race_manage.html:341
 msgid "Créer une autre course"
 msgstr "Weiteren Wettkampf erstellen"
 
-#: results/templates/results/race_manage.html:335
+#: results/templates/results/race_manage.html:352
 #: results/tests/test_i18n.py:448
 msgid "Zone de danger"
 msgstr "Gefahrenzone"
 
-#: results/templates/results/race_manage.html:339
+#: results/templates/results/race_manage.html:356
 msgid ""
 "La suppression est définitive : résultats, clé API et lien de gestion seront "
 "effacés. Cette action est irréversible."
@@ -3414,7 +3438,7 @@ msgstr ""
 "Das Löschen ist endgültig: Ergebnisse, API-Schlüssel und Verwaltungslink "
 "werden gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."
 
-#: results/templates/results/race_manage.html:342
+#: results/templates/results/race_manage.html:359
 msgid ""
 "Supprimer définitivement cette course ? Toutes les données seront effacées "
 "(résultats, clé API, lien de gestion) et ce lien ne fonctionnera plus. "
@@ -3424,7 +3448,7 @@ msgstr ""
 "API-Schlüssel, Verwaltungslink) und dieser Link funktioniert nicht mehr. "
 "Diese Aktion kann nicht rückgängig gemacht werden."
 
-#: results/templates/results/race_manage.html:346
+#: results/templates/results/race_manage.html:363
 msgid "Supprimer la course"
 msgstr "Wettkampf löschen"
 
@@ -3432,7 +3456,7 @@ msgstr "Wettkampf löschen"
 msgid "Télécharger en CSV"
 msgstr "Als CSV herunterladen"
 
-#: results/templates/results/recapitulatif.html:112 results/views.py:1398
+#: results/templates/results/recapitulatif.html:112 results/views.py:1430
 msgid "Arr."
 msgstr "Ziel"
 
@@ -3890,11 +3914,11 @@ msgstr ""
 msgid "Génération…"
 msgstr "Wird erzeugt…"
 
-#: results/views.py:183
+#: results/views.py:184
 msgid "Circuit non trouvé"
 msgstr "Strecke nicht gefunden"
 
-#: results/views.py:1398
+#: results/views.py:1430
 msgid "Dép."
 msgstr "Start"
 

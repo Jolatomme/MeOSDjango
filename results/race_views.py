@@ -95,7 +95,7 @@ def _race_mode_query(mode):
     return '&mode=iof' if mode == 'iof' else ''
 
 
-def _race_edit_form(competition):
+def _race_edit_form(competition, config=None):
     """Formulaire d'édition pré-rempli avec les données de la compétition."""
     return RaceEditForm(initial={
         'name': competition.name if competition else '',
@@ -103,6 +103,7 @@ def _race_edit_form(competition):
         'organizer': competition.organizer if competition else '',
         'homepage': competition.homepage if competition else '',
         'livelox': competition.livelox if competition else '',
+        'score_race': bool(getattr(config, 'score_race', False)),
     })
 
 
@@ -263,6 +264,7 @@ class RaceCreateView(View):
                         homepage=cleaned.get('homepage') or '',
                         livelox=cleaned.get('livelox') or '',
                         logo=logo,
+                        score_race=bool(cleaned.get('score_race')),
                     )
                 except IntegrityError:
                     logger.warning("race_create: conflit de CID, nouvelle tentative requise")
@@ -293,8 +295,8 @@ class RaceManageView(View):
         return render(
             request, self.template_name,
             _manage_context(
-                request, config, _race_edit_form(competition), competition,
-                race_mode=race_mode,
+                request, config, _race_edit_form(competition, config),
+                competition, race_mode=race_mode,
             ),
         )
 
@@ -316,8 +318,9 @@ class RaceManageView(View):
             return render(
                 request, self.template_name,
                 _manage_context(
-                    request, config, _race_edit_form(competition), competition,
-                    iof_form=iof_form, iof_report=report, race_mode='iof',
+                    request, config, _race_edit_form(competition, config),
+                    competition, iof_form=iof_form, iof_report=report,
+                    race_mode='iof',
                 ),
             )
 
@@ -388,6 +391,11 @@ class RaceManageView(View):
                     raise
                 if new_logo or remove_logo:
                     delete_org_logo(old_logo)
+
+                score_race = bool(cleaned.get('score_race'))
+                if bool(getattr(config, 'score_race', False)) != score_race:
+                    config.score_race = score_race
+                    config.save(update_fields=['score_race'])
                 logger.info("race_manage: course cid=%s mise à jour", config.cid)
                 return redirect(f"{request.path}?ok=info{_race_mode_query(mode)}")
             competition = _competition_of(config)

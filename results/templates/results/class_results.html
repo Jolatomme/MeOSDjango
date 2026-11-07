@@ -41,6 +41,11 @@
             <i class="bi bi-stopwatch me-1"></i>{% blocktranslate %}Leader : {{ leader_time }}{% endblocktranslate %}
           </span>
         {% endif %}
+        {% if score_race and leader_score %}
+          <span class="badge bg-success text-dark fs-6 fw-bold">
+            <i class="bi bi-award me-1"></i>{% blocktranslate with score=leader_score|floatformat %}Score max : {{ score }}{% endblocktranslate %}
+          </span>
+        {% endif %}
         <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=results|length %}{{ n }} coureur{% plural %}{{ n }} coureurs{% endblocktranslate %}</span>
         {% if has_splits and can_show_splits %}
           <span class="badge bg-light text-dark fs-6">{% blocktranslate count n=controls_seq|length %}{{ n }} poste{% plural %}{{ n }} postes{% endblocktranslate %}</span>
@@ -98,12 +103,13 @@
           {% if course %}<th>{% translate "Catégorie" %}</th>{% endif %}
           <th>{% translate "Club" %}</th>
           <th class="text-end">{% translate "Temps" %}</th>
+          {% if score_race %}<th class="text-end">{% translate "Points" %}</th>{% endif %}
           <th class="text-end d-none d-md-table-cell">{% translate "Écart" %}</th>
           {% if course %}<th class="text-end d-none d-md-table-cell" title="{% translate "Rang dans la catégorie" %}">{% translate "Rg. cat." %}</th>{% endif %}
         </tr>
       </thead>
       <tbody>
-        {% with colspan=course|yesno:"7,5" %}
+        {% with colspan=results_colspan|default:5 %}
         {% for comp in results %}
         <tr class="result-row {% if comp.neg_time %}neg-row{% endif %} {% if not comp.is_ok %}non-finisher{% endif %}"
             data-name="{{ comp.name|lower }}{% if course and comp.class_obj %} {{ comp.class_obj.name|lower }}{% endif %}{% if comp.org_obj %} {{ comp.org_obj.name|lower }}{% endif %}">
@@ -163,6 +169,13 @@
           </td>
           {% endif %}
 
+          {% if score_race %}
+          <td class="text-end score-col">
+            {% if comp.is_ok %}{{ comp.score|floatformat }}
+            {% else %}<span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          {% endif %}
           <td class="text-end behind-col d-none d-md-table-cell">
             {% if comp.time_behind is not None and comp.time_behind > 0 %}+{{ comp.time_behind|meos_time }}
             {% elif comp.time_behind == 0 %}<span class="text-success fw-bold">◆</span>
