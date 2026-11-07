@@ -214,6 +214,29 @@ class TestComputeSplits:
         assert splits[0]['leg_raw']  == -350
         assert splits[0]['neg_leg']  is True
 
+    def test_detect_negatives_false_pas_de_marqueur(self):
+        """Course au score : un tronçon négatif n'est pas signalé."""
+        controls_seq = [
+            {'ctrl_id': 31, 'ctrl_name': 'P31'},
+            {'ctrl_id': 32, 'ctrl_name': 'P32'},
+        ]
+        radio_map = {1: {31: 2000, 32: 1500}}
+        splits = self._call(1, controls_seq, radio_map, detect_negatives=False)
+        assert splits[1]['leg_raw'] == -500
+        assert splits[1]['neg_leg'] is False
+        assert splits[0]['neg_leg'] is False
+
+    def test_detect_negatives_false_ignore_prestart(self):
+        """Course au score : les postes présumés avant départ ne sont pas
+        marqués « Temps négatif » (l'ordre des postes est libre)."""
+        controls_seq = [{'ctrl_id': 31, 'ctrl_name': 'P31'}]
+        splits = self._call(1, controls_seq, {1: {31: -350}},
+                            prestart_ctrls={31}, detect_negatives=False)
+        assert splits[0]['abs_raw'] == -350
+        assert splits[0]['leg_raw'] == -350
+        assert splits[0]['leg_time'] == '-00:35'
+        assert splits[0]['neg_leg'] is False
+
     def test_poste_manquant_chaine_reprend(self):
         """Poste manquant : tronçons adjacents inconnus, affichage '-',
         et la chaîne reprend au poinçon connu suivant (plus d'affichage
@@ -334,6 +357,12 @@ class TestBuildFinishSplit:
         assert sp['leg_raw']  == -500
         assert sp['leg_time'] == "-00:50"
         assert sp['neg_leg']  is True
+
+    def test_detect_negatives_false_pas_de_marqueur(self):
+        """Course au score : arrivée antérieure au dernier poste non signalée."""
+        sp = self._call(2000, 2500, detect_negatives=False)
+        assert sp['leg_raw']  == -500
+        assert sp['neg_leg']  is False
 
     def test_sans_dernier_poste_temps_total(self):
         sp = self._call(3000)

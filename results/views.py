@@ -325,14 +325,17 @@ def class_results(request, cid, class_id):
         attested     = attested_ctrls(radio_map)
 
         for c in results:
+            prestart = set() if score_race else detect_prestart_ctrls(
+                c, controls_seq, radio_map, attested)
             c.splits = compute_splits(
-                c.id, controls_seq, radio_map,
-                detect_prestart_ctrls(c, controls_seq, radio_map, attested))
+                c.id, controls_seq, radio_map, prestart,
+                detect_negatives=not score_race)
 
         # Ajout du tronçon arrivée pour tous (cohérence mark_best_splits / rank_splits)
         for c in results:
             last_abs = c.splits[-1]['abs_raw'] if c.splits else None
-            c.splits.append(build_finish_split(c.rt, last_abs))
+            c.splits.append(build_finish_split(
+                c.rt, last_abs, detect_negatives=not score_race))
             c.neg_time = any(sp.get('neg_leg') for sp in c.splits)
 
         mark_best_splits(finishers, results)
@@ -383,7 +386,7 @@ def class_results(request, cid, class_id):
         'next_cls':            next_cls,
         'all_classes':         all_classes,
         'course_hash':         course['hash'] if course else compute_course_hash(controls_seq),
-        'neg_time_warning':    get_negative_time_stats(cid),
+        'neg_time_warning':    None if score_race else get_negative_time_stats(cid),
         'leader_score':       leader_score,
         'score_race':         score_race,
         'results_colspan':    results_colspan,
@@ -400,6 +403,7 @@ def competitor_detail(request, cid, competitor_id):
     if not competition_visible(cid):
         raise Http404
     competitor  = get_object_or_404(Mopcompetitor, cid=cid, id=competitor_id)
+    score_race  = is_score_race(cid)
     org = Moporganization.objects.filter(cid=cid, id=competitor.org).first()
     cls = Mopclass.objects.filter(cid=cid, id=competitor.cls).first()
     # Relais : fraction du coureur — mopClassControl contient l'union de
@@ -427,15 +431,18 @@ def competitor_detail(request, cid, competitor_id):
         # Fourches : n'afficher que les postes poinçonnés par CE coureur.
         if member is not None:
             controls_seq = run_controls_only(controls_seq, radio_map.get(competitor_id, {}))
+        prestart = set() if score_race else detect_prestart_ctrls(
+            competitor, controls_seq, radio_map, attested)
         splits = compute_splits(
-            competitor_id, controls_seq, radio_map,
-            detect_prestart_ctrls(competitor, controls_seq, radio_map, attested))
+            competitor_id, controls_seq, radio_map, prestart,
+            detect_negatives=not score_race)
         # Tronçon arrivée : tout coureur avec un temps de course a franchi la
         # ligne, y compris les non-classés (PM/DQ/OT…) — le temps est alors
         # visible sur sa fiche, sans valeur de classement.
         if splits and competitor.rt > 0:
             last_abs = splits[-1]['abs_raw']
-            splits.append(build_finish_split(competitor.rt, last_abs))
+            splits.append(build_finish_split(
+                competitor.rt, last_abs, detect_negatives=not score_race))
         competitor.neg_time = any(sp.get('neg_leg') for sp in splits)
 
         # Fiche v2 : rang au poste (cumulé) + meilleur tronçon de la catégorie,
@@ -449,12 +456,16 @@ def competitor_detail(request, cid, competitor_id):
             try:
                 finishers, _, leader_time = rank_finishers(class_competitors)
                 for c in class_competitors:
+                    c_prestart = set() if score_race else detect_prestart_ctrls(
+                        c, controls_seq, radio_map, attested)
                     c.splits = compute_splits(
-                        c.id, controls_seq, radio_map,
-                        detect_prestart_ctrls(c, controls_seq, radio_map, attested))
+                        c.id, controls_seq, radio_map, c_prestart,
+                        detect_negatives=not score_race)
                     _rt = getattr(c, 'rt', None)
                     if c.splits and isinstance(_rt, int) and not isinstance(_rt, bool) and _rt > 0:
-                        c.splits.append(build_finish_split(_rt, c.splits[-1]['abs_raw']))
+                        c.splits.append(build_finish_split(
+                            _rt, c.splits[-1]['abs_raw'],
+                            detect_negatives=not score_race))
                 mark_best_splits(finishers, class_competitors)
                 rank_splits(finishers, class_competitors)
                 class_rank_total = len(finishers)
@@ -489,7 +500,7 @@ def competitor_detail(request, cid, competitor_id):
         'class_rank_total': class_rank_total,
         'rank_chart': rank_chart,
         'nat_code': nat_code,
-        'neg_time_warning': get_negative_time_stats(cid),
+        'neg_time_warning': None if score_race else get_negative_time_stats(cid),
         'total_time': format_time(competitor.rt) if competitor.is_ok else competitor.status_label,
     })
 
@@ -564,7 +575,7 @@ def api_class_results(request, cid, class_id):
 # Suivi live — catégorie ET circuit (via _load_class_context unifié)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _live_neg_time_warning(cid):
+def _live_neg_time_warning(cid, *, score_race=False):
     """Bandeau « Temps négatif » pour l'affichage live.
 
     Appelle ``get_negative_time_stats`` puis purges les coureurs en
@@ -572,7 +583,11 @@ def _live_neg_time_warning(cid):
     sont incomplets, la détection y est sans objet en live. Helper
     strictement live : n'altère pas le diagnostic des pages d'analyse.
     Le message vient du helper partagé ``_neg_banner`` (msgid i18n unique).
+
+    ``score_race=True`` désactive le diagnostic (ordre des postes libre).
     """
+    if score_race:
+        return None
     warning = get_negative_time_stats(cid)
     if not warning:
         return None
@@ -615,6 +630,7 @@ def live_results(request, cid, class_id):
 
     controls_seq = _controls_for(cid, cls, course)
     radio_map    = get_radio_map(cid, [c.id for c in competitors])
+    score_race   = is_score_race(cid)
     now          = datetime.now()
     comp_date    = getattr(competition, 'date', None)
     if not isinstance(comp_date, date):
@@ -624,7 +640,7 @@ def live_results(request, cid, class_id):
     # Validation GEC (prel) : pas de détection des temps négatifs en live.
     mark_negative_times(
         [c for c in live if c.live_group != 'valid_gec'],
-        controls_seq or [], radio_map)
+        controls_seq or [], radio_map, detect_negatives=not score_race)
     for c in live:
         if c.live_group == 'valid_gec':
             c.neg_time  = False
@@ -658,7 +674,8 @@ def live_results(request, cid, class_id):
         'competition_date':  comp_date.isoformat() if comp_date else '',
         'course_hash':       course['hash'] if course else compute_course_hash(controls_seq),
         'current_analysis':  'live',
-        'neg_time_warning':  _live_neg_time_warning(cid),
+        'neg_time_warning':  _live_neg_time_warning(
+            cid, score_race=score_race),
         'prev_cls':          prev_cls,
         'next_cls':          next_cls,
         'all_classes':       all_classes,
@@ -717,6 +734,7 @@ def _build_live_payload(cid, cls, competitors, course, competition=None):
     org_map, org_nats = _org_maps(cid)
     controls_seq = _controls_for(cid, cls, course)
     radio_map    = get_radio_map(cid, [c.id for c in competitors])
+    score_race   = is_score_race(cid)
     now          = datetime.now()
     # Récupère la date de compétition si non fournie (cache live)
     comp_date = getattr(competition, 'date', None) if competition is not None else None
@@ -736,7 +754,7 @@ def _build_live_payload(cid, cls, competitors, course, competition=None):
     # Validation GEC (prel) : pas de détection des temps négatifs en live.
     mark_negative_times(
         [c for c in live if c.live_group != 'valid_gec'],
-        controls_seq or [], radio_map)
+        controls_seq or [], radio_map, detect_negatives=not score_race)
     for c in live:
         if c.live_group == 'valid_gec':
             c.neg_time  = False
@@ -1454,6 +1472,7 @@ def duel_analysis(request, cid, class_id):
         return redirect('results:relay_results', cid=cid, class_id=class_id)
 
     partial, n_ok, n_total = _partial_analysis_info(competitors)
+    score_race = is_score_race(cid)
     all_results, _, _ = rank_finishers(competitors)
     if not all_results:
         return render(request, 'results/duel.html', {
@@ -1467,9 +1486,11 @@ def duel_analysis(request, cid, class_id):
     attested     = attested_ctrls(radio_map)
     runners_data = []
     for c in all_results:
+        prestart = set() if score_race else detect_prestart_ctrls(
+            c, controls_seq, radio_map, attested)
         splits = compute_splits(
-            c.id, controls_seq, radio_map,
-            detect_prestart_ctrls(c, controls_seq, radio_map, attested))
+            c.id, controls_seq, radio_map, prestart,
+            detect_negatives=not score_race)
         runners_data.append({
             'id': c.id, 'name': c.name, 'org': org_map.get(c.org, ''),
             'rank': getattr(c, 'rank', None),
@@ -1482,7 +1503,7 @@ def duel_analysis(request, cid, class_id):
     return render(request, 'results/duel.html', {
         'competition': competition, 'cls': cls, 'course': course,
         'no_data': False, 'current_analysis': 'duel',
-        'neg_time_warning': get_negative_time_stats(cid),
+        'neg_time_warning': None if score_race else get_negative_time_stats(cid),
         'runners': runners_data, 'n_runners': len(runners_data),
         'n_controls': len(controls_seq),
         'partial_analysis': partial, 'n_ok': n_ok, 'n_total': n_total,
@@ -1493,7 +1514,7 @@ def duel_analysis(request, cid, class_id):
 # Récapitulatif — tableau récapitulatif des temps intermédiaires (style WinSplits)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _load_recapitulatif_data(cid, class_id, context=None):
+def _load_recapitulatif_data(cid, class_id, context=None, score_race=None):
     """Charge et prépare les données pour le récapitulatif (HTML et CSV).
 
     Ne prend en compte que les coureurs OK (statut attribué par MeOS, puce
@@ -1504,6 +1525,8 @@ def _load_recapitulatif_data(cid, class_id, context=None):
         competition, cls, competitors, course = context
     else:
         competition, cls, competitors, course = _load_class_context(cid, class_id)
+    if score_race is None:
+        score_race = is_score_race(cid)
 
     prev_cls, next_cls, all_classes = (None, None, [])
     if course is None:
@@ -1537,11 +1560,14 @@ def _load_recapitulatif_data(cid, class_id, context=None):
         attested    = attested_ctrls(radio_map)
 
         for c in results:
+            prestart = set() if score_race else detect_prestart_ctrls(
+                c, controls_seq, radio_map, attested)
             c.splits = compute_splits(
-                c.id, controls_seq, radio_map,
-                detect_prestart_ctrls(c, controls_seq, radio_map, attested))
+                c.id, controls_seq, radio_map, prestart,
+                detect_negatives=not score_race)
             last_abs = c.splits[-1]['abs_raw'] if c.splits else None
-            c.splits.append(build_finish_split(c.rt, last_abs))
+            c.splits.append(build_finish_split(
+                c.rt, last_abs, detect_negatives=not score_race))
             c.neg_time = any(sp.get('neg_leg') for sp in c.splits)
 
         mark_best_splits(finishers, results)
@@ -1590,9 +1616,11 @@ def recapitulatif_analysis(request, cid, class_id):
         return redirect('results:relay_results', cid=cid, class_id=class_id)
 
     partial, n_ok, n_total = _partial_analysis_info(competitors)
+    score_race = is_score_race(cid)
 
     _, _, _, results, controls_seq, prev_cls, next_cls, leader_time, leg_error_data, all_classes = \
-        _load_recapitulatif_data(cid, class_id, context=context)
+        _load_recapitulatif_data(cid, class_id, context=context,
+                                 score_race=score_race)
     can_show = has_completed(competitors)
 
     return render(request, 'results/recapitulatif.html', {
@@ -1608,7 +1636,7 @@ def recapitulatif_analysis(request, cid, class_id):
         'prev_cls':            prev_cls,
         'next_cls':            next_cls,
         'all_classes':         all_classes,
-        'neg_time_warning':    get_negative_time_stats(cid),
+        'neg_time_warning':    None if score_race else get_negative_time_stats(cid),
         'partial_analysis':    partial, 'n_ok': n_ok, 'n_total': n_total,
     })
 
@@ -1686,6 +1714,7 @@ def relay_results(request, cid, class_id):
     competition = get_object_or_404(Mopcompetition, cid=cid, id=1)
     if not competition_visible(cid):
         raise Http404
+    score_race  = is_score_race(cid)
     class_id    = _resolve_class_id(cid, class_id)
     cls         = get_object_or_404(Mopclass, cid=cid, id=class_id)
     teams_qs    = list(Mopteam.objects.filter(cid=cid, cls=class_id))
@@ -1723,9 +1752,11 @@ def relay_results(request, cid, class_id):
         attested = attested_ctrls({r.id: radio_map.get(r.id, {})
                                    for r in leg_runners})
         prestart_by_leg[leg_num] = {
-            r.id: detect_prestart_ctrls(
-                r, run_controls_only(ctrl_seq_full, radio_map.get(r.id, {})),
-                radio_map, attested)
+            r.id: (
+                set() if score_race else detect_prestart_ctrls(
+                    r, run_controls_only(ctrl_seq_full, radio_map.get(r.id, {})),
+                    radio_map, attested)
+            )
             for r in leg_runners
         }
 
@@ -1755,9 +1786,13 @@ def relay_results(request, cid, class_id):
                         ctrl_seq_full, radio_map.get(runner.id, {}))
                     splits = compute_splits(
                         runner.id, ctrl_seq, radio_map,
-                        prestart_by_leg.get(leg_num, {}).get(runner.id))
+                        prestart_by_leg.get(leg_num, {}).get(runner.id),
+                        detect_negatives=not score_race)
                     last_ctrl_abs = splits[-1]['abs_raw'] if splits and splits[-1]['abs_raw'] is not None else None
-                    splits.append(build_finish_split(leg_time_raw, last_ctrl_abs, leg_full_race_if_missing=False))
+                    splits.append(build_finish_split(
+                        leg_time_raw, last_ctrl_abs,
+                        leg_full_race_if_missing=False,
+                        detect_negatives=not score_race))
                 else:
                     splits = []
                 legs_data.append({
@@ -1810,7 +1845,7 @@ def relay_results(request, cid, class_id):
         'competition': competition, 'cls': cls,
         'teams_data': teams_data,
         'leader_time': format_time(leader_time) if leader_time else '-',
-        'neg_time_warning': get_negative_time_stats(cid),
+        'neg_time_warning': None if score_race else get_negative_time_stats(cid),
         'n_legs': n_legs,
         'can_show_splits': can_show_splits,
     })

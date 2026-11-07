@@ -602,7 +602,8 @@ class TestHomeLiveloxBadge:
 class TestCompetitionDetailView:
     """CORRECTIF : get_courses_map est mocké pour éviter les requêtes DB."""
 
-    def _run(self, cid=1, classes=None, teams_cls_ids=None, courses_map=None, neg_stats=None):
+    def _run(self, cid=1, classes=None, teams_cls_ids=None, courses_map=None, neg_stats=None,
+             score_race=False):
         competition = make_competition(cid)
         classes = classes or [make_cls(cid, 10), make_cls(cid, 11)]
         relay_cls_ids = teams_cls_ids if teams_cls_ids is not None else set()
@@ -614,6 +615,7 @@ class TestCompetitionDetailView:
              patch('results.classViews.get_courses_map', return_value=courses_map or {}), \
              patch('results.classViews.get_class_controls', return_value=([{'ctrl_id': 1}, {'ctrl_id': 2}], {})), \
              patch('results.classViews.get_negative_time_stats', return_value=neg_stats), \
+             patch('results.classViews.is_score_race', return_value=score_race), \
              patch('results.classViews.render') as mock_render:
             MockClass.objects.filter.return_value.order_by.return_value = classes
             MockTeam.objects.filter.return_value.values_list.return_value.distinct.return_value = list(relay_cls_ids)
@@ -718,6 +720,24 @@ class TestCompetitionDetailView:
         assert ctx['class_stats'][0]['neg_count'] == 2
         assert ctx['class_stats'][1]['neg_count'] == 1
         assert ctx['courses_map']['abc12345']['neg_count'] == 3
+
+    def test_neg_stats_ignores_sur_course_au_score(self):
+        """Course au score : pas de bandeau ni de compteur de temps négatif."""
+        stats = {
+            'count': 1, 'kind': 'single', 'message': 'msg', 'tooltip': 't',
+            'box_controls': {'P32': 1},
+            'runners': [
+                {'id': 1, 'name': 'A', 'cls_name': 'H21', 'controls': ['P32']},
+            ],
+        }
+        cls1 = make_cls(1, 10, 'H21')
+        cm = {'abc12345': {'hash': 'abc12345', 'display_name': 'H21',
+                           'n_controls': 2, 'classes': [cls1]}}
+        _, ctx = self._run(classes=[cls1], courses_map=cm, neg_stats=stats,
+                           score_race=True)
+        assert ctx['neg_time_warning'] is None
+        assert 'neg_count' not in ctx['class_stats'][0]
+        assert 'neg_count' not in ctx['courses_map']['abc12345']
 
     def test_neg_time_warning_rendu_dans_template(self):
         """La bannière et les badges s'affichent dans le HTML rendu."""
@@ -918,6 +938,43 @@ class TestClassResultsScoreRace:
         assert ctx['leader_score'] == 15
         assert ctx['score_race'] is True
         assert ctx['results_colspan'] == 6
+
+    def test_temps_negatifs_desactives(self):
+        """Course au score : aucun diagnostic ni marqueur de temps négatif,
+        et ``compute_splits`` reçoit ``detect_negatives=False``."""
+        warning = {'count': 1, 'kind': 'single',
+                   'message': '1 coureur…', 'tooltip': 'Temps négatif'}
+        c = make_competitor(1, rt=500)
+        split = {'ctrl_name': '31', 'leg_time': '-00:50', 'leg_raw': -500,
+                 'abs_raw': 1000, 'neg_leg': False}
+        comp = make_competition(); cls = make_cls()
+        with patch('results.views.Mopteam') as MockTeam, \
+             patch('results.views.Mopcompetitor') as MockComp, \
+             patch('results.views.get_object_or_404', side_effect=[comp, cls]), \
+             patch('results.views._get_adjacent_classes',
+                   return_value=(None, None, [])), \
+             patch('results.views.get_org_map', return_value={}), \
+             patch('results.views.is_score_race', return_value=True), \
+             patch('results.views.get_class_controls',
+                   return_value=(self.CONTROLS, self.NAMES)), \
+             patch('results.views.get_radio_map', return_value={}), \
+             patch('results.views.compute_splits',
+                   return_value=[split]) as mock_splits, \
+             patch('results.views.compute_error_estimates', return_value={}), \
+             patch('results.views.mark_best_splits'), \
+             patch('results.views.rank_splits'), \
+             patch('results.views.get_negative_time_stats',
+                   return_value=warning) as mock_stats, \
+             patch('results.views.render') as mock_render:
+            MockTeam.objects.filter.return_value.exists.return_value = False
+            MockComp.objects.filter.return_value = [c]
+            from results.views import class_results
+            class_results(rf_get(), cid=1, class_id=10)
+            mock_stats.assert_not_called()
+            assert mock_splits.call_args.kwargs['detect_negatives'] is False
+            _, _, ctx = mock_render.call_args[0]
+            assert ctx['neg_time_warning'] is None
+            assert ctx['results'][0].neg_time is False
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -619,6 +619,18 @@ class TestMarkNegativeTimes:
         c = self._classified()
         assert self._mark(c, {1: {101: -350}}) is True
 
+    def test_detect_negatives_false_efface_les_drapeaux(self):
+        """Course au score : aucun diagnostic, les drapeaux sont effacés
+        même si le coureur remplirait les conditions d'un temps négatif."""
+        c = self._classified()
+        c.neg_time  = True
+        c.neg_ctrls = ['1-101']
+        mark_negative_times([c], CONTROLS,
+                            {1: {101: 6000, 102: 3000}},
+                            detect_negatives=False)
+        assert c.neg_time is False
+        assert c.neg_ctrls == []
+
 
 class TestMarkNegativeTimesPosteManquant:
     """Coureur OK définitif avec poste radio attesté manquant : MeOS étant
