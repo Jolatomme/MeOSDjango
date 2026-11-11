@@ -99,11 +99,43 @@
 {% block analysis_data %}
 {{ series|json_script:"superman-series" }}
 {{ x_labels|json_script:"superman-x-labels" }}
+{{ x_positions|json_script:"superman-x-positions" }}
 {% endblock %}
 
 {% block chart_init_js %}
 const X_LABELS = COUtils.readJSONScript('superman-x-labels');
 const SERIES   = COUtils.readJSONScript('superman-series');
+const RAW_X_POSITIONS = COUtils.readJSONScript('superman-x-positions');
+// Positions proportionnelles au temps cumulé du Superman (dixièmes de
+// seconde). Repli sur un espacement régulier si les positions manquent.
+const X_POSITIONS = (
+  Array.isArray(RAW_X_POSITIONS) &&
+  RAW_X_POSITIONS.length === X_LABELS.length &&
+  RAW_X_POSITIONS[RAW_X_POSITIONS.length - 1] > 0
+) ? RAW_X_POSITIONS : X_LABELS.map((_, i) => i);
+
+const X_TICK_LABELS = new Map();
+X_LABELS.forEach((label, i) => {
+  const pos = X_POSITIONS[i];
+  if (pos !== undefined && pos !== null && !X_TICK_LABELS.has(pos)) {
+    X_TICK_LABELS.set(pos, label);
+  }
+});
+const X_TICK_FONT = {
+  family: "'Barlow Condensed', sans-serif",
+  weight: '700',
+  size: 11,
+};
+const X_LABEL_TOP_PAD = 4;
+const X_LABEL_ROW_GAP = 4;
+const X_LABEL_BOTTOM_PAD = 4;
+// Rangée (0 ou 1) de chaque libellé, et décalage vertical de la seconde
+// rangée : calculés au fil du layout pour éviter tout chevauchement.
+const X_LABEL_ROWS = new Map();
+let xLabelRowOffset = 0;
+// L'axe se termine toujours sur l'arrivée : toute la largeur du graphe est
+// utilisée, même si le dernier tronçon du Superman est très court.
+const X_MAX = X_POSITIONS[X_POSITIONS.length - 1];
 let yMode = 'mmss';
 
 function fmtSeconds(v) {
@@ -123,7 +155,10 @@ function fmtSeconds(v) {
 function buildDatasets(visibleIds) {
   return SERIES.map((s, i) => ({
     label:            `${s.rank}. ${s.name}`,
-    data:             s.points,
+    data:             s.points.map((v, idx) => ({
+      x: X_POSITIONS[idx] !== undefined ? X_POSITIONS[idx] : idx,
+      y: v,
+    })),
     _labels:          s.labels,
     borderColor:      PALETTE[i % PALETTE.length],
     backgroundColor:  PALETTE[i % PALETTE.length] + '22',
@@ -153,10 +188,39 @@ function buildTable() {
   }).join('');
 }
 
+// Libellés de l'axe X dessinés nous-mêmes, en deux rangées alternées quand
+// les postes sont trop rapprochés. Toutes les graduations restent présentes.
+const staggeredXLabels = {
+  id: 'staggeredXLabels',
+  afterDraw(chart) {
+    const scale = chart.scales.x;
+    if (!scale || !X_LABEL_ROWS.size) return;
+    const ctx = chart.ctx;
+    const f   = X_TICK_FONT;
+    ctx.save();
+    ctx.font         = `${f.weight} ${f.size}px ${f.family}`;
+    ctx.fillStyle    = scale.options.ticks.color || Chart.defaults.color || '#666';
+    ctx.textAlign    = 'left';
+    ctx.textBaseline = 'middle';
+    const top = scale.top + X_LABEL_TOP_PAD;
+    for (const [pos, label] of X_TICK_LABELS) {
+      const row = X_LABEL_ROWS.get(pos) || 0;
+      ctx.save();
+      ctx.translate(scale.getPixelForValue(pos),
+                    top + (row === 1 ? xLabelRowOffset : 0));
+      ctx.rotate(Math.PI / 2);
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+};
+
 function initChart() {
   const ctx = document.getElementById('supermanChart').getContext('2d');
   chart = new Chart(ctx, {
     type: 'line',
+    plugins: [staggeredXLabels],
     data: { labels: X_LABELS, datasets: buildDatasets(null) },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -165,6 +229,10 @@ function initChart() {
         legend: { display: false },
         tooltip: {
           callbacks: {
+            title(items) {
+              if (!items.length) return '';
+              return X_LABELS[items[0].dataIndex] || '';
+            },
             label(ctx) {
               const v = ctx.parsed.y;
               if (v === null || v === undefined) return null;
@@ -178,7 +246,62 @@ function initChart() {
       },
       scales: {
         x: {
-          ticks: { font: { family: "'Barlow Condensed', sans-serif", weight: '700', size: 11 } },
+          type: 'linear',
+          min: 0,
+          max: X_MAX,
+          // Un tick par poste, placé au temps cumulé du Superman : les
+          // postes ne sont plus régulièrement espacés. Toutes les lignes
+          // verticales sont conservées ; les libellés sont dessinés par le
+          // plugin « staggeredXLabels » (deux rangées si nécessaire).
+          afterBuildTicks(axis) {
+            axis.ticks = Array.from(X_TICK_LABELS.keys()).map(value => ({ value }));
+          },
+          // Réserve la hauteur nécessaire aux libellés verticaux, sur une
+          // ou deux rangées selon leur densité.
+          afterFit(scale) {
+            const positions = Array.from(X_TICK_LABELS.keys());
+            const first = positions[0];
+            const span  = positions[positions.length - 1] - first || 1;
+            const width = Math.max(200, scale.width || 600);
+            const minGap = 16;
+            const lastPx = [-Infinity, -Infinity];
+            X_LABEL_ROWS.clear();
+            for (const pos of positions) {
+              const px = ((pos - first) / span) * width;
+              let row = 0;
+              if (px - lastPx[0] < minGap) {
+                row = 1;
+                // Les deux rangées sont trop proches : on garde le libellé
+                // dans celle qui offre le plus d'espace.
+                if (px - lastPx[1] < minGap) {
+                  row = (px - lastPx[0] >= px - lastPx[1]) ? 0 : 1;
+                }
+              }
+              X_LABEL_ROWS.set(pos, row);
+              lastPx[row] = px;
+            }
+            const ctx = scale.chart.ctx;
+            const f   = X_TICK_FONT;
+            ctx.save();
+            ctx.font = `${f.weight} ${f.size}px ${f.family}`;
+            const maxByRow = [0, 0];
+            for (const [pos, row] of X_LABEL_ROWS) {
+              maxByRow[row] = Math.max(
+                maxByRow[row], ctx.measureText(X_TICK_LABELS.get(pos)).width);
+            }
+            ctx.restore();
+            const hasRow1 = maxByRow[1] > 0;
+            xLabelRowOffset = hasRow1 ? maxByRow[0] + X_LABEL_ROW_GAP : 0;
+            scale.height = Math.max(scale.height,
+              X_LABEL_TOP_PAD + maxByRow[0]
+              + (hasRow1 ? X_LABEL_ROW_GAP + maxByRow[1] : 0)
+              + X_LABEL_BOTTOM_PAD);
+          },
+          ticks: {
+            display: false,
+            autoSkip: false,
+            font: X_TICK_FONT,
+          },
           grid:  { color: '#e8e8e8' },
         },
         y: {

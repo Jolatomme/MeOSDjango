@@ -1658,6 +1658,30 @@ class TestSupermanAnalysis:
         assert series[0]['points'] == [0, 0, 0]
         assert len(series[0]['labels']) == 3
 
+    @patch('results.views.get_org_map', return_value={})
+    @patch('results.views.get_class_controls',
+           return_value=([{'ctrl_id': 31, 'ctrl_name': 'P31'},
+                          {'ctrl_id': 32, 'ctrl_name': 'P32'}], {}))
+    @patch('results.views.get_radio_map', return_value={1: {31: 1000, 32: 3000}})
+    @patch('results.views.render')
+    @patch('results.views.get_object_or_404')
+    @patch('results.views.Mopcompetitor')
+    def test_x_positions_proportionnelles_au_temps_superman(
+            self, MockComp, mock_get404, mock_render, *_):
+        """Les abscisses suivent le cumul des meilleurs tronçons.
+
+        P31 à 1000, P32 à 3000 (tronçon de 2000), arrivée à 5000 : l'écart
+        P31→P32 doit être le double de l'écart Départ→P31.
+        """
+        self._setup(mock_get404)
+        c = make_competitor(1, rt=5000)
+        MockComp.objects.filter.return_value = [c]
+        from results.views import superman_analysis
+        superman_analysis(rf_get(), cid=1, class_id=10)
+        _, _, ctx = mock_render.call_args[0]
+        assert ctx['x_positions'] == [0, 1000, 3000, 5000]
+        assert ctx['x_labels'] == ['Départ', 'P31', 'P32', 'Arrivée']
+
     @patch('results.views.get_org_map', return_value={1: 'COLE', 2: 'NOSE'})
     @patch('results.views.get_class_controls', return_value=([], {}))
     @patch('results.views.get_radio_map', return_value={})

@@ -1197,6 +1197,10 @@ def superman_analysis(request, cid, class_id):
         superman_cum.append(acc)
 
     x_labels = [gettext('Départ')] + controls_labels + [gettext('Arrivée')]
+    # Abscisse de chaque point = temps cumulé du Superman (en dixièmes de
+    # seconde). L'axe X n'est donc plus régulier : un tronçon long occupe
+    # proportionnellement plus de place qu'un tronçon court.
+    x_positions = [0] + superman_cum
     series   = []
     for i, c in enumerate(finishers):
         radios = radio_map.get(c.id, {})
@@ -1233,6 +1237,7 @@ def superman_analysis(request, cid, class_id):
         'competition': competition, 'cls': cls, 'course': course,
         'series': series,
         'x_labels': x_labels,
+        'x_positions': x_positions,
         'superman_total': format_time(superman_total),
         'superman_leg_data': superman_leg_data,
         'controls_labels': controls_labels,
