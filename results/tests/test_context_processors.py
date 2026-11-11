@@ -25,6 +25,7 @@ class TestSiteSettings:
             'SITE_NAME':            'Résultats CO',
             'SITE_SUBTITLE':        "Course d'Orientation",
             'CLUB_NAME':            'COCS',
+            'ORG_LOGO':             'logo-cocs.svg',
             'CLUB_COLOR_PRIMARY':   '#1a6b3c',
             'CLUB_COLOR_ACCENT':    '#f0a500',
             'ENABLE_RACE_CREATION': True,
@@ -56,6 +57,19 @@ class TestSiteSettings:
         result = self._call()
         assert 'CLUB_NAME' in result
 
+    def test_contient_org_logo(self):
+        result = self._call()
+        assert result['ORG_LOGO'] == 'results/img/logo-cocs.svg'
+
+    def test_org_logo_reduit_au_nom_de_fichier(self):
+        """Le dossier est imposé : un chemin fourni est réduit au fichier."""
+        result = self._call(ORG_LOGO='sous-dossier/autre.png')
+        assert result['ORG_LOGO'] == 'results/img/autre.png'
+
+    def test_org_logo_vide_desactive_le_logo(self):
+        result = self._call(ORG_LOGO='')
+        assert result['ORG_LOGO'] == ''
+
     def test_contient_club_color_primary(self):
         result = self._call()
         assert 'CLUB_COLOR_PRIMARY' in result
@@ -76,7 +90,7 @@ class TestSiteSettings:
 
         # On supprime temporairement les attributs pour simuler leur absence
         attrs_to_remove = [
-            'SITE_NAME', 'SITE_SUBTITLE', 'CLUB_NAME',
+            'SITE_NAME', 'SITE_SUBTITLE', 'CLUB_NAME', 'ORG_LOGO',
             'CLUB_COLOR_PRIMARY', 'CLUB_COLOR_ACCENT',
             'ENABLE_RACE_CREATION',
         ]
@@ -95,6 +109,7 @@ class TestSiteSettings:
             assert result['SITE_NAME']          == 'Résultats CO'
             assert result['SITE_SUBTITLE']      == "Course d'Orientation"
             assert result['CLUB_NAME']          == 'COCS'
+            assert result['ORG_LOGO']           == 'results/img/logo-cocs.svg'
             assert result['CLUB_COLOR_PRIMARY'] == '#1a6b3c'
             assert result['CLUB_COLOR_ACCENT']  == '#f0a500'
             assert result['ENABLE_RACE_CREATION'] is True
@@ -103,10 +118,10 @@ class TestSiteSettings:
             for attr, val in saved.items():
                 setattr(real_settings, attr, val)
 
-    def test_six_cles_retournees(self):
-        """Le dictionnaire doit contenir exactement 6 clés."""
+    def test_sept_cles_retournees(self):
+        """Le dictionnaire doit contenir exactement 7 clés."""
         result = self._call()
-        assert len(result) == 6
+        assert len(result) == 7
 
     def test_valeurs_sont_des_chaines(self):
         """Les valeurs de config sont des chaînes ; le flag est un booléen."""

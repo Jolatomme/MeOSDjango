@@ -419,6 +419,37 @@ class TestHomeView:
             assert comp.has_individual_competitors is True
 
 
+class TestHomeClubLogo:
+    """Logo du club (réglage ORG_LOGO) avant la vignette CLUB_NAME."""
+
+    @staticmethod
+    def _render(org_logo='results/img/logo-cocs.svg', club_name='COCS 73'):
+        from django.template.loader import render_to_string
+        return render_to_string('results/home.html', {
+            'competitions': [],
+            'years': [],
+            'available_years': [],
+            'ORG_LOGO': org_logo,
+            'CLUB_NAME': club_name,
+        })
+
+    def test_logo_avant_la_vignette(self):
+        html = self._render()
+        assert '/static/results/img/logo-cocs.svg' in html
+        assert 'alt="COCS 73"' in html
+        assert html.index('hero-club-logo') < html.index('hero-badge')
+
+    def test_logo_personnalise(self):
+        html = self._render(org_logo='results/img/autre.png')
+        assert '/static/results/img/autre.png' in html
+
+    def test_sans_logo_garde_la_vignette(self):
+        html = self._render(org_logo='')
+        assert 'hero-club-logo' not in html
+        assert 'hero-badge' in html
+        assert 'COCS 73' in html
+
+
 class TestHomeOrgLogoBadge:
     """Logo d'organisation (fichier uploadé, mopCompetition.logo) sur la carte."""
 

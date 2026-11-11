@@ -245,6 +245,11 @@ CLUB_NAME = _env_flag('CLUB_NAME', globals().get('CLUB_NAME', True))
 CLUB_COLOR_PRIMARY = _env_flag('CLUB_COLOR_PRIMARY', globals().get('CLUB_COLOR_PRIMARY', True))
 CLUB_COLOR_ACCENT = _env_flag('CLUB_COLOR_ACCENT', globals().get('CLUB_COLOR_ACCENT', True))
 
+# Nom du fichier du logo du club affiché dans le bandeau d'accueil. Le dossier
+# est imposé par le code : results/static/results/img/ (voir
+# results/context_processors.py). Vide = aucun logo.
+ORG_LOGO = os.environ.get('ORG_LOGO', globals().get('ORG_LOGO', 'logo-cocs.svg'))
+
 # URL publique canonique (ex: https://jolatomme.alwaysdata.net) affichée aux
 # organisateurs (« URL d'envoi » MeOS, lien de gestion). Vide = déduite de la
 # requête courante. À définir en production pour ne jamais afficher un Host

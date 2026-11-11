@@ -1,11 +1,14 @@
 {% extends "results/base.html" %}
-{% load meos_tags i18n %}
+{% load static meos_tags i18n %}
 {% block title %}{{ SITE_NAME }} — {% translate "Accueil" %}{% endblock %}
 
 {% block page_header %}
 <div class="co-hero">
   <div class="container position-relative">
-    <span class="hero-badge mb-2 d-inline-block">{{ CLUB_NAME }}</span>
+    <div class="hero-club d-flex align-items-center gap-2 mb-2">
+      {% if ORG_LOGO %}<img src="{% static ORG_LOGO %}" alt="{{ CLUB_NAME }}" class="hero-club-logo">{% endif %}
+      <span class="hero-badge d-inline-block">{{ CLUB_NAME }}</span>
+    </div>
     <h1 class="hero-title mt-1 d-flex align-items-center gap-3">
       {% site_logo as club_logo %}
       {% if club_logo %}<img src="{{ club_logo }}" alt="{{ CLUB_NAME }}" height="48">{% endif %}

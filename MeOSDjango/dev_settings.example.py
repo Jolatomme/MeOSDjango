@@ -7,3 +7,7 @@ DATABASE_PORT = "3306"
 MEOS_PASSWORD = "Password MeOS"
 
 DJANGO_SECRET_KEY = "La clé générée juste avant"
+
+# --- SITE CONFIG (facultatif, surchargeable dans .env)
+# Nom du fichier du logo du club, dans results/static/results/img/.
+# ORG_LOGO = 'logo-cocs.svg'

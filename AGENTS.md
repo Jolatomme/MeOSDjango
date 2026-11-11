@@ -76,7 +76,8 @@ python manage.py compilemessages                  # *.mo ignored by git — requ
 - `settings.py` reads `.env` at the project root when present (gitignored, built-in `KEY=value` parser, no dependency); a variable actually set in the process environment always wins over `.env`
 - Production differences live in the server-side `.env` (never deployed by git — create it manually **before** restarting): `DEBUG=0`, `ALLOWED_HOSTS=domain.tld`, `PUBLIC_SITE_URL=…` — local: no `.env` → `DEBUG=True`, `ALLOWED_HOSTS=['*']`
 - `DEBUG`/`ALLOWED_HOSTS` are env-driven → the `if not DEBUG` HTTPS/HSTS block activates only in production
-- Configurable via env vars: `DEBUG`, `ALLOWED_HOSTS`, `MOP_PASSWORD`, `SITE_NAME`, `SITE_SUBTITLE`, `SITE_LOGO_URL`, `CLUB_NAME`, `CLUB_COLOR_PRIMARY`, `CLUB_COLOR_ACCENT`, `PUBLIC_SITE_URL`, `ENABLE_RACE_CREATION`, `OCHECKLIST_HEADER_KEY`, `OCHECKLIST_HEADER_VALUE`
+- Configurable via env vars: `DEBUG`, `ALLOWED_HOSTS`, `MOP_PASSWORD`, `SITE_NAME`, `SITE_SUBTITLE`, `SITE_LOGO_URL`, `CLUB_NAME`, `ORG_LOGO`, `CLUB_COLOR_PRIMARY`, `CLUB_COLOR_ACCENT`, `PUBLIC_SITE_URL`, `ENABLE_RACE_CREATION`, `OCHECKLIST_HEADER_KEY`, `OCHECKLIST_HEADER_VALUE`
+- Optional: `ORG_LOGO` — **nom de fichier seul** du logo du club affiché avant la vignette `CLUB_NAME` du bandeau d'accueil ; le dossier `results/static/results/img/` est imposé par le code, défaut `logo-cocs.svg`, vide = aucun logo
 - Required: `MOP_PASSWORD` must match MeOS Online config
 - Optional: `OCHECKLIST_HEADER_KEY` / `OCHECKLIST_HEADER_VALUE` for O'checklist endpoint auth
 - Optional: `ENABLE_RACE_CREATION` (default enabled; `0`/`false` → `/creer-course/` returns 404 and the nav link is hidden; `/gestion-course/<token>/` keeps working)
