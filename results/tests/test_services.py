@@ -1157,6 +1157,11 @@ class TestExtractControlPoints:
         assert self._call('45') == 0
         assert self._call(None) == 0
 
+    def test_points_float_invalide(self):
+        with patch('results.services.float', side_effect=ValueError,
+                   create=True):
+            assert self._call('31 (3p)') == 0
+
 
 class TestComputeRunnerScore:
     """Somme des points des postes réellement poinçonnés."""

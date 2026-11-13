@@ -1111,6 +1111,12 @@ class TestLiveNegTimeWarning:
             # 1-31 n'est plus partagé par ≥2 coureurs → plus de boîtier suspect.
             assert res['box_controls'] == {}
 
+    def test_course_au_score_desactive_le_diagnostic(self):
+        from results.views import _live_neg_time_warning
+        with patch('results.views.get_negative_time_stats') as mock_stats:
+            assert _live_neg_time_warning(1, score_race=True) is None
+            mock_stats.assert_not_called()
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # api_live_results (JSON)
