@@ -112,6 +112,15 @@
   }
 
 /* ══ Regroupement / heatmap ═══════════════════════════════════════════════ */
+  /* ── Zone défilante ──────────────────────────────────────────────────────
+     Hauteur bornée : la barre horizontale reste au bas de la zone visible
+     (plus besoin de défiler jusqu'à la dernière ligne) et l'en-tête collant
+     du tableau fonctionne grâce au conteneur défilant. */
+  .gi-heatmap-wrap {
+    max-height: calc(100vh - 250px);
+    overflow: auto;
+  }
+
   /* ── Table heatmap ─────────────────────────────────────────────────────── */
   .gi-table {
     width: max-content; min-width: 100%;
