@@ -1082,3 +1082,28 @@ class TestCreationTokens:
     def test_jeton_contrefait_rejette(self):
         from results.race_views import _token_too_fast
         assert _token_too_fast('signatures-absentes') is True
+
+
+# ─── Helpers internes de gestion ──────────────────────────────────────────────
+
+class TestManageHelpers:
+
+    def test_manage_context_mode_inconnu_devient_meos(self):
+        from results.race_views import _manage_context
+        context = _manage_context(
+            rf().get('/'), _config(), MagicMock(), race_mode='inconnu',
+        )
+        assert context['race_mode'] == 'meos'
+
+    @patch('results.race_views.inspect_iof_result_list')
+    def test_process_iof_import_action_inconnue_et_formulaire_invalide(
+            self, mock_inspect):
+        from results.race_views import _process_iof_import
+        form = MagicMock()
+        form.is_valid.return_value = False
+        report, imported = _process_iof_import(
+            rf().post('/'), _config(), form, action='inconnue',
+        )
+        assert report is None
+        assert imported is False
+        mock_inspect.assert_not_called()

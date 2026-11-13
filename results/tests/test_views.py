@@ -3302,3 +3302,31 @@ class TestNationaliteFicheCoureur:
 
     def test_aucune_nationalite(self):
         assert self._call('', '')['nat_code'] == ''
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# _resolve_class_id — homonymes de catégories
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestResolveClassId:
+
+    def test_homonymes_prend_le_premier(self):
+        from django.core.exceptions import MultipleObjectsReturned
+        from results.views import _resolve_class_id
+        with patch('results.views.get_object_or_404',
+                   side_effect=MultipleObjectsReturned), \
+             patch('results.views.Mopclass') as MockClass:
+            MockClass.objects.filter.return_value.order_by.return_value \
+                .first.return_value = SimpleNamespace(id=7)
+            assert _resolve_class_id(1, 'H21') == 7
+
+    def test_homonymes_sans_resultat_leve_404(self):
+        from django.core.exceptions import MultipleObjectsReturned
+        from results.views import _resolve_class_id
+        with patch('results.views.get_object_or_404',
+                   side_effect=MultipleObjectsReturned), \
+             patch('results.views.Mopclass') as MockClass:
+            MockClass.objects.filter.return_value.order_by.return_value \
+                .first.return_value = None
+            with pytest.raises(Http404):
+                _resolve_class_id(1, 'H21')
