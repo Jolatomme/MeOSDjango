@@ -242,9 +242,9 @@
 }
 @media (max-width: 380px) {
   .analysis-table thead th,
-  .analysis-table tbody td { padding-left: .35rem; padding-right: .35rem; }
+  .analysis-table tbody td { padding-left: .25rem; padding-right: .25rem; }
   .analysis-table .club-name {
-    max-width: 4.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 }
 
