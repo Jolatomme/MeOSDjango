@@ -199,6 +199,13 @@
   }
   .reg-bar { position: absolute; top: 0; height: 100%; border-radius: 3px; }
 
+  /* ── Rang course accolé au nom (remplace la colonne RG) ──────────────────── */
+  .runner-name .runner-rank {
+    font-weight: 400; font-size: .85rem; color: var(--co-text-muted);
+    margin-left: .15rem; white-space: nowrap;
+  }
+  .runner-name .runner-rank img { width: 16px; height: 16px; vertical-align: -3px; }
+
   /* ── Carte « coureur Superman » (superman.html) ───────────────────────── */
   .slc-ctrl {
     font-family: var(--font-display); font-weight: 800; font-size: .82rem; color: var(--co-text-deep);
@@ -214,11 +221,19 @@
   .ip-bar-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
   .ip-bar      { height: 4px; border-radius: 2px; max-width: 100px; min-width: 4px; }
 
-/* ── Regroupement (grouping.html) : départ + arrivée fusionnés ──────────────
-   Sous md, une seule colonne contenant les deux horaires sur deux lignes. */
+  /* ── Performance : IP moyen + régularité (σ) fusionnés sous md ──────────── */
+  .perf-merge { line-height: 1.2; }
+  .perf-merge .perf-sigma {
+    display: block; margin-top: .15rem;
+    color: var(--co-text-muted); font-size: .88rem; white-space: nowrap;
+  }
+
+/* ── Regroupement (grouping.html) : départ + arrivée + temps fusionnés ──────
+   Sous md, une seule colonne empilant les deux horaires et le temps de course. */
   .dep-arr { line-height: 1.2; }
   .dep-arr span { white-space: nowrap; }
   .dep-arr .dep-arr-start { color: var(--co-text-muted); }
+  .dep-arr .dep-arr-time  { color: var(--co-text-deep); }
 
 /* ── Tableaux récap d'analyse : plus compacts sur petit écran ──────────────── */
 @media (max-width: 576px) {

@@ -56,11 +56,16 @@
 <th>{% translate "Club" %}</th>
 <th class="text-end d-none d-md-table-cell">{% translate "Départ" %}</th>
 <th class="text-end d-none d-md-table-cell">{% translate "Arrivée" %}</th>
+{#
+  Sous md : une seule colonne pour Départ / Arrivée / Temps de course
+  (trois valeurs empilées) afin que le tableau tienne dans la largeur.
+#}
 <th class="text-end d-md-none">
   <span class="d-block">{% translate "Départ" %}</span>
   <span class="d-block">{% translate "Arrivée" %}</span>
+  <span class="d-block">{% translate "Temps" %}</span>
 </th>
-<th class="text-end">{% translate "Temps de course" %}</th>
+<th class="text-end d-none d-md-table-cell">{% translate "Temps de course" %}</th>
 {% endblock %}
 {% block tbody_id %}groupingTableBody{% endblock %}
 
@@ -131,8 +136,9 @@ function buildTable() {
         <td class="text-end font-monospace d-md-none dep-arr">
           <span class="d-block dep-arr-start">${startAbs}</span>
           <span class="d-block">${finishAbs}</span>
+          <span class="d-block fw-bold dep-arr-time">${timeFmt}</span>
         </td>
-        <td class="text-end time-col">${timeFmt}</td>
+        <td class="text-end time-col d-none d-md-table-cell">${timeFmt}</td>
       </tr>`;
   }).join('');
 }
