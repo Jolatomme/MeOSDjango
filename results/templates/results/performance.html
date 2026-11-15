@@ -62,11 +62,11 @@
 <th class="text-end">{% translate "Temps" %}</th>
 <th class="text-end d-none d-md-table-cell">{% translate "IP moyen" %}</th>
 <th class="text-end d-none d-md-table-cell">{% translate "Régularité (&sigma;)" %}</th>
-{#
+{% comment %}
   Sous md : IP moyen et régularité (σ) fusionnés dans une seule colonne
   « IP moyen / Régularité » — l'IP moyen en haut, la régularité dessous —
   pour gagner de la largeur.
-#}
+{% endcomment %}
 <th class="text-end d-md-none">
   <span class="d-block">{% translate "IP moyen" %} /</span>
   <span class="d-block">{% translate "Régularité" %}</span>

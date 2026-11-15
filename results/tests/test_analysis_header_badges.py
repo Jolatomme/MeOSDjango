@@ -94,6 +94,23 @@ class TestBadgePostesMasqueSiZero:
         assert 'postes</span>' not in html, template
 
 
+# ─── Commentaires de gabarit : jamais rendus dans la page ──────────────────
+
+class TestCommentairesGabaritNonRendus:
+
+    def test_commentaire_mobile_performance_non_affiche(self):
+        """Un commentaire Django multi-ligne ne doit pas apparaître dans le tableau.
+
+        ``{# … #}`` ne fonctionne que sur une seule ligne : un bloc multi-ligne
+        est émis tel quel dans le HTML (le navigateur le remonte au-dessus du
+        tableau). Le commentaire de la fusion IP/σ doit donc rester invisible.
+        """
+        html = render_to_string('results/performance.html',
+                                _ctx(series=[], leg_info=[]))
+        assert 'Sous md' not in html
+        assert 'fusionnés dans une seule colonne' not in html
+
+
 # Enveloppe unique du groupe de badges (aligné à droite dans la rangée du titre)
 BADGE_GROUP = '<div class="d-flex align-items-center gap-2 flex-wrap">'
 
