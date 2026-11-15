@@ -111,6 +111,53 @@ class TestCommentairesGabaritNonRendus:
         assert 'fusionnés dans une seule colonne' not in html
 
 
+# ─── Tableaux d'analyse : largeur fixe sur mobile, jamais de défilement ─────
+
+class TestTableauMobileTientDansLaLargeur:
+
+    def test_colonnes_fixes_sous_md(self):
+        """Les colonnes ont des largeurs explicites en mobile (pas de débordement)."""
+        css = (STATIC_CSS / 'analysis.css').read_text(encoding='utf-8')
+        assert 'table-layout: fixed' in css
+        for col in ('analysis-rank', 'analysis-runner', 'analysis-club',
+                    'analysis-primary', 'analysis-secondary',
+                    'analysis-merged'):
+            assert f'.analysis-table .{col} {{ width:' in css
+
+    def test_pas_de_collision_avec_les_classes_globales(self):
+        """Ne pas réutiliser `.col-club`, masqué en mobile par ``site.css``.
+
+        ``site.css`` cache ``.col-club`` sous 768 px pour le récapitulatif
+        live : réutiliser ce nom dans un tableau d'analyse masquerait
+        l'en-tête « Club » tout en laissant la cellule visible, ce qui
+        décalerait les largeurs fixes et tronquerait temps / IP.
+        """
+        css = (STATIC_CSS / 'analysis.css').read_text(encoding='utf-8')
+        css = re.sub(r'/\*.*?\*/', '', css, flags=re.S)
+        assert 'col-club' not in css
+        for template in ('results/performance.html', 'results/regularity.html',
+                         'results/grouping.html'):
+            text = (TEMPLATES_DIR / template).read_text(encoding='utf-8')
+            assert 'col-club' not in text, template
+
+    @pytest.mark.parametrize('template,cols', [
+        ('results/performance.html',
+         ('analysis-rank', 'analysis-runner', 'analysis-club',
+          'analysis-primary', 'analysis-secondary')),
+        ('results/regularity.html',
+         ('analysis-rank', 'analysis-runner', 'analysis-club',
+          'analysis-primary', 'analysis-secondary')),
+        ('results/grouping.html',
+         ('analysis-rank', 'analysis-runner', 'analysis-club',
+          'analysis-merged')),
+    ])
+    def test_en_tetes_portent_les_classes_de_largeur(self, template, cols):
+        """Les <th> mobiles utilisent les classes de colonnes définies dans le CSS."""
+        text = (TEMPLATES_DIR / template).read_text(encoding='utf-8')
+        for col in cols:
+            assert f'class="{col}' in text or f' {col}"' in text, (template, col)
+
+
 # Enveloppe unique du groupe de badges (aligné à droite dans la rangée du titre)
 BADGE_GROUP = '<div class="d-flex align-items-center gap-2 flex-wrap">'
 

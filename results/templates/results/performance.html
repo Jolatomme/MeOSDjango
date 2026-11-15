@@ -56,20 +56,20 @@
 {% endblock %}
 
 {% block table_headers %}
-<th style="width:3rem">#</th>
-<th>{% translate "Coureur" %}</th>
-<th>{% translate "Club" %}</th>
-<th class="text-end">{% translate "Temps" %}</th>
+<th class="analysis-rank">#</th>
+<th class="analysis-runner">{% translate "Coureur" %}</th>
+<th class="analysis-club">{% translate "Club" %}</th>
+<th class="text-end analysis-primary">{% translate "Temps" %}</th>
 <th class="text-end d-none d-md-table-cell">{% translate "IP moyen" %}</th>
 <th class="text-end d-none d-md-table-cell">{% translate "Régularité (&sigma;)" %}</th>
 {% comment %}
   Sous md : IP moyen et régularité (σ) fusionnés dans une seule colonne
-  « IP moyen / Régularité » — l'IP moyen en haut, la régularité dessous —
-  pour gagner de la largeur.
+  « IP moyen / σ » — l'IP moyen en haut, la régularité dessous — pour
+  gagner de la largeur. Le libellé complet reste en infobulle.
 {% endcomment %}
-<th class="text-end d-md-none">
-  <span class="d-block">{% translate "IP moyen" %} /</span>
-  <span class="d-block">{% translate "Régularité" %}</span>
+<th class="text-end d-md-none analysis-secondary" title="{% translate 'Régularité' %} (σ)">
+  <span class="d-block">{% translate "IP moyen" %}</span>
+  <span class="d-block">σ</span>
 </th>
 {% endblock %}
 {% block tbody_id %}perfTableBody{% endblock %}

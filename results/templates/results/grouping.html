@@ -51,12 +51,16 @@
 {% block chart_height %}520{% endblock %}
 
 {% block table_headers %}
-<th style="width:3rem">#</th>
-<th>{% translate "Coureur" %}</th>
-<th>{% translate "Club" %}</th>
+<th class="analysis-rank">#</th>
+<th class="analysis-runner">{% translate "Coureur" %}</th>
+<th class="analysis-club">{% translate "Club" %}</th>
 <th class="text-end d-none d-md-table-cell">{% translate "Départ" %}</th>
 <th class="text-end d-none d-md-table-cell">{% translate "Arrivée" %}</th>
-<th class="text-end d-md-none">
+<th class="text-end d-md-none analysis-merged">
+  {% comment %}
+    Sous md : une seule colonne pour Départ / Arrivée / Temps de course
+    (trois valeurs empilées) afin que le tableau tienne dans la largeur.
+  {% endcomment %}
   <span class="d-block">{% translate "Départ" %}</span>
   <span class="d-block">{% translate "Arrivée" %}</span>
   <span class="d-block">{% translate "Temps" %}</span>
