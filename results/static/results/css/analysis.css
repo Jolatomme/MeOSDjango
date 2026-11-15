@@ -235,7 +235,31 @@
   .dep-arr .dep-arr-start { color: var(--co-text-muted); }
   .dep-arr .dep-arr-time  { color: var(--co-text-deep); }
 
-/* ── Tableaux récap d'analyse : plus compacts sur petit écran ──────────────── */
+/* ── Tableaux récap d'analyse : colonnes fixes sur mobile ────────────────────
+   Sous md, le tableau ne doit jamais déborder horizontalement : largeurs de
+   colonnes explicites (le contenu s'adapte dans la cellule) et noms de club
+   tronqués. Les colonnes masquées (desktop) sont ignorées par ce calcul.
+   Préfixe « analysis- » volontaire : site.css masque `.col-club` en mobile
+   (récapitulatif live) — une classe `.col-club` ici ferait disparaître
+   l'en-tête « Club » sans masquer la cellule, et décalerait toutes les
+   largeurs fixes (temps et IP tronqués). */
+.analysis-table .analysis-rank { width: 3rem; }
+
+@media (max-width: 767.98px) {
+  .analysis-table { table-layout: fixed; }
+  .analysis-table .analysis-rank { width: 11%; }
+  .analysis-table .analysis-runner { width: 30%; }
+  .analysis-table .analysis-club { width: 19%; }
+  .analysis-table .analysis-primary { width: 21%; }
+  .analysis-table .analysis-secondary { width: 19%; }
+  .analysis-table .analysis-merged { width: 40%; }
+  .analysis-table .runner-name { overflow-wrap: break-word; overflow-wrap: anywhere; }
+  .analysis-table .club-name {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+}
+
+/* Plus compacts encore sur petit écran */
 @media (max-width: 576px) {
   .analysis-table thead th { padding: .4rem .45rem; }
   .analysis-table tbody td { padding: .35rem .45rem; }
@@ -243,9 +267,6 @@
 @media (max-width: 380px) {
   .analysis-table thead th,
   .analysis-table tbody td { padding-left: .25rem; padding-right: .25rem; }
-  .analysis-table .club-name {
-    max-width: 4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
 }
 
 /* ── Régularité : colonnes fusionnées sous md ────────────────────────────────

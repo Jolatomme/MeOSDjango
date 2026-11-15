@@ -124,18 +124,18 @@
     <table class="results-table analysis-table">
       <thead>
         <tr>
-          <th style="width:3rem" title="{% translate 'Rang régularité' %}">#<span class="d-none d-md-inline">&nbsp;{% translate "reg." %}</span></th>
-          <th>{% translate "Coureur" %}</th>
-          <th>{% translate "Club" %}</th>
+          <th class="analysis-rank" title="{% translate 'Rang régularité' %}">#<span class="d-none d-md-inline">&nbsp;{% translate "reg." %}</span></th>
+          <th class="analysis-runner">{% translate "Coureur" %}</th>
+          <th class="analysis-club">{% translate "Club" %}</th>
           <th class="text-end d-none d-md-table-cell">{% translate "Temps" %}</th>
           <th class="text-end d-none d-md-table-cell" title="{% translate 'Indice de performance moyen pondéré' %}">{% translate "IP moyen" %}</th>
           <th class="text-end d-none d-md-table-cell" title="{% translate 'Déviation standard pondérée' %}">{% translate "σ (régularité)" %}</th>
           <th class="d-none d-md-table-cell" style="width:9rem">{% translate "Profil σ" %}</th>
-          <th class="text-end d-md-none" title="{% translate 'Temps / IP moyen' %}">
+          <th class="text-end d-md-none analysis-primary" title="{% translate 'Temps / IP moyen' %}">
             <span class="d-block">{% translate "Temps" %}</span>
             <span class="d-block">{% translate "IP moyen" %}</span>
           </th>
-          <th class="text-end d-md-none" title="{% translate 'Déviation standard pondérée / profil' %}">
+          <th class="text-end d-md-none analysis-secondary" title="{% translate 'Déviation standard pondérée / profil' %}">
             <span class="d-block">σ</span>
             <span class="d-block">{% translate "Profil σ" %}</span>
           </th>
