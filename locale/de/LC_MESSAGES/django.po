@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-06 23:38+0100\n"
+"POT-Creation-Date: 2026-11-15 20:05+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -187,9 +187,9 @@ msgstr "Neue SI-Karte"
 #: results/templates/results/competitor_detail.html:69
 #: results/templates/results/competitor_detail.html:131
 #: results/templates/results/grouping.html:57
-#: results/templates/results/grouping.html:60
-#: results/templates/results/relay_results.html:152 results/views.py:1181
-#: results/views.py:1372
+#: results/templates/results/grouping.html:64
+#: results/templates/results/relay_results.html:152 results/views.py:1199
+#: results/views.py:1395
 msgid "Départ"
 msgstr "Start"
 
@@ -419,7 +419,7 @@ msgstr "Veranstalter / Verein"
 msgid "Course au score"
 msgstr "Punktelauf"
 
-#: results/forms.py:101 results/models.py:295
+#: results/forms.py:101 results/models.py:300
 msgid "Classer les coureurs par points puis par temps en cas d'égalité"
 msgstr "Läufer nach Punkten und bei Gleichstand nach Zeit klassieren"
 
@@ -1120,7 +1120,7 @@ msgctxt "mopstatus"
 msgid "Non participant"
 msgstr "Nicht teilnehmend"
 
-#: results/models.py:66 results/models.py:76
+#: results/models.py:66 results/models.py:77
 msgid "compétition"
 msgstr "Wettbewerb"
 
@@ -1132,79 +1132,79 @@ msgstr "Veranstalter"
 msgid "page d'accueil"
 msgstr "Startseite"
 
-#: results/models.py:77 results/tests/test_i18n.py:418
+#: results/models.py:78 results/tests/test_i18n.py:418
 msgid "compétitions"
 msgstr "Wettbewerbe"
 
-#: results/models.py:107 results/models.py:147
+#: results/models.py:108 results/models.py:148
 msgid "nationalité"
 msgstr "Nationalität"
 
-#: results/models.py:263 results/models.py:318
+#: results/models.py:268 results/models.py:323
 msgid "gelée"
 msgstr "eingefroren"
 
-#: results/models.py:264
+#: results/models.py:269
 msgid "Bloque l'écrasement des données MOP (MOPComplete/UPDATE refusés)"
 msgstr ""
 "Verhindert das Überschreiben der MOP-Daten (MOPComplete/UPDATE abgelehnt)"
 
-#: results/models.py:268
+#: results/models.py:273
 msgid "visible"
 msgstr "sichtbar"
 
-#: results/models.py:269
+#: results/models.py:274
 msgid "Afficher cette compétition dans la liste publique"
 msgstr "Diesen Wettbewerb in der öffentlichen Liste anzeigen"
 
-#: results/models.py:273
+#: results/models.py:278
 msgid "à effacer"
 msgstr "Löschen"
 
-#: results/models.py:274
+#: results/models.py:279
 msgid "Marquer comme supprimée (masquée de la liste publique)"
 msgstr "Als gelöscht markieren (in der öffentlichen Liste ausgeblendet)"
 
-#: results/models.py:281
+#: results/models.py:286
 msgid "clé API MeOS"
 msgstr "MeOS-API-Schlüssel"
 
-#: results/models.py:282
+#: results/models.py:287
 msgid ""
 "« Password » MeOS unique à cette compétition (NULL = mot de passe global)"
 msgstr ""
 "Einzigartiges MeOS-«Passwort» für diesen Wettbewerb (NULL = globales "
 "Passwort)"
 
-#: results/models.py:289
+#: results/models.py:294
 msgid "jeton de gestion"
 msgstr "Verwaltungstoken"
 
-#: results/models.py:290
+#: results/models.py:295
 msgid "Secret du lien privé de gestion de la course"
 msgstr "Secret des privaten Verwaltungslinks für den Wettbewerb"
 
-#: results/models.py:294
+#: results/models.py:299
 msgid "course au score"
 msgstr "Punktelauf"
 
-#: results/models.py:301
+#: results/models.py:306
 msgid "créée le"
 msgstr "erstellt am"
 
-#: results/models.py:307
+#: results/models.py:312
 msgid "configuration compétition"
 msgstr "Wettbewerbskonfiguration"
 
-#: results/models.py:308 results/tests/test_i18n.py:419
+#: results/models.py:313 results/tests/test_i18n.py:419
 msgid "configurations compétitions"
 msgstr "Wettbewerbskonfigurationen"
 
-#: results/models.py:320
+#: results/models.py:325
 msgid "supprimée"
 msgstr "gelöscht"
 
-#: results/models.py:322
+#: results/models.py:327
 msgid "masquée"
 msgstr "verborgen"
 
@@ -1250,31 +1250,31 @@ msgstr ""
 "Wettkampf „%(name)s“ gelöscht: Ergebnisse, API-Schlüssel und Verwaltungslink "
 "entfernt."
 
-#: results/services.py:483 results/services.py:491 results/services.py:603
-#: results/services.py:620 results/templates/results/_split_detail_row.html:2
+#: results/services.py:483 results/services.py:491 results/services.py:612
+#: results/services.py:629 results/templates/results/_split_detail_row.html:2
 #: results/templates/results/_split_detail_row.html:35
 #: results/templates/results/competitor_detail.html:74
 #: results/templates/results/competitor_detail.html:136
 #: results/templates/results/competitor_detail.html:151
 #: results/templates/results/grouping.html:58
-#: results/templates/results/grouping.html:61
-#: results/templates/results/relay_results.html:156 results/views.py:1181
-#: results/views.py:1207 results/views.py:1249 results/views.py:1310
-#: results/views.py:1372
+#: results/templates/results/grouping.html:65
+#: results/templates/results/relay_results.html:156 results/views.py:1199
+#: results/views.py:1229 results/views.py:1272 results/views.py:1333
+#: results/views.py:1395
 msgid "Arrivée"
 msgstr "Ziel"
 
-#: results/services.py:659
+#: results/services.py:668
 #, python-format
 msgid "au poste %(ctrls)s"
 msgstr "an Kontrolle %(ctrls)s"
 
-#: results/services.py:661
+#: results/services.py:670
 #, python-format
 msgid "aux postes %(ctrls)s"
 msgstr "an Kontrollpunkten %(ctrls)s"
 
-#: results/services.py:663
+#: results/services.py:672
 #, python-format
 msgid ""
 "%(n)s coureur a des temps négatifs %(postes)s : probable boîtier mal "
@@ -1289,11 +1289,11 @@ msgstr[1] ""
 "%(n)s Läufer haben negative Zeiten %(postes)s: vermutlich nicht "
 "synchronisiertes Kontrollgerät."
 
-#: results/services.py:669
+#: results/services.py:678
 msgid "Temps négatif : boîtier probablement mal synchronisé"
 msgstr "Negative Zeit: Kontrollgerät wahrscheinlich nicht synchronisiert"
 
-#: results/services.py:673
+#: results/services.py:682
 msgid ""
 "1 coureur a un temps négatif : probable carte SI non effacée (problème "
 "d'effacement de doigts)."
@@ -1301,11 +1301,11 @@ msgstr ""
 "1 Läufer hat eine negative Zeit: vermutlich eine nicht gelöschte SI-Karte "
 "(Löschproblem)."
 
-#: results/services.py:676
+#: results/services.py:685
 msgid "Temps négatif : carte SI probablement non effacée"
 msgstr "Negative Zeit: SI-Karte vermutlich nicht gelöscht"
 
-#: results/services.py:680
+#: results/services.py:689
 #, python-format
 msgid ""
 "%(n)s coureur a des temps négatifs sur des postes différents : probables "
@@ -1320,7 +1320,7 @@ msgstr[1] ""
 "%(n)s Läufer haben negative Zeiten an verschiedenen Kontrollpunkten: "
 "vermutlich nicht gelöschte SI-Karten (Löschproblem)."
 
-#: results/services.py:686
+#: results/services.py:695
 msgid ""
 "Temps négatifs sur des postes différents : cartes SI probablement non "
 "effacées"
@@ -1729,6 +1729,7 @@ msgid "Indice perf."
 msgstr "Leistungsindex"
 
 #: results/templates/results/analysis_tabs.html:38
+#: results/templates/results/performance.html:72
 #: results/templates/results/regularity.html:3
 #: results/templates/results/regularity.html:5
 #: results/templates/results/regularity.html:16
@@ -1943,9 +1944,10 @@ msgstr "Teilnehmer"
 #: results/templates/results/course_results.html:69
 #: results/templates/results/duel.html:593
 #: results/templates/results/duel.html:717
+#: results/templates/results/grouping.html:66
 #: results/templates/results/performance.html:62
-#: results/templates/results/regularity.html:132
-#: results/templates/results/regularity.html:137
+#: results/templates/results/regularity.html:130
+#: results/templates/results/regularity.html:135
 #: results/templates/results/superman.html:67
 #: results/templates/results/superman.html:93
 msgid "Temps"
@@ -2050,7 +2052,7 @@ msgid "Réduire tous les intermédiaires"
 msgstr "Alle Zwischenzeiten einklappen"
 
 #: results/templates/results/competition_detail.html:27
-#: results/templates/results/home.html:92
+#: results/templates/results/home.html:95
 msgid "Site de l'organisateur — nouvel onglet"
 msgstr "Website des Veranstalters — öffnet neuen Tab"
 
@@ -2528,11 +2530,11 @@ msgstr "Nur gewertete"
 msgid "Temps de passage absolu par poste de contrôle"
 msgstr "Absolute Passierzeit je Kontrollpunkt"
 
-#: results/templates/results/grouping.html:63
+#: results/templates/results/grouping.html:68
 msgid "Temps de course"
 msgstr "Laufzeit"
 
-#: results/templates/results/grouping.html:187
+#: results/templates/results/grouping.html:193
 msgid "Heure de passage (temps absolu)"
 msgstr "Passierzeit (absolute Uhrzeit)"
 
@@ -2621,65 +2623,65 @@ msgstr "Gesamt"
 msgid "T2 doit être supérieur à T1."
 msgstr "T2 muss größer als T1 sein."
 
-#: results/templates/results/home.html:21
+#: results/templates/results/home.html:24
 msgid "Compétitions"
 msgstr "Wettkämpfe"
 
-#: results/templates/results/home.html:27
+#: results/templates/results/home.html:30
 msgid "Année"
 msgstr "Jahr"
 
-#: results/templates/results/home.html:33
+#: results/templates/results/home.html:36
 msgid "3 plus récentes"
 msgstr "3 neueste"
 
-#: results/templates/results/home.html:37
+#: results/templates/results/home.html:40
 msgid "Toutes"
 msgstr "Alle"
 
-#: results/templates/results/home.html:49
+#: results/templates/results/home.html:52
 msgid "X derniers mois"
 msgstr "Letzte X Monate"
 
-#: results/templates/results/home.html:53
+#: results/templates/results/home.html:56
 msgid "Filtrer"
 msgstr "Filtern"
 
-#: results/templates/results/home.html:63
+#: results/templates/results/home.html:66
 msgid "Sans date"
 msgstr "Ohne Datum"
 
-#: results/templates/results/home.html:81
+#: results/templates/results/home.html:84
 msgid "Course en attente du premier import MeOS"
 msgstr "Wettkampf wartet auf den ersten MeOS-Import"
 
-#: results/templates/results/home.html:82
+#: results/templates/results/home.html:85
 #: results/templates/results/live_results.html:87
 #: results/templates/results/live_results.html:301
 msgid "En attente"
 msgstr "Wartend"
 
-#: results/templates/results/home.html:98
+#: results/templates/results/home.html:101
 msgid "Voir les résultats"
 msgstr "Ergebnisse ansehen"
 
-#: results/templates/results/home.html:103
+#: results/templates/results/home.html:106
 msgid "Horaires"
 msgstr "Zeitplan"
 
-#: results/templates/results/home.html:124
+#: results/templates/results/home.html:127
 msgid "Aucune compétition ne correspond aux filtres sélectionnés."
 msgstr "Kein Wettkampf passt zu den gewählten Filtern."
 
-#: results/templates/results/home.html:125
+#: results/templates/results/home.html:128
 msgid "Essayez une autre année ou un nombre de mois plus grand."
 msgstr "Versuchen Sie ein anderes Jahr oder mehr Monate."
 
-#: results/templates/results/home.html:127
+#: results/templates/results/home.html:130
 msgid "Aucune compétition trouvée dans la base de données MeOS."
 msgstr "Kein Wettkampf in der MeOS-Datenbank gefunden."
 
-#: results/templates/results/home.html:128
+#: results/templates/results/home.html:131
 msgid ""
 "Vérifiez la connexion et que la table <code>mopCompetition</code> contient "
 "des données."
@@ -3110,7 +3112,7 @@ msgstr "Leistungsindex — %(c_name)s — %(comp_name)s"
 
 #: results/templates/results/performance.html:6
 #: results/templates/results/performance.html:8
-#: results/templates/results/performance.html:185
+#: results/templates/results/performance.html:203
 msgid "Indice de performance"
 msgstr "Leistungsindex"
 
@@ -3168,8 +3170,9 @@ msgstr ""
 "regelmäßiger)"
 
 #: results/templates/results/performance.html:63
-#: results/templates/results/regularity.html:133
-#: results/templates/results/regularity.html:138
+#: results/templates/results/performance.html:71
+#: results/templates/results/regularity.html:131
+#: results/templates/results/regularity.html:136
 msgid "IP moyen"
 msgstr "Ø LI"
 
@@ -3177,15 +3180,15 @@ msgstr "Ø LI"
 msgid "Régularité (&sigma;)"
 msgstr "Konstanz (&sigma;)"
 
-#: results/templates/results/performance.html:173
+#: results/templates/results/performance.html:191
 msgid "IP = "
 msgstr "LI = "
 
-#: results/templates/results/performance.html:192
+#: results/templates/results/performance.html:210
 msgid "Densité (pondérée par longueur)"
 msgstr "Dichte (nach Länge gewichtet)"
 
-#: results/templates/results/performance.html:215
+#: results/templates/results/performance.html:233
 msgid "IP = 1.00"
 msgstr "LI = 1.00"
 
@@ -3456,7 +3459,7 @@ msgstr "Wettkampf löschen"
 msgid "Télécharger en CSV"
 msgstr "Als CSV herunterladen"
 
-#: results/templates/results/recapitulatif.html:112 results/views.py:1430
+#: results/templates/results/recapitulatif.html:112 results/views.py:1453
 msgid "Arr."
 msgstr "Ziel"
 
@@ -3547,72 +3550,67 @@ msgstr "Konstanz-Rang"
 msgid "reg."
 msgstr "Konst."
 
-#: results/templates/results/regularity.html:130
 #: results/templates/results/regularity.html:131
-msgid "Rang course"
-msgstr "Wettkampf-Rang"
-
-#: results/templates/results/regularity.html:131
-msgid "Rg"
-msgstr "Rg"
-
-#: results/templates/results/regularity.html:133
 msgid "Indice de performance moyen pondéré"
 msgstr "Gewichteter mittlerer Leistungsindex"
 
-#: results/templates/results/regularity.html:134
+#: results/templates/results/regularity.html:132
 msgid "Déviation standard pondérée"
 msgstr "Gewichtete Standardabweichung"
 
-#: results/templates/results/regularity.html:134
+#: results/templates/results/regularity.html:132
 msgid "σ (régularité)"
 msgstr "σ (Konstanz)"
 
-#: results/templates/results/regularity.html:135
-#: results/templates/results/regularity.html:142
+#: results/templates/results/regularity.html:133
+#: results/templates/results/regularity.html:140
 msgid "Profil σ"
 msgstr "σ-Profil"
 
-#: results/templates/results/regularity.html:136
+#: results/templates/results/regularity.html:134
 msgid "Temps / IP moyen"
 msgstr "Zeit / Ø LI"
 
-#: results/templates/results/regularity.html:140
+#: results/templates/results/regularity.html:138
 msgid "Déviation standard pondérée / profil"
 msgstr "Gewichtete Standardabweichung / Profil"
 
-#: results/templates/results/regularity.html:219
+#: results/templates/results/regularity.html:217
 msgid "σ pondéré"
 msgstr "Gewichtetes σ"
 
-#: results/templates/results/regularity.html:240
-#: results/templates/results/regularity.html:294
+#: results/templates/results/regularity.html:238
+#: results/templates/results/regularity.html:292
 msgid "σ = "
 msgstr "σ = "
 
-#: results/templates/results/regularity.html:241
+#: results/templates/results/regularity.html:239
 msgid "IP moyen = "
 msgstr "Ø LI = "
 
-#: results/templates/results/regularity.html:242
+#: results/templates/results/regularity.html:240
 msgid "Temps : "
 msgstr "Zeit: "
 
-#: results/templates/results/regularity.html:252
+#: results/templates/results/regularity.html:250
 msgid "Déviation standard pondérée (σ)"
 msgstr "Gewichtete Standardabweichung (σ)"
 
-#: results/templates/results/regularity.html:275
+#: results/templates/results/regularity.html:273
 msgid "σ des IP"
 msgstr "σ der LI"
 
-#: results/templates/results/regularity.html:294
+#: results/templates/results/regularity.html:292
 msgid "Référence : "
 msgstr "Referenz: "
 
-#: results/templates/results/regularity.html:307
+#: results/templates/results/regularity.html:305
 msgid "σ des IP (dispersion entre coureurs)"
 msgstr "σ der LI (Streuung zwischen Läufern)"
+
+#: results/templates/results/regularity.html:335
+msgid "Rang course"
+msgstr "Wettkampf-Rang"
 
 #: results/templates/results/relay_results.html:21
 #, python-format
@@ -3801,7 +3799,7 @@ msgstr "Gesamt: %(superman_total)s"
 msgid "Coureur(s)"
 msgstr "Läufer"
 
-#: results/templates/results/superman.html:186
+#: results/templates/results/superman.html:309
 msgid "Retard vs Superman"
 msgstr "Rückstand ggü. Superman"
 
@@ -3918,7 +3916,7 @@ msgstr "Wird erzeugt…"
 msgid "Circuit non trouvé"
 msgstr "Strecke nicht gefunden"
 
-#: results/views.py:1430
+#: results/views.py:1453
 msgid "Dép."
 msgstr "Start"
 
@@ -3945,6 +3943,9 @@ msgstr "Passwort ändern"
 #: templates/admin/base_site.html:77
 msgid "Log out"
 msgstr "Abmelden"
+
+#~ msgid "Rg"
+#~ msgstr "Rg"
 
 #~ msgid ""
 #~ "Remplacez les résultats de la course par un fichier\n"

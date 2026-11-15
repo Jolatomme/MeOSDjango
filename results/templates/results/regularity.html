@@ -127,8 +127,6 @@
           <th style="width:3rem" title="{% translate 'Rang régularité' %}">#<span class="d-none d-md-inline">&nbsp;{% translate "reg." %}</span></th>
           <th>{% translate "Coureur" %}</th>
           <th>{% translate "Club" %}</th>
-          <th class="text-center d-none d-md-table-cell" title="{% translate 'Rang course' %}">{% translate "Rang course" %}</th>
-          <th class="text-center d-md-none" title="{% translate 'Rang course' %}">{% translate "Rg" %}</th>
           <th class="text-end d-none d-md-table-cell">{% translate "Temps" %}</th>
           <th class="text-end d-none d-md-table-cell" title="{% translate 'Indice de performance moyen pondéré' %}">{% translate "IP moyen" %}</th>
           <th class="text-end d-none d-md-table-cell" title="{% translate 'Déviation standard pondérée' %}">{% translate "σ (régularité)" %}</th>
@@ -324,6 +322,7 @@ function buildTable() {
     const color  = stdColor(s.weighted_std, maxRunnerStd);
     const stdFmt = s.weighted_std !== null ? s.weighted_std.toFixed(4) : '—';
     const piMean = s.mean_pi      !== null ? s.mean_pi.toFixed(4)      : '—';
+    const rank   = s.rank         !== null ? COUtils.renderMedal(s.rank) : '—';
     const barW   = (s.weighted_std !== null && maxRunnerStd > 0)
       ? Math.min(100, (s.weighted_std / maxRunnerStd) * 100).toFixed(1) + '%'
       : '0%';
@@ -333,9 +332,9 @@ function buildTable() {
         <td><span class="rank-n">${regRank + 1}</span></td>
         <td class="runner-name fw-bold">
           ${COUtils.renderRunnerDot(color, s.name)}
+          <span class="runner-rank" title="{% translate 'Rang course' %}">(${rank})</span>
         </td>
         <td class="club-name text-muted">${s.org ? COUtils.escapeHtml(s.org) : '—'}</td>
-        <td class="text-center">${COUtils.renderMedal(s.rank)}</td>
         <td class="text-end time-col d-none d-md-table-cell">${s.time}</td>
         <td class="text-end d-none d-md-table-cell">${piMean}</td>
         <td class="text-end fw-bold d-none d-md-table-cell" style="color:${color}">${stdFmt}</td>

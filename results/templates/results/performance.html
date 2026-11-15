@@ -60,8 +60,17 @@
 <th>{% translate "Coureur" %}</th>
 <th>{% translate "Club" %}</th>
 <th class="text-end">{% translate "Temps" %}</th>
-<th class="text-end">{% translate "IP moyen" %}</th>
-<th class="text-end">{% translate "Régularité (&sigma;)" %}</th>
+<th class="text-end d-none d-md-table-cell">{% translate "IP moyen" %}</th>
+<th class="text-end d-none d-md-table-cell">{% translate "Régularité (&sigma;)" %}</th>
+{#
+  Sous md : IP moyen et régularité (σ) fusionnés dans une seule colonne
+  « IP moyen / Régularité » — l'IP moyen en haut, la régularité dessous —
+  pour gagner de la largeur.
+#}
+<th class="text-end d-md-none">
+  <span class="d-block">{% translate "IP moyen" %} /</span>
+  <span class="d-block">{% translate "Régularité" %}</span>
+</th>
 {% endblock %}
 {% block tbody_id %}perfTableBody{% endblock %}
 
@@ -127,19 +136,28 @@ function buildTable() {
   tbody.innerHTML = sorted.map(s => {
     const color   = PALETTE[(s.rank - 1) % PALETTE.length];
     const barW    = s.mean_pi !== null ? Math.min(100, s.mean_pi * 100).toFixed(1) + '%' : '0%';
+    const piFmt   = s.mean_pi !== null ? s.mean_pi.toFixed(4) : '—';
+    const stdFmt  = s.std_pi  !== null ? s.std_pi.toFixed(4)  : '—';
     return `
       <tr>
         <td>${COUtils.renderMedal(s.rank)}</td>
         <td class="runner-name fw-bold">${COUtils.renderRunnerDot(color, s.name)}</td>
         <td class="club-name text-muted">${COUtils.escapeHtml(s.org)}</td>
         <td class="text-end time-col">${s.time}</td>
-        <td class="text-end">
+        <td class="text-end d-none d-md-table-cell">
           <div class="ip-bar-wrap">
-            <span>${s.mean_pi !== null ? s.mean_pi.toFixed(4) : '—'}</span>
+            <span>${piFmt}</span>
             <div class="ip-bar" style="width:${barW};background:${color}"></div>
           </div>
         </td>
-        <td class="text-end text-muted">${s.std_pi !== null ? s.std_pi.toFixed(4) : '—'}</td>
+        <td class="text-end text-muted d-none d-md-table-cell">${stdFmt}</td>
+        <td class="text-end d-md-none perf-merge">
+          <div class="ip-bar-wrap">
+            <span>${piFmt}</span>
+            <div class="ip-bar" style="width:${barW};background:${color}"></div>
+          </div>
+          <span class="d-block perf-sigma">${stdFmt}</span>
+        </td>
       </tr>`;
   }).join('');
 }
