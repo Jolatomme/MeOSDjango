@@ -46,13 +46,18 @@ python manage.py compilemessages                  # *.mo ignored by git — requ
   - **`results/`** — MeOS live results (main app)
   - **`ochecklist/`** — O'checklist Android app YAML report receiver
 - **`results/`** — MeOS tables `mop*` are NOT managed by Django (models use `managed=False`). MeOS creates and manages them directly (tables can also be created with `setup_db`). Django manages only `MeosTutorial` and `CompetitionConfig` (`db_table = results_competitionconfig`), with migrations `0001`→`0009` (some migrations are historical leftovers of former `mop*` models; `0008` ne met à jour que l’état Django pour les clés primaires composites, aucun SQL ; `0009` ajoute `CompetitionConfig.score_race` pour les courses au score).
-- **`ochecklist/`** — Tables ARE managed by Django (`managed=True`), with a standard `0001_initial.py` migration.
+- **`ochecklist/`** — Tables ARE managed by Django (`managed=True`), with standard `0001_initial.py` and `0002` (adds `OchecklistRunner.start_type`, `OchecklistChangeLog.ticked_off`).
 - **MOP endpoint**: `POST /mop/update/` (XML, from MeOS) — app `results/`
 - **Health endpoint**: `GET /health/` ou `GET /health` (mêmes deux notations que `mop/update`, sans 301 `APPEND_SLASH`) — `results.health_check`, nom `results:health_check` ; `SELECT 1` sur la DB, répond `200 {"status": "ok", "db": "ok"}` ou `503 {"status": "error", "db": "error"}`
-- **O'checklist endpoint**: `POST /ochecklist/update/` (YAML, from O'checklist Android app) — app `ochecklist/`
+- **O'checklist endpoint**: `POST /ochecklist/update/` **ou** `POST /ochecklist/update` (YAML v1.5/v1.6, from O'checklist Android app) — app `ochecklist/`
+  - Accepts the app's full and incremental reports: `Runner.StartType` (`Fixed`/`Free`), `ChangeLog.TickedOff`, `DNS`, `LateStart`, `NewCard`, `Comment`, `NewRunner`
+  - Upserts runners by IOF id, then bib, then name; a partial report never deletes absent runners
   - Supports `Content-Encoding: gzip` decompression
   - Verifies `Content-Digest` header (SHA-256/512, MD5)
   - Optional auth via custom header (`OCHECKLIST_HEADER_KEY` / `OCHECKLIST_HEADER_VALUE`)
+  - Malformed bodies (invalid UTF-8/YAML, `Data` not a list, missing `Name`/`StartStatus`/`Created`, unknown status) return `400` instead of `500`
+  - `DATA_UPLOAD_MAX_MEMORY_SIZE` is raised to 10 MB for full large-event reports; gzip output is capped at 10 MB (`413` beyond)
+  - Les pages `/ochecklist/` et `/ochecklist/<id>/` se rafraîchissent automatiquement : `GET /ochecklist/version/` (nom `ochecklist_version`) renvoie `{"version": "..."}`, avec `?report=<id>` pour limiter l'empreinte à un rapport. `COUtils.initAutoRefresh` (`site.js`) interroge l'endpoint toutes les 5 s et recharge la page dès que l'empreinte change ; le polling est suspendu quand l'onglet est caché et aucun rechargement n'a lieu pendant une sélection de rapports à supprimer. Aucune migration.
 - **IOF import**: `results/iof_importer.py` converts an IOF Data Standard v3 `ResultList` into an in-memory MOP `MOPComplete` document, then calls `process_mop_xml` — same transaction, frozen check, full replacement and `livelox`/`logo` preservation as MeOS. Entry points: « Fichier IOF XML » panel of the private management page `/gestion-course/<token>/?mode=iof` (`RaceManageView`, embedded form), dedicated page `/gestion-course/<token>/importer-iof/` (`RaceImportIofView`, kept for bookmarks/no-JS, same `_iof_import_panel.html` partial) and command `python manage.py import_iof`. Supports individual and relay results; `Complete`/`Snapshot` only (`Delta` rejected); one race per import; site metadata preserved unless `--use-event-metadata`/the form checkbox is used. No schema change or migration.
 - **i18n**: French is the source language; catalogs for `en`/`de`/`sv` live in `locale/<lang>/LC_MESSAGES/django.po` (`LOCALE_PATHS`). **No `i18n_patterns`** — URLs are identical in every language (MeOS links, `/gestion-course/<token>/`, APIs, CSV). Language is carried by the `co_lang` cookie (`LocaleMiddleware` + built-in `set_language` view on `/i18n/setlang/`), chosen via the SVG flag selector in `base.html` (browser `Accept-Language` on first visit). Shared JS strings are injected from templates (`COUtils.setStrings`, `LiveResults.init({ strings })`); `pgettext('mopstatus', …)` avoids collisions with Django's core catalogs (e.g. `PM` → « Après-midi »). CSV headers, MOP protocol responses and DB content stay French on purpose.
 - **Django admin** — habillé de la charte du site (« skin », structure admin conservée) :
@@ -150,12 +155,13 @@ MeOSDjango/
 │   │                                  # OchecklistChangeLog (managed=True)
 │   ├── views.py                       # ochecklist_update (POST), report_list,
 │   │                                  # report_detail, runner_detail, clear_reports
-│   ├── urls.py                        # /ochecklist/update/, /ochecklist/, etc.
+│   ├── urls.py                        # /ochecklist/update[/], /ochecklist/, etc.
 │   ├── admin.py                       # Admin Django (3 modèles)
 │   ├── apps.py
 │   ├── migrations/
 │   │   ├── __init__.py
-│   │   └── 0001_initial.py            # Schéma initial des tables
+│   │   ├── 0001_initial.py            # Schéma initial des tables
+│   │   └── 0002_...py                 # start_type + ticked_off (YAML v1.6)
 │   ├── tests/                         # test_admin, test_helpers, test_models,
 │   │                                  # test_urls, test_views
 │   └── templates/ochecklist/

@@ -110,12 +110,16 @@
           <td>
             {% if runner.start_time %}
               <div>{{ runner.start_time|date:"H:i" }}</div>
-              {% if runner.changelog and runner.changelog.late_start %}
-                <div class="small text-danger mt-1">
-                  <i class="bi bi-arrow-right-short"></i>{{ runner.changelog.late_start|date:"H:i" }}
-                </div>
-              {% endif %}
-            {% else %}
+            {% endif %}
+            {% if runner.changelog and runner.changelog.late_start %}
+              <div class="small text-danger mt-1">
+                <i class="bi bi-arrow-right-short"></i>{{ runner.changelog.late_start|date:"H:i" }}
+              </div>
+            {% elif runner.changelog and runner.changelog.ticked_off %}
+              <div class="small text-success mt-1">
+                <i class="bi bi-check2"></i>{{ runner.changelog.ticked_off|date:"H:i:s" }}
+              </div>
+            {% elif not runner.start_time %}
               —
             {% endif %}
           </td>

@@ -268,3 +268,10 @@ ENABLE_RACE_CREATION = _env_flag('ENABLE_RACE_CREATION', globals().get('ENABLE_R
 # Set these in dev_settings.py or environment variables for production
 OCHECKLIST_HEADER_KEY = os.environ.get('OCHECKLIST_HEADER_KEY', '')  # e.g., 'X-Ochecklist-Token'
 OCHECKLIST_HEADER_VALUE = os.environ.get('OCHECKLIST_HEADER_VALUE', '')  # e.g., 'your-secret-token'
+
+# Un rapport O'checklist complet contient tous les coureurs du départ (un
+# bloc YAML d'environ 250 octets par coureur) et un document MOP peut être
+# volumineux. La limite Django par défaut (2,5 Mo) rejetterait les grandes
+# courses : 10 Mo couvrent largement plusieurs dizaines de milliers de
+# coureurs tout en bornant la mémoire par requête.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024

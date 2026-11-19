@@ -14,8 +14,8 @@ class OchecklistReportAdmin(admin.ModelAdmin):
 
 @admin.register(OchecklistRunner)
 class OchecklistRunnerAdmin(admin.ModelAdmin):
-    list_display = ['name', 'org', 'class_name', 'start_status', 'report_link', 'has_changelog']
-    list_filter = ['start_status', 'class_name', 'org', 'report__created']
+    list_display = ['name', 'org', 'class_name', 'start_status', 'start_type', 'report_link', 'has_changelog']
+    list_filter = ['start_status', 'start_type', 'class_name', 'org', 'report__created']
     search_fields = ['name', 'org', 'bib', 'runner_id']
     readonly_fields = ['report_link']
     
@@ -33,8 +33,8 @@ class OchecklistRunnerAdmin(admin.ModelAdmin):
 
 @admin.register(OchecklistChangeLog)
 class OchecklistChangeLogAdmin(admin.ModelAdmin):
-    list_display = ['runner_name', 'dns', 'late_start', 'new_card', 'comment', 'new_runner']
-    list_filter = ['dns', 'late_start', 'new_card', 'comment', 'new_runner']
+    list_display = ['runner_name', 'ticked_off', 'dns', 'late_start', 'new_card', 'comment', 'new_runner']
+    list_filter = ['ticked_off', 'dns', 'late_start', 'new_card', 'comment', 'new_runner']
     search_fields = ['runner__name', 'runner__org']
     
     def runner_name(self, obj):
