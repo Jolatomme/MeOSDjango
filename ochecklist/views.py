@@ -3,13 +3,15 @@ import zlib
 import hashlib
 import base64
 import yaml
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 from django.shortcuts import render, get_object_or_404, redirect
 from django.conf import settings
 from django.contrib import messages
 from django.db import transaction
+from django.db.models import Count, Max
 from django.utils import timezone
 from django.utils.translation import ngettext
 from .models import OchecklistReport, OchecklistRunner, OchecklistChangeLog
@@ -352,10 +354,72 @@ def ochecklist_update(request):
 
     return HttpResponse('OK', status=200, content_type='text/plain')
 
+def _format_version(*parts):
+    """Build a stable, compact version string from database values."""
+    return '|'.join('' if part is None else str(part) for part in parts)
+
+
+def build_report_version(report=None):
+    """Return a fingerprint used by the browser auto-refresh poller.
+
+    Without ``report`` the fingerprint covers the whole report list. With a
+    report it covers that report and its runners. ``OchecklistReport.created``
+    is refreshed on every accepted O'checklist upload (full or incremental),
+    so receiving a report always changes the fingerprint.
+    """
+    if report is None:
+        stats = OchecklistReport.objects.aggregate(
+            latest_created=Max('created'),
+            latest_received=Max('received_at'),
+            report_count=Count('id', distinct=True),
+            runner_count=Count('runners', distinct=True),
+            latest_runner=Max('runners__id'),
+        )
+        return _format_version(
+            stats['latest_created'],
+            stats['latest_received'],
+            stats['report_count'],
+            stats['runner_count'],
+            stats['latest_runner'],
+        )
+
+    stats = report.runners.aggregate(
+        runner_count=Count('id'),
+        latest_runner=Max('id'),
+    )
+    return _format_version(
+        report.created,
+        stats['runner_count'],
+        stats['latest_runner'],
+    )
+
+
+@require_GET
+@never_cache
+def report_version(request):
+    """Return the current O'checklist version as JSON for auto-refresh.
+
+    ``?report=<id>`` scopes the fingerprint to one report; without it the
+    whole report list is covered.
+    """
+    report_param = request.GET.get('report')
+    report = None
+    if report_param is not None:
+        try:
+            report_id = int(report_param)
+        except (TypeError, ValueError):
+            return HttpResponse('Invalid report id', status=400)
+        report = get_object_or_404(OchecklistReport, id=report_id)
+    return JsonResponse({'version': build_report_version(report)})
+
+
 def report_list(request):
     """Display list of all received O'checklist reports"""
     reports = OchecklistReport.objects.all()
-    return render(request, 'ochecklist/report_list.html', {'reports': reports})
+    return render(request, 'ochecklist/report_list.html', {
+        'reports': reports,
+        'ochecklist_version': build_report_version(),
+    })
 
 def clear_reports(request):
     """Delete selected reports"""
@@ -393,9 +457,15 @@ def report_detail(request, report_id):
         'dns_count': report.runners.filter(start_status='DNS').count(),
         'late_start_count': report.runners.filter(start_status='Late start').count(),
         'new_card_count': report.runners.exclude(new_card='').exclude(new_card__isnull=True).count(),
+        'ochecklist_version': build_report_version(report),
     })
 
 def runner_detail(request, runner_id):
     """Display detailed view of a specific runner"""
-    runner = get_object_or_404(OchecklistRunner, id=runner_id)
-    return render(request, 'ochecklist/runner_detail.html', {'runner': runner})
+    runner = get_object_or_404(
+        OchecklistRunner.objects.select_related('report'), id=runner_id,
+    )
+    return render(request, 'ochecklist/runner_detail.html', {
+        'runner': runner,
+        'ochecklist_version': build_report_version(runner.report),
+    })

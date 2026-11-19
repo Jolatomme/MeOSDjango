@@ -404,6 +404,98 @@ const COUtils = (() => {
       return now;
     },
   };
+
+  // ── Actualisation automatique ─────────────────────────────────────────────
+
+  /**
+   * Interroge périodiquement une URL de version et recharge la page dès que
+   * la version change. Le polling est suspendu quand l'onglet est en
+   * arrière-plan et reprend immédiatement au retour.
+   *
+   * @param {Object}   options
+   * @param {string}   options.url            - URL JSON renvoyant {version}
+   * @param {string}   [options.version]      - version rendue avec la page
+   * @param {number}   [options.interval]     - délai entre deux polls (ms, défaut 5000)
+   * @param {function} [options.shouldReload] - veto de rechargement (retourne un booléen)
+   * @param {function} [options.reload]       - remplacement de location.reload (tests)
+   * @param {function} [options.fetchImpl]    - remplacement de fetch (tests)
+   * @returns {{check: function, stop: function}|null}
+   */
+  function initAutoRefresh(options = {}) {
+    const url = options.url;
+    if (!url) return null;
+
+    const interval = Number(options.interval) > 0 ? Number(options.interval) : 5000;
+    const fetchImpl = options.fetchImpl || (typeof fetch === 'function' ? fetch : null);
+    if (!fetchImpl) return null;
+    const reload = options.reload || (() => window.location.reload());
+    const shouldReload = options.shouldReload || (() => true);
+
+    let version = options.version != null ? String(options.version) : null;
+    let timer = null;
+    let stopped = false;
+    let inFlight = false;
+
+    function schedule() {
+      if (stopped) return;
+      clearTimeout(timer);
+      timer = setTimeout(check, interval);
+    }
+
+    async function check() {
+      if (stopped || inFlight) return;
+      if (document.hidden) return;
+      inFlight = true;
+      try {
+        const response = await fetchImpl(url, {
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+          credentials: 'same-origin',
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (!data || typeof data.version !== 'string') {
+          throw new Error('Invalid version payload');
+        }
+        if (version === null) {
+          version = data.version;
+        } else if (data.version !== version && shouldReload()) {
+          stopped = true;
+          reload();
+          return;
+        }
+      } catch (e) {
+        // Erreur réseau ou réponse invalide : nouvel essai au prochain cycle.
+      } finally {
+        inFlight = false;
+        schedule();
+      }
+    }
+
+    function onVisibilityChange() {
+      if (stopped) return;
+      clearTimeout(timer);
+      timer = null;
+      if (!document.hidden) check();
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    // Sans version initiale, le premier poll sert de référence.
+    if (version === null) check();
+    else schedule();
+
+    return {
+      check,
+      stop() {
+        stopped = true;
+        clearTimeout(timer);
+        timer = null;
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+      },
+    };
+  }
+
   // ── API publique ──────────────────────────────────────────────────────────
   return {
     setStrings,
@@ -419,6 +511,7 @@ const COUtils = (() => {
     bindTableSort,
     initBackToTop,
     initFileInputs,
+    initAutoRefresh,
     favs,
   };
 })();

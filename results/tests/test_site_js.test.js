@@ -898,3 +898,225 @@ describe('COUtils.favs', () => {
     expect(COUtils.favs.has(4, 12)).toBe(true);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// initAutoRefresh
+// ─────────────────────────────────────────────────────────────────────────────
+describe('COUtils.initAutoRefresh', () => {
+  let handles;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    handles = [];
+    global.fetch = jest.fn();
+  });
+
+  afterEach(() => {
+    handles.forEach(handle => handle && handle.stop());
+    handles = [];
+    jest.clearAllTimers();
+    jest.useRealTimers();
+    delete global.fetch;
+    delete document.hidden;
+  });
+
+  function jsonResponse(version, ok = true, status = 200) {
+    return Promise.resolve({
+      ok,
+      status,
+      json: () => Promise.resolve({ version }),
+    });
+  }
+
+  async function flush() {
+    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+  }
+
+  test('retourne null sans url', () => {
+    expect(COUtils.initAutoRefresh({})).toBeNull();
+  });
+
+  test('ne sonde pas avant l\'intervalle quand une version initiale est fournie', async () => {
+    const fetchImpl = jest.fn(() => jsonResponse('v1'));
+    const reload = jest.fn();
+    const handle = COUtils.initAutoRefresh({
+      url: '/v', version: 'v1', interval: 1000, fetchImpl, reload,
+    });
+    handles.push(handle);
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(999);
+    expect(fetchImpl).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(1);
+    await flush();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  test('recharge quand la version change puis arrête le polling', async () => {
+    const fetchImpl = jest.fn(() => jsonResponse('v2'));
+    const reload = jest.fn();
+    const handle = COUtils.initAutoRefresh({
+      url: '/v', version: 'v1', interval: 1000, fetchImpl, reload,
+    });
+    handles.push(handle);
+
+    jest.advanceTimersByTime(1000);
+    await flush();
+    expect(reload).toHaveBeenCalledTimes(1);
+
+    jest.advanceTimersByTime(5000);
+    await flush();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  test('respecte shouldReload=false et recharge au poll suivant', async () => {
+    let allow = false;
+    const fetchImpl = jest.fn(() => jsonResponse('v2'));
+    const reload = jest.fn();
+    const handle = COUtils.initAutoRefresh({
+      url: '/v', version: 'v1', interval: 1000, fetchImpl, reload,
+      shouldReload: () => allow,
+    });
+    handles.push(handle);
+
+    jest.advanceTimersByTime(1000);
+    await flush();
+    expect(reload).not.toHaveBeenCalled();
+
+    allow = true;
+    jest.advanceTimersByTime(1000);
+    await flush();
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  test('sans version initiale, le premier poll sert de référence', async () => {
+    const fetchImpl = jest.fn(() => jsonResponse('v1'));
+    const reload = jest.fn();
+    const handle = COUtils.initAutoRefresh({
+      url: '/v', interval: 1000, fetchImpl, reload,
+    });
+    handles.push(handle);
+
+    await flush();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(reload).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(1000);
+    await flush();
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  test('erreur réseau : pas de rechargement, nouvel essai', async () => {
+    const fetchImpl = jest.fn()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ version: 'v1' }),
+      });
+    const reload = jest.fn();
+    const handle = COUtils.initAutoRefresh({
+      url: '/v', version: 'v1', interval: 1000, fetchImpl, reload,
+    });
+    handles.push(handle);
+
+    jest.advanceTimersByTime(1000);
+    await flush();
+    expect(reload).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(1000);
+    await flush();
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  test('réponse HTTP en erreur ou JSON invalide : ignorée', async () => {
+    const fetchImpl = jest.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ version: 'v2' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({}),
+      });
+    const reload = jest.fn();
+    const handle = COUtils.initAutoRefresh({
+      url: '/v', version: 'v1', interval: 1000, fetchImpl, reload,
+    });
+    handles.push(handle);
+
+    jest.advanceTimersByTime(1000);
+    await flush();
+    jest.advanceTimersByTime(1000);
+    await flush();
+    expect(reload).not.toHaveBeenCalled();
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  test('suspend le polling quand l\'onglet est caché et sonde au retour', async () => {
+    let hidden = false;
+    Object.defineProperty(document, 'hidden', {
+      configurable: true,
+      get: () => hidden,
+    });
+    const fetchImpl = jest.fn(() => jsonResponse('v1'));
+    const handle = COUtils.initAutoRefresh({
+      url: '/v', version: 'v1', interval: 1000, fetchImpl,
+    });
+    handles.push(handle);
+
+    hidden = true;
+    document.dispatchEvent(new Event('visibilitychange'));
+    jest.advanceTimersByTime(5000);
+    await flush();
+    expect(fetchImpl).not.toHaveBeenCalled();
+
+    hidden = false;
+    document.dispatchEvent(new Event('visibilitychange'));
+    await flush();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  test('document.hidden au moment du poll → pas de fetch, reprise au retour', async () => {
+    let hidden = false;
+    Object.defineProperty(document, 'hidden', {
+      configurable: true,
+      get: () => hidden,
+    });
+    const fetchImpl = jest.fn(() => jsonResponse('v1'));
+    const handle = COUtils.initAutoRefresh({
+      url: '/v', version: 'v1', interval: 1000, fetchImpl,
+    });
+    handles.push(handle);
+
+    hidden = true;
+    jest.advanceTimersByTime(1000);
+    await flush();
+    expect(fetchImpl).not.toHaveBeenCalled();
+
+    hidden = false;
+    document.dispatchEvent(new Event('visibilitychange'));
+    await flush();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  test('stop() annule le timer et retire l\'écouteur', async () => {
+    const fetchImpl = jest.fn(() => jsonResponse('v1'));
+    const handle = COUtils.initAutoRefresh({
+      url: '/v', version: 'v1', interval: 1000, fetchImpl,
+    });
+    handle.stop();
+
+    jest.advanceTimersByTime(5000);
+    await flush();
+    expect(fetchImpl).not.toHaveBeenCalled();
+
+    document.dispatchEvent(new Event('visibilitychange'));
+    await flush();
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});

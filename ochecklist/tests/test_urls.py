@@ -13,6 +13,7 @@ from ochecklist import views as ochecklist_views
 from ochecklist.views import (
     ochecklist_update,
     report_list,
+    report_version,
     clear_reports,
     report_detail,
     runner_detail,
@@ -49,6 +50,13 @@ class TestURLResolution:
 
     def test_clear_url_nom(self):
         assert reverse('ochecklist_clear_reports') == '/ochecklist/clear/'
+
+    def test_version_url_resout(self):
+        match = resolve('/ochecklist/version/')
+        assert match.func is report_version
+
+    def test_version_url_nom(self):
+        assert reverse('ochecklist_version') == '/ochecklist/version/'
 
     def test_report_detail_url_resout(self):
         match = resolve('/ochecklist/42/')
@@ -91,9 +99,9 @@ class TestURLReverse:
 class TestURLPatterns:
     """Vérifie l'intégrité de la liste urlpatterns."""
 
-    def test_6_routes(self):
+    def test_7_routes(self):
         from ochecklist.urls import urlpatterns
-        assert len(urlpatterns) == 6
+        assert len(urlpatterns) == 7
 
     def test_toutes_les_noms_distincts(self):
         from ochecklist.urls import urlpatterns
@@ -107,6 +115,7 @@ class TestURLPatterns:
             'ochecklist_update',
             'ochecklist_report_list',
             'ochecklist_clear_reports',
+            'ochecklist_version',
             'ochecklist_report_detail',
             'ochecklist_runner_detail',
         ])

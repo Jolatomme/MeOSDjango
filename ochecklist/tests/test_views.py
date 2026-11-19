@@ -15,6 +15,7 @@ import base64
 import datetime
 import gzip
 import hashlib
+import json
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -23,9 +24,12 @@ from django.test import RequestFactory
 from django.http import Http404, HttpResponse
 
 from ochecklist import views as ochecklist_views
+from ochecklist.models import OchecklistReport
 from ochecklist.views import (
+    build_report_version,
     ochecklist_update,
     report_list,
+    report_version,
     clear_reports,
     report_detail,
     runner_detail,
@@ -1335,6 +1339,90 @@ class TestOchecklistUpdateMethodNotAllowed:
 
 # ─── Tests report_list ────────────────────────────────────────────────────────
 
+class TestBuildReportVersion:
+
+    def test_version_globale(self):
+        with patch('ochecklist.views.OchecklistReport') as MockReport:
+            MockReport.objects.aggregate.return_value = {
+                'latest_created': datetime.datetime(2024, 10, 12, 12, 0),
+                'latest_received': datetime.datetime(2024, 10, 12, 12, 1),
+                'report_count': 2,
+                'runner_count': 5,
+                'latest_runner': 9,
+            }
+            version = build_report_version()
+            assert version == '2024-10-12 12:00:00|2024-10-12 12:01:00|2|5|9'
+            MockReport.objects.aggregate.assert_called_once()
+
+    def test_version_globale_vide(self):
+        with patch('ochecklist.views.OchecklistReport') as MockReport:
+            MockReport.objects.aggregate.return_value = {
+                'latest_created': None,
+                'latest_received': None,
+                'report_count': 0,
+                'runner_count': 0,
+                'latest_runner': None,
+            }
+            assert build_report_version() == '||0|0|'
+
+    def test_version_rapport(self):
+        report = MagicMock(created=datetime.datetime(2024, 10, 12, 12, 0))
+        report.runners.aggregate.return_value = {
+            'runner_count': 5,
+            'latest_runner': 9,
+        }
+        assert build_report_version(report) == '2024-10-12 12:00:00|5|9'
+        report.runners.aggregate.assert_called_once()
+
+
+class TestReportVersionView:
+
+    def test_version_globale_json(self, factory):
+        request = factory.get('/ochecklist/version/')
+        with patch('ochecklist.views.build_report_version', return_value='v1'):
+            response = report_version(request)
+        assert response.status_code == 200
+        assert response['Content-Type'] == 'application/json'
+        assert json.loads(response.content) == {'version': 'v1'}
+
+    def test_version_par_rapport(self, factory):
+        report = MagicMock(id=3)
+        request = factory.get('/ochecklist/version/', data={'report': '3'})
+        with patch('ochecklist.views.get_object_or_404', return_value=report) as mock_get, \
+             patch('ochecklist.views.build_report_version', return_value='v3') as mock_version:
+            response = report_version(request)
+        mock_get.assert_called_once_with(OchecklistReport, id=3)
+        mock_version.assert_called_once_with(report)
+        assert json.loads(response.content) == {'version': 'v3'}
+
+    def test_id_invalide(self, factory):
+        request = factory.get('/ochecklist/version/', data={'report': 'abc'})
+        with patch('ochecklist.views.get_object_or_404') as mock_get:
+            response = report_version(request)
+        assert response.status_code == 400
+        assert response.content == b'Invalid report id'
+        mock_get.assert_not_called()
+
+    def test_rapport_introuvable(self, factory):
+        request = factory.get('/ochecklist/version/', data={'report': '999'})
+        with patch('ochecklist.views.get_object_or_404',
+                   side_effect=Http404('not found')):
+            with pytest.raises(Http404):
+                report_version(request)
+
+    def test_post_refuse(self, factory):
+        request = factory.post('/ochecklist/version/')
+        response = report_version(request)
+        assert response.status_code == 405
+
+    def test_reponse_non_cachee(self, factory):
+        request = factory.get('/ochecklist/version/')
+        with patch('ochecklist.views.build_report_version', return_value='v1'):
+            response = report_version(request)
+        assert 'no-cache' in response['Cache-Control']
+        assert 'no-store' in response['Cache-Control']
+
+
 class TestReportListView:
 
     def test_retourne_200_avec_reports(self, factory):
@@ -1360,6 +1448,16 @@ class TestReportListView:
             MockReport.objects.all.return_value = []
             report_list(request)
             MockReport.objects.all.assert_called_once()
+
+    def test_contexte_version(self, factory):
+        request = factory.get('/ochecklist/')
+        with patch('ochecklist.views.OchecklistReport') as MockReport, \
+             patch('ochecklist.views.build_report_version', return_value='v-list'), \
+             patch('ochecklist.views.render') as mock_render:
+            MockReport.objects.all.return_value = []
+            mock_render.return_value = HttpResponse('ok')
+            report_list(request)
+            assert mock_render.call_args[0][2]['ochecklist_version'] == 'v-list'
 
 
 # ─── Tests clear_reports ──────────────────────────────────────────────────────
@@ -1427,6 +1525,7 @@ class TestReportDetailView:
         runners = [MagicMock(start_time=datetime.datetime(2024, 10, 12, 12, 0))]
 
         with patch('ochecklist.views.get_object_or_404', return_value=report), \
+             patch('ochecklist.views.build_report_version', return_value='v-report'), \
              patch('ochecklist.views.render') as mock_render:
             qs_mock = MagicMock()
             qs_mock.order_by.return_value = runners
@@ -1445,6 +1544,7 @@ class TestReportDetailView:
             assert 'dns_count' in ctx
             assert 'late_start_count' in ctx
             assert 'new_card_count' in ctx
+            assert ctx['ochecklist_version'] == 'v-report'
 
     def test_404_si_rapport_introuvable(self, factory):
         with patch('ochecklist.views.get_object_or_404',
@@ -1563,13 +1663,18 @@ class TestRunnerDetailView:
     def test_retourne_200(self, factory):
         runner = MagicMock(id=42)
         with patch('ochecklist.views.get_object_or_404', return_value=runner), \
+             patch('ochecklist.views.build_report_version', return_value='v-runner') as mock_version, \
              patch('ochecklist.views.render') as mock_render:
             mock_render.return_value = HttpResponse('ok')
             request = factory.get('/ochecklist/runner/42/')
             response = runner_detail(request, runner_id=42)
             assert response.status_code == 200
             assert mock_render.call_args[0][1] == 'ochecklist/runner_detail.html'
-            assert mock_render.call_args[0][2] == {'runner': runner}
+            assert mock_render.call_args[0][2] == {
+                'runner': runner,
+                'ochecklist_version': 'v-runner',
+            }
+            mock_version.assert_called_once_with(runner.report)
 
     def test_404_si_runner_introuvable(self, factory):
         with patch('ochecklist.views.get_object_or_404',

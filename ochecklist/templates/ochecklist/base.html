@@ -5,6 +5,22 @@
 
 {% block nav_ochecklist %}active{% endblock %}
 
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  COUtils.initAutoRefresh({
+    url: "{% url 'ochecklist_version' %}{% if report %}?report={{ report.id }}{% elif runner %}?report={{ runner.report_id }}{% endif %}",
+    version: "{{ ochecklist_version|escapejs }}",
+    interval: 5000,
+    shouldReload: function () {
+      // Ne pas recharger pendant une sélection de rapports à supprimer.
+      return !document.querySelector('.report-check:checked');
+    },
+  });
+});
+</script>
+{% endblock %}
+
 {% block page_header %}
 <div class="co-page-header">
   <div class="container">
