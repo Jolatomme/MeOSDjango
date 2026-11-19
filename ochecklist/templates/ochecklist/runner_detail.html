@@ -20,16 +20,29 @@
               <td>
                 {% if runner.start_time %}
                   <div>{{ runner.start_time|date:"H:i" }}</div>
-                  {% if runner.changelog and runner.changelog.late_start %}
-                    <div class="small text-danger mt-1">
-                      <i class="bi bi-arrow-right-short"></i>{{ runner.changelog.late_start|date:"H:i" }}
-                    </div>
-                  {% endif %}
-                {% else %}
+                {% endif %}
+                {% if runner.changelog and runner.changelog.late_start %}
+                  <div class="small text-danger mt-1">
+                    <i class="bi bi-arrow-right-short"></i>{{ runner.changelog.late_start|date:"H:i" }}
+                  </div>
+                {% elif runner.changelog and runner.changelog.ticked_off %}
+                  <div class="small text-success mt-1">
+                    <i class="bi bi-check2"></i>{{ runner.changelog.ticked_off|date:"H:i:s" }}
+                  </div>
+                {% elif not runner.start_time %}
                   —
                 {% endif %}
               </td>
             </tr>
+            {% if runner.start_type %}
+            <tr><td class="fw-semibold">{% translate "Type de départ" context "ochecklist" %}</td>
+              <td>
+                {% if runner.start_type == 'Fixed' %}{% translate "Départ fixe" context "ochecklist" %}
+                {% elif runner.start_type == 'Free' %}{% translate "Départ libre" context "ochecklist" %}
+                {% else %}{{ runner.start_type }}{% endif %}
+              </td>
+            </tr>
+            {% endif %}
             <tr><td class="fw-semibold">{% translate "Statut" %}</td>
               <td>
                 <span class="badge bg-{% if runner.start_status == 'Started OK' %}success{% elif runner.start_status == 'DNS' %}danger{% else %}warning text-dark{% endif %}">
@@ -61,6 +74,7 @@
         <div class="table-responsive">
         <table class="results-table mb-0">
           <tbody>
+            <tr><td class="fw-semibold pe-3" style="width:9rem">{% translate "Pointage" context "ochecklist" %}</td><td>{{ runner.changelog.ticked_off|date:"H:i:s"|default:"—" }}</td></tr>
             <tr><td class="fw-semibold pe-3" style="width:9rem">DNS</td><td>{{ runner.changelog.dns|date:"H:i:s"|default:"—" }}</td></tr>
             <tr><td class="fw-semibold">{% translate "Départ retardé" %}</td><td>{{ runner.changelog.late_start|date:"H:i:s"|default:"—" }}</td></tr>
             <tr><td class="fw-semibold">{% translate "Nouvelle puce" %}</td><td>{{ runner.changelog.new_card|date:"H:i:s"|default:"—" }}</td></tr>

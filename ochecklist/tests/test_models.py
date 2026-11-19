@@ -91,6 +91,13 @@ class TestOchecklistRunnerModel:
             ('Late start', 'Late start'),
         ]
 
+    def test_start_type_choices(self):
+        """START_TYPE_CHOICES contient les deux types de départ de l'app."""
+        assert OchecklistRunner.START_TYPE_CHOICES == [
+            ('Fixed', 'Fixed'),
+            ('Free', 'Free'),
+        ]
+
     # ── Foreign key vers OchecklistReport ─────────────────────────────────────
 
     def test_report_fk_related_name(self):
@@ -131,6 +138,14 @@ class TestOchecklistRunnerModel:
         assert isinstance(f, models.DateTimeField)
         assert f.null is True
         assert f.blank is True
+
+    def test_start_type_optional(self):
+        f = get_field(OchecklistRunner, 'start_type')
+        assert isinstance(f, models.CharField)
+        assert f.max_length == 10
+        assert f.null is True
+        assert f.blank is True
+        assert f.choices == OchecklistRunner.START_TYPE_CHOICES
 
     def test_new_card_optional(self):
         f = get_field(OchecklistRunner, 'new_card')
@@ -208,6 +223,9 @@ class TestOchecklistChangeLogModel:
 
     def test_dns_nullable(self):
         self._test_nullable_datetime('dns')
+
+    def test_ticked_off_nullable(self):
+        self._test_nullable_datetime('ticked_off')
 
     def test_late_start_nullable(self):
         self._test_nullable_datetime('late_start')

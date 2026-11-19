@@ -90,6 +90,25 @@ class TestDecompressIfNeeded:
         result = decompress_if_needed(empty_gzip, 'gzip')
         assert result == b''
 
+    def test_gzip_taille_exacte_limite_acceptee(self):
+        """Un contenu pile à la limite est accepté."""
+        original = b'a' * 100
+        compressed = gzip.compress(original)
+        assert decompress_if_needed(compressed, 'gzip', max_size=100) == original
+
+    def test_gzip_depasse_la_limite_retourne_none(self):
+        """Une bombe gzip est refusée sans produire tout le contenu."""
+        original = b'a' * 1000
+        compressed = gzip.compress(original)
+        assert decompress_if_needed(compressed, 'gzip', max_size=100) is None
+
+    def test_limite_par_defaut_est_utilisee(self):
+        """max_size=None lit MAX_DECOMPRESSED_SIZE au moment de l'appel."""
+        original = b'a' * 1000
+        compressed = gzip.compress(original)
+        with patch.object(ochecklist_views, 'MAX_DECOMPRESSED_SIZE', 100):
+            assert decompress_if_needed(compressed, 'gzip') is None
+
 
 # ─── Tests verify_content_digest ───────────────────────────────────────────────
 

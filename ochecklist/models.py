@@ -20,6 +20,10 @@ class OchecklistRunner(models.Model):
         ('DNS', 'DNS'),
         ('Late start', 'Late start'),
     ]
+    START_TYPE_CHOICES = [
+        ('Fixed', 'Fixed'),
+        ('Free', 'Free'),
+    ]
     
     report = models.ForeignKey(OchecklistReport, on_delete=models.CASCADE, related_name='runners')
     runner_id = models.CharField(max_length=50, blank=True, null=True)  # IOF xml person id
@@ -28,6 +32,7 @@ class OchecklistRunner(models.Model):
     org = models.CharField(max_length=100)
     card_number = models.CharField(max_length=20, blank=True, null=True)
     start_time = models.DateTimeField(blank=True, null=True)  # ISO 8601 or time only
+    start_type = models.CharField(max_length=10, choices=START_TYPE_CHOICES, blank=True, null=True)  # Fixed / Free
     class_name = models.CharField(max_length=50)
     start_status = models.CharField(max_length=20, choices=STATUS_CHOICES)
     new_card = models.CharField(max_length=20, blank=True, null=True)
@@ -41,6 +46,7 @@ class OchecklistRunner(models.Model):
 class OchecklistChangeLog(models.Model):
     """Stores timestamped status changes"""
     runner = models.OneToOneField(OchecklistRunner, on_delete=models.CASCADE, related_name='changelog')
+    ticked_off = models.DateTimeField(blank=True, null=True)
     dns = models.DateTimeField(blank=True, null=True)
     late_start = models.DateTimeField(blank=True, null=True)
     new_card = models.DateTimeField(blank=True, null=True)

@@ -332,6 +332,20 @@ class TestOchecklistUpdateGzip:
             response = ochecklist_update(request)
             assert response.status_code == 400
 
+    def test_gzip_bombe_retourne_413(self, factory):
+        """Un corps décompressé au-delà de la limite est refusé (413)."""
+        compressed = gzip.compress(b'a' * 5000)
+        with patch.object(ochecklist_views, 'MAX_DECOMPRESSED_SIZE', 100):
+            request = factory.post(
+                '/ochecklist/update/',
+                data=compressed,
+                content_type='application/yaml',
+                HTTP_CONTENT_ENCODING='gzip',
+            )
+            response = ochecklist_update(request)
+            assert response.status_code == 413
+            assert b'Payload too large' in response.content
+
 
 # ─── Tests ochecklist_update : parsing YAML ────────────────────────────────────
 
@@ -381,6 +395,250 @@ class TestOchecklistUpdateYAMLParsing:
             response = ochecklist_update(self._post(factory, body))
             assert response.status_code == 200
             MockRunner.objects.create.assert_not_called()
+
+
+# ─── Tests ochecklist_update : validation du format ───────────────────────────
+
+class TestOchecklistUpdateValidation:
+    """Un rapport mal formé doit retourner 400, jamais 500."""
+
+    def _post(self, factory, payload):
+        body = yaml.dump(payload, default_flow_style=False).encode('utf-8')
+        return ochecklist_update(factory.post(
+            '/ochecklist/update/',
+            data=body,
+            content_type='application/yaml',
+        ))
+
+    def _base(self, **overrides):
+        payload = {
+            'Version': '1.6',
+            'Creator': 'O Checklist v5.5',
+            'Created': '2026-08-30T10:05:45+02:00',
+            'Event': 'Demo',
+            'Data': [],
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_data_dict_retourne_400(self, factory):
+        response = self._post(factory, self._base(Data={'Runner': {}}))
+        assert response.status_code == 400
+        assert b'Data must be a list' in response.content
+
+    def test_entree_non_dict_retourne_400(self, factory):
+        response = self._post(factory, self._base(Data=['pas-un-dict']))
+        assert response.status_code == 400
+        assert b'expected a mapping' in response.content
+
+    def test_runner_manquant_retourne_400(self, factory):
+        response = self._post(factory, self._base(Data=[{}]))
+        assert response.status_code == 400
+        assert b'missing Runner mapping' in response.content
+
+    def test_runner_non_dict_retourne_400(self, factory):
+        response = self._post(factory, self._base(Data=[{'Runner': 'x'}]))
+        assert response.status_code == 400
+        assert b'missing Runner mapping' in response.content
+
+    def test_name_manquant_retourne_400(self, factory):
+        response = self._post(factory, self._base(Data=[{
+            'Runner': {'StartStatus': 'DNS'},
+        }]))
+        assert response.status_code == 400
+        assert b'missing Name' in response.content
+
+    def test_start_status_manquant_retourne_400(self, factory):
+        response = self._post(factory, self._base(Data=[{
+            'Runner': {'Name': 'Alice'},
+        }]))
+        assert response.status_code == 400
+        assert b'missing StartStatus' in response.content
+
+    def test_start_status_inconnu_retourne_400(self, factory):
+        response = self._post(factory, self._base(Data=[{
+            'Runner': {'Name': 'Alice', 'StartStatus': 'En course'},
+        }]))
+        assert response.status_code == 400
+        assert b'unsupported StartStatus' in response.content
+
+    def test_start_status_vide_retourne_400(self, factory):
+        response = self._post(factory, self._base(Data=[{
+            'Runner': {'Name': 'Alice', 'StartStatus': '   '},
+        }]))
+        assert response.status_code == 400
+        assert b'missing StartStatus' in response.content
+
+    def test_changelog_non_dict_retourne_400(self, factory):
+        response = self._post(factory, self._base(Data=[{
+            'Runner': {'Name': 'Alice', 'StartStatus': 'DNS'},
+            'ChangeLog': 'pas-un-dict',
+        }]))
+        assert response.status_code == 400
+        assert b'ChangeLog must be a mapping' in response.content
+
+    def test_created_manquant_retourne_400(self, factory):
+        payload = self._base()
+        del payload['Created']
+        response = self._post(factory, payload)
+        assert response.status_code == 400
+        assert b'missing or invalid Created' in response.content
+
+    def test_utf8_invalide_retourne_400(self, factory):
+        response = ochecklist_update(factory.post(
+            '/ochecklist/update/',
+            data=b'\xff\xfe\x00invalid',
+            content_type='application/yaml',
+        ))
+        assert response.status_code == 400
+        assert b'UTF-8 required' in response.content
+
+    def test_champs_obligatoires_minimaux_acceptes(self, factory):
+        """Name + StartStatus suffisent : Org/ClassName absents → chaîne vide."""
+        with patch('ochecklist.views.OchecklistReport') as MockReport, \
+             patch('ochecklist.views.OchecklistRunner') as MockRunner, \
+             patch('ochecklist.views.OchecklistChangeLog'), \
+             patch('ochecklist.views.transaction') as mock_tx:
+            mock_tx.atomic.return_value.__enter__ = lambda s: s
+            mock_tx.atomic.return_value.__exit__ = MagicMock(return_value=False)
+            MockReport.objects.filter.return_value.order_by.return_value.first.return_value = None
+            new_report = MagicMock()
+            new_report.runners.filter.return_value.first.return_value = None
+            MockReport.objects.create.return_value = new_report
+
+            response = self._post(factory, self._base(Data=[{
+                'Runner': {'Name': 'Alice', 'StartStatus': 'DNS'},
+            }]))
+            assert response.status_code == 200
+            kwargs = MockRunner.objects.create.call_args.kwargs
+            assert kwargs['name'] == 'Alice'
+            assert kwargs['org'] == ''
+            assert kwargs['class_name'] == ''
+
+
+# ─── Tests ochecklist_update : payload officiel de l'application ──────────────
+
+class TestOchecklistUpdateOfficialPayload:
+    """Le rapport YAML v1.6 documenté par O'checklist est accepté tel quel."""
+
+    OFFICIAL_YAML = """\
+Version: 1.6
+Creator: "O Checklist v5.5"
+Created: 2026-08-30T10:05:45+02:00
+Event:   "Demo"
+Data:
+  - Runner:
+      NewCard:     354852
+      StartStatus: Started OK
+      Id:          null
+      Bib:         "1"
+      Name:        "Olivia Smith"
+      Org:         "Birmingham"
+      Card:        215847
+      StartTime:   10:00:00
+      StartType:   Fixed
+      ClassName:   "W21E"
+    ChangeLog:
+      NewCard:     2026-08-30T09:57:15+02:00
+      TickedOff:   2026-08-30T09:57:16+02:00
+  - Runner:
+      StartStatus: Late start
+      Id:          null
+      Bib:         "101"
+      Name:        "Liam Wilson"
+      Org:         "Liverpool"
+      Card:        173904
+      StartTime:   10:01:00
+      StartType:   Fixed
+      ClassName:   "M21E"
+      Comment:     "Sorry for being late."
+    ChangeLog:
+      LateStart:   2026-08-30T10:03:35+02:00
+      DNS:         2026-08-30T10:01:29+02:00
+      Comment:     2026-08-30T10:03:46+02:00
+  - Runner:
+      StartStatus: DNS
+      Id:          null
+      Bib:         null
+      Name:        "Maya Bennett"
+      Org:         "Leicester"
+      Card:        257863
+      StartTime:   null
+      StartType:   Free
+      ClassName:   "Open"
+    ChangeLog:
+      DNS:         2026-08-30T10:04:36+02:00
+  - Runner:
+      StartStatus: DNS
+      Id:          null
+      Bib:         "2"
+      Name:        "Emma Jones"
+      Org:         "Leeds"
+      Card:        384126
+      StartTime:   10:02:00
+      StartType:   Fixed
+      ClassName:   "W21E"
+    ChangeLog:
+      DNS:         2026-08-30T10:02:33+02:00
+  - Runner:
+      StartStatus: Started OK
+      Id:          null
+      Bib:         null
+      Name:        "Olivia Gray"
+      Org:         "Rochdale"
+      Card:        1861555
+      StartTime:   null
+      StartType:   Free
+      ClassName:   "Open"
+    ChangeLog:
+      TickedOff:   2026-08-30T09:58:17+02:00
+EndOfData:
+  NumRunners: 5
+  NumLines:   73
+"""
+
+    def test_payload_v16_complet(self, factory):
+        with patch('ochecklist.views.OchecklistReport') as MockReport, \
+             patch('ochecklist.views.OchecklistRunner') as MockRunner, \
+             patch('ochecklist.views.OchecklistChangeLog') as MockChangeLog, \
+             patch('ochecklist.views.transaction') as mock_tx:
+            mock_tx.atomic.return_value.__enter__ = lambda s: s
+            mock_tx.atomic.return_value.__exit__ = MagicMock(return_value=False)
+            MockReport.objects.filter.return_value.order_by.return_value.first.return_value = None
+            new_report = MagicMock()
+            new_report.runners.filter.return_value.first.return_value = None
+            MockReport.objects.create.return_value = new_report
+
+            request = factory.post(
+                '/ochecklist/update/',
+                data=self.OFFICIAL_YAML.encode('utf-8'),
+                content_type='application/yaml',
+            )
+            response = ochecklist_update(request)
+            assert response.status_code == 200
+            assert response.content == b'OK'
+
+            report_kwargs = MockReport.objects.create.call_args.kwargs
+            assert report_kwargs['version'] == '1.6'
+            assert report_kwargs['creator'] == 'O Checklist v5.5'
+            assert report_kwargs['event'] == 'Demo'
+
+            assert MockRunner.objects.create.call_count == 5
+            runners = [c.kwargs for c in MockRunner.objects.create.call_args_list]
+            assert runners[0]['name'] == 'Olivia Smith'
+            assert runners[0]['start_type'] == 'Fixed'
+            assert runners[0]['start_time'].hour == 10
+            assert runners[0]['new_card'] == '354852'
+            assert runners[2]['start_type'] == 'Free'
+            assert runners[2]['start_time'] is None
+
+            assert MockChangeLog.objects.create.call_count == 5
+            logs = [c.kwargs for c in MockChangeLog.objects.create.call_args_list]
+            assert logs[0]['ticked_off'].hour == 9
+            assert logs[0]['ticked_off'].minute == 57
+            assert logs[0]['new_card'].minute == 57
+            assert logs[4]['ticked_off'].minute == 58
+            assert logs[4]['dns'] is None
 
 
 # ─── Tests ochecklist_update : création et mise à jour ─────────────────────────
@@ -517,6 +775,73 @@ class TestOchecklistUpdateReportLifecycle:
             response = ochecklist_update(request)
             assert response.status_code == 200
             report_mock.runners.filter.assert_any_call(runner_id='R42')
+            runner_mock.save.assert_called_once()
+            m['Runner'].objects.create.assert_not_called()
+        finally:
+            self._teardown_mocks()
+
+    def test_upsert_par_bib_quand_id_absent(self, factory):
+        """Sans Id IOF, le dossard sert de clé avant le nom."""
+        report_mock = MagicMock()
+        report_mock.version = 'old'
+        report_mock.creator = 'old'
+        report_mock.created = None
+        runner_mock = MagicMock()
+        report_mock.runners.filter.return_value.first.return_value = runner_mock
+        m = self._setup_mocks(existing_report=report_mock)
+        try:
+            runner = {
+                'Runner': {
+                    'StartStatus': 'DNS',
+                    'Bib': '7',
+                    'Name': 'Alice',
+                    'Org': 'CO',
+                    'ClassName': 'H21',
+                },
+                'ChangeLog': None,
+            }
+            body = make_yaml(event='Same Event', runners=[runner])
+            request = factory.post(
+                '/ochecklist/update/',
+                data=body,
+                content_type='application/yaml',
+            )
+            response = ochecklist_update(request)
+            assert response.status_code == 200
+            report_mock.runners.filter.assert_any_call(bib='7')
+            runner_mock.save.assert_called_once()
+            m['Runner'].objects.create.assert_not_called()
+        finally:
+            self._teardown_mocks()
+
+    def test_upsert_par_nom_quand_id_et_bib_absents(self, factory):
+        """Sans Id ni dossard, le nom reste le dernier recours."""
+        report_mock = MagicMock()
+        report_mock.version = 'old'
+        report_mock.creator = 'old'
+        report_mock.created = None
+        runner_mock = MagicMock()
+        report_mock.runners.filter.return_value.first.return_value = runner_mock
+        m = self._setup_mocks(existing_report=report_mock)
+        try:
+            runner = {
+                'Runner': {
+                    'StartStatus': 'DNS',
+                    'Name': 'Alice',
+                    'Org': 'CO',
+                    'ClassName': 'H21',
+                },
+                'ChangeLog': None,
+            }
+            body = make_yaml(event='Same Event', runners=[runner])
+            request = factory.post(
+                '/ochecklist/update/',
+                data=body,
+                content_type='application/yaml',
+            )
+            response = ochecklist_update(request)
+            assert response.status_code == 200
+            report_mock.runners.filter.assert_any_call(name='Alice')
             runner_mock.save.assert_called_once()
             m['Runner'].objects.create.assert_not_called()
         finally:
@@ -675,8 +1000,8 @@ class TestOchecklistUpdateReportLifecycle:
         finally:
             self._teardown_mocks()
 
-    def test_created_invalide_devient_none(self, factory):
-        """Si Created n'est pas str/datetime/int, to_datetime retourne None."""
+    def test_created_invalide_retourne_400(self, factory):
+        """Si Created n'est pas str/datetime/int, la requête est rejetée."""
         m = self._setup_mocks()
         try:
             payload = {
@@ -693,9 +1018,8 @@ class TestOchecklistUpdateReportLifecycle:
                 content_type='application/yaml',
             )
             response = ochecklist_update(request)
-            assert response.status_code == 200
-            kwargs = m['Report'].objects.create.call_args.kwargs
-            assert kwargs['created'] is None
+            assert response.status_code == 400
+            m['Report'].objects.create.assert_not_called()
         finally:
             self._teardown_mocks()
 
@@ -737,15 +1061,15 @@ class TestOchecklistUpdateToDatetime:
         created = MockReport.objects.create.call_args.kwargs['created']
         assert created.tzinfo is not None
 
-    def test_bool_devient_none(self, factory):
+    def test_bool_retourne_400(self, factory):
         response, MockReport = self._post_created(factory, True)
-        assert response.status_code == 200
-        assert MockReport.objects.create.call_args.kwargs['created'] is None
+        assert response.status_code == 400
+        MockReport.objects.create.assert_not_called()
 
-    def test_string_vide_devient_none(self, factory):
+    def test_string_vide_retourne_400(self, factory):
         response, MockReport = self._post_created(factory, '')
-        assert response.status_code == 200
-        assert MockReport.objects.create.call_args.kwargs['created'] is None
+        assert response.status_code == 400
+        MockReport.objects.create.assert_not_called()
 
     def test_iso_sans_tz_devient_aware(self, factory):
         response, MockReport = self._post_created(factory, '2024-10-12T12:45:04')
@@ -769,11 +1093,11 @@ class TestOchecklistUpdateToDatetime:
         created = MockReport.objects.create.call_args.kwargs['created']
         assert created.second == 30
 
-    def test_string_invalide_devient_none(self, factory):
-        """Ni ISO ni heure seule → None."""
+    def test_string_invalide_retourne_400(self, factory):
+        """Ni ISO ni heure seule → 400 (Created est obligatoire)."""
         response, MockReport = self._post_created(factory, 'pas-une-date')
-        assert response.status_code == 200
-        assert MockReport.objects.create.call_args.kwargs['created'] is None
+        assert response.status_code == 400
+        MockReport.objects.create.assert_not_called()
 
     def test_secondes_converties(self, factory):
         """45000 s → 2000-01-01 12:30:00 aware."""
@@ -863,6 +1187,7 @@ class TestOchecklistUpdateChangeLog:
     def test_changelog_avec_tous_les_champs(self, factory):
         tz = datetime.timezone(datetime.timedelta(hours=2))
         cl = {
+            'TickedOff': '2024-10-12T12:30:00+02:00',
             'DNS': '2024-10-12T12:31:22+02:00',
             'LateStart': '2024-10-12T12:37:02+02:00',
             'NewCard': '2024-10-12T12:35:34+02:00',
@@ -870,6 +1195,7 @@ class TestOchecklistUpdateChangeLog:
             'NewRunner': '2024-10-12T12:43:14+02:00',
         }
         cl_expected = {
+            'ticked_off': datetime.datetime(2024, 10, 12, 12, 30, 0, tzinfo=tz),
             'dns': datetime.datetime(2024, 10, 12, 12, 31, 22, tzinfo=tz),
             'late_start': datetime.datetime(2024, 10, 12, 12, 37, 2, tzinfo=tz),
             'new_card': datetime.datetime(2024, 10, 12, 12, 35, 34, tzinfo=tz),
@@ -884,6 +1210,7 @@ class TestOchecklistUpdateChangeLog:
             m['ChangeLog'].objects.create.assert_called_once()
             kwargs = m['ChangeLog'].objects.create.call_args.kwargs
             assert kwargs['runner'] is not None
+            assert kwargs['ticked_off'] == cl_expected['ticked_off']
             assert kwargs['dns'] == cl_expected['dns']
             assert kwargs['late_start'] == cl_expected['late_start']
             assert kwargs['new_card'] == cl_expected['new_card']
@@ -932,7 +1259,7 @@ class TestOchecklistUpdateChangeLog:
             self._teardown()
 
     def test_mise_a_jour_runner_existant_tous_champs_changelog(self, factory):
-        """Runner existant : Bib + NewCard + Comment, et changelog LateStart/NewCard/Comment/NewRunner."""
+        """Runner existant : Bib + StartType + NewCard + Comment, et changelog complet."""
         changelog_mock = MagicMock()
         report_mock = MagicMock()
         report_mock.version = 'old'
@@ -941,6 +1268,7 @@ class TestOchecklistUpdateChangeLog:
         runner_mock = MagicMock()
         report_mock.runners.filter.return_value.first.return_value = runner_mock
         cl = {
+            'TickedOff': '2024-10-12T12:30:00+02:00',
             'LateStart': '2024-10-12T12:37:02+02:00',
             'NewCard': '2024-10-12T12:35:34+02:00',
             'Comment': '2024-10-12T12:40:08+02:00',
@@ -952,17 +1280,33 @@ class TestOchecklistUpdateChangeLog:
             runner = make_runner(name='Alice', new_card='222', comment='En retard',
                                  changelog=cl)
             runner['Runner']['Bib'] = '7'
+            runner['Runner']['StartType'] = 'Free'
             body = make_yaml(event='Same Event', runners=[runner])
             response = ochecklist_update(self._post(factory, body))
             assert response.status_code == 200
             assert runner_mock.bib == '7'
+            assert runner_mock.start_type == 'Free'
             assert runner_mock.new_card == '222'
             assert runner_mock.comment == 'En retard'
             changelog_mock.save.assert_called_once()
+            assert changelog_mock.ticked_off is not None
             assert changelog_mock.late_start is not None
             assert changelog_mock.new_card is not None
             assert changelog_mock.comment is not None
             assert changelog_mock.new_runner is not None
+            m['ChangeLog'].objects.create.assert_not_called()
+        finally:
+            self._teardown()
+
+    def test_changelog_cle_inconnue_ne_cree_rien(self, factory):
+        """Une clé ChangeLog non reconnue ne doit pas créer de ligne vide."""
+        m = self._setup({'CleInconnue': '2024-10-12T12:34:56+02:00'})
+        try:
+            body = make_yaml(runners=[make_runner(
+                changelog={'CleInconnue': '2024-10-12T12:34:56+02:00'},
+            )])
+            response = ochecklist_update(self._post(factory, body))
+            assert response.status_code == 200
             m['ChangeLog'].objects.create.assert_not_called()
         finally:
             self._teardown()

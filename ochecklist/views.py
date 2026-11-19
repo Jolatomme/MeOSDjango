@@ -1,5 +1,5 @@
 import datetime
-import gzip
+import zlib
 import hashlib
 import base64
 import yaml
@@ -14,21 +14,82 @@ from django.utils import timezone
 from django.utils.translation import ngettext
 from .models import OchecklistReport, OchecklistRunner, OchecklistChangeLog
 
-def decompress_if_needed(request_body, content_encoding_header):
-    """Decompress request body if Content-Encoding indicates gzip"""
+# Statuts envoyés par l'application O'checklist (rapport YAML v1.5/v1.6).
+VALID_START_STATUSES = {'Started OK', 'DNS', 'Late start'}
+
+# Clés du ChangeLog reconnues par le modèle. Sert à ne pas créer une ligne
+# vide quand l'application n'envoie qu'un champ inconnu.
+CHANGELOG_KEYS = ('TickedOff', 'DNS', 'LateStart', 'NewCard', 'Comment', 'NewRunner')
+
+
+def validate_runner_entry(runner_data, index):
+    """Validate one ``Data[]`` entry from an O'checklist report.
+
+    Returns an error message (str) or None when the entry is usable. The
+    Android app always sends these fields, but a malformed body must produce
+    a 400 instead of a 500 from the database layer.
+    """
+    position = index + 1
+    if not isinstance(runner_data, dict):
+        return f'Invalid runner entry #{position}: expected a mapping'
+
+    runner = runner_data.get('Runner')
+    if not isinstance(runner, dict):
+        return f'Invalid runner entry #{position}: missing Runner mapping'
+
+    for field in ('Name', 'StartStatus'):
+        value = runner.get(field)
+        if not isinstance(value, str):
+            return f'Invalid runner entry #{position}: missing {field}'
+
+    if not runner['StartStatus'].strip():
+        return f'Invalid runner entry #{position}: missing StartStatus'
+
+    if runner['StartStatus'] not in VALID_START_STATUSES:
+        return (
+            f'Invalid runner entry #{position}: unsupported StartStatus '
+            f'"{runner["StartStatus"]}"'
+        )
+
+    changelog = runner_data.get('ChangeLog')
+    if changelog is not None and not isinstance(changelog, dict):
+        return f'Invalid runner entry #{position}: ChangeLog must be a mapping'
+
+    return None
+
+
+# Taille maximale du corps décompressé (alignée sur
+# DATA_UPLOAD_MAX_MEMORY_SIZE) : borne les bombes gzip.
+MAX_DECOMPRESSED_SIZE = 10 * 1024 * 1024
+
+
+def decompress_if_needed(request_body, content_encoding_header, max_size=None):
+    """Decompress request body if Content-Encoding indicates gzip.
+
+    Returns the original body when the encoding is absent, unsupported or
+    invalid. Returns ``None`` when the decompressed payload exceeds
+    ``max_size`` (default: ``MAX_DECOMPRESSED_SIZE``).
+    """
     if not content_encoding_header:
         return request_body
-    
+
     content_encoding = content_encoding_header.lower()
-    
+
     # Check for gzip encoding
     if 'gzip' in content_encoding:
+        if max_size is None:
+            max_size = MAX_DECOMPRESSED_SIZE
         try:
-            return gzip.decompress(request_body)
-        except Exception:
+            decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
+            decompressed = decompressor.decompress(request_body, max_size + 1)
+            # unconsumed_tail means more output is pending: too large.
+            if len(decompressed) > max_size or decompressor.unconsumed_tail:
+                return None
+            return decompressed + decompressor.flush()
+        except zlib.error:
             # If decompression fails, return original body (might not actually be gzipped)
             return request_body
-    
+
     # Could add support for other encodings like deflate here if needed
     return request_body
 
@@ -105,16 +166,29 @@ def ochecklist_update(request):
     # Handle gzip compression if present (decompress AFTER digest verification)
     content_encoding_header = request.META.get('HTTP_CONTENT_ENCODING', '')
     processed_body = decompress_if_needed(request.body, content_encoding_header)
+    if processed_body is None:
+        return HttpResponse('Payload too large', status=413)
     
     # Parse YAML data
     try:
         yaml_data = yaml.safe_load(processed_body.decode('utf-8'))
+    except UnicodeDecodeError:
+        return HttpResponse('Invalid encoding: UTF-8 required', status=400)
     except yaml.YAMLError as e:
         return HttpResponse(f'Invalid YAML: {str(e)}', status=400)
     
     # Validate required structure
     if not isinstance(yaml_data, dict) or 'Data' not in yaml_data:
         return HttpResponse("Invalid O'checklist report format", status=400)
+    if not isinstance(yaml_data['Data'], list):
+        return HttpResponse(
+            "Invalid O'checklist report format: Data must be a list",
+            status=400,
+        )
+    for index, runner_data in enumerate(yaml_data['Data']):
+        error = validate_runner_entry(runner_data, index)
+        if error:
+            return HttpResponse(error, status=400)
     
     # Helper: convert YAML values to types suitable for Django ORM
     def to_str(val):
@@ -159,6 +233,12 @@ def ochecklist_update(request):
         return None
     
     event_name = to_str(yaml_data.get('Event'))
+    created = to_datetime(yaml_data.get('Created'))
+    if created is None:
+        return HttpResponse(
+            "Invalid O'checklist report format: missing or invalid Created",
+            status=400,
+        )
 
     with transaction.atomic():
         # Find or create report for this event
@@ -167,37 +247,39 @@ def ochecklist_update(request):
             if report:
                 report.version = to_str(yaml_data.get('Version', ''))
                 report.creator = to_str(yaml_data.get('Creator', ''))
-                report.created = to_datetime(yaml_data.get('Created'))
+                report.created = created
                 report.save()
             else:
                 report = OchecklistReport.objects.create(
                     version=to_str(yaml_data.get('Version', '')),
                     creator=to_str(yaml_data.get('Creator', '')),
-                    created=to_datetime(yaml_data.get('Created')),
+                    created=created,
                     event=event_name
                 )
         else:
             report = OchecklistReport.objects.create(
                 version=to_str(yaml_data.get('Version', '')),
                 creator=to_str(yaml_data.get('Creator', '')),
-                created=to_datetime(yaml_data.get('Created')),
+                created=created,
                 event=None
             )
 
-        # Process runners — upsert by Name, fall back to runner_id
+        # Process runners — upsert by runner_id, then bib, then name
         for runner_data in yaml_data['Data']:
             runner_section = runner_data.get('Runner', {})
             changelog_data = runner_data.get('ChangeLog') or {}
 
             name = to_str(runner_section.get('Name', ''))
             runner_id = to_str(runner_section.get('Id'))
+            bib = to_str(runner_section.get('Bib'))
 
-            # Match existing runner by Name, then by runner_id
             existing = None
-            if name:
-                existing = report.runners.filter(name=name).first()
-            if not existing and runner_id:
+            if runner_id:
                 existing = report.runners.filter(runner_id=runner_id).first()
+            if not existing and bib:
+                existing = report.runners.filter(bib=bib).first()
+            if not existing and name:
+                existing = report.runners.filter(name=name).first()
 
             if existing:
                 # Only update fields that are present in the incoming YAML
@@ -213,6 +295,8 @@ def ochecklist_update(request):
                     existing.card_number = to_str(runner_section['Card'])
                 if 'StartTime' in runner_section:
                     existing.start_time = to_datetime(runner_section['StartTime'])
+                if 'StartType' in runner_section:
+                    existing.start_type = to_str(runner_section['StartType'])
                 if 'ClassName' in runner_section:
                     existing.class_name = to_str(runner_section['ClassName'])
                 if 'StartStatus' in runner_section:
@@ -224,8 +308,10 @@ def ochecklist_update(request):
                 existing.save()
                 runner = existing
 
-                if any(changelog_data.values()):
+                if any(changelog_data.get(key) for key in CHANGELOG_KEYS):
                     changelog, _ = OchecklistChangeLog.objects.get_or_create(runner=runner)
+                    if 'TickedOff' in changelog_data:
+                        changelog.ticked_off = to_datetime(changelog_data['TickedOff'])
                     if 'DNS' in changelog_data:
                         changelog.dns = to_datetime(changelog_data['DNS'])
                     if 'LateStart' in changelog_data:
@@ -241,20 +327,22 @@ def ochecklist_update(request):
                 runner = OchecklistRunner.objects.create(
                     report=report,
                     runner_id=runner_id,
-                    bib=to_str(runner_section.get('Bib')),
+                    bib=bib,
                     name=name,
                     org=to_str(runner_section.get('Org', '')),
                     card_number=to_str(runner_section.get('Card')),
                     start_time=to_datetime(runner_section.get('StartTime')),
+                    start_type=to_str(runner_section.get('StartType')),
                     class_name=to_str(runner_section.get('ClassName', '')),
                     start_status=to_str(runner_section.get('StartStatus', '')),
                     new_card=to_str(runner_section.get('NewCard')),
                     comment=to_str(runner_section.get('Comment'))
                 )
 
-                if any(changelog_data.values()):
+                if any(changelog_data.get(key) for key in CHANGELOG_KEYS):
                     OchecklistChangeLog.objects.create(
                         runner=runner,
+                        ticked_off=to_datetime(changelog_data.get('TickedOff')),
                         dns=to_datetime(changelog_data.get('DNS')),
                         late_start=to_datetime(changelog_data.get('LateStart')),
                         new_card=to_datetime(changelog_data.get('NewCard')),
@@ -262,7 +350,7 @@ def ochecklist_update(request):
                         new_runner=to_datetime(changelog_data.get('NewRunner'))
                     )
 
-    return HttpResponse('OK', status=200)
+    return HttpResponse('OK', status=200, content_type='text/plain')
 
 def report_list(request):
     """Display list of all received O'checklist reports"""

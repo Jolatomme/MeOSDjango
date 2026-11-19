@@ -28,6 +28,11 @@ class TestURLResolution:
         match = resolve('/ochecklist/update/')
         assert match.func is ochecklist_update
 
+    def test_update_url_sans_slash_resout(self):
+        """L'app Android peut être configurée sans slash final."""
+        match = resolve('/ochecklist/update')
+        assert match.func is ochecklist_update
+
     def test_update_url_nom(self):
         assert reverse('ochecklist_update') == '/ochecklist/update/'
 
@@ -86,18 +91,18 @@ class TestURLReverse:
 class TestURLPatterns:
     """Vérifie l'intégrité de la liste urlpatterns."""
 
-    def test_5_routes(self):
+    def test_6_routes(self):
         from ochecklist.urls import urlpatterns
-        assert len(urlpatterns) == 5
+        assert len(urlpatterns) == 6
 
     def test_toutes_les_noms_distincts(self):
         from ochecklist.urls import urlpatterns
-        names = [p.name for p in urlpatterns]
+        names = [p.name for p in urlpatterns if p.name]
         assert len(set(names)) == len(names)
 
     def test_noms_attendus(self):
         from ochecklist.urls import urlpatterns
-        names = sorted([p.name for p in urlpatterns])
+        names = sorted([p.name for p in urlpatterns if p.name])
         assert names == sorted([
             'ochecklist_update',
             'ochecklist_report_list',

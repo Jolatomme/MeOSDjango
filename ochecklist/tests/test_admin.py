@@ -98,13 +98,14 @@ class TestOchecklistRunnerAdmin:
 
     def test_list_display(self):
         assert OchecklistRunnerAdmin.list_display == [
-            'name', 'org', 'class_name', 'start_status',
+            'name', 'org', 'class_name', 'start_status', 'start_type',
             'report_link', 'has_changelog',
         ]
 
     def test_list_filter(self):
         assert OchecklistRunnerAdmin.list_filter == [
-            'start_status', 'class_name', 'org', 'report__created',
+            'start_status', 'start_type', 'class_name', 'org',
+            'report__created',
         ]
 
     def test_search_fields(self):
@@ -161,13 +162,14 @@ class TestOchecklistChangeLogAdmin:
 
     def test_list_display(self):
         assert OchecklistChangeLogAdmin.list_display == [
-            'runner_name', 'dns', 'late_start', 'new_card',
+            'runner_name', 'ticked_off', 'dns', 'late_start', 'new_card',
             'comment', 'new_runner',
         ]
 
     def test_list_filter(self):
         assert OchecklistChangeLogAdmin.list_filter == [
-            'dns', 'late_start', 'new_card', 'comment', 'new_runner',
+            'ticked_off', 'dns', 'late_start', 'new_card', 'comment',
+            'new_runner',
         ]
 
     def test_search_fields(self):
